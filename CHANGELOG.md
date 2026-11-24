@@ -1,6 +1,30 @@
 # Changelog
 
-All notable changes to CozyVTT will be documented in this file.
+All notable changes to Mistwarden are documented in this file. Mistwarden is based on [CozyVTT](https://github.com/CheekyChinchilla/CozyVTT) 1.7.0 by CheekyChinchilla (AGPL-3.0); CozyVTT's own history follows below the Mistwarden releases.
+
+## [1.0.0] - 2026-11-24
+
+The first Mistwarden release: CozyVTT 1.7.0 with its own look and name. No feature changes.
+
+### Added
+
+- The Mistwarden theme (dark surfaces, lilac accent, lantern glow) and the Mistwarden font (Iowan Old Style or Palatino headings, the device's own text font). Both are the defaults for a new instance; CozyVTT's 16 themes and 8 fonts stay selectable.
+- The lantern as logo, favicon and home-screen icon, a night scene behind the pages outside a campaign, and corner marks on the sign-in and welcome cards.
+
+### Changed
+
+- The name Mistwarden in page headers, the browser tab, setup, sign-in, messages, emails, the authenticator issuer, the example settings and the README. The About window says Mistwarden is based on CozyVTT and links this repository's source.
+- Dashboard cards open with a quiet arrow button, icons take their text's colour, Log out is a quiet button, icon buttons are centred for a mouse as well as a finger, the map's zoom readout is the toolbar's text size, Player Preview's controls use line icons, and fields the browser fills in keep the theme's colours.
+
+### Upgrading from CozyVTT 1.7.0
+
+No manual step. One database migration changes only the defaults for a new instance's name, theme and font; an existing instance keeps the ones it has. Campaign archives keep the `.cozyvtt` format and import in both directions.
+
+---
+
+# CozyVTT history
+
+The entries below are CozyVTT's, up to the 1.7.0 release Mistwarden is based on.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
