@@ -419,6 +419,16 @@
     /* The font defaults are in @theme above; applyFont (themes.ts) replaces them. */
   }
 
+  /* Mistwarden (2026-11-24): a field the browser filled in keeps the theme's
+     colours; Safari otherwise paints it pale yellow, glaring on a dark theme. */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus {
+    -webkit-text-fill-color: rgb(var(--rgb-ink));
+    -webkit-box-shadow: 0 0 0 1000px rgb(var(--rgb-paper)) inset;
+    caret-color: rgb(var(--rgb-ink));
+  }
+
   body {
     @apply font-body bg-canvas text-ink;
     margin: 0;
