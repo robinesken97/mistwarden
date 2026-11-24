@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: the page shows the night scene behind it.
 // ============================================
 // MFA Setup Page
 //
@@ -133,7 +134,7 @@ export default function MFASetupPage() {
   if (loading && serverUnreachable) return <ServerUnreachablePanel onRetry={retryAuthCheck} />;
   if (loading) {
     return (
-      <div className="min-h-page flex items-center justify-center bg-linear-to-br/srgb from-soft-cream via-parchment to-warm-amber/20" aria-live="polite">
+      <div className="min-h-page flex items-center justify-center" aria-live="polite">
         <Loader2 className="w-8 h-8 text-brand-ink animate-spin" aria-label="Loading" />
       </div>
     );
@@ -144,7 +145,7 @@ export default function MFASetupPage() {
   }
 
   return (
-    <div className="min-h-page flex items-center justify-center bg-linear-to-br/srgb from-soft-cream via-parchment to-warm-amber/20 px-4 py-8">
+    <div className="min-h-page flex items-center justify-center px-4 py-8">
       <div className="glass-panel max-w-lg w-full p-8 space-y-6">
         {/* Header */}
         <div className="text-center">

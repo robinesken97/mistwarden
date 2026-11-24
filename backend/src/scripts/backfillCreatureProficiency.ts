@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: messages name Mistwarden.
 /**
  * backfillCreatureProficiency.ts
  * CLI script to record proficiency structure on seeded SRD creatures.
@@ -20,7 +21,7 @@ async function main() {
   const dryRun = process.argv.includes('--dry-run');
   const verbose = process.argv.includes('--verbose');
 
-  console.log('CozyVTT Creature Proficiency Backfill');
+  console.log('Mistwarden Creature Proficiency Backfill');
   console.log(
     dryRun
       ? 'DRY RUN — reporting what would change, writing nothing.\n'

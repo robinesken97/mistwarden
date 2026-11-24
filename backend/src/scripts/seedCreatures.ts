@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: messages name Mistwarden.
 /**
  * seedCreatures.ts
  * CLI script to seed SRD creatures. Can also be triggered via API.
@@ -12,7 +13,7 @@ import { seedSrdCreatures } from '../services/creatureSeed';
 const prisma = createPrismaClient();
 
 async function main() {
-  console.log('CozyVTT Creature Library Seeder');
+  console.log('Mistwarden Creature Library Seeder');
   console.log('Fetching 5E SRD creatures from Open5e API...\n');
 
   const result = await seedSrdCreatures(prisma);

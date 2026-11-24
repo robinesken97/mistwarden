@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: messages name Mistwarden.
 // CRITICAL: Load environment variables FIRST before any imports that use them
 import './config/loadEnvFile';
 
@@ -67,7 +68,7 @@ void makeDummyPasswordHash();
 async function start(): Promise<void> {
   await convertStoredHorrorD100SheetsAtStart(prisma);
   httpServer.listen(PORT, () => {
-    logger.info(`CozyVTT Backend running on port ${PORT}`);
+    logger.info(`Mistwarden Backend running on port ${PORT}`);
     logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
     logger.info(`CORS origin: ${process.env.CORS_ORIGIN || 'http://localhost:3000'}`);
 

@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: messages name Mistwarden.
 /**
  * What a campaign archive's maps, tokens, walls and lights become on import.
  *
@@ -180,7 +181,7 @@ export function prepareMap(raw: unknown, ctx: MapContext): PreparedMap | null {
 
   const parsed = ImportMapSchema.safeParse(raw);
   if (!parsed.success) {
-    report.skip('map', label(rawName, fallbackName), parsed.error.issues[0]?.message ?? 'It is not a map CozyVTT can read.');
+    report.skip('map', label(rawName, fallbackName), parsed.error.issues[0]?.message ?? 'It is not a map Mistwarden can read.');
     return null;
   }
   const map = parsed.data;

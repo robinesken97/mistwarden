@@ -1,5 +1,5 @@
 /**
- * A template stored with a game system CozyVTT no longer supports offers no
+ * A template stored with a game system Mistwarden no longer supports offers no
  * Use.
  *
  * Use was offered on it, and pressing it sent the stored system to the

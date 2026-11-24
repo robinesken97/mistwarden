@@ -5,6 +5,8 @@
 // Protected by ProtectedRoute requireRole={PlatformRole.ADMIN} in App.tsx.
 //
 // Tabs: Dashboard | Users | Settings | Activity
+//
+// Modified for Mistwarden on 2026-11-24: Mistwarden theme, font and name as defaults.
 // ============================================
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
@@ -284,8 +286,8 @@ export default function AdminPage() {
     fontId: string;
     customColors: AppearanceColors;
   }>({
-    themeId: 'cozy-default',
-    fontId: 'default',
+    themeId: 'mistwarden',
+    fontId: 'mistwarden',
     customColors: {
       primary: '#4A5D4E',
       accent: '#D4A574',
@@ -491,8 +493,8 @@ export default function AdminPage() {
         requireAdminApproval: settings.requireAdminApproval,
       });
       setAppearanceForm({
-        themeId: settings.themeId || 'cozy-default',
-        fontId: settings.fontId || 'default',
+        themeId: settings.themeId || 'mistwarden',
+        fontId: settings.fontId || 'mistwarden',
         customColors: (settings.customThemeColors as AppearanceColors | null) || {
           primary: '#4A5D4E',
           accent: '#D4A574',
@@ -2066,7 +2068,7 @@ export default function AdminPage() {
                     maxLength={100}
                     onChange={e => setSettingsForm(f => ({ ...f, instanceName: e.target.value }))}
                     className="input-cozy w-full"
-                    placeholder="CozyVTT"
+                    placeholder="Mistwarden"
                   />
                   <p className="text-xs text-warm-gray mt-1">
                     Shown in the browser tab and in the emails the instance sends.
@@ -2365,7 +2367,7 @@ export default function AdminPage() {
                   <Button
                     onClick={() => {
                     const defaultTheme = PRESET_THEMES[0];
-                    setAppearanceForm(f => ({ ...f, themeId: 'cozy-default', fontId: 'default' }));
+                    setAppearanceForm(f => ({ ...f, themeId: 'mistwarden', fontId: 'mistwarden' }));
                     applyThemeColors(defaultTheme.colors);
                     applyFont(FONT_OPTIONS[0]);
                     }}

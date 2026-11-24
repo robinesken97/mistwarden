@@ -23,9 +23,9 @@ import CampaignInfo from '../CampaignInfo';
 
 it('opens About CozyVTT from Campaign Info, with the same quiet button as the other pages', async () => {
   render(<CampaignInfo onLeft={vi.fn()} />);
-  const opener = screen.getByRole('button', { name: 'About CozyVTT' });
+  const opener = screen.getByRole('button', { name: 'About Mistwarden' });
   expect(opener).toHaveClass('touch-target');
 
   await userEvent.click(opener);
-  await waitForDialogFocus(screen.getByRole('dialog', { name: 'About CozyVTT' }));
+  await waitForDialogFocus(screen.getByRole('dialog', { name: 'About Mistwarden' }));
 });

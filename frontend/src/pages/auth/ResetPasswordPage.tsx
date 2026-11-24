@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: Mistwarden name and night scene.
 // ============================================
 // Reset Password Page
 // Allows users to set a new password via a valid reset token
@@ -84,7 +85,7 @@ export default function ResetPasswordPage({ invite = false }: ResetPasswordPageP
   };
 
   return (
-    <div className="min-h-page flex items-center justify-center bg-linear-to-br/srgb from-soft-cream via-parchment to-warm-amber/20 px-4">
+    <div className="min-h-page flex items-center justify-center px-4">
       <main id="main-content" className="glass-panel max-w-md w-full p-8 space-y-6">
 
         {success ? (
@@ -126,7 +127,7 @@ export default function ResetPasswordPage({ invite = false }: ResetPasswordPageP
                 <KeyRound className="w-10 h-10 text-brand-ink/70" aria-hidden="true" />
               </div>
               <h1 className="text-2xl font-bold text-brand-ink font-heading">
-                {invite ? 'Welcome to CozyVTT' : 'Set new password'}
+                {invite ? 'Welcome to Mistwarden' : 'Set new password'}
               </h1>
               <p className="mt-2 text-sm text-warm-gray">
                 {invite

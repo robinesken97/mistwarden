@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: the page shows the night scene behind it.
 // ============================================
 // Forgot Password Page
 // Allows unauthenticated users to request a password reset email
@@ -72,7 +73,7 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-page flex items-center justify-center bg-linear-to-br/srgb from-soft-cream via-parchment to-warm-amber/20 px-4">
+    <div className="min-h-page flex items-center justify-center px-4">
       <main id="main-content" className="glass-panel max-w-md w-full p-8 space-y-6">
 
         {smtpConfigured === false ? (

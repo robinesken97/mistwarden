@@ -1,7 +1,7 @@
 /**
  * The game system badge, for every code it can be given: the systems this
  * build knows, none (a Flexible sheet), and a code it does not know, such as
- * the value of a system CozyVTT no longer supports.
+ * the value of a system Mistwarden no longer supports.
  */
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';

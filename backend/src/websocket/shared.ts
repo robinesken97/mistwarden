@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: messages name Mistwarden.
 // ============================================
 // WebSocket shared state & helpers
 //
@@ -311,7 +312,7 @@ export type CeilingEvent = keyof typeof SOCKET_CEILINGS;
  */
 export const MAX_SOCKETS_PER_USER = 40;
 export const TOO_MANY_SOCKETS =
-  `Too many CozyVTT tabs or devices are open on this account at once (the most is ${MAX_SOCKETS_PER_USER}). Close one, then reload this page.`;
+  `Too many Mistwarden tabs or devices are open on this account at once (the most is ${MAX_SOCKETS_PER_USER}). Close one, then reload this page.`;
 
 /**
  * The most events one socket may send in a second, every event together.

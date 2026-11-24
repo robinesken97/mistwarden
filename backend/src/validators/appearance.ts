@@ -5,6 +5,8 @@
  * Shared by a user's own preferences and the instance's default theme, which
  * the Admin Panel sets for every visitor, the sign-in page included. Both are
  * painted into CSS, so both are checked the same way.
+ *
+ * Modified for Mistwarden on 2026-11-24: added the mistwarden theme and font.
  */
 
 import { z } from 'zod';
@@ -13,6 +15,7 @@ import { z } from 'zod';
 // when the two differ. `custom` is a sentinel meaning the colours come from
 // customThemeColors.
 export const THEME_IDS = [
+  'mistwarden',
   'cozy-default',
   'autumn-hearth',
   'desert-sand',
@@ -33,6 +36,7 @@ export const THEME_IDS = [
 ] as const;
 
 export const FONT_IDS = [
+  'mistwarden',
   'default',
   'medieval',
   'elegant',

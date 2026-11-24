@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: the page shows the night scene behind it.
 // ============================================
 // Forced Change Password Page
 // Shown when an account is flagged `mustChangePassword` — an admin created it,
@@ -75,7 +76,7 @@ export default function ChangePasswordPage() {
   };
 
   return (
-    <div className="min-h-page flex items-center justify-center bg-linear-to-br/srgb from-soft-cream via-parchment to-warm-amber/20 px-4">
+    <div className="min-h-page flex items-center justify-center px-4">
       <main id="main-content" className="glass-panel max-w-md w-full p-8 space-y-6">
         <div className="text-center">
           <div className="flex justify-center mb-3">

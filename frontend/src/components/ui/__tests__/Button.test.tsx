@@ -24,11 +24,12 @@ describe('Button on a touch screen', () => {
   });
 
   // The map's toolbar passes its icon as a child, which the browser lays out
-  // as a block: in the wider box it would sit at the left.
+  // as a block: in the wider box it would sit at the left. Mistwarden
+  // (2026-11-24): centred for a mouse too, whose box is as wide.
   it('centres an icon passed as a child in the bigger box', () => {
     render(<Button iconOnly aria-label="Zoom In"><Pencil className="w-4 h-4" /></Button>);
 
-    expect(classesOf(screen.getByRole('button', { name: 'Zoom In' }))).toContain('pointer-coarse:[&>svg]:mx-auto');
+    expect(classesOf(screen.getByRole('button', { name: 'Zoom In' }))).toContain('[&>svg]:mx-auto');
   });
 
   it('sizes a small button for a finger', () => {

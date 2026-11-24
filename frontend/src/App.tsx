@@ -1,13 +1,15 @@
+// Modified for Mistwarden on 2026-11-24: Mistwarden lantern, wordmark and night scene on the welcome page.
 import { lazy, Suspense, useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { MotionConfig } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
+import { Lantern, NightScene } from '@/components/common/MistwardenArt';
 import { api } from '@/services/api';
 import { queryClient } from '@/lib/queryClient';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { ToastProvider } from '@/contexts/ToastContext';
-import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 import ThemeSyncBridge from '@/contexts/ThemeSyncBridge';
 import { PlatformRole } from '@/types/user.types';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -35,16 +37,11 @@ const CharacterTemplatesPage = lazy(() => import('@/pages/CharacterTemplatesPage
 const ProfilePage      = lazy(() => import('@/pages/ProfilePage'));
 const AdminPage        = lazy(() => import('@/pages/AdminPage'));
 
-function MascotImage({ className = '' }: { className?: string }) {
-  const { mascotUrl } = useTheme();
-  return <img src={mascotUrl} alt="CozyVTT" className={`object-contain ${className}`} />;
-}
-
 /** Minimal full-screen spinner shown while a lazy page chunk loads. */
 function PageLoader() {
   return (
     <div
-      className="min-h-page flex items-center justify-center bg-linear-to-br/srgb from-soft-cream via-parchment to-warm-amber/20"
+      className="min-h-page flex items-center justify-center"
       aria-live="polite"
       aria-label="Loading page"
     >
@@ -77,7 +74,9 @@ function App() {
           </a>
           {/* Global toast notifications */}
           <ToastContainer />
-          <div className="min-h-page bg-linear-to-br/srgb from-soft-cream via-parchment to-warm-amber/20">
+          {/* Mistwarden: the night scene sits behind every page outside a campaign. */}
+          <div className="min-h-page relative isolate">
+          <NightScene />
         <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Public Routes */}
@@ -225,16 +224,14 @@ function WelcomePage() {
 
   return (
     <div className="min-h-page flex items-center justify-center p-4">
-      <div className="glass-panel max-w-sm w-full p-8 text-center space-y-6">
-        <div className="flex justify-center">
-          <MascotImage className="w-16 h-16 animate-pulse-soft" />
-        </div>
-        <div>
-          <h1 className="text-4xl font-bold text-brand-ink font-heading text-shadow-soft">
-            CozyVTT
+      <div className="glass-panel corner-marks max-w-sm w-full p-8 text-center space-y-6">
+        <div className="flex flex-col items-center gap-2">
+          <Lantern />
+          <h1 className="text-[34px] leading-tight font-semibold uppercase tracking-[0.14em] text-ink font-heading">
+            Mistwarden
           </h1>
-          <p className="mt-2 text-warm-gray">
-            A self-hosted Virtual Tabletop for cozy, narrative-driven campaigns
+          <p className="text-sm text-warm-gray">
+            The game table for your group
           </p>
         </div>
         <div className="flex flex-col gap-3">

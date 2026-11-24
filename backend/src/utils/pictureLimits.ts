@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: messages name Mistwarden.
 /**
  * How large a map, token or avatar picture may be, in pixels and frames.
  *
@@ -37,7 +38,7 @@ const ANIMATION_WORDS: Record<PictureAssetType, string> = {
 };
 
 export const UNREADABLE_PICTURE_MESSAGE =
-  'CozyVTT could not read the size of this picture, so it cannot be checked. Save it again in an image editor and try once more.';
+  'Mistwarden could not read the size of this picture, so it cannot be checked. Save it again in an image editor and try once more.';
 
 const count = (n: number) => n.toLocaleString('en-US');
 

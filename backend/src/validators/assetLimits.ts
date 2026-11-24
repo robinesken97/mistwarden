@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: messages name Mistwarden.
 /**
  * The limits on what an upload says about itself: its name, description and
  * tags, and the one tag kept for the pictures Paint makes.
@@ -29,7 +30,7 @@ export const ASSET_LIMITS = {
 export const DRAWN_MAP_TAG = 'cozyvtt-drawn-map';
 
 /** What an upload that may not carry DRAWN_MAP_TAG is told, by the server and by the upload window. */
-export const DRAWN_MAP_TAG_REFUSAL = `The tag ${DRAWN_MAP_TAG} is kept for maps drawn in CozyVTT.`;
+export const DRAWN_MAP_TAG_REFUSAL = `The tag ${DRAWN_MAP_TAG} is kept for maps drawn in Mistwarden.`;
 
 /**
  * The version after a drawn picture's address, `/api/assets/maps/<id>?v=<n>`,

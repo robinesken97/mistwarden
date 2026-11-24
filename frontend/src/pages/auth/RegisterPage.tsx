@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: Mistwarden name and night scene.
 // ============================================
 // Register Page
 // Handles new user registration
@@ -136,7 +137,7 @@ export default function RegisterPage() {
 
   if (pendingApproval) {
     return (
-      <div className="min-h-page flex items-center justify-center bg-linear-to-br/srgb from-soft-cream via-parchment to-warm-amber/20 px-4">
+      <div className="min-h-page flex items-center justify-center px-4">
         <div className="glass-panel max-w-md w-full p-8 space-y-4 text-center">
           <div className="w-16 h-16 rounded-full bg-warning/10 flex items-center justify-center mx-auto">
             <span className="text-3xl">&#9203;</span>
@@ -154,7 +155,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-page flex items-center justify-center bg-linear-to-br/srgb from-soft-cream via-parchment to-warm-amber/20 px-4">
+    <div className="min-h-page flex items-center justify-center px-4">
       <div className="glass-panel max-w-md w-full p-8 space-y-6">
         {/* Header */}
         <div className="text-center">
@@ -162,7 +163,7 @@ export default function RegisterPage() {
             Create Account
           </h1>
           <p className="mt-2 text-sm text-warm-gray">
-            Join CozyVTT and start your adventure
+            Join Mistwarden and start your adventure
           </p>
         </div>
 

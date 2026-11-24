@@ -323,7 +323,7 @@ describe("a combatant's menu, as each viewer is shown it", () => {
   // rules: one with no system, or one CozyVTT no longer supports.
   it.each([
     ['no system', null],
-    ['a system CozyVTT no longer supports', 'SOMETHING_ELSE'],
+    ['a system Mistwarden no longer supports', 'SOMETHING_ELSE'],
   ])("gives a creature's Roll... picker the 5E rules in a campaign with %s", (_case, gameSystem) => {
     seat.role = 'GM';
     seat.gameSystem = gameSystem;

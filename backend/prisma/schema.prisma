@@ -873,7 +873,7 @@ model SystemSettings {
   setupCompleted Boolean @default(false)
 
   // Instance Configuration
-  instanceName String  @default("CozyVTT")
+  instanceName String  @default("Mistwarden") // Mistwarden defaults, modified 2026-11-24
   timezone     String  @default("UTC")
 
   // User Registration Settings
@@ -881,9 +881,9 @@ model SystemSettings {
   requireAdminApproval Boolean @default(true)
 
   // Appearance
-  themeId           String  @default("cozy-default")
+  themeId           String  @default("mistwarden")
   customThemeColors Json?
-  fontId            String  @default("default")
+  fontId            String  @default("mistwarden")
   customLogoUrl     String?
   customFaviconUrl  String?
   customMascotUrl   String?

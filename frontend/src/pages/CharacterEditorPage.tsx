@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: messages name Mistwarden.
 // ============================================
 // Character Editor Page
 // Allows editing characters for any game system
@@ -418,7 +419,7 @@ export default function CharacterEditorPage() {
                 the sheet itself. */}
 
             {/* Save as Template — publishes this sheet for everyone to copy.
-                Not for a system CozyVTT no longer supports, whose template
+                Not for a system Mistwarden no longer supports, whose template
                 the server refuses. */}
             {isSupportedOrNoSystem(character.gameSystem) && (
               <Button

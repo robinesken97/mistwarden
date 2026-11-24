@@ -53,7 +53,7 @@ const pages: Array<[string, ComponentType]> = [
   ['the sign-in page', LoginPage],
 ];
 
-describe('About CozyVTT', () => {
+describe('About Mistwarden', () => {
   it.each(pages)('opens from %s', async (_name, Page) => {
     render(
       <MemoryRouter>
@@ -61,8 +61,8 @@ describe('About CozyVTT', () => {
       </MemoryRouter>
     );
 
-    await userEvent.click(screen.getByRole('button', { name: 'About CozyVTT' }));
+    await userEvent.click(screen.getByRole('button', { name: 'About Mistwarden' }));
 
-    expect(await screen.findByRole('dialog', { name: 'About CozyVTT' })).toBeInTheDocument();
+    expect(await screen.findByRole('dialog', { name: 'About Mistwarden' })).toBeInTheDocument();
   });
 });

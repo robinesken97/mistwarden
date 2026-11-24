@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: the default name is Mistwarden.
 /**
  * Emails carry the instance's name as the admin set it.
  *
@@ -60,8 +61,8 @@ describe('the instance name in emails', () => {
     }
   });
 
-  it('falls back to INSTANCE_NAME while the stored name is still CozyVTT', async () => {
-    getSystemSettings.mockResolvedValue({ instanceName: 'CozyVTT' });
+  it('falls back to INSTANCE_NAME while the stored name is still Mistwarden', async () => {
+    getSystemSettings.mockResolvedValue({ instanceName: 'Mistwarden' });
     process.env.INSTANCE_NAME = 'Env Tavern';
 
     await sendWelcomeEmail('p@x.test', 'Pat', 'TEMP-PASS-WORD-0000');
@@ -69,12 +70,12 @@ describe('the instance name in emails', () => {
     expect(sent().subject).toContain('Welcome to Env Tavern');
   });
 
-  it('still sends, as CozyVTT, when the settings cannot be read', async () => {
+  it('still sends, as Mistwarden, when the settings cannot be read', async () => {
     getSystemSettings.mockRejectedValue(new Error('database down'));
 
     await sendWelcomeEmail('p@x.test', 'Pat', 'TEMP-PASS-WORD-0000');
 
-    expect(sent().subject).toContain('Welcome to CozyVTT');
+    expect(sent().subject).toContain('Welcome to Mistwarden');
   });
 });
 

@@ -513,7 +513,7 @@ CozyVTT once held the start of a sheet for a fourth game system. It never offere
 
 Importing a campaign archive that names that system makes a campaign with no system and says so in the import window. A character file that names it is imported the same way: the window says *This file's game system is no longer supported, so the character is imported with none, as a Flexible sheet.*, and what the file held is stored with the character.
 
-**Unsupported system** is what the app shows wherever it names a game system it does not know. The sheet of such a character opens as a Flexible sheet that you can read but not change, under the line *This character was made for a game system CozyVTT no longer supports. Its data is kept; you can export or delete it.* A template's opens the same way, under the line *This template was made for a game system CozyVTT no longer supports. Its data is kept; you can delete it.* Since 1.7.0 the server neither stores nor sends such a system, so you should meet neither unless a page was left open across an upgrade; reload it.
+**Unsupported system** is what the app shows wherever it names a game system it does not know. The sheet of such a character opens as a Flexible sheet that you can read but not change, under the line *This character was made for a game system Mistwarden no longer supports. Its data is kept; you can export or delete it.* A template's opens the same way, under the line *This template was made for a game system Mistwarden no longer supports. Its data is kept; you can delete it.* Since 1.7.0 the server neither stores nor sends such a system, so you should meet neither unless a page was left open across an upgrade; reload it.
 
 ---
 

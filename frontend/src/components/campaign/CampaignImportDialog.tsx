@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: messages name Mistwarden.
 // ============================================
 // CampaignImportDialog
 // Multi-step modal: Upload → Preview → Options → Importing → Done
@@ -38,7 +39,7 @@ type ImportStep = 'upload' | 'preview' | 'importing' | 'done' | 'error';
  * message of the server's to show.
  */
 const TOO_LARGE_FOR_SERVER =
-  'This archive is larger than the server accepts. Whoever runs the server can raise the size limit for campaign imports on the web proxy in front of CozyVTT; the deployment guide explains how.';
+  'This archive is larger than the server accepts. Whoever runs the server can raise the size limit for campaign imports on the web proxy in front of Mistwarden; the deployment guide explains how.';
 
 /** Each kind of thing an import can leave out, as the done screen names it. */
 const SKIPPED_KIND: Record<CampaignImportSkipped['kind'], string> = {

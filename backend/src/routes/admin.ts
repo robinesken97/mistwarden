@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: messages name Mistwarden.
 // ============================================
 // Admin Routes
 //
@@ -1329,7 +1330,7 @@ router.post('/backups/restore', oneRestoreAtATime, takeRestoreUpload, async (req
     } catch {
       return res.status(400).json({
         error: 'Invalid Backup',
-        message: 'This file does not appear to be a valid CozyVTT backup (database.sql not found inside ZIP)',
+        message: 'This file does not appear to be a valid Mistwarden backup (database.sql not found inside ZIP)',
       });
     }
 

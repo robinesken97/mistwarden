@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: messages name Mistwarden.
 /**
  * ThemePicker
  *
@@ -311,7 +312,7 @@ function ContrastReport({ colors }: { colors: ThemePickerColors }) {
       {failing.length > 0 && (
         <p className="text-[11px] text-warning-ink mt-2">
           {failing.length === 1 ? 'One combination falls' : `${failing.length} combinations fall`} below the
-          4.5:1 minimum for readable text. CozyVTT adjusts these automatically where it can, but picking a
+          4.5:1 minimum for readable text. Mistwarden adjusts these automatically where it can, but picking a
           darker text color or a lighter background gives a better result.
         </p>
       )}

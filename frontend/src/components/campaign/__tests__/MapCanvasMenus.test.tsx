@@ -769,7 +769,7 @@ describe('where a roll picker from the token menu opens', () => {
   // or one CozyVTT no longer supports.
   it.each([
     ['no system', null],
-    ['a system CozyVTT no longer supports', 'SOMETHING_ELSE'],
+    ['a system Mistwarden no longer supports', 'SOMETHING_ELSE'],
   ])("gives a creature's picker the 5E rules in a campaign with %s", async (_case, gameSystem) => {
     h.set({ gameSystem });
     render(<MapCanvas />);

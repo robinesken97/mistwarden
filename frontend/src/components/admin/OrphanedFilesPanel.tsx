@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: messages name Mistwarden.
 /**
  * Files in the uploads folder that no asset names, for an admin to find and
  * delete. Such a file is left when an asset's file could not be removed with
@@ -91,7 +92,7 @@ export default function OrphanedFilesPanel() {
           </h3>
           <p className="text-xs text-warm-gray mt-1">
             Files in the uploads folder that no asset names, such as a file that could not be removed when its asset
-            was deleted, or one a restored backup brought back. Nothing in CozyVTT uses them. Checking only lists
+            was deleted, or one a restored backup brought back. Nothing in Mistwarden uses them. Checking only lists
             them; nothing is deleted until you confirm.
           </p>
         </div>
@@ -159,7 +160,7 @@ export default function OrphanedFilesPanel() {
       <ConfirmDialog
         isOpen={confirming}
         title="Delete Leftover Files"
-        message={`Delete the ${plural(listed, 'listed file', 'listed files')} from the server? No asset names them, so nothing in CozyVTT uses them, but a deleted file cannot be brought back without a backup of the uploads folder. Each file is checked again first, and kept if an asset names it by then.`}
+        message={`Delete the ${plural(listed, 'listed file', 'listed files')} from the server? No asset names them, so nothing in Mistwarden uses them, but a deleted file cannot be brought back without a backup of the uploads folder. Each file is checked again first, and kept if an asset names it by then.`}
         confirmLabel="Delete Files"
         variant="danger"
         isLoading={deleting}

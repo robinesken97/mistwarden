@@ -18,8 +18,8 @@ describe('sessionSecretWarning', () => {
     expect(warning).toMatch(/^\[WARN\] SESSION_SECRET is not set\. /);
   });
 
-  it('names the .env file at the top of the CozyVTT folder for the Docker stacks', () => {
-    expect(warning).toMatch(/\.env file at the top of the CozyVTT folder when you run CozyVTT with Docker/);
+  it('names the .env file at the top of the Mistwarden folder for the Docker stacks', () => {
+    expect(warning).toMatch(/\.env file at the top of the Mistwarden folder when you run Mistwarden with Docker/);
   });
 
   it('names backend/.env for a backend run without Docker', () => {

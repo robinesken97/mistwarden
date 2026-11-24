@@ -23,7 +23,7 @@ import { RETIRED_GAME_SYSTEM as retired } from '../../__tests__/helpers/retiredG
 
 jest.setTimeout(60_000);
 
-const REFUSED = 'CozyVTT does not support that game system.';
+const REFUSED = 'Mistwarden does not support that game system.';
 const statBlock = { ac: 12, speed: '30 ft.', abilities: { str: 10, dex: 12, con: 10, int: 10, wis: 10, cha: 10 } };
 
 const app = createTestApp();

@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: messages name Mistwarden.
 /**
  * Whether SESSION_SECRET could be guessed. A production server stops on one
  * that could (config/session.ts): unset, an example value the repository
@@ -46,7 +47,7 @@ export function sessionSecretProblem(secret: string | undefined): string | null 
 export function sessionSecretWarning(problem: string): string {
   return (
     `[WARN] SESSION_SECRET ${problem}. ` +
-    'Before deploying, set a real secret in the .env file at the top of the CozyVTT folder when you run CozyVTT with Docker, ' +
+    'Before deploying, set a real secret in the .env file at the top of the Mistwarden folder when you run Mistwarden with Docker, ' +
     'or in backend/.env when you run the backend without Docker; generate one with: openssl rand -hex 32'
   );
 }

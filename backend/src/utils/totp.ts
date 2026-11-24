@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: messages name Mistwarden.
 /**
  * Authenticator (TOTP) codes, accepted once each.
  *
@@ -41,7 +42,7 @@ export function newTotpSecret(): string {
 
 /** The otpauth:// address the setup QR code holds, which names the account as CozyVTT:<email>. */
 export function totpSetupUri(secret: string, email: string): string {
-  return generateURI({ issuer: 'CozyVTT', label: email, secret });
+  return generateURI({ issuer: 'Mistwarden', label: email, secret });
 }
 
 /**

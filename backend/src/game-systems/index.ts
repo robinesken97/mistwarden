@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: messages name Mistwarden.
 /**
  * The game systems a character or campaign can be set to.
  *
@@ -33,4 +34,4 @@ export function isSupportedGameSystem(value: unknown): value is SupportedGameSys
  * so no system's identifier, the unreleased one's included, reaches a
  * screen from a refusal.
  */
-export const GAME_SYSTEM_NOT_SUPPORTED = 'CozyVTT does not support that game system.';
+export const GAME_SYSTEM_NOT_SUPPORTED = 'Mistwarden does not support that game system.';

@@ -8,6 +8,8 @@
  * these check that each family a font choice names has its files, that every
  * file the stylesheet names exists and is used, and that nothing points the
  * browser at another site for them again.
+ *
+ * Modified for Mistwarden on 2026-11-24: the Mistwarden font uses device fonts.
  */
 
 import { describe, it, expect, afterEach } from 'vitest';
@@ -27,6 +29,12 @@ const faces = [...fontsCss.matchAll(/@font-face \{([^}]*)\}/g)].map((m) => ({
 /** The family a CSS font stack asks for first. */
 const firstFamily = (stack: string) => /^'([^']+)'/.exec(stack)?.[1];
 
+/**
+ * Families the device already has, which the Mistwarden font asks for first
+ * (Mistwarden, 2026-11-24): nothing to bundle, and nothing fetched.
+ */
+const deviceStack = (stack: string) => stack.startsWith("'Iowan Old Style'") || stack.startsWith('system-ui');
+
 afterEach(() => {
   document.head.querySelectorAll('link').forEach((link) => link.remove());
 });
@@ -34,7 +42,7 @@ afterEach(() => {
 describe('the bundled typefaces', () => {
   it('have files for the first family of every font choice', () => {
     const declared = new Set(faces.map((f) => f.family));
-    const wanted = FONT_OPTIONS.flatMap((font) => [font.heading, font.body, font.mono].map(firstFamily));
+    const wanted = FONT_OPTIONS.flatMap((font) => [font.heading, font.body, font.mono].filter((stack) => !deviceStack(stack)).map(firstFamily));
     expect(wanted.filter((family) => family === undefined || !declared.has(family))).toEqual([]);
   });
 

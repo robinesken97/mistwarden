@@ -51,7 +51,7 @@ function upload(agent: Agent, fields: { type: string; scope: string; campaignId?
   return req.attach('file', PNG, 'picture.png');
 }
 
-const REFUSAL = `The tag ${DRAWN_MAP_TAG} is kept for maps drawn in CozyVTT.`;
+const REFUSAL = `The tag ${DRAWN_MAP_TAG} is kept for maps drawn in Mistwarden.`;
 
 beforeAll(async () => {
   const stamp = Date.now();

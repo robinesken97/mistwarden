@@ -1,6 +1,9 @@
 // ============================================
-// AboutDialog: About CozyVTT
+// AboutDialog: About Mistwarden
 // ============================================
+//
+// Modified for Mistwarden on 2026-11-24: titled for Mistwarden, says it is
+// based on CozyVTT, and links the Mistwarden source code.
 //
 // CozyVTT's licence and where its source code is, and the credits the
 // licences of the game rules ask for wherever those rules are used. It does
@@ -22,7 +25,10 @@ import { cn } from '@/utils/cn';
 const LICENCE_URL = 'https://www.gnu.org/licenses/agpl-3.0.html';
 
 /** The project's repository, the one the README clones (a backend test compares them). */
-export const SOURCE_CODE_URL = 'https://github.com/CheekyChinchilla/CozyVTT';
+export const SOURCE_CODE_URL = 'https://github.com/robinesken97/mistwarden';
+
+/** The project Mistwarden is based on. */
+export const UPSTREAM_URL = 'https://github.com/CheekyChinchilla/CozyVTT';
 
 const LINK_CLASS =
   'underline underline-offset-2 text-brand-ink hover:text-brand-ink/80 focus:outline-hidden focus:ring-2 focus:ring-brand rounded-xs';
@@ -50,7 +56,7 @@ export default function AboutDialog({ open, onClose }: AboutDialogProps) {
     <Modal
       open={open}
       onClose={onClose}
-      title="About CozyVTT"
+      title="About Mistwarden"
       icon={Info}
       size="lg"
       footer={
@@ -61,6 +67,13 @@ export default function AboutDialog({ open, onClose }: AboutDialogProps) {
     >
       <div className="space-y-6 text-sm text-ink-secondary">
         <div className="space-y-2">
+          <p>
+            Mistwarden is based on{' '}
+            <a href={UPSTREAM_URL} target="_blank" rel="noopener noreferrer" className={LINK_CLASS}>
+              CozyVTT
+            </a>{' '}
+            by CheekyChinchilla (AGPL-3.0).
+          </p>
           {/* The notices the licence asks a program to show: that it may be passed on under the licence, with no warranty, and where the licence is. */}
           <p>
             CozyVTT is free software: you can redistribute it and modify it under the terms of the{' '}
@@ -117,7 +130,7 @@ export default function AboutDialog({ open, onClose }: AboutDialogProps) {
   );
 }
 
-/** The quiet button that opens About CozyVTT, for the foot of a page. */
+/** The quiet button that opens About Mistwarden, for the foot of a page. */
 export function AboutButton({ className }: { className?: string }) {
   const [open, setOpen] = useState(false);
   return (
@@ -133,7 +146,7 @@ export function AboutButton({ className }: { className?: string }) {
         )}
       >
         <Info className="w-4 h-4" aria-hidden="true" />
-        About CozyVTT
+        About Mistwarden
       </button>
       <AboutDialog open={open} onClose={() => setOpen(false)} />
     </>
