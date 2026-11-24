@@ -92,7 +92,7 @@ describe('a game system the server does not know', () => {
     expect(result.warnings).toEqual(['Creature "Bandit": its game system "fifthedition" is not one this server knows, so it was imported with none.']);
   });
 
-  it('on a creature, imports it with none when it is the value of a system CozyVTT no longer supports', async () => {
+  it('on a creature, imports it with none when it is the value of a system Mistwarden no longer supports', async () => {
     const result = await importCampaign(await archive({ creatures: [creature({ gameSystem: RETIRED_GAME_SYSTEM })] }), userId);
 
     const creatures = await prisma.creatureTemplate.findMany({ where: { campaignId: result.campaignId } });
@@ -100,7 +100,7 @@ describe('a game system the server does not know', () => {
     expect(result.warnings).toEqual(['Creature "Bandit": its game system is no longer supported, so it was imported with none.']);
   });
 
-  it('on the campaign, imports it with none when it is the value of a system CozyVTT no longer supports, without repeating it', async () => {
+  it('on the campaign, imports it with none when it is the value of a system Mistwarden no longer supports, without repeating it', async () => {
     const result = await importCampaign(await archive({ campaign: { gameSystem: RETIRED_GAME_SYSTEM }, maps: [map()] }), userId);
 
     const campaign = await prisma.campaign.findUniqueOrThrow({ where: { id: result.campaignId } });
@@ -198,13 +198,13 @@ describe('data nested deeper than an export ever writes', () => {
     );
 
     expect(result.mapCount).toBe(1);
-    expect(result.skipped).toEqual([{ kind: 'map', name: 'Map 1', reason: 'Its data nests more than 32 levels deep, far deeper than CozyVTT ever writes.' }]);
+    expect(result.skipped).toEqual([{ kind: 'map', name: 'Map 1', reason: 'Its data nests more than 32 levels deep, far deeper than Mistwarden ever writes.' }]);
   });
 
   it('refuses the archive when it is in the campaign settings', async () => {
     await expect(
       importCampaign(await archive({ campaign: { vibeSettings: { periods: [], extra: nested(40) } } }), userId)
-    ).rejects.toThrow('campaign.json in the archive nests more than 32 levels deep, far deeper than CozyVTT ever writes. It may be damaged, or not a CozyVTT export.');
+    ).rejects.toThrow('campaign.json in the archive nests more than 32 levels deep, far deeper than Mistwarden ever writes. It may be damaged, or not a Mistwarden export.');
   });
 });
 
@@ -221,7 +221,7 @@ describe('a map holding more values than an export ever writes', () => {
     );
 
     expect(result.mapCount).toBe(1);
-    expect(result.skipped).toEqual([{ kind: 'map', name: 'Map 1', reason: 'It holds more than 1,000,000 values, far more than CozyVTT ever writes for one map.' }]);
+    expect(result.skipped).toEqual([{ kind: 'map', name: 'Map 1', reason: 'It holds more than 1,000,000 values, far more than Mistwarden ever writes for one map.' }]);
   });
 });
 

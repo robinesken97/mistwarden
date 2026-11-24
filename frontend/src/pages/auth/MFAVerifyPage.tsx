@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: the page shows the night scene behind it.
 // ============================================
 // MFA Verify Page
 // Handles MFA verification during login
@@ -135,7 +136,7 @@ export default function MFAVerifyPage() {
   };
 
   return (
-    <div className="min-h-page flex items-center justify-center bg-linear-to-br/srgb from-soft-cream via-parchment to-warm-amber/20 px-4">
+    <div className="min-h-page flex items-center justify-center px-4">
       <div className="glass-panel max-w-md w-full p-8 space-y-6">
         {/* Header */}
         <div className="text-center">

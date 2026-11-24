@@ -43,7 +43,7 @@ it('calls a 5E challenge rating borrowed into a Fantasy d20 campaign a CR', () =
   expect(container.textContent).not.toContain('Level');
 });
 
-// A campaign stored with a system CozyVTT no longer supports shows its
+// A campaign stored with a system Mistwarden no longer supports shows its
 // creatures as a campaign with no system does.
 it('shows a creature in a campaign of a system it does not know as one with none', () => {
   const statBlock: NpcStatBlock = { ...base, challengeRating: '1' };

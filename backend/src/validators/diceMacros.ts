@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: messages name Mistwarden.
 /**
  * What a saved dice macro may contain.
  *
@@ -59,16 +60,16 @@ export const MAX_MACROS_PER_CAMPAIGN = 50;
  */
 function explainRefusal(message: string, expression: string): string {
   if (/^Failed to (evaluate|parse) expression/i.test(message)) {
-    return `CozyVTT could not read "${expression}" as a roll. Check for a stray + or -, or a missing number — try something like 2d6+3.`;
+    return `Mistwarden could not read "${expression}" as a roll. Check for a stray + or -, or a missing number — try something like 2d6+3.`;
   }
 
   const token = message.match(/^Invalid token:\s*(.+)$/i);
   if (token) {
-    return `CozyVTT could not read "${token[1]}" as dice. Expressions look like 1d20+5, 2d6+3 or 4d6kh3.`;
+    return `Mistwarden could not read "${token[1]}" as dice. Expressions look like 1d20+5, 2d6+3 or 4d6kh3.`;
   }
 
   if (/^Invalid dice notation/i.test(message)) {
-    return `CozyVTT could not read "${expression}" as dice. Expressions look like 1d20+5, 2d6+3 or 4d6kh3.`;
+    return `Mistwarden could not read "${expression}" as dice. Expressions look like 1d20+5, 2d6+3 or 4d6kh3.`;
   }
 
   return message;
@@ -100,7 +101,7 @@ const rollableExpression = z
         message:
           error instanceof DiceParserError
             ? explainRefusal(error.message, expression)
-            : `CozyVTT could not read "${expression}" as a roll.`,
+            : `Mistwarden could not read "${expression}" as a roll.`,
       });
     }
   });

@@ -56,7 +56,7 @@ describe('extractCharacterHp', () => {
   it.each([
     ['no data', 'FIFTH_EDITION', null],
     ['no game system', null, { hp: { maximum: 10, current: 10, temporary: 0 } }],
-    ['a system CozyVTT no longer supports', RETIRED_GAME_SYSTEM, { hp: { maximum: 10, current: 10, temporary: 0 } }],
+    ['a system Mistwarden no longer supports', RETIRED_GAME_SYSTEM, { hp: { maximum: 10, current: 10, temporary: 0 } }],
     ['a system it never had', 'SOMETHING_ELSE', { hp: { maximum: 10, current: 10, temporary: 0 } }],
     ['no hp block', 'FIFTH_EDITION', {}],
     ['hp that is not an object', 'FIFTH_EDITION', { hp: 27 }],

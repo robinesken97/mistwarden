@@ -1,6 +1,9 @@
 /**
  * CozyVTT Theme Definitions
  *
+ * Modified for Mistwarden on 2026-11-24: added the Mistwarden theme and font
+ * and made them the first entries, which are the defaults.
+ *
  * Each theme defines RGB channel triplets (e.g. "74 93 78") for every CSS
  * variable consumed by Tailwind, set on the page as --rgb-x. The @theme block in
  * index.css gives Tailwind each one as --color-x: rgb(var(--rgb-x)).
@@ -57,6 +60,31 @@ export interface FontOption {
 // ────────────────────────────────────────────────────
 
 export const PRESET_THEMES: ThemeDefinition[] = [
+  // ── MISTWARDEN (default: the first entry is the fallback and first paint) ──
+  {
+    id: 'mistwarden',
+    name: 'Mistwarden',
+    description: 'Lantern light and lilac mist over a night-dark table',
+    category: 'dark',
+    colors: {
+      brand: '169 155 224',
+      brandDark: '196 187 236',
+      accent: '169 155 224',
+      accentHover: '188 177 232',
+      accentText: '27 26 29',
+      bgBase: '27 26 29',
+      bgSurface: '35 33 38',
+      bgSurfaceLight: '46 44 51',
+      bgSurfaceDark: '23 22 27',
+      ink: '236 235 232',
+      inkSecondary: '181 176 168',
+      inkMuted: '168 163 155',
+      paper: '46 44 51',
+      danger: '200 70 60',
+      spirit: '160 130 230',
+    },
+  },
+
   // ── WARM ──
   {
     id: 'cozy-default',
@@ -442,6 +470,15 @@ export const PRESET_THEMES: ThemeDefinition[] = [
 // ────────────────────────────────────────────────────
 
 export const FONT_OPTIONS: FontOption[] = [
+  {
+    // Installed serifs for headings and the device's own sans for text, so
+    // nothing is downloaded.
+    id: 'mistwarden',
+    name: 'Mistwarden (Iowan Old Style + system)',
+    heading: "'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif",
+    body: "system-ui, -apple-system, 'Segoe UI', sans-serif",
+    mono: "'JetBrains Mono', monospace",
+  },
   {
     id: 'default',
     name: 'Default (Quicksand + Inter)',

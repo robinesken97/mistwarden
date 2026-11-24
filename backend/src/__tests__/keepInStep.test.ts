@@ -813,7 +813,7 @@ describe('the refusal of the tag kept for drawn maps', () => {
   ])('is the mirrored asset limits file\'s in %s, with no wording of its own', (file) => {
     const source = read(file);
     expect(source).toContain('DRAWN_MAP_TAG_REFUSAL');
-    expect(source).not.toMatch(/is kept for maps drawn in CozyVTT/);
+    expect(source).not.toMatch(/is kept for maps drawn in Mistwarden/);
   });
 });
 

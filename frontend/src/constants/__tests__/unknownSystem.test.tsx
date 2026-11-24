@@ -32,7 +32,7 @@ import CampaignRoster from '@/components/campaign/CampaignRoster';
 /** What the server sends for a character stored with a system this build does not have. */
 const CODE = 'SOMETHING_ELSE';
 const unknownSystem = CODE as GameSystem;
-const NOTICE = 'This character was made for a game system CozyVTT no longer supports. Its data is kept; you can export or delete it.';
+const NOTICE = 'This character was made for a game system Mistwarden no longer supports. Its data is kept; you can export or delete it.';
 
 beforeEach(() => {
   getCampaignCharacters.mockReset();

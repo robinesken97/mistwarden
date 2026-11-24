@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: messages name Mistwarden.
 /**
  * Read a document without leaving CozyVTT.
  *
@@ -274,7 +275,7 @@ export default function DocumentReader({
              blank one never appear. */
           <div className="flex-1 flex flex-col items-center justify-center gap-3 px-6 text-center rounded-lg border border-moss-green/20 bg-parchment/60">
             <FileText className="w-10 h-10 text-ink-secondary" aria-hidden="true" />
-            <p className="text-sm text-ink">This browser does not show a PDF inside CozyVTT.</p>
+            <p className="text-sm text-ink">This browser does not show a PDF inside Mistwarden.</p>
             <Button type="button" onClick={openInNewTab} className="flex items-center gap-2">
               <ExternalLink className="w-4 h-4" aria-hidden="true" />
               Open this PDF in a new tab

@@ -22,8 +22,8 @@ vi.mock('@/services/api', () => ({
 }));
 
 const CODE = 'SOMETHING_ELSE';
-const NOTICE = 'This character was made for a game system CozyVTT no longer supports. Its data is kept; you can export or delete it.';
-const TEMPLATE_NOTICE = 'This template was made for a game system CozyVTT no longer supports. Its data is kept; you can delete it.';
+const NOTICE = 'This character was made for a game system Mistwarden no longer supports. Its data is kept; you can export or delete it.';
+const TEMPLATE_NOTICE = 'This template was made for a game system Mistwarden no longer supports. Its data is kept; you can delete it.';
 
 const character: Character = {
   id: 'char-1', userId: 'owner', name: 'Old Hero', gameSystem: CODE as GameSystem, campaignId: 'camp-1', tokenImageUrl: null,

@@ -9,10 +9,10 @@ import logger from '../utils/logger';
  * Initial Setup & Onboarding
  */
 
-/** What a fresh instance's settings row holds. */
+/** What a fresh instance's settings row holds (name modified for Mistwarden on 2026-11-24). */
 const DEFAULT_SETTINGS = {
   setupCompleted: false,
-  instanceName: 'CozyVTT',
+  instanceName: 'Mistwarden',
   timezone: 'UTC',
   allowRegistration: false,
   requireAdminApproval: true,

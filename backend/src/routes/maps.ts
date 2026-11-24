@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: messages name Mistwarden.
 import { Router, Response, NextFunction } from 'express';
 import { randomUUID } from 'crypto';
 import fs from 'fs/promises';
@@ -632,7 +633,7 @@ async function importUvttFile(req: AuthenticatedRequest, res: Response, signal: 
         return answer(400, {
           error: 'Validation Error',
           message:
-            'The picture inside this file is not an image CozyVTT can use. ' +
+            'The picture inside this file is not an image Mistwarden can use. ' +
             `Maps must be one of: ${UVTT_IMAGE_EXTENSIONS}.`,
         });
       }

@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: Mistwarden name; issues go to the Mistwarden repository.
 // ============================================
 // ErrorBoundary — App-level React error boundary
 // Catches unhandled render errors and shows a friendly recovery UI instead of a blank screen.
@@ -50,7 +51,7 @@ export default class ErrorBoundary extends Component<Props, State> {
     if (this.props.fallback) return this.props.fallback;
 
     return (
-      <div className="min-h-page flex items-center justify-center bg-linear-to-br/srgb from-soft-cream via-parchment to-warm-amber/20 p-4">
+      <div className="min-h-page flex items-center justify-center bg-canvas p-4">
         <div className="glass-panel max-w-lg w-full p-8 text-center space-y-6">
           {/* Icon */}
           <div className="flex justify-center">
@@ -65,7 +66,7 @@ export default class ErrorBoundary extends Component<Props, State> {
               Something went wrong
             </h1>
             <p className="text-sm text-warm-gray">
-              CozyVTT encountered an unexpected error. Your data is safe — this is a display problem only.
+              Mistwarden encountered an unexpected error. Your data is safe — this is a display problem only.
             </p>
           </div>
 
@@ -103,7 +104,7 @@ export default class ErrorBoundary extends Component<Props, State> {
             </Button>
 
             <a
-              href="https://github.com/CheekyChinchilla/CozyVTT/issues"
+              href="https://github.com/robinesken97/mistwarden/issues"
               target="_blank"
               rel="noopener noreferrer"
               className="btn-secondary flex items-center justify-center gap-2"

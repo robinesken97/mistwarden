@@ -2,6 +2,7 @@
 // Login Page
 // Handles user authentication with email/password
 // Supports MFA flow and "Remember Me" functionality
+// Modified for Mistwarden on 2026-11-24: lantern, wordmark and night scene.
 // ============================================
 
 import { useState, useEffect, FormEvent } from 'react';
@@ -14,6 +15,7 @@ import { AboutButton } from '@/components/common/AboutDialog';
 import { apiErrorMessage, apiErrorStatus, apiErrorText } from '@/utils/errors';
 import { readSignInNotice, forgetSignInNotice } from '@/services/signInNotice';
 import { AFTER_SIGN_IN, keepingReturnPath, returnPathFrom } from '@/utils/returnTo';
+import { Lantern } from '@/components/common/MistwardenArt';
 
 export default function LoginPage() {
   const { login, authenticated, mfaPending } = useAuth();
@@ -120,15 +122,17 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-page flex items-center justify-center bg-linear-to-br/srgb from-soft-cream via-parchment to-warm-amber/20 px-4">
-      <main id="main-content" className="glass-panel max-w-md w-full p-8 space-y-6">
+    <div className="min-h-page flex items-center justify-center px-4">
+      <main id="main-content" className="glass-panel corner-marks max-w-md w-full p-8 space-y-6">
         {/* Header */}
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-brand-ink font-heading">
+        <div className="flex flex-col items-center gap-2 text-center">
+          <Lantern />
+          <p className="text-xs uppercase tracking-[0.14em] text-warm-gray">Mistwarden</p>
+          <h1 className="text-3xl font-semibold text-ink font-heading">
             Welcome Back
           </h1>
-          <p className="mt-2 text-sm text-warm-gray">
-            Sign in to your CozyVTT account
+          <p className="text-sm text-warm-gray">
+            Sign in to your Mistwarden account
           </p>
         </div>
 

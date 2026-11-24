@@ -1,6 +1,7 @@
 // ============================================
 // Profile Page
 // Protected route - requires authentication
+// Modified for Mistwarden on 2026-11-24: Mistwarden is the fallback theme.
 // ============================================
 
 import { useState, useRef, useCallback, useEffect, useId } from 'react';
@@ -989,7 +990,7 @@ export default function ProfilePage() {
             </div>
           ) : (
             <ThemePicker
-              themeId={prefs.themeId ?? systemAppearance?.themeId ?? 'cozy-default'}
+              themeId={prefs.themeId ?? systemAppearance?.themeId ?? 'mistwarden'}
               fontId={prefs.fontId ?? systemAppearance?.fontId ?? 'default'}
               customColors={
                 (prefs.customThemeColors ??

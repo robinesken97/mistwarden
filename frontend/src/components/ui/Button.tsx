@@ -81,7 +81,9 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
         // A regular one is 40 to 42 pixels tall, and as narrow as its icon
         // when its words hide on a phone (Documents' Read).
         size !== 'lg' && 'touch-target',
-        iconOnly && 'pointer-coarse:[&>svg]:mx-auto',
+        // Mistwarden (2026-11-24): centred for every pointer, since the box
+        // can be wider than icon plus padding with a mouse too.
+        iconOnly && '[&>svg]:mx-auto',
         'disabled:opacity-50 disabled:cursor-not-allowed',
         className
       )}

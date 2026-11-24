@@ -191,7 +191,7 @@ describe('buildNpcRolls — systems without a d20 model', () => {
     expect(rolls.combat).toHaveLength(0);
   });
 
-  // A campaign stored with a system CozyVTT no longer supports plays as one
+  // A campaign stored with a system Mistwarden no longer supports plays as one
   // with no system.
   it('offers for a system it does not know what it offers with none', () => {
     expect(buildNpcRolls(goblin, 'SOMETHING_ELSE')).toEqual(buildNpcRolls(goblin, null));

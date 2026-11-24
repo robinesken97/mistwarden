@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: messages name Mistwarden.
 /**
  * How a backup is written and how a restore loads it.
  *
@@ -347,7 +348,7 @@ export async function prepareDumpForRestore(sqlPath: string, outPath: string, db
     } else if ((schema !== 'public' && elsewhere.length > 0) || (missing.length > 0 && backupOfAnother)) {
       refused = anotherSchema(found, schema);
     } else if (missing.length > 0) {
-      refused = `it does not create the ${missing.join(' and ')} table${missing.length > 1 ? 's' : ''}, so it is not a CozyVTT backup`;
+      refused = `it does not create the ${missing.join(' and ')} table${missing.length > 1 ? 's' : ''}, so it is not a Mistwarden backup`;
     }
   }
   return { skipped, refused };

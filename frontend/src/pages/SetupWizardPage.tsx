@@ -2,6 +2,7 @@
 // Setup Wizard Page
 // First-time setup for CozyVTT installation
 // Multi-step wizard with form validation
+// Modified for Mistwarden on 2026-11-24: Mistwarden name, lantern and night scene.
 // ============================================
 
 import { useState, useEffect, FormEvent } from 'react';
@@ -9,7 +10,6 @@ import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMotionExit } from '@/utils/motion';
 import { Shield, Settings, CheckCircle, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
-import { useTheme } from '@/contexts/ThemeContext';
 import { setupService } from '@/services/setup.service';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -22,6 +22,7 @@ import Button from '@/components/ui/Button';
 import PasswordStrengthIndicator from '@/components/PasswordStrengthIndicator';
 import { apiErrorMessage, apiErrorStatus, apiErrorText, errorSummary } from '@/utils/errors';
 import { DISPLAY_NAME_MIN_LENGTH, DISPLAY_NAME_MAX_LENGTH } from '@/constants/accountLimits';
+import { Lantern } from '@/components/common/MistwardenArt';
 
 // ============================================
 // Types
@@ -46,7 +47,6 @@ interface SystemConfigData {
 export default function SetupWizardPage() {
   const navigate = useNavigate();
   const { adoptSession } = useAuth();
-  const { mascotUrl } = useTheme();
 
   // Step management
   const [currentStep, setCurrentStep] = useState(1);
@@ -62,7 +62,7 @@ export default function SetupWizardPage() {
   });
 
   const [systemConfig, setSystemConfig] = useState<SystemConfigData>({
-    instanceName: 'CozyVTT',
+    instanceName: 'Mistwarden',
     enableRegistration: false,
   });
 
@@ -281,7 +281,7 @@ export default function SetupWizardPage() {
   if (checkingStatus) {
     return (
       <div
-        className="min-h-page flex items-center justify-center bg-linear-to-br/srgb from-soft-cream via-parchment to-warm-amber/20"
+        className="min-h-page flex items-center justify-center"
         aria-live="polite"
         aria-label="Checking setup status"
       >
@@ -291,15 +291,15 @@ export default function SetupWizardPage() {
   }
 
   return (
-    <div className="min-h-page flex items-center justify-center bg-linear-to-br/srgb from-soft-cream via-parchment to-warm-amber/20 px-4 py-8">
+    <div className="min-h-page flex items-center justify-center px-4 py-8">
       <div className="glass-panel max-w-3xl w-full p-8 space-y-6">
         {/* Header */}
         <div className="text-center">
           <div className="flex justify-center mb-4">
-            <img src={mascotUrl} alt="CozyVTT" className="w-20 h-20 object-contain animate-pulse-soft" />
+            <Lantern className="w-16 h-16" />
           </div>
-          <h1 className="text-4xl font-bold text-brand-ink font-heading">
-            CozyVTT Setup
+          <h1 className="text-4xl font-semibold text-ink font-heading">
+            Mistwarden Setup
           </h1>
           <p className="mt-2 text-warm-gray">
             Let's get your Virtual Tabletop ready
@@ -426,7 +426,7 @@ function Step1Welcome() {
 
       <div>
         <h2 className="text-2xl font-bold text-brand-ink mb-3">
-          Welcome to CozyVTT!
+          Welcome to Mistwarden
         </h2>
         <p className="text-stone-gray max-w-xl mx-auto">
           This wizard will guide you through setting up your self-hosted Virtual
@@ -620,7 +620,7 @@ function Step3SystemConfig({ data, setData, fieldErrors }: Step3Props) {
           System Configuration
         </h2>
         <p className="text-sm text-stone-gray">
-          Customize your CozyVTT instance
+          Customize your Mistwarden instance
         </p>
       </div>
 
@@ -641,7 +641,7 @@ function Step3SystemConfig({ data, setData, fieldErrors }: Step3Props) {
             className={`input-cozy w-full ${
               fieldErrors.instanceName ? 'border-spirit-red' : ''
             }`}
-            placeholder="CozyVTT"
+            placeholder="Mistwarden"
           />
           <p className="mt-1 text-xs text-warm-gray">
             Shown in the browser tab and in the emails the instance sends

@@ -42,7 +42,7 @@ function startAndStop(signal: NodeJS.Signals): Promise<Ended> {
     let sentAt = 0;
     const onData = (chunk: Buffer) => {
       output += chunk.toString();
-      if (!sentAt && output.includes('CozyVTT Backend running on port')) {
+      if (!sentAt && output.includes('Mistwarden Backend running on port')) {
         sentAt = Date.now();
         child.kill(signal);
       }

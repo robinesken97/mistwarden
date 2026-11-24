@@ -157,7 +157,7 @@ describe('POST /api/characters with a game system that does not exist', () => {
     const res = await owner.post('/api/characters').send({ name: 'Nobody', gameSystem: 'NOT_A_SYSTEM', data: {} });
 
     expect(res.status).toBe(400);
-    expect(res.body).toEqual({ error: 'Validation Error', message: 'CozyVTT does not support that game system.' });
+    expect(res.body).toEqual({ error: 'Validation Error', message: 'Mistwarden does not support that game system.' });
     expect(await prisma.character.count({ where: { userId: ownerId, name: 'Nobody' } })).toBe(0);
   });
 });

@@ -1,10 +1,12 @@
+// Modified for Mistwarden on 2026-11-24: Player Preview controls in theme colours with line icons;
+// the zoom readout at the toolbar's text size.
 // ============================================
 // Map Canvas Component
 // HTML Canvas-based map viewer with zoom/pan controls
 // ============================================
 
 import { useEffect, useEffectEvent, useId, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { ZoomIn, ZoomOut, Maximize2, Grid3x3, Palette, Ghost, Ruler, Zap, MapPin, Pencil, Paintbrush, SlidersHorizontal } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize2, Grid3x3, Palette, Ghost, Ruler, Zap, MapPin, Pencil, Paintbrush, SlidersHorizontal, Eye, EyeOff } from 'lucide-react';
 import { useCampaign } from '@/contexts/CampaignContext';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -4115,7 +4117,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   // 44-pixel buttons keeps one row on an iPad in landscape with both side
   // panels at their minimums.
   const zoomReadout = (
-    <span className="text-xs text-stone-gray font-mono min-w-16 pointer-coarse:min-w-12 text-center">
+    <span className="text-sm text-ink-secondary tabular-nums min-w-16 pointer-coarse:min-w-12 text-center">
       {Math.round(mapControls.zoom * 100)}%
     </span>
   );
@@ -4183,7 +4185,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
           value={previewSelection ? encodePreviewSelection(previewSelection) : ''}
           onChange={(e) => setPreviewSelection(decodePreviewSelection(e.target.value))}
           aria-label="Player or token to preview as"
-          className="touch-target px-2 py-1.5 rounded-sm text-xs bg-ink/85 text-paper border border-ink/40"
+          className="touch-target px-2 py-1.5 rounded-sm text-xs bg-surface/90 text-ink border border-ink/15"
         >
           {previewChoices.length === 0 && <option value="">Nothing to preview</option>}
           {/* Looks through whichever token is selected, as , and . step. */}
@@ -4206,20 +4208,20 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
           setGmPreviewPlayerView(next);
         }}
         disabled={isPreparing}
-        className={`touch-target px-3 py-1.5 rounded text-xs font-medium transition-colors border disabled:opacity-60 disabled:cursor-not-allowed ${
+        className={`touch-target inline-flex items-center gap-2 px-3 py-1.5 rounded text-xs font-medium transition-colors border disabled:opacity-60 disabled:cursor-not-allowed ${
           gmPreviewPlayerView && !isPreparing
-            ? 'bg-info/30 text-info-ink border-info/50'
-            // ink/paper invert together, so this stays a legible contrast
-            // chip over the map on both light and dark themes
-            : 'bg-ink/85 text-paper border-ink/40 hover:bg-ink'
+            ? 'bg-accent/20 text-accent-ink border-accent/50'
+            // Mistwarden: the theme's surface and ink, as the map's toolbar
+            // (unslop pass, 2026-11-24).
+            : 'bg-surface/90 text-ink border-ink/15 hover:bg-surface'
         }`}
         title={previewHint}
       >
         {/* Named by the words it shows, which say what a press does, so a
             voice command for them finds it. */}
         {gmPreviewPlayerView && !isPreparing
-          ? <><span aria-hidden="true">👁</span> GM View</>
-          : <><span aria-hidden="true">🎭</span> Preview Player View</>}
+          ? <><EyeOff className="w-4 h-4" aria-hidden="true" />GM View</>
+          : <><Eye className="w-4 h-4" aria-hidden="true" />Preview Player View</>}
       </button>
       {/* Said as well as greyed out: a touch screen shows no tooltip. */}
       {isPreparing && (

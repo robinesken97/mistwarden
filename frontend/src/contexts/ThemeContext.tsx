@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: the tab shows Mistwarden when the instance has no name.
 /**
  * Theme Context — two-layer model
  *
@@ -277,7 +278,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // The browser tab shows the instance's name.
   useEffect(() => {
     if (!appearance) return;
-    document.title = appearance.instanceName?.trim() || 'CozyVTT';
+    document.title = appearance.instanceName?.trim() || 'Mistwarden';
   }, [appearance]);
 
   const mascotUrl = appearance?.customMascotUrl || '/default-mascot.png';

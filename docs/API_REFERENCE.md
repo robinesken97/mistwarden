@@ -723,7 +723,7 @@ Upload a `.cozyvtt` archive and return its manifest preview without creating any
   "preview": {
     "formatVersion": 1,
     "exportedAt": "2026-04-18T12:00:00.000Z",
-    "exportedFrom": "CozyVTT v1.7.0",
+    "exportedFrom": "Mistwarden v1.0.0",
     "campaignName": "The Hollow Crown",
     "gameSystem": "FIFTH_EDITION",
     "mapCount": 5,

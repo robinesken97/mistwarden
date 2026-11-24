@@ -50,9 +50,9 @@ const addressesIn = (line: string) =>
 /** Opens the window from its button; returns both. */
 async function openAbout() {
   render(<AboutButton />);
-  const opener = screen.getByRole('button', { name: 'About CozyVTT' });
+  const opener = screen.getByRole('button', { name: 'About Mistwarden' });
   await userEvent.click(opener);
-  const dialog = await waitForDialogFocus(screen.getByRole('dialog', { name: 'About CozyVTT' }));
+  const dialog = await waitForDialogFocus(screen.getByRole('dialog', { name: 'About Mistwarden' }));
   return { opener, dialog };
 }
 
@@ -197,6 +197,6 @@ describe('the About CozyVTT window', () => {
 
   it('is a button a finger can hit', () => {
     render(<AboutButton />);
-    expect(screen.getByRole('button', { name: 'About CozyVTT' })).toHaveClass('touch-target');
+    expect(screen.getByRole('button', { name: 'About Mistwarden' })).toHaveClass('touch-target');
   });
 });

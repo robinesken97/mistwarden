@@ -44,7 +44,7 @@ describe('validateImportedCharacter', () => {
 
   // The code is not shown: the window that shows this names no system by code.
   it('refuses a file for a system this instance does not have, without naming its code', () => {
-    const refused = { valid: false, error: 'This character is for a game system this CozyVTT does not have.' };
+    const refused = { valid: false, error: 'This character is for a game system this Mistwarden does not have.' };
     expect(validateImportedCharacter(file('MY_SYSTEM'))).toEqual(refused);
     expect(validateImportedCharacter(file(5))).toEqual(refused);
   });

@@ -1229,10 +1229,11 @@ router.get('/appearance', async (_req: Request, res: Response) => {
     return res.status(200).json(appearance);
   } catch {
     return res.status(200).json({
-      instanceName: 'CozyVTT',
-      themeId: 'cozy-default',
+      // Mistwarden defaults (modified for Mistwarden on 2026-11-24).
+      instanceName: 'Mistwarden',
+      themeId: 'mistwarden',
       customThemeColors: null,
-      fontId: 'default',
+      fontId: 'mistwarden',
       customLogoUrl: null,
       customFaviconUrl: null,
       customMascotUrl: null,

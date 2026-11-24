@@ -39,13 +39,13 @@ describe('the page title', () => {
     await waitFor(() => expect(document.title).toBe('The Mossy Lantern'));
   });
 
-  it('stays CozyVTT when the name is empty', async () => {
+  it('stays Mistwarden when the name is empty', async () => {
     getAppearance.mockResolvedValue(appearance('   '));
 
     render(<ThemeProvider><div /></ThemeProvider>);
 
     await waitFor(() => expect(getAppearance).toHaveBeenCalled());
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(document.title).toBe('CozyVTT');
+    expect(document.title).toBe('Mistwarden');
   });
 });

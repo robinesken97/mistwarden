@@ -1,5 +1,7 @@
+/* Modified for Mistwarden on 2026-11-24: first-paint defaults are the Mistwarden theme. */
 @import 'tailwindcss';
 @import './styles/tailwind3-palette.css';
+@import './styles/night-scene.css';
 
 /* A screen under 500 px tall, such as a phone turned sideways: wide enough
    for the sm: layouts, too short for a window's margins and chrome. Sorted
@@ -82,8 +84,8 @@
   --color-sepia-800: #4a3c28;
   --color-sepia-900: #2e2419;
 
-  --font-heading: 'Quicksand', 'Comfortaa', sans-serif;
-  --font-body: 'Inter', 'Open Sans', sans-serif;
+  --font-heading: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif;
+  --font-body: system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
   /* Tailwind CSS 3's line heights, in rem. Tailwind 4's are ratios of the font
@@ -197,8 +199,9 @@
 }
 
 @utility glass-panel {
-  /* Glassmorphism Panel */
-  @apply bg-white/10 backdrop-blur-cozy border border-white/20 rounded-cozy shadow-lg;
+  /* Glassmorphism Panel. Mistwarden: the theme's surface, nearly opaque, so a
+     card reads as the mockup's panel over the night scene. */
+  @apply bg-surface/90 backdrop-blur-cozy border border-ink/15 rounded-cozy shadow-lg;
 }
 
 @utility btn-primary {
@@ -348,6 +351,9 @@
 
 @layer base {
   :root {
+    /* The default theme is dark; applyThemeColors sets this per theme. */
+    color-scheme: dark;
+
     /* ── Theme color channels (R G B) ──
        Space-separated channels, set again by applyThemeColors (themes.ts).
        The --color-* keys in @theme above wrap them in rgb() for Tailwind, so
@@ -356,61 +362,71 @@
        key would replace it, and Tailwind would read channels as a color.  */
 
     /* Primary brand */
-    --rgb-brand: 74 93 78;
-    --rgb-brand-dark: 44 62 47;
+    --rgb-brand: 169 155 224;
+    --rgb-brand-dark: 196 187 236;
 
     /* Accent / CTA */
-    --rgb-accent: 212 165 116;
-    --rgb-accent-hover: 232 158 91;
-    --rgb-accent-text: 44 62 47;
+    --rgb-accent: 169 155 224;
+    --rgb-accent-hover: 188 177 232;
+    --rgb-accent-text: 27 26 29;
 
     /* Backgrounds */
-    --rgb-bg-base: 255 249 230;
-    --rgb-bg-surface: 244 236 216;
-    --rgb-bg-surface-light: 251 247 238;
-    --rgb-bg-surface-dark: 224 212 184;
+    --rgb-bg-base: 27 26 29;
+    --rgb-bg-surface: 35 33 38;
+    --rgb-bg-surface-light: 46 44 51;
+    --rgb-bg-surface-dark: 23 22 27;
 
     /* Text (secondary and muted are the default theme's derived values) */
-    --rgb-ink: 31 41 55;
-    --rgb-ink-secondary: 101 91 85;
-    --rgb-ink-muted: 89 95 106;
+    --rgb-ink: 236 235 232;
+    --rgb-ink-secondary: 181 176 168;
+    --rgb-ink-muted: 175 171 163;
 
     /* Utility */
-    --rgb-paper: 254 254 254;
-    --rgb-danger: 192 57 43;
+    --rgb-paper: 46 44 51;
+    --rgb-danger: 200 70 60;
 
     /* Game-specific (not theme-dependent) */
-    --rgb-spirit: 147 112 219;
+    --rgb-spirit: 160 130 230;
 
     /* ── Readable text variants and state colors ──
        Overwritten per theme by applyThemeColors() → deriveReadableTokens();
-       these defaults match the Cozy Default palette so the app renders
+       these defaults match the Mistwarden palette (the default theme) so the app renders
        correctly during the first paint, before a theme is applied. */
-    --rgb-brand-ink: 64 81 68;
-    --rgb-brand-text: 255 255 255;
-    --rgb-brand-hover: 65 82 69;
-    --rgb-danger-fill: 192 57 43;
-    --rgb-accent-ink: 129 86 41;
-    --rgb-spirit-ink: 100 50 200;
-    --rgb-danger-ink: 140 41 31;
+    --rgb-brand-ink: 200 191 234;
+    --rgb-brand-text: 59 59 59;
+    --rgb-brand-hover: 179 167 228;
+    --rgb-danger-fill: 200 70 60;
+    --rgb-accent-ink: 200 191 234;
+    --rgb-spirit-ink: 196 178 240;
+    --rgb-danger-ink: 224 152 148;
     --rgb-success: 34 139 68;
-    --rgb-success-ink: 23 95 46;
+    --rgb-success-ink: 50 203 100;
     --rgb-warning: 191 129 20;
-    --rgb-warning-ink: 117 80 13;
+    --rgb-warning-ink: 236 174 66;
     --rgb-info: 37 99 190;
-    --rgb-info-ink: 29 76 147;
+    --rgb-info-ink: 129 170 230;
     --rgb-token-player: 59 130 246;
-    --rgb-token-player-ink: 9 77 188;
+    --rgb-token-player-ink: 142 181 250;
     --rgb-token-hostile: 239 68 68;
-    --rgb-token-hostile-ink: 166 14 14;
+    --rgb-token-hostile-ink: 247 152 152;
     --rgb-token-friendly: 45 212 191;
-    --rgb-token-friendly-ink: 21 107 96;
+    --rgb-token-friendly-ink: 96 223 207;
     --rgb-token-neutral: 251 191 36;
-    --rgb-token-neutral-ink: 127 91 3;
+    --rgb-token-neutral-ink: 252 204 81;
     --rgb-token-object: 120 113 108;
-    --rgb-token-object-ink: 89 82 79;
+    --rgb-token-object-ink: 180 174 170;
 
     /* The font defaults are in @theme above; applyFont (themes.ts) replaces them. */
+  }
+
+  /* Mistwarden (2026-11-24): a field the browser filled in keeps the theme's
+     colours; Safari otherwise paints it pale yellow, glaring on a dark theme. */
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:focus {
+    -webkit-text-fill-color: rgb(var(--rgb-ink));
+    -webkit-box-shadow: 0 0 0 1000px rgb(var(--rgb-paper)) inset;
+    caret-color: rgb(var(--rgb-ink));
   }
 
   body {

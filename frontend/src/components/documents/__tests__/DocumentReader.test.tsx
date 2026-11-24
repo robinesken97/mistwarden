@@ -77,7 +77,7 @@ describe('a PDF in a browser that will not show it in the frame', () => {
 
       // No frame: Chrome would show its blocked page in it, Safari nothing.
       expect(document.querySelector('iframe')).toBeNull();
-      expect(screen.getByText('This browser does not show a PDF inside CozyVTT.')).toBeInTheDocument();
+      expect(screen.getByText('This browser does not show a PDF inside Mistwarden.')).toBeInTheDocument();
       fireEvent.click(screen.getByRole('button', { name: 'Open this PDF in a new tab' }));
       expect(open).toHaveBeenCalledWith('/api/assets/documents/doc-1', '_blank', 'noopener,noreferrer');
     },

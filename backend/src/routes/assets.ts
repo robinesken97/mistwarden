@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: messages name Mistwarden.
 import { Router, Response } from 'express';
 import type { NextFunction } from 'express';
 import type { Prisma } from '@prisma/client';
@@ -1020,7 +1021,7 @@ router.put('/documents/:id/content', authenticated, async (req: AuthenticatedReq
 });
 
 /** What a request to write over a picture other than a drawn one is told. */
-export const NOT_A_DRAWN_PICTURE = 'Only a picture drawn in CozyVTT can be saved over. Upload a new picture instead.';
+export const NOT_A_DRAWN_PICTURE = 'Only a picture drawn in Mistwarden can be saved over. Upload a new picture instead.';
 
 /** An upload of the picture that replaces a drawn one, and the asset it replaces. */
 interface PictureReplaceRequest extends UploadRequest {

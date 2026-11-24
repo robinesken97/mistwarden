@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: messages name Mistwarden.
 /**
  * Character Export/Import Utilities
  *
@@ -126,7 +127,7 @@ export function validateImportedCharacter(data: unknown): {
   const retired = named === RETIRED_GAME_SYSTEM;
   const gameSystem = retired ? null : normaliseGameSystem(named) ?? named;
   if (gameSystem !== null && !isGameSystem(gameSystem)) {
-    return { valid: false, error: 'This character is for a game system this CozyVTT does not have.' };
+    return { valid: false, error: 'This character is for a game system this Mistwarden does not have.' };
   }
 
   // Return validated character data

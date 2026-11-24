@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: messages name Mistwarden.
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { handleUnauthorized } from '@/services/unsavedWork';
 import { loadPage } from '@/services/pageLoad';
@@ -1381,7 +1382,7 @@ class ApiClient {
       try {
         target = await pick({
           suggestedName: fileName,
-          types: [{ description: 'CozyVTT campaign archive', accept: { 'application/zip': ['.cozyvtt'] } }],
+          types: [{ description: 'Mistwarden campaign archive', accept: { 'application/zip': ['.cozyvtt'] } }],
         });
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') {

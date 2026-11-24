@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: messages name Mistwarden.
 /**
  * Game Systems Constants
  * Display labels, descriptions, and form options for game systems
@@ -124,11 +125,11 @@ export const UNSUPPORTED_SYSTEM_LABEL = 'Unsupported system';
 
 /** The line over the sheet of a character whose game system this build does not know. */
 export const UNSUPPORTED_SYSTEM_NOTICE =
-  'This character was made for a game system CozyVTT no longer supports. Its data is kept; you can export or delete it.';
+  'This character was made for a game system Mistwarden no longer supports. Its data is kept; you can export or delete it.';
 
 /** The same line over a template's sheet: a template has no Export. */
 export const UNSUPPORTED_SYSTEM_TEMPLATE_NOTICE =
-  'This template was made for a game system CozyVTT no longer supports. Its data is kept; you can delete it.';
+  'This template was made for a game system Mistwarden no longer supports. Its data is kept; you can delete it.';
 
 /**
  * The name to show for a character's or campaign's game system: its label,

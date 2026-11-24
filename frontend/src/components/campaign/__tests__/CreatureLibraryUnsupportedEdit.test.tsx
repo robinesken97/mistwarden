@@ -1,5 +1,5 @@
 /**
- * Editing a creature stored with a game system CozyVTT no longer supports
+ * Editing a creature stored with a game system Mistwarden no longer supports
  * leaves its system as stored.
  *
  * The form names the campaign's system as the app plays it, which is none

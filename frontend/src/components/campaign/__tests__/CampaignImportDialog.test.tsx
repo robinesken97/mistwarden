@@ -1,7 +1,7 @@
 /**
  * What the import dialog says when an archive is refused.
  *
- * A web proxy in front of CozyVTT refuses a body over its size limit with 413
+ * A web proxy in front of Mistwarden refuses a body over its size limit with 413
  * and a page of HTML, before the server sees it. The dialog found no message
  * in that and showed "Request failed with status code 413", which tells
  * nobody what to do.
@@ -46,7 +46,7 @@ describe('CampaignImportDialog', () => {
     expect(await screen.findByText('Import Failed')).toBeTruthy();
     expect(
       screen.getByText(
-        'This archive is larger than the server accepts. Whoever runs the server can raise the size limit for campaign imports on the web proxy in front of CozyVTT; the deployment guide explains how.'
+        'This archive is larger than the server accepts. Whoever runs the server can raise the size limit for campaign imports on the web proxy in front of Mistwarden; the deployment guide explains how.'
       )
     ).toBeTruthy();
     expect(screen.queryByText(/status code 413/)).toBeNull();

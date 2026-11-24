@@ -1,3 +1,4 @@
+// Modified for Mistwarden on 2026-11-24: archives name Mistwarden and its version.
 /**
  * Campaign Export Service
  * Builds a .cozyvtt ZIP archive containing all campaign data:
@@ -296,7 +297,7 @@ export async function prepareCampaignExport(
   const manifest = {
     formatVersion: 1,
     exportedAt: new Date().toISOString(),
-    exportedFrom: `CozyVTT v${process.env.npm_package_version || '1.7.0'}`,
+    exportedFrom: `Mistwarden v${process.env.npm_package_version || '1.0.0'}`,
     campaignName: campaign.name,
     gameSystem: campaign.gameSystem || 'NONE',
     mapCount: mapDataArray.length,
