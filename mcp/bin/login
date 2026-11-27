@@ -1,0 +1,4 @@
+#!/usr/bin/env node
+// Added for Mistwarden on 2026-11-27.
+// Sign in to Mistwarden and save the session for the MCP server (see ../README.md).
+import '../src/login.ts';

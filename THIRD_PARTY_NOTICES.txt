@@ -655,3 +655,25 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 Creative Commons Attribution 4.0 International (CC-BY 4.0)
 -----------------------------------------------------------
 Full text available at: https://creativecommons.org/licenses/by/4.0/legalcode
+
+
+================================================================================
+SECTION 7: MCP SERVER DEPENDENCIES (mcp/, added for Mistwarden on 2026-11-27)
+================================================================================
+
+The optional MCP server in mcp/ runs on the GM's own computer, not on an
+instance, so it is listed apart from the packages above. Its dependencies,
+by major version line; the exact versions are in mcp/package-lock.json:
+
+@modelcontextprotocol/sdk 1.x
+  Copyright (c) Anthropic, PBC
+  License: MIT
+  https://github.com/modelcontextprotocol/typescript-sdk
+
+zod 4.x
+  Copyright (c) Colin McDonnell
+  License: MIT
+  https://github.com/colinhacks/zod
+
+Every package the MCP server installs (--omit=dev) is under one of these
+licences, as its lockfile records them: BSD-2-Clause, BSD-3-Clause, ISC, MIT.
