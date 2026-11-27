@@ -13,7 +13,7 @@ import { isTokenIcon, statBlockIcon, type TokenIcon } from '@/utils/tokenIcons';
 
 /** Each symbol's file as the build serves it, by name. */
 const ICON_URLS: Record<string, string> = Object.fromEntries(
-  Object.entries(import.meta.glob('../../../../assets/token-icons/*.svg', { eager: true, query: '?url', import: 'default' }))
+  Object.entries(import.meta.glob('../../../assets/token-icons/*.svg', { eager: true, query: '?url', import: 'default' }))
     .map(([path, url]) => [path.slice(path.lastIndexOf('/') + 1, -'.svg'.length), url as string]),
 );
 
