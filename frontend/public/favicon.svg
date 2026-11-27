@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <!-- Mistwarden lantern (MistwardenArt.tsx), with heavier strokes for a browser tab. -->
+  <g fill="none" stroke="#a99be0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M24 4v5M19 9h10M17 15l2-6h10l2 6M15 15h18v18l-4 7H19l-4-7zM19 40l-1 4h12l-1-4"/>
+  </g>
+  <path d="M24 21c3 3 4 5 4 7a4 4 0 01-8 0c0-2 1-4 4-7z" fill="#e0a458"/>
+</svg>
