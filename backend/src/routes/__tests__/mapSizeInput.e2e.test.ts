@@ -1,5 +1,6 @@
 /**
- * A map's width, height and grid size are whole numbers.
+ * A map's width and height are whole numbers; its grid size need not be
+ * (a picture's grid can lie 70.4 pixels apart), but it is a finite number.
  *
  * They are integer columns, but the routes checked only that they were
  * positive numbers, so 10.5 reached Prisma and answered 500. The UVTT import
@@ -87,31 +88,34 @@ describe('POST /api/campaigns/:campaignId/maps', () => {
     expect(res.body.error).toBe('Validation Error');
   });
 
-  it('gives a fractional grid size the default, as it does any other unusable one', async () => {
+  it('keeps a grid size between whole pixels', async () => {
     const res = await create({ gridSize: 52.5 });
 
     expect(res.status).toBe(201);
-    expect(res.body.map.gridSize).toBe(50);
+    expect(res.body.map.gridSize).toBe(52.5);
   });
 });
 
 describe('PUT /api/campaigns/:campaignId/maps/:id', () => {
-  it.each([['width', 10.5], ['height', 0.5], ['gridSize', 52.5]])('refuses %s %s with 400', async (field, value) => {
+  it.each([['width', 10.5], ['height', 0.5], ['gridSize', 9.5]])('refuses %s %s with 400', async (field, value) => {
     const res = await gm.put(`/api/campaigns/${campaignId}/maps/${mapId}`).send({ [field]: value });
 
     expect(res.status).toBe(400);
     expect(res.body.error).toBe('Validation Error');
   });
 
-  it('accepts whole numbers', async () => {
+  it('accepts whole numbers, and a grid size between them', async () => {
     const res = await gm.put(`/api/campaigns/${campaignId}/maps/${mapId}`).send({ width: 12, height: 9, gridSize: 64 });
-
     expect(res.status).toBe(200);
+
+    const between = await gm.put(`/api/campaigns/${campaignId}/maps/${mapId}`).send({ gridSize: 70.4 });
+    expect(between.status).toBe(200);
+    expect(between.body.map.gridSize).toBe(70.4);
   });
 });
 
 describe('POST /api/campaigns/:campaignId/maps/import-uvtt gridSize', () => {
-  it.each(['-70', '52.5', 'big', '0', '3000000000'])(
+  it.each(['-70', 'big', '0', '3000000000'])(
     'gives %s the default of 70, as the map create route defaults an unusable grid size',
     async (gridSize) => {
       const res = await importUvtt(gridSize);
