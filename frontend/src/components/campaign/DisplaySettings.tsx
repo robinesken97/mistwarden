@@ -19,7 +19,8 @@ export const DISPLAY_SETTINGS_LABEL = 'Display on this device';
 const DICE_LABELS: Record<DiceMode, string> = { '3d': '3D', simple: 'Simple', off: 'Off' };
 const MIST_LABELS: Record<FogMistMode, string> = { mist: 'Mist', still: 'Still mist', flat: 'Flat' };
 
-const SELECT = 'w-full px-2 py-1 pointer-coarse:min-h-11 text-sm border border-warm-amber/30 rounded-cozy bg-parchment/60';
+// A height, not a min-height: WebKit ignores min-height on a styled select.
+const SELECT = 'w-full px-2 py-1 pointer-coarse:h-11 text-sm border border-warm-amber/30 rounded-cozy bg-parchment/60';
 
 /** The two choices, each with a line saying what it does. */
 export function DisplaySettings() {
@@ -97,12 +98,13 @@ export function DisplaySettingsButton() {
           onClick={() => setOpen((was) => !was)}
         />
       </Tooltip>
+      {/* z-80: over the button's own tooltip (z-70), which stays up while the button has focus. */}
       {open && (
         <div
           id={panelId}
           role="group"
           aria-label={DISPLAY_SETTINGS_LABEL}
-          className="absolute right-0 top-full z-50 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-cozy border border-ink/10 bg-paper p-3 shadow-xl"
+          className="absolute right-0 top-full z-80 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-cozy border border-ink/10 bg-paper p-3 shadow-xl"
         >
           <h2 className="mb-2 text-sm font-semibold text-ink">{DISPLAY_SETTINGS_LABEL}</h2>
           <DisplaySettings />

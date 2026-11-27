@@ -1237,7 +1237,7 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
     // A labelled box in the details grid under the name.
     const FIELD_LABEL = 'block text-xs font-semibold text-ink-secondary whitespace-nowrap';
     const field = (error?: string) =>
-      `mt-1 w-full rounded-lg border ${error ? 'border-danger' : 'border-ink/20'} bg-transparent px-2 py-1.5 text-sm text-ink placeholder:text-ink-muted focus:outline-hidden focus:ring-2 focus:ring-brand`;
+      `mt-1 w-full rounded-lg border ${error ? 'border-danger' : 'border-ink/20'} bg-transparent px-2 py-1.5 pointer-coarse:min-h-11 text-sm text-ink placeholder:text-ink-muted focus:outline-hidden focus:ring-2 focus:ring-brand`;
 
     return (
       <div className="px-3 pt-3 sm:px-6 sm:pt-4">
