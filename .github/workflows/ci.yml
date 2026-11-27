@@ -135,6 +135,28 @@ jobs:
       - name: Coverage summary
         run: python3 ../scripts/coverage-summary.py Backend coverage/coverage-summary.json >> "$GITHUB_STEP_SUMMARY"
 
+  # Mistwarden, 2026-11-27: the MCP server in mcp/, which runs on the GM's
+  # own computer. Its scene-building test against a live stack runs in the
+  # images job below.
+  mcp:
+    name: MCP server
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: mcp
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: mcp/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+
   docs:
     name: Docs
     runs-on: ubuntu-24.04
@@ -231,6 +253,17 @@ jobs:
           E2E_SETUP_TOKEN: ci-smoke-setup-token-0123456789
           E2E_PRODUCTION: '1'
         run: npx playwright test
+      # Mistwarden, 2026-11-27: the MCP server builds a small scene on the
+      # same stack, signed in as the smoke tests' admin, whom it gives
+      # two-factor authentication first. Last, as nothing after it may sign in
+      # with the password alone.
+      - name: MCP server builds a scene on the stack
+        working-directory: mcp
+        env:
+          MCP_IT_BASE_URL: http://localhost:8080
+          MCP_IT_EMAIL: smoke-admin@example.com
+          MCP_IT_PASSWORD: Smoke-Test-Passw0rd!
+        run: npm ci && npm run test:integration
       - name: The stack's logs, when something failed
         if: failure()
         run: docker compose logs --no-color --tail 200
