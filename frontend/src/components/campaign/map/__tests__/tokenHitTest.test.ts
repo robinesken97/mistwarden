@@ -291,6 +291,16 @@ describe('blockingTokensAt', () => {
     ]);
   });
 
+  it('lets a rider and its mount move together, each needing room where it lands', () => {
+    const horse = makeToken('horse', { position: { x: 2, y: 2 }, size: { width: 2, height: 2 } });
+    const rider = makeToken('rider', { position: { x: 2, y: 2 }, mountedOn: 'horse' });
+    expect(blockingTokensAt([horse, rider], rider, { x: 3, y: 2 }, {})).toEqual([]);
+    expect(blockingTokensAt([horse, rider], horse, { x: 3, y: 3 }, {})).toEqual([]);
+    // The rider's square is free, but the horse under it would land on the guard.
+    const guard = makeToken('guard', { position: { x: 6, y: 6 } });
+    expect(blockingTokensAt([horse, rider, guard], rider, { x: 5, y: 5 }, {}).map((t) => t.id)).toEqual(['guard']);
+  });
+
   it('never blocks on the moving token itself', () => {
     expect(blockingTokensAt([mover], mover, { x: 0, y: 0 }, {})).toEqual([]);
   });

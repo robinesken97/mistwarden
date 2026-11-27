@@ -17,7 +17,8 @@ import { extractAssetId } from './assetUrl';
  * is visible.
  */
 export function tokenCopyRequest(token: Token, position: Position): CreateTokenRequest {
-  const { id: _id, position: _oldPosition, imageUrl, ...carried } = token;
+  // A copy rides nothing: it stands beside the mount, not on it.
+  const { id: _id, position: _oldPosition, imageUrl, mountedOn: _mount, ...carried } = token;
   return {
     ...carried,
     // The server stores an asset id and builds the serving path itself, so

@@ -204,7 +204,10 @@ export function previewTokens(
   viewport: { gridSize: number; mapHeight: number },
   plane: PreviewPlane
 ): Token[] {
-  return tokensShownInPreview(tokens, viewerOwn, canSee, viewport, plane).map((t) => tokenSentTo(t, viewerControls(t)));
+  const shown = tokensShownInPreview(tokens, viewerOwn, canSee, viewport, plane);
+  // A rider names its mount only where the mount is shown too, as the server sends it.
+  const shownIds = new Set(shown.map((t) => t.id));
+  return shown.map((t) => tokenSentTo(t, viewerControls(t), !!t.mountedOn && shownIds.has(t.mountedOn)));
 }
 
 /**

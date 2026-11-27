@@ -8,6 +8,7 @@ import type { Token } from '@/types';
 import { TokenLayer } from '@/types';
 import type { CharacterHpInfo } from '@/utils/characterHp';
 import { gridYToFogRow, gridXToFogCol, fogCellIndex } from './coords';
+import { coupledIds } from './mounts';
 
 /** Whether a grid cell falls inside a token's footprint. */
 export function tokenCoversCell(token: Token, gridX: number, gridY: number): boolean {
@@ -207,23 +208,24 @@ export function blockingTokensAt(
   target: { x: number; y: number },
   characterHpCache: Record<string, CharacterHpInfo>
 ): Token[] {
-  const footprint = {
-    x: target.x,
-    y: target.y,
-    width: moving.size.width,
-    height: moving.size.height,
-  };
+  // A rider and its mount move as one: neither blocks the other, and each
+  // must find room where the move puts it.
+  const group = new Set(coupledIds(tokens, moving.id));
+  const dx = target.x - moving.position.x;
+  const dy = target.y - moving.position.y;
+  const footprints = [moving, ...tokens.filter((t) => group.has(t.id) && t.id !== moving.id)].map((t) => ({
+    x: t.position.x + dx,
+    y: t.position.y + dy,
+    width: t.size.width,
+    height: t.size.height,
+  }));
 
   return tokens.filter((token) => {
-    if (token.id === moving.id) return false;
+    if (token.id === moving.id || group.has(token.id)) return false;
     if (!token.visible) return false;
     if (token.layer !== moving.layer) return false;
     if (isTokenDowned(token, characterHpCache)) return false;
-    return footprintsOverlap(footprint, {
-      x: token.position.x,
-      y: token.position.y,
-      width: token.size.width,
-      height: token.size.height,
-    });
+    const there = { x: token.position.x, y: token.position.y, width: token.size.width, height: token.size.height };
+    return footprints.some((footprint) => footprintsOverlap(footprint, there));
   });
 }

@@ -35,13 +35,14 @@ const full: Token = {
   statBlock: { ac: 15, speed: '30 ft.', abilities: { str: 10, dex: 14, con: 12, int: 8, wis: 11, cha: 9 } },
   creatureTemplateId: 'creature-3',
   obscured: true,
+  mountedOn: 'tok-horse',
 };
 
 describe('tokenCopyRequest', () => {
   it('carries every field the token has, except where it was', () => {
     const request = tokenCopyRequest(full, { x: 0, y: 0 });
     for (const key of Object.keys(full) as (keyof Token)[]) {
-      if (key === 'id' || key === 'position') continue;
+      if (key === 'id' || key === 'position' || key === 'mountedOn') continue;
       const expected = key === 'imageUrl' ? 'asset-9' : full[key];
       expect({ key, value: (request as unknown as Record<string, unknown>)[key] }).toEqual({ key, value: expected });
     }
@@ -55,6 +56,10 @@ describe('tokenCopyRequest', () => {
     expect(tokenCopyRequest(full, { x: 0, y: 0 }).imageUrl).toBe('asset-9');
     expect(tokenCopyRequest({ ...full, imageUrl: 'asset-9' }, { x: 0, y: 0 }).imageUrl).toBe('asset-9');
     expect(tokenCopyRequest({ ...full, imageUrl: '' }, { x: 0, y: 0 }).imageUrl).toBe('');
+  });
+
+  it('never carries the mount, so a copy of a rider stands on its own', () => {
+    expect(tokenCopyRequest(full, { x: 0, y: 0 })).not.toHaveProperty('mountedOn');
   });
 
   it('never carries the id, so the copy is its own token', () => {

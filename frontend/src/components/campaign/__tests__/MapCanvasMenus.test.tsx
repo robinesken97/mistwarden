@@ -297,6 +297,8 @@ function rows(): string[] {
 }
 
 const ROTATE = ['Rotate Left [Turn 45 degrees anticlockwise]', 'Rotate Right [Turn 45 degrees clockwise]'];
+/** Offered with another token on the map to ride (map/mounts.ts). */
+const MOUNT = 'Mount on…▶ (accent, opens a submenu)';
 /** The GM's items after any Roll... of the creature's, for a creature on the material plane. */
 const GM_ITEMS = [
   'Edit Token (brand, bold)',
@@ -376,11 +378,11 @@ describe("the GM's token menu", () => {
     show(hero('char-gone', 'alice'), goblin({ characterId: 'char-gone' }));
 
     rightClick(2, 19);
-    expect(rows()).toEqual([...ROTATE, ...GM_ITEMS]);
+    expect(rows()).toEqual([...ROTATE, MOUNT, ...GM_ITEMS]);
     fireEvent.click(document.body);
 
     rightClick(0, 19);
-    expect(rows()).toEqual([...ROTATE, ...GM_ITEMS]);
+    expect(rows()).toEqual([...ROTATE, MOUNT, ...GM_ITEMS]);
   });
 
   it('on an object: no Roll... and no crossing to the spirit realm', () => {
@@ -396,11 +398,11 @@ describe("the GM's token menu", () => {
     show(goblin({ type: undefined }), hero('char-alice', 'alice', { type: undefined }));
 
     rightClick(0, 19);
-    expect(rows()).toEqual([...ROTATE, 'Roll...', ...GM_ITEMS]);
+    expect(rows()).toEqual([...ROTATE, MOUNT, 'Roll...', ...GM_ITEMS]);
     fireEvent.click(document.body);
 
     rightClick(2, 19);
-    expect(rows()).toEqual(['View Character Sheet', 'Roll...', ...ROTATE, ...GM_ITEMS]);
+    expect(rows()).toEqual(['View Character Sheet', 'Roll...', ...ROTATE, MOUNT, ...GM_ITEMS]);
   });
 
   it('on a hidden, obscured token in the spirit realm: each switch offers the way back', () => {
@@ -459,11 +461,11 @@ describe('the token menu in Player Preview', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Preview Player View' }));
 
     rightClick(2, 19);
-    expect(rows()).toEqual(['View Character Sheet', 'Roll...', ...ROTATE, ...GM_ITEMS]);
+    expect(rows()).toEqual(['View Character Sheet', 'Roll...', ...ROTATE, MOUNT, ...GM_ITEMS]);
     fireEvent.click(document.body);
 
     rightClick(3, 10);
-    expect(rows()).toEqual([...ROTATE, 'Roll...', ...GM_ITEMS.map((r) => (r === 'Hide from Players' ? 'Reveal to Players' : r))]);
+    expect(rows()).toEqual([...ROTATE, MOUNT, 'Roll...', ...GM_ITEMS.map((r) => (r === 'Hide from Players' ? 'Reveal to Players' : r))]);
   });
 });
 
@@ -577,7 +579,7 @@ describe('Move to Map…', () => {
 
     rightClick(4, 19);
 
-    expect(rows()).toEqual([...ROTATE, 'Roll...', ...GM_ITEMS]);
+    expect(rows()).toEqual([...ROTATE, MOUNT, 'Roll...', ...GM_ITEMS]);
   });
 
   it('lists every map while the current one is not known to the campaign', () => {
