@@ -1,0 +1,52 @@
+/* Mistwarden, 2026-11-27: the dice animation's layer (src/dice), ported with it. */
+.dice-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.dice-gl,
+.dice-css {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.dice-css {
+  perspective: 800px;
+  perspective-origin: 50% 50%;
+}
+
+.dice-css-die {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+  -webkit-transform-style: preserve-3d;
+}
+
+.dice-css-face {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.dice-css-shadow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 84px;
+  height: 84px;
+  margin: -42px 0 0 -42px;
+  border-radius: 50%;
+  background: rgb(0 0 0 / 0.35);
+  filter: blur(4px);
+}
