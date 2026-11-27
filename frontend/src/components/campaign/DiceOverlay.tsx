@@ -54,9 +54,30 @@ export default function DiceOverlay() {
 
 const LABELS: Record<DiceMode, string> = { '3d': '3D', simple: 'Simple', off: 'Off' };
 
-/** The Dice tab's choice of how rolls are shown on this device. */
+/** Mistwarden, 2026-11-27: how this device draws fog: drifting mist, still mist, or flat as before. */
+export const FOG_MIST_MODES = ['mist', 'still', 'flat'] as const;
+export type FogMistMode = (typeof FOG_MIST_MODES)[number];
+export const FOG_MIST_KEY = 'mistwarden.fogMist';
+export const fogMistMode = (): FogMistMode => {
+  const value = optionalStorage.getItem(FOG_MIST_KEY);
+  return FOG_MIST_MODES.some((m) => m === value) ? (value as FogMistMode) : 'mist';
+};
+const MIST_LABELS: Record<FogMistMode, string> = { mist: 'Mist', still: 'Still mist', flat: 'Flat' };
+
+/** The Dice tab's choices for this device: how rolls are shown, and how fog is drawn. */
 export function DiceAnimationSetting() {
   return (
+    <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
+    <label className="flex items-center gap-2 text-xs text-warm-gray">
+      Fog
+      <select
+        defaultValue={fogMistMode()}
+        onChange={(e) => { optionalStorage.setItem(FOG_MIST_KEY, e.target.value); window.location.reload(); }}
+        className="px-1.5 py-0.5 text-xs border border-warm-amber/30 rounded-cozy bg-parchment/60"
+      >
+        {FOG_MIST_MODES.map((mode) => <option key={mode} value={mode}>{MIST_LABELS[mode]}</option>)}
+      </select>
+    </label>
     <label className="flex items-center gap-2 text-xs text-warm-gray">
       Dice animation
       <select
@@ -67,5 +88,6 @@ export function DiceAnimationSetting() {
         {DICE_MODES.map((mode) => <option key={mode} value={mode}>{LABELS[mode]}</option>)}
       </select>
     </label>
+    </div>
   );
 }

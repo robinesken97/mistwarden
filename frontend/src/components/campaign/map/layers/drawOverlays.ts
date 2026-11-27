@@ -612,6 +612,12 @@ export interface FogSelectionState {
   anchor: Pt | null;
   /** Current cursor in map pixels. */
   cursor: Pt | null;
+  /** Mistwarden: the shape a drag makes; a box when absent. */
+  shape?: 'box' | 'brush' | 'lasso';
+  /** Mistwarden: the brush's radius in map pixels. */
+  brushRadius?: number;
+  /** Mistwarden: the lasso's points so far, in map pixels. */
+  lasso?: Pt[] | null;
 }
 
 const FOG_REVEAL_TINT = '163, 230, 53';  // lime
@@ -635,6 +641,47 @@ export function drawFogSelection(
   if (!cursor) return;
 
   const tint = state.mode === 'fog-reveal' ? FOG_REVEAL_TINT : FOG_HIDE_TINT;
+
+  // Mistwarden: the brush's reach round the cursor, and the lasso's line.
+  if (state.shape === 'brush' && state.brushRadius) {
+    ctx.save();
+    ctx.strokeStyle = `rgba(${tint}, 0.95)`;
+    ctx.fillStyle = `rgba(${tint}, ${anchor ? 0.18 : 0.08})`;
+    ctx.lineWidth = 2 / zoom;
+    ctx.beginPath();
+    ctx.arc(cursor.x, cursor.y, state.brushRadius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+  if (state.shape === 'lasso') {
+    const points = state.lasso;
+    if (!points || points.length < 2) {
+      ctx.save();
+      ctx.fillStyle = `rgba(${tint}, 0.95)`;
+      ctx.beginPath();
+      ctx.arc(cursor.x, cursor.y, 4 / zoom, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      return;
+    }
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    for (const p of points.slice(1)) ctx.lineTo(p.x, p.y);
+    ctx.lineTo(cursor.x, cursor.y);
+    ctx.closePath();
+    ctx.fillStyle = `rgba(${tint}, 0.22)`;
+    ctx.fill();
+    ctx.strokeStyle = `rgba(${tint}, 0.95)`;
+    ctx.lineWidth = 2 / zoom;
+    ctx.setLineDash([6 / zoom, 4 / zoom]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+    return;
+  }
 
   // Idle: outline just the cell a click would toggle, so the GM can see
   // exactly which square is in play before committing to a drag.

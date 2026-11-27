@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { fogRectFromDrag, fogCellsInRect, fogRectSize, fogRectToPx, revealedSetFromFogState } from '../fogSelection';
+import { fogRectFromDrag, fogCellsInRect, fogRectSize, fogRectToPx, revealedSetFromFogState, fogCellsAlongStroke, fogCellsInPolygon } from '../fogSelection';
 import type { FogState } from '@/types/walls';
 
 /** 20 cols × 15 rows at 50px, a common map's shape. */
@@ -139,5 +139,29 @@ describe('revealedSetFromFogState', () => {
 
   it('is empty with no grid', () => {
     expect(revealedSetFromFogState(null).size).toBe(0);
+  });
+});
+
+// Mistwarden, 2026-11-27: the brush and the lasso.
+describe('the fog brush and lasso', () => {
+  // 10 × 10 cells of 10 px.
+  const grid: FogState = { fogCols: 10, fogRows: 10, cellPx: 10, revealed: new Array(100).fill(false) };
+
+  it('dabs the cells whose middles are within the radius', () => {
+    // Centre (25, 25): cell middles at 25 ± 0/10 lie within 10.
+    expect(fogCellsAlongStroke(grid, { x: 25, y: 25 }, { x: 25, y: 25 }, 10).sort((a, b) => a - b)).toEqual([12, 21, 22, 23, 32]);
+  });
+
+  it('paints along a stroke, and stays on the map at its edge', () => {
+    const cells = fogCellsAlongStroke(grid, { x: 5, y: 5 }, { x: 95, y: 5 }, 4);
+    expect(cells).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(fogCellsAlongStroke(grid, { x: -50, y: -50 }, { x: -40, y: -40 }, 5)).toEqual([]);
+  });
+
+  it('takes the cells inside a drawn shape', () => {
+    // A triangle over the top-left corner: middles (5,5), (15,5), (5,15) are inside, (15,15) is not.
+    const tri = [{ x: 0, y: 0 }, { x: 30, y: 0 }, { x: 0, y: 30 }];
+    expect(fogCellsInPolygon(grid, tri).sort((a, b) => a - b)).toEqual([0, 1, 10]);
+    expect(fogCellsInPolygon(grid, tri.slice(0, 2))).toEqual([]);
   });
 });

@@ -26,6 +26,82 @@ export interface FogDrawState {
    * 1 = still full, falling to 0. A hidden cell is always drawn full.
    */
   revealOpacity: ReadonlyMap<number, number>;
+  /**
+   * Mistwarden, 2026-11-27: the mist's clock in milliseconds, for its drift;
+   * null draws it still (the GM, reduced motion). Absent: flat fog, as before.
+   */
+  mistTime?: number | null;
+}
+
+// ── Mistwarden, 2026-11-27: mist instead of flat fog ────────────────────────
+// A tile of soft wisps, made once in code (no picture file), laid over the
+// fog as a pattern that drifts. Hidden cells stay fully covered: the mist is
+// drawn on top of the opaque fill, and the soft edge is a shadow that falls
+// outward over revealed ground, never thinning what is hidden.
+
+const MIST_TILE = 512;
+let mistTile: HTMLCanvasElement | null | undefined;
+
+/** The mist tile, or null where a canvas cannot be drawn (tests). Seamless: each wisp is drawn wrapped. */
+function mistTileCanvas(): HTMLCanvasElement | null {
+  if (mistTile !== undefined) return mistTile;
+  mistTile = null;
+  if (typeof document === 'undefined') return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = MIST_TILE;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  // A fixed sequence, so every screen shows the same mist.
+  let seed = 0x6d2b79f5;
+  const random = () => {
+    seed = (seed + 0x6d2b79f5) >>> 0;
+    let t = seed;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  for (let i = 0; i < 90; i++) {
+    const x = random() * MIST_TILE;
+    const y = random() * MIST_TILE;
+    const r = 30 + random() * 110;
+    const alpha = 0.018 + random() * 0.04;
+    for (const ox of [-MIST_TILE, 0, MIST_TILE]) {
+      for (const oy of [-MIST_TILE, 0, MIST_TILE]) {
+        const g = ctx.createRadialGradient(x + ox, y + oy, 0, x + ox, y + oy, r);
+        g.addColorStop(0, `rgba(205, 200, 222, ${alpha})`);
+        g.addColorStop(1, 'rgba(205, 200, 222, 0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(x + ox - r, y + oy - r, r * 2, r * 2);
+      }
+    }
+  }
+  mistTile = canvas;
+  return canvas;
+}
+
+/** Lay the mist over the current path, drifting with `time`. The path must already be filled. */
+function fillMist(ctx: CanvasRenderingContext2D, time: number, opacity: number): boolean {
+  const tile = mistTileCanvas();
+  if (!tile || typeof DOMMatrix === 'undefined') return false;
+  const pattern = ctx.createPattern(tile, 'repeat');
+  if (!pattern || typeof pattern.setTransform !== 'function') return false;
+  // Two layers drifting at different speeds and directions read as moving mist.
+  for (const [speedX, speedY, scale] of [[0.012, 0.004, 1], [-0.007, 0.009, 1.7]] as const) {
+    pattern.setTransform(new DOMMatrix().translateSelf((time * speedX) % (MIST_TILE * scale), (time * speedY) % (MIST_TILE * scale)).scaleSelf(scale));
+    ctx.globalAlpha = opacity;
+    ctx.fillStyle = pattern;
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  return true;
+}
+
+/** The outline of whole cells as one path (see fillCells). */
+function cellsPath(ctx: CanvasRenderingContext2D, cells: readonly number[], cols: number, cellPx: number): void {
+  ctx.beginPath();
+  for (const idx of cells) {
+    ctx.rect((idx % cols) * cellPx, Math.floor(idx / cols) * cellPx, cellPx, cellPx);
+  }
 }
 
 /**
@@ -67,6 +143,11 @@ export function drawFog(
     }
     // Deep dark purple, semi-transparent for the GM
     fillCells(ctx, hidden, fogCols, cellPx, 'rgba(15, 12, 25, 0.55)');
+    // Mistwarden: the same mist, still and faint, so the GM sees what the table sees without losing the map.
+    if (state.mistTime !== undefined && hidden.length > 0) {
+      cellsPath(ctx, hidden, fogCols, cellPx);
+      fillMist(ctx, 0, 0.6);
+    }
     ctx.restore();
   }
 
@@ -88,7 +169,19 @@ export function drawFog(
         ctx.fillRect(col * cellPx, row * cellPx, cellPx, cellPx);
       }
     }
-    fillCells(ctx, hidden, fogCols, cellPx, 'rgba(15, 12, 25, 1)');
+    if (state.mistTime !== undefined && hidden.length > 0 && mistTileCanvas()) {
+      // Mistwarden: opaque fill whose shadow softens the edge outward, then the mist on top.
+      cellsPath(ctx, hidden, fogCols, cellPx);
+      ctx.shadowColor = 'rgba(15, 12, 25, 0.95)';
+      ctx.shadowBlur = cellPx * 0.6 * viewport.zoom;
+      ctx.fillStyle = 'rgba(15, 12, 25, 1)';
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.shadowColor = 'transparent';
+      fillMist(ctx, state.mistTime ?? 0, 0.75);
+    } else {
+      fillCells(ctx, hidden, fogCols, cellPx, 'rgba(15, 12, 25, 1)');
+    }
     ctx.restore();
   }
 }

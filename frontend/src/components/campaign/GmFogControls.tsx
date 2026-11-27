@@ -8,13 +8,19 @@
  */
 
 import { useId, useState } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Square, Paintbrush, Lasso } from 'lucide-react';
+import type { FogShape } from '@/components/campaign/map/tools/useFogTool';
 
 export type FogToolMode = 'fog-reveal' | 'fog-hide' | null;
 
 interface GmFogControlsProps {
   fogMode: FogToolMode;
   onFogModeChange: (mode: FogToolMode) => void;
+  /** Mistwarden: the shape a drag makes, and the brush's radius in squares. */
+  fogShape?: FogShape;
+  onFogShapeChange?: (shape: FogShape) => void;
+  brushSquares?: number;
+  onBrushSquaresChange?: (squares: number) => void;
   onRevealAll: () => void;
   onHideAll: () => void;
   /** Whether manual fog applies on this map. */
@@ -43,9 +49,24 @@ function ConfirmPulse({ ring }: { ring: 'ring-lime-300' | 'ring-warning' }) {
   return <span aria-hidden="true" className={`absolute inset-0 rounded ring-2 ${ring} animate-pulse pointer-events-none`} />;
 }
 
+const SHAPES: Array<{ shape: FogShape; label: string; icon: typeof Square }> = [
+  { shape: 'box', label: 'Box', icon: Square },
+  { shape: 'brush', label: 'Brush', icon: Paintbrush },
+  { shape: 'lasso', label: 'Lasso', icon: Lasso },
+];
+const BRUSH_SIZES: Array<{ squares: number; label: string }> = [
+  { squares: 0.5, label: 'S' },
+  { squares: 1, label: 'M' },
+  { squares: 2, label: 'L' },
+];
+
 export default function GmFogControls({
   fogMode,
   onFogModeChange,
+  fogShape = 'box',
+  onFogShapeChange,
+  brushSquares = 1,
+  onBrushSquaresChange,
   onRevealAll,
   onHideAll,
   fogEnabled,
@@ -154,11 +175,54 @@ export default function GmFogControls({
         </button>
       </div>
 
+      {/* Mistwarden: the shape a drag makes */}
+      {onFogShapeChange && (
+        <div className="flex gap-1" role="group" aria-label="Fog shape">
+          {SHAPES.map(({ shape, label, icon: Icon }) => (
+            <button
+              key={shape}
+              type="button"
+              aria-pressed={fogShape === shape}
+              onClick={() => onFogShapeChange(shape)}
+              className={`touch-target flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded text-[11px] font-medium border transition-colors ${
+                fogShape === shape ? 'bg-stone-600/60 text-stone-100 border-stone-400/60' : 'bg-stone-800/40 text-stone-400 border-stone-700/50 hover:bg-stone-700/60'
+              }`}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+      {onBrushSquaresChange && fogShape === 'brush' && (
+        <div className="flex items-center gap-1" role="group" aria-label="Brush size">
+          <span className="px-1 text-[11px] text-stone-400">Size</span>
+          {BRUSH_SIZES.map(({ squares, label }) => (
+            <button
+              key={label}
+              type="button"
+              aria-pressed={brushSquares === squares}
+              aria-label={`Brush size ${label}`}
+              onClick={() => onBrushSquaresChange(squares)}
+              className={`touch-target min-w-8 px-2 py-0.5 rounded text-[11px] font-medium border ${
+                brushSquares === squares ? 'bg-stone-600/60 text-stone-100 border-stone-400/60' : 'bg-stone-800/40 text-stone-400 border-stone-700/50 hover:bg-stone-700/60'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* How-to hint — only while a mode is armed */}
       {fogMode && (
         <p className="px-1 text-[11px] leading-snug text-stone-400">
-          Drag a box over the map. The selection snaps to whole squares —
-          click a single square to {fogMode === 'fog-reveal' ? 'reveal' : 'hide'} just that one.
+          {fogShape === 'brush'
+            ? <>Paint over the map to {fogMode === 'fog-reveal' ? 'reveal' : 'hide'} what the brush touches.</>
+            : fogShape === 'lasso'
+              ? <>Draw round an area; letting go {fogMode === 'fog-reveal' ? 'reveals' : 'hides'} what is inside.</>
+              : <>Drag a box over the map. The selection snaps to whole squares —
+                click a single square to {fogMode === 'fog-reveal' ? 'reveal' : 'hide'} just that one.</>}
           <span className="block mt-0.5 text-stone-500">Esc or right-drag cancels.</span>
         </p>
       )}

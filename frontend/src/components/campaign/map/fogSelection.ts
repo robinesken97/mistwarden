@@ -108,3 +108,61 @@ export function revealedSetFromFogState(fog: FogState | null): Set<number> {
   });
   return revealed;
 }
+
+// ── Mistwarden, 2026-11-27: the brush and the lasso ─────────────────────────
+// Both give squares of the fog raster, like the box: the brush every cell
+// whose middle lies within `radius` map pixels of its path, the lasso every
+// cell whose middle lies inside the shape drawn.
+
+type Pt = { x: number; y: number };
+
+/** Cells whose middle lies within `radius` of the segment from `a` to `b` (a dab when they are the same). */
+export function fogCellsAlongStroke(fog: FogState, a: Pt, b: Pt, radius: number): number[] {
+  const { fogCols, fogRows, cellPx } = fog;
+  const colMin = clamp(Math.floor((Math.min(a.x, b.x) - radius) / cellPx), 0, fogCols - 1);
+  const colMax = clamp(Math.floor((Math.max(a.x, b.x) + radius) / cellPx), 0, fogCols - 1);
+  const rowMin = clamp(Math.floor((Math.min(a.y, b.y) - radius) / cellPx), 0, fogRows - 1);
+  const rowMax = clamp(Math.floor((Math.max(a.y, b.y) + radius) / cellPx), 0, fogRows - 1);
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const lengthSq = dx * dx + dy * dy;
+  const cells: number[] = [];
+  for (let row = rowMin; row <= rowMax; row++) {
+    for (let col = colMin; col <= colMax; col++) {
+      const cx = (col + 0.5) * cellPx;
+      const cy = (row + 0.5) * cellPx;
+      const t = lengthSq === 0 ? 0 : clamp(((cx - a.x) * dx + (cy - a.y) * dy) / lengthSq, 0, 1);
+      const px = a.x + t * dx - cx;
+      const py = a.y + t * dy - cy;
+      if (px * px + py * py <= radius * radius) cells.push(fogCellIndex(col, row, fog));
+    }
+  }
+  return cells;
+}
+
+/** Cells whose middle lies inside the polygon `points` (even-odd rule); none for fewer than three points. */
+export function fogCellsInPolygon(fog: FogState, points: readonly Pt[]): number[] {
+  if (points.length < 3) return [];
+  const { fogCols, fogRows, cellPx } = fog;
+  const xs = points.map((p) => p.x);
+  const ys = points.map((p) => p.y);
+  const colMin = clamp(Math.floor(Math.min(...xs) / cellPx), 0, fogCols - 1);
+  const colMax = clamp(Math.floor(Math.max(...xs) / cellPx), 0, fogCols - 1);
+  const rowMin = clamp(Math.floor(Math.min(...ys) / cellPx), 0, fogRows - 1);
+  const rowMax = clamp(Math.floor(Math.max(...ys) / cellPx), 0, fogRows - 1);
+  const cells: number[] = [];
+  for (let row = rowMin; row <= rowMax; row++) {
+    const cy = (row + 0.5) * cellPx;
+    for (let col = colMin; col <= colMax; col++) {
+      const cx = (col + 0.5) * cellPx;
+      let inside = false;
+      for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+        const pi = points[i];
+        const pj = points[j];
+        if ((pi.y > cy) !== (pj.y > cy) && cx < ((pj.x - pi.x) * (cy - pi.y)) / (pj.y - pi.y) + pi.x) inside = !inside;
+      }
+      if (inside) cells.push(fogCellIndex(col, row, fog));
+    }
+  }
+  return cells;
+}
