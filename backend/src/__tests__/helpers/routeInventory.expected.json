@@ -836,6 +836,46 @@
       ]
     },
     {
+      "method": "GET",
+      "path": "/api/campaigns/:campaignId/gallery",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireCampaignMember",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/campaigns/:campaignId/gallery",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireGM",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/campaigns/:campaignId/gallery/:pictureId",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireGM",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/campaigns/:campaignId/gallery/:pictureId",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireGM",
+        "<anonymous>"
+      ]
+    },
+    {
       "method": "POST",
       "path": "/api/characters",
       "handlers": [
@@ -1651,6 +1691,11 @@
     {
       "name": "router",
       "path": "/api/admin",
+      "route": false
+    },
+    {
+      "name": "router",
+      "path": "/api/campaigns",
       "route": false
     },
     {
