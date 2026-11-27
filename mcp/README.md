@@ -82,8 +82,10 @@ connected. The same entry by hand, in a project's `.mcp.json`:
   tokens to one of your own maps is allowed; changing the ones already there
   is not.
 - **Back up first.** `create_backup` downloads the campaign export (the same
-  archive as Export in Mistwarden) to the backup folder. Gallery pictures
-  are not in that export. The descriptions of
+  archive as Export in Mistwarden) to the backup folder. The gallery is not
+  in that export: a picture shown only in the gallery is missing with its
+  file, and a map picture keeps its file but not its gallery name, folder or
+  sharing. The descriptions of
   the write tools ask the assistant to call it before a batch of changes. On
   the local test stack an export of a small campaign took about 0.01 s
   (220 KB with one 4096 px picture); it grows with the size of the pictures.
