@@ -184,7 +184,7 @@ export default function GmLightControls({
         type="button"
         aria-expanded={!collapsed}
         aria-controls={bodyId}
-        className="w-full flex items-center justify-between px-2 py-1.5 cursor-pointer hover:bg-stone-700/50 select-none"
+        className="touch-target w-full flex items-center justify-between px-2 py-1.5 cursor-pointer hover:bg-stone-700/50 select-none"
         onClick={() => {
           const next = !collapsed;
           setCollapsed(next);

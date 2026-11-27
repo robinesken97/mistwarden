@@ -320,6 +320,25 @@
   transition-timing-function: cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
+@utility touch-hit {
+  /* Like touch-target, but the box keeps its drawn size: on a coarse pointer
+     an invisible 44 by 44 area centred on it takes the touch, for dense rows
+     (dice chips, audience pills). The area may overlap a neighbour; the later
+     sibling wins there. Needs a box that is not itself absolutely placed. */
+  @media (pointer: coarse) {
+    position: relative;
+    &::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: max(100%, 2.75rem);
+      height: max(100%, 2.75rem);
+      transform: translate(-50%, -50%);
+    }
+  }
+}
+
 @utility touch-target {
   /* A control a finger can hit: at least 44 by 44 CSS px where the primary
      pointer is coarse (a phone or a tablet); a mouse keeps the control's own
@@ -484,6 +503,15 @@
       [class~='text-[11px]']
     ) {
     font-size: 1rem;
+  }
+}
+
+/* A select a finger's size. A height, not a min-height: WebKit ignores
+   min-height on a styled select (it stays 23 px). Outside any layer, so a
+   panel's own height class cannot undo it; a list box keeps its rows. */
+@media (pointer: coarse) {
+  select:not([multiple], [size]) {
+    height: 2.75rem;
   }
 }
 

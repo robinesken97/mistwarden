@@ -81,14 +81,10 @@ export default function DocumentsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <button
-              type="button"
-              onClick={() => navigate('/dashboard')}
-              className="p-2 rounded-lg hover:bg-surface transition-colors"
-              aria-label="Back to dashboard"
-            >
-              <ArrowLeft className="w-5 h-5 text-ink" />
-            </button>
+            <Button onClick={() => navigate('/dashboard')} variant="secondary" className="flex items-center gap-2">
+                <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+                <span className="max-sm:sr-only">Dashboard</span>
+              </Button>
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-moss-green/10">
                 <BookOpen className="w-6 h-6 text-brand-ink" />

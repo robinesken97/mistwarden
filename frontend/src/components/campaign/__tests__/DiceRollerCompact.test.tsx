@@ -170,5 +170,4 @@ it('keeps the chips and Secret Roll in sight on the desktop, Character and Purpo
   const { box, controls } = logAndControls();
   expect(box.className.split(' ')).toContain('min-h-0');
   expect(controls.className.split(' ')).toContain('shrink-0');
-  for (const control of await footerControls()) expect(control.className).not.toContain('touch-target');
 });

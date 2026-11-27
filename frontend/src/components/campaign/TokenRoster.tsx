@@ -261,7 +261,7 @@ function TokenGroup({ label, tokens, campaignId, mapId, onEditToken, defaultOpen
     <div>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center gap-1.5 px-2 py-1 text-[10px] font-semibold text-stone-gray/70 uppercase tracking-wider hover:text-stone-gray transition-colors"
+        className="touch-target w-full flex items-center gap-1.5 px-2 py-1 text-[10px] font-semibold text-stone-gray/70 uppercase tracking-wider hover:text-stone-gray transition-colors"
       >
         {isOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
         {label} ({tokens.length})
@@ -307,7 +307,7 @@ export default function TokenRoster({ onEditToken }: TokenRosterProps) {
       {/* Header */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
-        className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-moss-green/5 transition-colors"
+        className="touch-target w-full flex items-center justify-between px-3 py-2.5 hover:bg-moss-green/5 transition-colors"
       >
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-brand-ink">Token Roster</span>

@@ -32,11 +32,29 @@ interface SheetTabsProps<Id extends string> {
   underline?: string;
   /**
    * `boxed`: the 5E sheet's bar, a box of equal tabs in the sheet's accent
-   * (the `--sheet-*` variables, fifth-edition/sheetStyle.ts), three to a row
-   * below 760 px and one row above, the open tab filled.
+   * (the `--sheet-*` variables, fifth-edition/sheetStyle.ts), the open tab
+   * filled. How many share a row follows the bar's own width, not the
+   * screen's: one row where six fit, else three to a row, else two.
    */
   variant?: 'underline' | 'boxed';
+  /**
+   * Boxed only: a label as long as "Stats & Skills" (about 90 px), which
+   * needs wider tabs than "Biography" before the bar goes to fewer rows.
+   */
+  longLabels?: boolean;
 }
+
+/**
+ * The boxed bar's columns, against its wrapper's width. A tab needs its label
+ * plus about 30 px (icon, gap, padding), and the bar 50 px of gaps and frame
+ * around six: tabs up to "Biography" need about 40 rem in one row and 20.5 rem
+ * three to a row, "Stats & Skills" 47.5 rem and 24.5 rem; each step sits a
+ * little above. Whole class strings, for Tailwind to find.
+ */
+const BOXED_COLUMNS = {
+  short: 'grid-cols-2 @min-[21rem]:grid-cols-3 @min-[42rem]:grid-flow-col @min-[42rem]:auto-cols-fr @min-[42rem]:grid-cols-none',
+  long: 'grid-cols-2 @min-[25rem]:grid-cols-3 @min-[50rem]:grid-flow-col @min-[50rem]:auto-cols-fr @min-[50rem]:grid-cols-none',
+};
 
 const tabId = (id: string, tab: string) => `${id}-tab-${tab}`;
 const panelId = (id: string) => `${id}-panel`;
@@ -46,7 +64,7 @@ export function sheetTabPanel(id: string, active: string) {
   return { role: 'tabpanel', id: panelId(id), 'aria-labelledby': tabId(id, active) } as const;
 }
 
-export function SheetTabs<Id extends string>({ id, tabs, active, onSelect, underline, variant = 'underline' }: SheetTabsProps<Id>) {
+export function SheetTabs<Id extends string>({ id, tabs, active, onSelect, underline, variant = 'underline', longLabels = false }: SheetTabsProps<Id>) {
   const boxed = variant === 'boxed';
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const onKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
@@ -57,13 +75,13 @@ export function SheetTabs<Id extends string>({ id, tabs, active, onSelect, under
     tabRefs.current[target]?.focus();
   };
 
-  return (
+  const bar = (
     <div
       data-sheet-tabs
       role="tablist"
       aria-label="Sheet sections"
       className={boxed
-        ? 'grid grid-cols-3 gap-1.5 rounded-[15px] border-4 border-(--sheet-accent) bg-(--sheet-accent-bg) p-1.5 min-[760px]:grid-flow-col min-[760px]:auto-cols-fr min-[760px]:grid-cols-none'
+        ? `grid gap-1.5 rounded-[15px] border-4 border-(--sheet-accent) bg-(--sheet-accent-bg) p-1.5 ${BOXED_COLUMNS[longLabels ? 'long' : 'short']}`
         : 'flex flex-wrap gap-1 border-b-2 border-ink/10 bg-ink/5 px-4'}
     >
       {tabs.map(({ id: tab, label, icon: Icon }, index) => {
@@ -81,7 +99,7 @@ export function SheetTabs<Id extends string>({ id, tabs, active, onSelect, under
             onClick={() => onSelect(tab)}
             onKeyDown={(event) => onKeyDown(event, index)}
             className={boxed
-              ? `flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-[10px] px-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--sheet-accent) ${
+              ? `flex min-h-11 min-w-0 items-center justify-center gap-1.5 rounded-[10px] px-1 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--sheet-accent) ${
                 isActive ? 'bg-(--sheet-fill) text-(--sheet-on-fill)' : 'text-ink hover:bg-ink/10'
               }`
               : `flex items-center gap-2 px-4 py-3 font-medium transition-colors ${
@@ -90,10 +108,12 @@ export function SheetTabs<Id extends string>({ id, tabs, active, onSelect, under
             style={isActive && !boxed ? { borderBottomColor: underline } : undefined}
           >
             <Icon className={`w-4 h-4 shrink-0 ${boxed && !isActive ? 'text-(--sheet-accent)' : ''}`} aria-hidden="true" />
-            <span>{label}</span>
+            <span className={boxed ? 'whitespace-nowrap' : undefined}>{label}</span>
           </button>
         );
       })}
     </div>
   );
+  // The wrapper is the container the boxed bar's columns query.
+  return boxed ? <div className="@container">{bar}</div> : bar;
 }

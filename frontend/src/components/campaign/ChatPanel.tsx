@@ -866,7 +866,7 @@ export default function ChatPanel() {
       title="Clear old join and leave messages"
       className={`p-1.5 rounded-lg text-stone-gray hover:text-brand-ink hover:bg-moss-green/10 transition-colors disabled:opacity-50 ${
         messages.length > 0 ? '' : 'ml-auto'
-      }${compact ? ' touch-target inline-flex items-center justify-center' : ''}`}
+      } touch-target inline-flex items-center justify-center`}
     >
       <Eraser className="w-4 h-4" />
     </button>

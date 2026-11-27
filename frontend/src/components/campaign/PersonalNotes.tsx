@@ -21,7 +21,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Markdown from '@/components/common/Markdown';
 import { NotebookPen, Plus, Trash2, Eye, Pencil, Loader2, Sparkles } from 'lucide-react';
 import { useCampaign } from '@/contexts/CampaignContext';
-import { useCompactLayout } from '@/contexts/LayoutContext';
 import api from '@/services/api';
 import { apiErrorMessage } from '@/utils/errors';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
@@ -55,7 +54,7 @@ function isUnsaved(draft: NoteSnapshot | null, saved: NoteSnapshot | null): bool
 
 export default function PersonalNotes() {
   // In the compact layout's Notes sheet the icon buttons take a finger.
-  const fingerSized = useCompactLayout() ? ' touch-target inline-flex items-center justify-center' : '';
+  const fingerSized = ' touch-target inline-flex items-center justify-center';
   const { campaign, userRole } = useCampaign();
   const campaignId = campaign?.id;
   // Mistwarden: a GM's writing help, when the server has an AI set up.

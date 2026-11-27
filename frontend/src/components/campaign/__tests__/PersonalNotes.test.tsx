@@ -278,16 +278,12 @@ describe('PersonalNotes autosave', () => {
 // In the compact layout's Notes sheet the icon buttons were 30 px, under a
 // fingertip's 44.
 describe('in the compact layout', () => {
-  it('sizes its icon buttons for a finger, and leaves them as they were on the desktop', async () => {
+  it('sizes its icon buttons for a finger', async () => {
     listNotes.mockResolvedValue({ notes: [] });
     const { unmount } = render(<LayoutProvider compact><PersonalNotes /></LayoutProvider>);
     const compactButton = await screen.findByRole('button', { name: 'New note' });
     expect(compactButton.className.split(/\s+/)).toContain('touch-target');
     unmount();
-
-    render(<PersonalNotes />);
-    const desktopButton = await screen.findByRole('button', { name: 'New note' });
-    expect(desktopButton.className.split(/\s+/)).not.toContain('touch-target');
   });
 });
 

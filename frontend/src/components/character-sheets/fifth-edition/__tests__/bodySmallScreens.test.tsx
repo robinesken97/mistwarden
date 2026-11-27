@@ -71,6 +71,16 @@ async function viewOn(tab?: string) {
   return view;
 }
 
+/**
+ * `element` changes at `variant` (`@min-[…]:…`), a container query, so the
+ * element above it marked `@container` must exist: without one the variant
+ * matches nothing and the narrow layout stays at every width.
+ */
+const followsItsContainer = (element: Element, variant: string) => {
+  expect(classes(element)).toContain(variant);
+  expect(element.parentElement?.closest('.\\@container')).not.toBeNull();
+};
+
 /** A grid that has `phone` columns below sm and `desk` from sm up. */
 const columns = (grid: Element, phone: string, desk: string) => {
   expect(classes(grid)).toEqual(expect.arrayContaining(['grid', phone, desk]));
@@ -217,18 +227,43 @@ describe('the 5E editor on a phone', () => {
 });
 
 describe('the 5E sheet on a phone', () => {
-  it('puts the overview in one column, two from 760 px up', async () => {
+  // The sheet sits in a dialog or page narrower than the screen, so these
+  // follow the width of the sheet or their box, not the screen's.
+  it('puts the overview in one column, two once the sheet is 56 rem wide', async () => {
     await viewOn();
     const grid = above(screen.getByRole('heading', { name: 'Saves & Senses' }), ['grid']);
-    expect(classes(grid)).toContain('min-[760px]:grid-cols-2');
+    followsItsContainer(grid, '@min-[56rem]:grid-cols-2');
     expect(classes(grid)).not.toContain('grid-cols-2');
   });
 
-  it('lays the saving throws out as tiles, three to a row and six from sm up', async () => {
+  it('lays the saving throws out as tiles, three to a row and six once their box has room', async () => {
     await viewOn();
     const tile = screen.getAllByTitle('Strength').find((e) => e.tagName === 'ABBR')!.parentElement!;
-    expect(classes(tile.parentElement)).toEqual(expect.arrayContaining(['grid', 'grid-cols-3', 'sm:grid-cols-6']));
+    expect(classes(tile.parentElement)).toEqual(expect.arrayContaining(['grid', 'grid-cols-3']));
+    followsItsContainer(tile.parentElement!, '@min-[27rem]:grid-cols-6');
     expect(classes(tile)).toContain('pointer-coarse:min-h-11');
+  });
+
+  it('keeps the attack table\'s columns apart: the weapon wraps, the rest are fixed', async () => {
+    await viewOn();
+    const weapon = screen.getByText('Spear').closest('td')!;
+    expect(classes(weapon)).toContain('wrap-break-word');
+    const cols = [...weapon.closest('table')!.querySelectorAll('col')];
+    expect(cols).toHaveLength(5);
+    for (const col of cols.slice(1)) followsItsContainer(col, classes(col).find((c) => c.startsWith('@md:w-'))!);
+  });
+
+  it('puts the numbers under the name three to a row, all in one once the header box has room', async () => {
+    await viewOn();
+    const tiles = above(screen.getByText('Armor Class'), ['grid']);
+    expect(classes(tiles)).toContain('grid-cols-6');
+    followsItsContainer(tiles, '@min-[37rem]:[&>*]:col-span-1');
+    expect(classes(tiles).some((c) => /^@min-\[37rem\]:grid-cols-[1-6]$/.test(c))).toBe(true);
+  });
+
+  it('keeps every container query off the root, which holds the fixed roll menu', async () => {
+    const { container } = await viewOn();
+    expect(classes(container.querySelector('[data-sheet-root]'))).not.toContain('@container');
   });
 
   it('gives a skill row 44 px on a touch screen', async () => {

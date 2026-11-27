@@ -19,6 +19,7 @@ import {
   Settings,
   Activity,
   BarChart3,
+  ArrowLeft,
   ChevronLeft,
   Copy,
   Check,
@@ -993,14 +994,10 @@ export default function AdminPage() {
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <button
-                onClick={() => navigate('/dashboard')}
-                aria-label="Back to Dashboard"
-                className="flex items-center gap-1 text-sm text-warm-gray hover:text-brand-ink transition-colors"
-              >
-                <ChevronLeft className="w-4 h-4" aria-hidden="true" />
-                Dashboard
-              </button>
+              <Button onClick={() => navigate('/dashboard')} variant="secondary" className="flex items-center gap-2">
+                <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+                <span className="max-sm:sr-only">Dashboard</span>
+              </Button>
               <div>
                 <h1 className="text-2xl font-bold text-brand-ink font-heading flex items-center gap-2">
                   <Shield className="w-6 h-6" aria-hidden="true" />

@@ -583,7 +583,7 @@ export default function DiceRoller() {
         min-w-0 px-0 py-1.5 rounded-md text-xs font-medium transition-all
         disabled:opacity-50 disabled:cursor-not-allowed
         text-ink
-        ${btn.color}${compact ? ' touch-target' : ''}
+        ${btn.color}${compact ? ' touch-target' : ' touch-hit'}
       `}
     >
       {btn.label}
@@ -599,7 +599,7 @@ export default function DiceRoller() {
         px-2 py-1 rounded-md border border-warm-amber/30 text-xs font-medium
         bg-warm-amber/10 hover:bg-warm-amber/20 transition-all
         disabled:opacity-50 disabled:cursor-not-allowed
-        text-ink${compact ? ' shrink-0 touch-target' : ''}
+        text-ink${compact ? ' shrink-0 touch-target' : ' touch-hit'}
       `}
     >
       {btn.label}
@@ -616,7 +616,7 @@ export default function DiceRoller() {
         px-2 py-1 rounded-md border border-spirit-purple/30 text-xs font-medium
         bg-spirit-purple/10 hover:bg-spirit-purple/20 transition-all
         disabled:opacity-50 disabled:cursor-not-allowed
-        text-ink max-w-40 truncate${compact ? ' shrink-0 touch-target' : ''}
+        text-ink max-w-40 truncate${compact ? ' shrink-0 touch-target' : ' touch-hit'}
       `}
     >
       {macro.name}
@@ -631,7 +631,7 @@ export default function DiceRoller() {
       className={`
         px-2 py-1 rounded-md border border-dashed border-ink-muted/40 text-xs
         hover:bg-surface transition-all text-ink-secondary
-        flex items-center gap-1${compact ? ' shrink-0 touch-target' : ''}
+        flex items-center gap-1${compact ? ' shrink-0 touch-target' : ' touch-hit'}
       `}
     >
       <Plus className="w-3 h-3" />
@@ -737,7 +737,7 @@ export default function DiceRoller() {
     <button
       type="submit"
       disabled={isRolling || !expression.trim() || rateLimitCooldown > 0}
-      className={cn('shrink-0', compact && 'touch-target', `
+      className={cn('shrink-0 touch-target', `
         flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md
         bg-success/15 hover:bg-success/25 border border-success/30 text-success-ink font-semibold text-xs shadow-xs
         disabled:opacity-50 disabled:cursor-not-allowed
@@ -776,7 +776,7 @@ export default function DiceRoller() {
         disabled:opacity-50 disabled:cursor-not-allowed
         transition-all duration-200
         focus:outline-hidden focus:ring-2 focus:ring-brand/50
-      `, compact && 'touch-target inline-flex items-center justify-center')}
+      `, compact ? 'touch-target inline-flex items-center justify-center' : 'touch-hit')}
       title="Clear all fields"
       aria-label="Clear all fields"
     >
@@ -792,7 +792,7 @@ export default function DiceRoller() {
       aria-controls="dice-more-options"
       aria-label={moreOptionsLabel}
       title={moreOptionsLabel}
-      className={cn('shrink-0 flex items-center justify-center gap-1 px-2 py-1 rounded-md border border-ink-muted/30 text-xs text-ink-secondary hover:bg-surface transition-all', compact && 'touch-target')}
+      className={cn('shrink-0 flex items-center justify-center gap-1 px-2 py-1 rounded-md border border-ink-muted/30 text-xs text-ink-secondary hover:bg-surface transition-all touch-target')}
     >
       <ChevronDown className={cn('w-3 h-3 transition-transform', moreOptions && 'rotate-180')} aria-hidden="true" />
       {/* Short, to share the row; what it hides that the next roll carries is counted, and named in its name. */}
@@ -810,7 +810,7 @@ export default function DiceRoller() {
         showSecretRolls
           ? 'border-ink-muted/30 bg-paper/50 text-ink hover:bg-paper/70'
           : 'border-warm-amber/40 bg-warm-amber/10 text-accent-ink'
-      }${compact ? ' touch-target' : ''}`}
+      }${compact ? ' touch-target' : ' touch-hit'}`}
       title={
         showSecretRolls
           ? 'Hide secret rolls in this list (only affects your view)'
@@ -827,7 +827,7 @@ export default function DiceRoller() {
   const clearHistoryButton = userRole === 'GM' && rolls.length > 0 && (
     <button
       onClick={handleClearHistory}
-      className={`flex items-center gap-1 px-2 py-1 text-xs rounded-md border border-danger/30 bg-danger/10 text-danger-ink hover:bg-danger/15 transition-all${compact ? ' touch-target' : ''}`}
+      className={`flex items-center gap-1 px-2 py-1 text-xs rounded-md border border-danger/30 bg-danger/10 text-danger-ink hover:bg-danger/15 transition-all${compact ? ' touch-target' : ' touch-hit'}`}
       title="Clear all roll history"
     >
       <Trash2 className="w-3 h-3" aria-hidden="true" />

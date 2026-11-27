@@ -111,7 +111,7 @@ export default function SessionHistory() {
       <div className="flex items-center justify-between">
         <button
           onClick={() => setExpanded((open) => !open)}
-          className="flex items-center gap-2 text-left"
+          className="touch-target flex items-center gap-2 text-left"
           aria-expanded={expanded}
         >
           {expanded ? (
@@ -129,7 +129,7 @@ export default function SessionHistory() {
         <button
           onClick={() => void load()}
           disabled={loading}
-          className="p-1.5 rounded-lg hover:bg-moss-green/10 transition-colors text-stone-gray hover:text-brand-ink disabled:opacity-50"
+          className="touch-target inline-flex items-center justify-center p-1.5 rounded-lg hover:bg-moss-green/10 transition-colors text-stone-gray hover:text-brand-ink disabled:opacity-50"
           title="Refresh"
           aria-label="Refresh past sessions"
         >
@@ -170,7 +170,7 @@ export default function SessionHistory() {
                           setEditingId(session.id);
                           setDraft(session.notes ?? '');
                         }}
-                        className="p-1 rounded-sm hover:bg-moss-green/10 text-stone-gray hover:text-brand-ink"
+                        className="touch-target inline-flex items-center justify-center p-1 rounded-sm hover:bg-moss-green/10 text-stone-gray hover:text-brand-ink"
                         title="Edit these notes"
                         aria-label={`Edit notes for session ${session.sessionNumber}`}
                       >
@@ -201,7 +201,7 @@ export default function SessionHistory() {
                         <button
                           onClick={() => { setEditingId(null); setDraft(''); }}
                           disabled={savingNotes}
-                          className="p-1 rounded-sm border border-warm-amber/30 text-stone-gray hover:text-brand-ink disabled:opacity-50"
+                          className="touch-target inline-flex items-center justify-center p-1 rounded-sm border border-warm-amber/30 text-stone-gray hover:text-brand-ink disabled:opacity-50"
                           title="Cancel"
                           aria-label="Cancel editing"
                         >
@@ -210,7 +210,7 @@ export default function SessionHistory() {
                         <button
                           onClick={() => void saveNotes(session.id)}
                           disabled={savingNotes}
-                          className="p-1 rounded-sm border border-moss-green/40 bg-moss-green/10 text-brand-ink hover:bg-moss-green/15 disabled:opacity-50"
+                          className="touch-target inline-flex items-center justify-center p-1 rounded-sm border border-moss-green/40 bg-moss-green/10 text-brand-ink hover:bg-moss-green/15 disabled:opacity-50"
                           title="Save"
                           aria-label="Save notes"
                         >

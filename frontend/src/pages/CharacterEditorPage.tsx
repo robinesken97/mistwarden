@@ -376,13 +376,10 @@ export default function CharacterEditorPage() {
             than both. */}
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
           <div className="flex items-center gap-3">
-            <button
-              onClick={handleBack}
-              className="p-2 rounded-lg hover:bg-moss-green/10 transition-colors"
-              aria-label="Back to characters"
-            >
-              <ArrowLeft className="w-5 h-5 text-brand-ink" />
-            </button>
+            <Button onClick={handleBack} variant="secondary" className="flex items-center gap-2">
+                <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+                <span className="max-sm:sr-only">Characters</span>
+              </Button>
             <div>
               <h1 className="text-2xl font-bold text-brand-ink">
                 Editing: {character.name}

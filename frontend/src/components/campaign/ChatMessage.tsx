@@ -247,7 +247,7 @@ function ChatMessageInner({ message, isCurrentUser = false, isPending = false, n
                 type="button"
                 onClick={() => onWhisperBack(message)}
                 title={`Whisper to ${whisperPeer}`}
-                className="min-w-0 text-left text-xs font-semibold text-accent-ink underline-offset-2 hover:underline"
+                className="touch-hit min-w-0 text-left text-xs font-semibold text-accent-ink underline-offset-2 hover:underline"
               >
                 {whisperLabel}
               </button>

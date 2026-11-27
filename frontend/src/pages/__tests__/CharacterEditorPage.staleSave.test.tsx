@@ -100,7 +100,7 @@ describe('a stale save on the full-page editor', () => {
     // Saved: back to the sheet, nothing left to ask about on the way out.
     await waitFor(() => expect(screen.queryByPlaceholderText('Character Name')).toBeNull());
     expect(client.getQueryData<CharacterSummary[]>(queryKeys.characters)?.[0]).toEqual(toCharacterSummary(saved));
-    fireEvent.click(screen.getByRole('button', { name: 'Back to characters' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Characters' }));
     expect(await screen.findByText('Character list')).toBeInTheDocument();
   });
 

@@ -79,7 +79,7 @@ describe('typing during a full-page save', () => {
 
     expect(screen.getByPlaceholderText('Character Name')).toHaveValue('Aldra the Bolder');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Back to characters' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Characters' }));
     expect(screen.getByText('Unsaved Changes')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Stay' }));
 

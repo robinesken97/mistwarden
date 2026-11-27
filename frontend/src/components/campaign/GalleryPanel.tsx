@@ -20,7 +20,7 @@ import { AssetScope, AssetType, type GalleryPicture } from '@/types';
 import { UPLOAD_EXTENSIONS } from '@/constants/uploadTypes';
 
 const pill = (on: boolean) =>
-  `px-2 py-0.5 text-xs rounded-full border transition-colors ${
+  `touch-hit px-2 py-0.5 text-xs rounded-full border transition-colors ${
     on ? 'bg-warm-amber/25 border-warm-amber text-accent-ink' : 'border-warm-amber/30 text-warm-gray hover:bg-warm-amber/10'
   }`;
 
@@ -193,7 +193,7 @@ export default function GalleryPanel() {
               type="button"
               onClick={() => fileInput.current?.click()}
               disabled={uploading}
-              className="inline-flex items-center gap-1 px-2 py-1 text-sm rounded-cozy border border-warm-amber/40 bg-warm-amber/10 text-accent-ink hover:bg-warm-amber/15 disabled:opacity-60"
+              className="touch-target inline-flex items-center gap-1 px-2 py-1 text-sm rounded-cozy border border-warm-amber/40 bg-warm-amber/10 text-accent-ink hover:bg-warm-amber/15 disabled:opacity-60"
             >
               {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
               Add
@@ -227,7 +227,7 @@ export default function GalleryPanel() {
 
         {isGm && folders.map((folder) => (
           <details key={folder || '(none)'} open className="group">
-            <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-warm-gray">
+            <summary className="touch-target flex items-center cursor-pointer text-xs font-semibold uppercase tracking-wide text-warm-gray">
               {folder || 'No folder'} <span className="font-normal">({pictures.filter((p) => (p.folder ?? '') === folder).length})</span>
             </summary>
             <ul className="mt-2 flex flex-col gap-2">
@@ -237,13 +237,13 @@ export default function GalleryPanel() {
                   <div className="flex-1 min-w-0 flex flex-col gap-1">
                     <div className="flex items-center gap-1">
                       <span className="flex-1 min-w-0 text-sm truncate" title={p.name}>{p.name}</span>
-                      <button type="button" onClick={() => rename(p)} aria-label={`Rename ${p.name}`} title="Rename" className="p-1 text-warm-gray hover:text-accent-ink">
+                      <button type="button" onClick={() => rename(p)} aria-label={`Rename ${p.name}`} title="Rename" className="touch-target inline-flex items-center justify-center p-1 text-warm-gray hover:text-accent-ink">
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
-                      <button type="button" onClick={() => refile(p)} aria-label={`Move ${p.name} to another folder`} title="Move to folder" className="p-1 text-warm-gray hover:text-accent-ink text-xs">
+                      <button type="button" onClick={() => refile(p)} aria-label={`Move ${p.name} to another folder`} title="Move to folder" className="touch-target inline-flex items-center justify-center p-1 text-warm-gray hover:text-accent-ink text-xs">
                         Folder
                       </button>
-                      <button type="button" onClick={() => setRemoving(p)} aria-label={`Remove ${p.name}`} title="Remove" className="p-1 text-warm-gray hover:text-danger-ink">
+                      <button type="button" onClick={() => setRemoving(p)} aria-label={`Remove ${p.name}`} title="Remove" className="touch-target inline-flex items-center justify-center p-1 text-warm-gray hover:text-danger-ink">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>

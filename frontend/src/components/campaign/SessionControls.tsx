@@ -241,7 +241,7 @@ export default function SessionControls() {
             <button
               onClick={() => setIsEndModalOpen(true)}
               disabled={isLoading}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-danger/30 text-danger-ink hover:bg-danger/10 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              className="touch-target w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-danger/30 text-danger-ink hover:bg-danger/10 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Square className="w-4 h-4" />
               End Session
