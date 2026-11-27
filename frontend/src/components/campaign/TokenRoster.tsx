@@ -6,6 +6,7 @@
 // ============================================
 
 import { hpTier } from '@/utils/tokenColours';
+import { TokenSymbolAvatar } from './TokenSymbol';
 import { useState, useCallback } from 'react';
 import {
   ChevronDown,
@@ -149,7 +150,7 @@ function TokenRow({ token, campaignId, mapId, onEditToken }: TokenRowProps) {
           }`}
         />
       ) : (
-        <div className="w-7 h-7 rounded-full bg-moss-green/10 shrink-0" />
+        <TokenSymbolAvatar token={token} type={token.type} disposition={token.disposition} className={`w-7 h-7 ${!token.visible ? 'opacity-40' : ''}`} />
       )}
 
       {/* Name + HP */}

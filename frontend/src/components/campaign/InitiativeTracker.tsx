@@ -45,6 +45,7 @@ import { api } from '@/services/api';
 import { apiErrorMessage } from '@/utils/errors';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import Modal from '@/components/ui/Modal';
+import { TokenSymbolAvatar } from '@/components/campaign/TokenSymbol';
 import CharacterContextMenu from '@/components/campaign/CharacterContextMenu';
 import type { FlatMenuItem } from '@/components/ui/menu';
 import CharacterRollPicker from '@/components/campaign/CharacterRollPicker';
@@ -120,9 +121,7 @@ function AddCombatantModal({ open, tokens, combatantIds, onAdd, onClose }: AddCo
                   className="w-8 h-8 rounded-full object-cover border border-moss-green/20 shrink-0"
                 />
               ) : (
-                <div className="w-8 h-8 rounded-full bg-stone-gray/20 flex items-center justify-center shrink-0">
-                  <User className="w-4 h-4 text-stone-gray" />
-                </div>
+                <TokenSymbolAvatar token={token} type={token.type} disposition={token.disposition} />
               )}
               <div className="flex-1 min-w-0">
                 <div className="font-medium text-sm text-brand-ink truncate">{token.name}</div>
@@ -154,6 +153,8 @@ function AddCombatantModal({ open, tokens, combatantIds, onAdd, onClose }: AddCo
 type MoveControl = 'grip' | 'up' | 'down';
 
 interface CombatantRowProps {
+  /** The token on screen, for its symbol; absent for a combatant on another map. */
+  token?: Token;
   entry: CombatantEntry;
   isActive: boolean;
   /** This token is being pointed at — from this list, or from the map. */
@@ -246,7 +247,7 @@ function menuPoint(e: React.MouseEvent): { x: number; y: number; byKeyboard: boo
 }
 
 function CombatantRow({
-  entry, isActive, isPeeked, isGM, coarsePointer, canRoll, isDragOver, reorderHintId,
+  token, entry, isActive, isPeeked, isGM, coarsePointer, canRoll, isDragOver, reorderHintId,
   onSetInitiative, onRoll, onRemove,
   onDragStart, onDragOver, onDrop, onDragEnd, onMove, isFirst, isLast,
   hasMenu, hasSheet, onOpenMenu, onOpenSheet,
@@ -381,10 +382,8 @@ function CombatantRow({
             }`}
           />
         ) : (
-          <div className={`w-8 h-8 rounded-full bg-stone-gray/20 flex items-center justify-center shrink-0 border-2 ${
-            isActive ? 'border-warm-amber' : 'border-stone-gray/20'
-          }`}>
-            <User className="w-4 h-4 text-stone-gray" />
+          <div className={`rounded-full border-2 ${isActive ? 'border-warm-amber' : 'border-transparent'}`}>
+            <TokenSymbolAvatar token={token} type={entry.type} disposition={entry.disposition} characterId={entry.characterId} className="w-7 h-7" />
           </div>
         )}
         {/* With a mouse, the GM's Up and Down buttons cover the picture while
@@ -882,6 +881,7 @@ export default function InitiativeTracker() {
               <div ref={listRef} className="space-y-1">
                 {combatState.combatants.map((entry, index) => (
                   <CombatantRow
+                    token={tokenOf(entry.tokenId)}
                     key={entry.tokenId}
                     isFirst={index === 0}
                     isLast={index === combatState.combatants.length - 1}
