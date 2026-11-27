@@ -11,7 +11,7 @@ import { pipeline } from 'node:stream/promises';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { Settings } from './config.ts';
-import { cellFromTop, fogCellsInRect, gridForPicture, topRowOf } from './coords.ts';
+import { cellFromTop, fogCellsInRect, gridForPicture, isHexMap, topRowOf } from './coords.ts';
 import { assertEditable, assertNewName, assertUuid, GuardError, inMap, Manifest, resolveInRoot } from './guards.ts';
 import { type Api, ApiError } from './http.ts';
 import { pictureInfo } from './image.ts';
@@ -21,6 +21,7 @@ import { pictureInfo } from './image.ts';
 interface Member { userId: string; role: string; user?: { displayName?: string } }
 interface MapRow {
   id: string; name: string; width: number; height: number; gridSize: number; feetPerSquare?: number;
+  gridType?: string; gridOffsetX?: number; gridOffsetY?: number;
   lightingEnabled?: boolean; fogEnabled?: boolean; globalIllumination?: boolean; explorationEnabled?: boolean;
   tokens?: TokenRow[]; wallSegments?: WallRow[]; lights?: LightRow[];
 }
@@ -102,7 +103,9 @@ async function uploadPicture(ctx: Context, campaignId: string, type: 'MAP' | 'TO
 
 function tokenSummary(t: TokenRow, map: MapRow) {
   return {
-    id: t.id, name: t.name, x: t.position.x, y: t.position.y, topRow: topRowOf(t.position.y, t.size.height, map.height),
+    id: t.id, name: t.name, x: t.position.x, y: t.position.y,
+    // Rows from the top are squares; a hex map's rows are not the map's height.
+    topRow: isHexMap(map) ? null : topRowOf(t.position.y, t.size.height, map.height),
     size: t.size.width, visible: t.visible, controlledBy: t.controlledBy, darkvision: t.sightRadius ?? 0, type: t.type, layer: t.layer,
     mountedOn: t.mountedOn ?? null,
   };
@@ -115,7 +118,9 @@ function fogSummary(fog: FogState) {
 
 const COORDS =
   'Coordinates: walls, doors, lights and fog rectangles use MAP PIXELS with the origin at the TOP-LEFT corner (y grows downward); ' +
-  'the map-pixel frame is width*gridSize by height*gridSize. Tokens use whole GRID CELLS with the origin at the BOTTOM-LEFT (y grows upward).';
+  'the map-pixel frame is width*gridSize by height*gridSize. Tokens use whole GRID CELLS with the origin at the BOTTOM-LEFT (y grows upward). ' +
+  'gridOffsetX/Y move the grid (and fog squares) from the frame\'s corner. On a hex map (gridType hexPointy or hexFlat) a cell is a hex: ' +
+  'x counts from the first column and y from the bottom row of hexes whose centres lie in the frame; origin "top-left" is refused there.';
 
 // ---- Registration -------------------------------------------------------------
 
@@ -148,6 +153,7 @@ export function registerTools(server: McpServer, ctx: Context): string[] {
     const { maps } = await ctx.api.json<{ maps: MapRow[] }>('GET', `/api/campaigns/${campaignId}/maps`);
     return maps.map((m) => ({
       id: m.id, name: m.name, width: m.width, height: m.height, gridSize: m.gridSize,
+      gridType: m.gridType ?? 'square', gridOffsetX: m.gridOffsetX ?? 0, gridOffsetY: m.gridOffsetY ?? 0,
       pixelWidth: m.width * m.gridSize, pixelHeight: m.height * m.gridSize,
       current: m.id === campaign.currentMapId, createdByThisServer: manifest.has('map', m.id),
     }));
@@ -164,6 +170,7 @@ export function registerTools(server: McpServer, ctx: Context): string[] {
     for (const w of walls) byType[w.type] = (byType[w.type] ?? 0) + 1;
     return {
       id: map.id, name: map.name, width: map.width, height: map.height, gridSize: map.gridSize, feetPerSquare: map.feetPerSquare,
+      gridType: map.gridType ?? 'square', gridOffsetX: map.gridOffsetX ?? 0, gridOffsetY: map.gridOffsetY ?? 0,
       pixelWidth: map.width * map.gridSize, pixelHeight: map.height * map.gridSize,
       current: map.id === campaign.currentMapId, createdByThisServer: manifest.has('map', map.id),
       settings: { lightingEnabled: map.lightingEnabled, fogEnabled: map.fogEnabled, globalIllumination: map.globalIllumination, explorationEnabled: map.explorationEnabled },
@@ -306,7 +313,7 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
     origin: z.enum(['bottom-left', 'top-left']).optional().describe('"top-left": y is the row of the token\'s TOP square counted from the top (0 = top row), as when reading a picture. Default "bottom-left", Mistwarden\'s own frame.'),
   };
   const toCell = (map: MapRow, x: number, y: number, origin: string | undefined, size: number) =>
-    origin === 'top-left' ? cellFromTop(x, y, size, map.height) : { x, y };
+    origin === 'top-left' ? cellFromTop(x, y, size, map.height, map) : { x, y };
 
   tool('add_token', `Add a token to a map. Hidden from players by default (visible: false). ${COORDS} Size is in squares (1 = medium, 2 = large, 3 = huge). Not on the map players currently see unless MISTWARDEN_MCP_PLAYER_VISIBLE=1.`, {
     campaignId: campaignIdArg, mapId: mapIdArg,

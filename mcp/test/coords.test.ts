@@ -24,6 +24,18 @@ describe('token cells (bottom-left origin)', () => {
     expect(cellAtPixel(999, 499, map)).toEqual({ x: 19, y: 0 });
     expect(cellAtPixel(125, 260, map)).toEqual({ x: 2, y: 4 });
   });
+
+  it('moves the squares by the grid offset, within half a square of the corner', () => {
+    const map = { width: 20, height: 10, gridSize: 50, gridOffsetX: 10, gridOffsetY: 40 };
+    // Lines at x 10, 60, ... and y -10, 40, ...
+    expect(cellAtPixel(9, 39, map)).toEqual({ x: -1, y: 9 });
+    expect(cellAtPixel(10, 40, map)).toEqual({ x: 0, y: 8 });
+  });
+
+  it('refuses a hex map rather than name the wrong hex', () => {
+    expect(() => cellFromTop(3, 0, 1, 10, { gridType: 'hexPointy' })).toThrow(/hex grid/);
+    expect(() => cellAtPixel(10, 10, { width: 10, height: 10, gridSize: 50, gridType: 'hexFlat' })).toThrow(/hex grid/);
+  });
 });
 
 describe('grid from the original picture', () => {
@@ -60,6 +72,13 @@ describe('fog cells in a pixel rectangle (top-left origin, row-major)', () => {
   it('clips to the map and ignores rectangles off it', () => {
     expect(fogCellsInRect(map, { x: -50, y: 25, width: 1000, height: 1000 })).toEqual([8, 9, 10, 11]);
     expect(fogCellsInRect(map, { x: 40, y: 0, width: 10, height: 10 })).toEqual([]);
+  });
+
+  it('starts the fog squares at the grid offset', () => {
+    const moved = { ...map, gridOffsetX: 3, gridOffsetY: 0 };
+    // Columns from x 3: 3-13 is column 0 (and 0-3 with it, the edge square reaching the edge).
+    expect(fogCellsInRect(moved, { x: 13, y: 0, width: 10, height: 10 })).toEqual([1]);
+    expect(fogCellsInRect(moved, { x: 0, y: 0, width: 2, height: 2 })).toEqual([0]);
   });
 });
 
