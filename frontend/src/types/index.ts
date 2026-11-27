@@ -1009,6 +1009,21 @@ export interface DeletionBlocker {
   members: { userId: string; displayName: string; role: string }[];
 }
 
+/** A ZIP import into the asset library (POST /api/assets/import-zip), as its progress is reported. */
+export interface AssetZipImportJob {
+  id: string;
+  status: 'running' | 'done' | 'failed';
+  total: number;
+  processed: number;
+  imported: { id: string; name: string }[];
+  /** At most 500 listed; skippedCount counts them all. */
+  skipped: { file: string; reason: string }[];
+  skippedCount: number;
+  duplicates: string[];
+  duplicateCount: number;
+  message?: string;
+}
+
 export interface Asset {
   id: string;
   type: AssetType;

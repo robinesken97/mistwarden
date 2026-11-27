@@ -131,6 +131,10 @@ Copy `backend/.env.example` to `backend/.env` and fill in the values.
 | `MAX_DOCUMENT_SIZE_MB` | No | `50` | Upload size limit for PDF, text and Markdown documents |
 | `NGINX_MAX_BODY_SIZE` | No | — | Request body cap for the bundled Nginx (`client_max_body_size`, `55M` in `docker-compose.yml`); must cover the largest limit above. The backend only reads it for a startup warning, so leave it unset here: unset, it takes it that a proxy of your own is in front and says what that proxy must allow |
 | `ASSET_UPLOAD_RATE_LIMIT` | No | `30` | Asset uploads per minute per user |
+| `ASSET_ZIP_IMPORT_RATE_LIMIT` | No | `10` | ZIP imports into the asset library per user per hour |
+| `ASSET_ZIP_MAX_MB` | No | `500` | Largest ZIP the asset library imports; the bundled Nginx lets 512 MB through on `/api/assets/import-zip`, so a larger value needs `nginx/locations.conf` raised too |
+| `ASSET_ZIP_MAX_FILES` | No | `5000` | Most entries, folders included, a ZIP import may list |
+| `ASSET_ZIP_MAX_UNPACKED_MB` | No | `2048` | Most a ZIP import may unpack to; each picture is also held to its type's `MAX_*_SIZE_MB` |
 
 The `MAX_*_SIZE_MB` values are read at startup by `backend/src/utils/fileUtils.ts` and served to the SPA by `GET /api/config`, so a restart is enough to change them — no rebuild. Non-numeric or non-positive values are ignored with a startup warning.
 

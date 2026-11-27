@@ -6367,6 +6367,178 @@ paths:
         '429':
           $ref: '#/components/responses/RateLimited'
 
+  /api/assets/import-zip:
+    post:
+      tags:
+        - Assets
+      summary: Import a ZIP of pictures
+      description: |
+        Import a ZIP of token or map pictures into the asset library, one
+        asset per picture. Answers 202 once the archive has arrived and its
+        directory has been read; the pictures are then imported one after
+        another, and `GET /api/assets/import-zip/{jobId}` reports progress
+        and the outcome.
+
+        **Names and tags.** Each picture is named after its file without the
+        extension, underscores read as spaces and runs of spaces collapsed
+        (`Beasts/Horses/brown_horse.png` is "brown horse"), and tagged with
+        the folders it sits in (`Beasts`, `Horses`), after any `tags` sent.
+        Names and tags are NFC-normalised, held to the upload limits (200
+        characters, 50 tags of 50 characters), and `cozyvtt-drawn-map` is
+        never given. When every picture sits in one folder, that folder is
+        left out of the tags unless `dropTopFolder` is `false`.
+
+        **What is imported.** Every picture is checked as `POST /api/assets/upload`
+        checks one of its `type`: the type's `MAX_<TYPE>_SIZE_MB`, its bytes
+        (PNG, JPEG, WebP, and GIF for TOKEN) and the picture limits. It is
+        then written again (a MAP over 4,096 pixels shrunk), so the bytes
+        that arrived are never served; an animated GIF or WebP is kept as
+        sent. A thumbnail is made as on upload. Folders, hidden files and
+        `__MACOSX/` are passed over without a word. An entry whose path is
+        absolute, holds `..` or a backslash, a symbolic link, a file whose
+        extension the type does not take, a picture over its size or picture
+        limits, and content that is not a picture are skipped, each with a
+        `reason`. A picture whose name and tags (whatever their case or
+        order) an asset of the same type already has in the target library
+        (the caller's personal one, the campaign's or the global one) is a
+        duplicate and skipped, unless `allowDuplicates` is `true`.
+
+        **Scope.** USER into the caller's own library; GLOBAL for an admin or
+        global asset manager; CAMPAIGN for that campaign's GM only (a player
+        may upload single token pictures there, but not import them).
+
+        **Limits**, set with environment variables: the archive at most
+        `ASSET_ZIP_MAX_MB` (500 MB; the bundled nginx lets 512 MB through
+        on this path), listing at most `ASSET_ZIP_MAX_FILES` entries (5,000,
+        folders included) and unpacking to at most `ASSET_ZIP_MAX_UNPACKED_MB`
+        (2,048 MB). An import that passes the unpacked limit stops there with
+        `status` `failed`; the pictures before it stay imported. One import
+        per user runs at a time.
+
+        **Rate limit**: 10 imports per hour per user (`ASSET_ZIP_IMPORT_RATE_LIMIT`),
+        counted apart from uploads.
+      operationId: importAssetZip
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+                - type
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: The ZIP, in a part named `file`.
+                type:
+                  type: string
+                  enum: [TOKEN, MAP]
+                scope:
+                  type: string
+                  enum: [GLOBAL, USER, CAMPAIGN]
+                  default: USER
+                campaignId:
+                  type: string
+                  format: uuid
+                  description: Required if scope is CAMPAIGN
+                tags:
+                  type: string
+                  description: Comma-separated tags given to every picture, as an upload's `tags`.
+                dropTopFolder:
+                  type: string
+                  enum: ['true', 'false']
+                  default: 'true'
+                allowDuplicates:
+                  type: string
+                  enum: ['true', 'false']
+                  default: 'false'
+      responses:
+        '202':
+          description: The import has started.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job:
+                    $ref: '#/components/schemas/AssetZipImportJob'
+        '400':
+          description: >-
+            `Validation Error`: no file, `type` not TOKEN or MAP, an unknown
+            `scope`, `campaignId` missing for CAMPAIGN, invalid `tags`, a file
+            that is not a ZIP ("The file is not a ZIP archive, or it is
+            damaged."), or one listing more entries than `ASSET_ZIP_MAX_FILES`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: >-
+            GLOBAL without being an admin or global asset manager; CAMPAIGN in
+            a campaign the caller is not the GM of.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Forbidden
+                message: Only the GM can import into a campaign's library
+        '409':
+          description: An import of the caller's is still running.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: The archive is larger than `ASSET_ZIP_MAX_MB`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /api/assets/import-zip/{jobId}:
+    get:
+      tags:
+        - Assets
+      summary: ZIP import progress
+      description: >-
+        A ZIP import's progress and outcome, to the user who started it.
+        Answers 404 to anyone else, and once the job finished more than an
+        hour ago or the server has restarted since (jobs are kept in memory;
+        the assets imported stay).
+      operationId: getAssetZipImport
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: The job.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  job:
+                    $ref: '#/components/schemas/AssetZipImportJob'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /api/assets/{id}:
     get:
       tags:
@@ -13716,6 +13888,52 @@ components:
               type: { type: string, enum: [stats, list, text, table] }
               collapsed: { type: boolean }
 
+    AssetZipImportJob:
+      type: object
+      description: A ZIP import into the asset library. `skipped` and `duplicates` list at most 500 files each; the counts cover them all.
+      properties:
+        id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [running, done, failed]
+        total:
+          type: integer
+          description: Pictures to import, after the entries skipped while reading the directory.
+        processed:
+          type: integer
+        imported:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              name:
+                type: string
+        skipped:
+          type: array
+          items:
+            type: object
+            properties:
+              file:
+                type: string
+                description: The entry's path in the archive.
+              reason:
+                type: string
+        skippedCount:
+          type: integer
+        duplicates:
+          type: array
+          items:
+            type: string
+        duplicateCount:
+          type: integer
+        message:
+          type: string
+          description: Why a `failed` job stopped.
     Asset:
       type: object
       properties:
