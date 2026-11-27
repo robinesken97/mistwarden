@@ -153,6 +153,8 @@ const TESTED: Record<string, string> = {
   'POST /api/users/:id/reset-password': 'websocket/__tests__/liveSessionsEnd.integration.test.ts',
   'GET /api/assets': 'routes/__tests__/assetScopeAndReferences.e2e.test.ts',
   'POST /api/assets/upload': 'routes/__tests__/assetScopeAndReferences.e2e.test.ts',
+  'POST /api/assets/import-zip': 'routes/__tests__/assetZipImport.e2e.test.ts',
+  'GET /api/assets/import-zip/:jobId': 'routes/__tests__/assetZipImport.e2e.test.ts',
   'GET /api/assets/:id': 'routes/__tests__/assetScopeAndReferences.e2e.test.ts',
   'DELETE /api/assets/:id': 'routes/__tests__/assetDelete.e2e.test.ts',
   'GET /api/assets/:id/download': 'routes/__tests__/campaignDocuments.e2e.test.ts',
