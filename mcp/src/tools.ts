@@ -28,6 +28,7 @@ interface Campaign { id: string; name: string; userRole: string; currentMapId: s
 interface TokenRow {
   id: string; name: string; position: { x: number; y: number }; size: { width: number; height: number };
   visible: boolean; controlledBy: string | null; sightRadius?: number; type?: string; disposition?: string | null; layer?: string;
+  mountedOn?: string | null;
 }
 interface WallRow { id: string; x1: number; y1: number; x2: number; y2: number; type: string }
 interface LightRow { id: string; x: number; y: number; brightRadius: number; dimRadius: number; color: string; enabled: boolean }
@@ -103,6 +104,7 @@ function tokenSummary(t: TokenRow, map: MapRow) {
   return {
     id: t.id, name: t.name, x: t.position.x, y: t.position.y, topRow: topRowOf(t.position.y, t.size.height, map.height),
     size: t.size.width, visible: t.visible, controlledBy: t.controlledBy, darkvision: t.sightRadius ?? 0, type: t.type, layer: t.layer,
+    mountedOn: t.mountedOn ?? null,
   };
 }
 
@@ -352,6 +354,8 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
     disposition: z.enum(['friendly', 'neutral', 'hostile']).nullable().optional(),
     controlledBy: z.string().uuid().nullable().optional(),
     notes: z.string().max(5000).optional(),
+    mountedOn: z.string().min(1).max(100).nullable().optional()
+      .describe('Id of a token on the same map and plane for this one to ride (they then move as one); null gets off.'),
   }, async (a) => {
     const { campaign, manifest } = await campaignAsGm(ctx, a.campaignId);
     assertEditable(manifest, 'token', inMap(a.mapId, a.tokenId), ctx.settings.allowAnyEdit);
@@ -362,7 +366,7 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
     if ((a.x === undefined) !== (a.y === undefined)) throw new GuardError('Give x and y together.');
     const size = a.size ?? current.size.width;
     const body: Record<string, unknown> = {
-      name: a.name, visible: a.visible, sightRadius: a.darkvision, type: a.type, disposition: a.disposition, controlledBy: a.controlledBy, notes: a.notes,
+      name: a.name, visible: a.visible, sightRadius: a.darkvision, type: a.type, disposition: a.disposition, controlledBy: a.controlledBy, notes: a.notes, mountedOn: a.mountedOn,
       size: a.size !== undefined ? { width: size, height: size } : undefined,
       position: a.x !== undefined && a.y !== undefined ? toCell(map, a.x, a.y, a.origin, size) : undefined,
     };
