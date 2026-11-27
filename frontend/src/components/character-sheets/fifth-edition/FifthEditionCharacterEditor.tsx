@@ -1243,8 +1243,10 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
       <div className="px-3 pt-3 sm:px-6 sm:pt-4">
       {/* The box is the container its layout follows, not the screen: the
           pictures go beside the fields once the box has 37.5 rem inside, room
-          for both pictures and two fields of 8 rem. */}
-      <section data-sheet-header className={`${SHEET_BOX} relative @container`}>
+          for both pictures and two fields of 8 rem. z-10: where a container
+          is a stacking context (Safari 17), the colour picker hanging out of
+          the box would otherwise be painted under the tab bar after it. */}
+      <section data-sheet-header className={`${SHEET_BOX} relative z-10 @container`}>
       <div className="flex flex-col gap-4 @min-[37.5rem]:flex-row @min-[37.5rem]:items-start @min-[37.5rem]:gap-5">
           {/* Token Image Upload. As wide as the portrait, so its caption
               wraps under it. */}
