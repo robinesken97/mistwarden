@@ -241,33 +241,44 @@ export const FifthEditionCharacterView: React.FC<FifthEditionCharacterViewProps>
             <h3 className={SHEET_BOX_HEADING}>Saves &amp; Senses</h3>
             <div className="space-y-1.5">
               {data.savingThrows && (
-                <p>
-                  <strong className={SHEET_LABEL}>Saving Throws</strong>{' '}
-                  {/* In the order of the abilities, whatever order the sheet stores them in. */}
-                  {ABILITIES.filter(([, , key]) => data.savingThrows?.[key])
-                    .map(([, , key]) => [key, data.savingThrows![key]] as [string, FifthEditionSavingThrow])
-                    .map(([key, save], index) => {
-                    // Worked out from the scores plus the other bonus, as the
-                    // dice roll it, so a stored total gone stale is not shown.
-                    const bonus = fifthEditionSaveBonus(data, key);
-                    const expr = bonus >= 0 ? `1d20+${bonus}` : `1d20${bonus}`;
-                    const name = key.charAt(0).toUpperCase() + key.slice(1);
-                    const purpose = `${name} Save`;
-                    return (
-                      <React.Fragment key={key}>
-                        {index > 0 && ', '}
-                        <span
-                          className={`rounded-sm py-1.5 ${onRoll ? ROLLABLE : ''} ${save.proficient ? 'font-semibold text-ink' : 'text-ink-muted'}`}
-                          onClick={onRoll ? () => rollTest(expr, purpose) : undefined}
-                          {...(onRoll ? rollTarget(expr, purpose, character.gameSystem) : undefined)}
-                        >
+                <div>
+                  <strong className={SHEET_LABEL}>Saving Throws</strong>
+                  {/* Six tiles in the order of the abilities, whatever order the sheet stores them in. */}
+                  <div className="mt-1 mb-1 grid grid-cols-3 gap-1.5 sm:grid-cols-6">
+                    {ABILITIES.filter(([, , key]) => data.savingThrows?.[key]).map(([, , key]) => {
+                      const save = data.savingThrows![key] as FifthEditionSavingThrow;
+                      // Worked out from the scores plus the other bonus, as the
+                      // dice roll it, so a stored total gone stale is not shown.
+                      const bonus = fifthEditionSaveBonus(data, key);
+                      const expr = bonus >= 0 ? `1d20+${bonus}` : `1d20${bonus}`;
+                      const name = key.charAt(0).toUpperCase() + key.slice(1);
+                      const purpose = `${name} Save`;
+                      const tile = `flex min-h-9 w-full items-center justify-center gap-1 rounded-lg border-2 px-1 py-1 text-sm tabular-nums pointer-coarse:min-h-11 ${
+                        save.proficient ? 'border-(--sheet-accent) bg-(--sheet-accent-bg) font-bold text-ink' : 'border-ink/15 text-ink-secondary'
+                      }`;
+                      const content = (
+                        <>
                           <abbr title={name} className="no-underline">{name.slice(0, 3)}</abbr> {formatModifier(bonus)}
                           {save.proficient && <span className="sr-only"> (proficient)</span>}
-                        </span>
-                      </React.Fragment>
-                    );
-                  })}
-                </p>
+                        </>
+                      );
+                      // A button where it rolls, so Enter and Space roll it too.
+                      return onRoll ? (
+                        <button
+                          key={key}
+                          type="button"
+                          className={`${tile} ${ROLLABLE}`}
+                          onClick={() => rollTest(expr, purpose)}
+                          {...rollTarget(expr, purpose, character.gameSystem)}
+                        >
+                          {content}
+                        </button>
+                      ) : (
+                        <div key={key} className={tile}>{content}</div>
+                      );
+                    })}
+                  </div>
+                </div>
               )}
               <p>
                 <strong className={SHEET_LABEL}>Senses</strong>{' '}
