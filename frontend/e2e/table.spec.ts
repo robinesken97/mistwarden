@@ -16,10 +16,13 @@ const PLAYER_PASSWORD = 'Table-Test-Passw0rd!';
 
 /** What each page's live connection has received, as text. */
 const frames = new Map<Page, string[]>();
+/** Anything a page's Content Security Policy refused. */
+const refused: string[] = [];
 function listen(page: Page): Page {
   const got: string[] = [];
   frames.set(page, got);
   page.on('websocket', (ws) => ws.on('framereceived', ({ payload }) => { got.push(String(payload)); }));
+  page.on('console', (msg) => { if (/Content Security Policy|Refused to/i.test(msg.text())) refused.push(msg.text()); });
   return page;
 }
 
@@ -132,6 +135,8 @@ test('a GM and four players share one table', async ({ browser, playwright }, te
     await openTab(seats[2].page, 'Dice');
     await seats[2].page.getByRole('textbox', { name: 'Dice expression' }).fill('1d20+5');
     await seats[2].page.getByRole('button', { name: /^Roll$/ }).click();
+    // The roll tumbles across the GM's screen too: 3D, or the CSS fallback where there is no WebGL.
+    await expect(gm.locator('.dice-layer > .dice-gl, .dice-layer > .dice-css')).toHaveCount(1, { timeout: 10_000 });
     for (const page of [gm, seats[0].page, seats[1].page, seats[3].page]) {
       await openTab(page, 'Dice');
       await expect(page.getByRole('log', { name: 'Dice rolls' }).getByText(/1d20\+5/)).toBeVisible({ timeout: 15_000 });
@@ -216,6 +221,7 @@ test('a GM and four players share one table', async ({ browser, playwright }, te
     }
   });
 
+  expect(refused, 'the pages\' security policy refused something').toEqual([]);
   await safari.close();
   await gmContext.close();
   for (const seat of seats) await seat.context.close().catch(() => undefined);
