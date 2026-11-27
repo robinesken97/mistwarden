@@ -184,7 +184,8 @@ export default function GmFogControls({
               type="button"
               aria-pressed={fogShape === shape}
               onClick={() => onFogShapeChange(shape)}
-              className={`touch-target flex-1 basis-0 min-w-0 flex items-center justify-center gap-1 px-0.5 py-1.5 rounded text-xs font-medium border transition-colors ${
+              // Icon over label: three side by side leave a label about 55 px, too tight for icon and Lasso in a row.
+              className={`touch-target flex-1 basis-0 min-w-0 flex flex-col items-center justify-center gap-0.5 px-1 py-1 rounded text-xs font-medium border transition-colors ${
                 fogShape === shape ? 'bg-stone-600/60 text-stone-100 border-stone-400/60' : 'bg-stone-800/40 text-stone-400 border-stone-700/50 hover:bg-stone-700/60'
               }`}
             >
