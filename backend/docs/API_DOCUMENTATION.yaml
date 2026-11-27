@@ -323,6 +323,8 @@ tags:
     description: Chat message history
   - name: Documents
     description: PDF, text and Markdown files uploaded as assets, shared with a campaign by its GM and read inline
+  - name: AI
+    description: A GM's writing help through the provider the server is configured with (Mistwarden)
   - name: Gallery
     description: Pictures a GM files in folders and shows to every player or to chosen ones (Mistwarden)
   - name: Dice Macros
@@ -3871,6 +3873,57 @@ paths:
   # note belonging to somebody else answers 404 rather than 403 — a 403 would
   # confirm the id exists. The GM has no access to a player's notes.
   # ============================================
+
+  # Mistwarden, 2026-11-27: a GM's writing help.
+  /api/campaigns/{campaignId}/ai/write:
+    post:
+      tags:
+        - AI
+      summary: Write an NPC, a passage to read aloud, or notes
+      description: >-
+        GM only. The server sends the GM's request, the kind of text and the
+        campaign's name and game system to the provider configured in its
+        environment (AI_PROVIDER, AI_API_KEY, AI_MODEL, AI_BASE_URL) and answers
+        the text. Nothing is saved. 503 when no provider is configured
+        (`GET /api/config` says so in `ai.enabled`), 502 when the provider
+        declines or fails, 429 after AI_RATE_LIMIT requests a minute.
+      operationId: writeWithAi
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CampaignId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kind, prompt]
+              additionalProperties: false
+              properties:
+                kind: { type: string, enum: [npc, read-aloud, note] }
+                prompt: { type: string, maxLength: 2000 }
+      responses:
+        '200':
+          description: The text
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  text: { type: string }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          description: Too many requests
+        '502':
+          description: The provider declined or failed
+        '503':
+          description: No provider is configured
 
   # Mistwarden, 2026-11-27: the campaign gallery.
   /api/campaigns/{campaignId}/gallery:

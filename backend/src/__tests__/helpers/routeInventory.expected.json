@@ -877,6 +877,17 @@
     },
     {
       "method": "POST",
+      "path": "/api/campaigns/:campaignId/ai/write",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireGM",
+        "<anonymous>",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "POST",
       "path": "/api/characters",
       "handlers": [
         "requireAuth",
@@ -1691,6 +1702,11 @@
     {
       "name": "router",
       "path": "/api/admin",
+      "route": false
+    },
+    {
+      "name": "router",
+      "path": "/api/campaigns",
       "route": false
     },
     {

@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { UPLOAD_LIMITS, MAX_UPLOAD_BYTES } from '../utils/fileUtils';
 import { isSmtpConfigured } from '../services/email';
+import { aiConfig } from '../services/aiWriter';
 
 const router = Router();
 
@@ -30,6 +31,8 @@ router.get('/', (_req: Request, res: Response) => {
     uploadLimits: { ...UPLOAD_LIMITS },
     maxUploadBytes: MAX_UPLOAD_BYTES,
     smtp: { configured: isSmtpConfigured() },
+    // Mistwarden: whether GMs get writing help; which provider and its key stay on the server.
+    ai: { enabled: aiConfig() !== null },
   });
 });
 
