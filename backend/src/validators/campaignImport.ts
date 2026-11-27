@@ -11,7 +11,7 @@ import { ImportVibeSettingsSchema } from './campaigns';
 import { SPIRIT_STYLE_PATTERN } from '../utils/styleAllowlists';
 import { NpcStatBlockSchema } from './statBlock';
 import { TokenHpSchema, TokenSightRadiusSchema, TokenSizeSchema, TOKEN_TYPES, TOKEN_DISPOSITIONS, TOKEN_DISPLAY_MODES } from './tokens';
-import { MapSideSchema, GridSizeSchema, FeetPerSquareSchema, DrawnBackgroundSchema, MAP_LIMITS, MAX_FOG_CELLS } from './maps';
+import { MapSideSchema, GridSizeSchema, GridTypeSchema, GridOffsetSchema, FeetPerSquareSchema, DrawnBackgroundSchema, MAP_LIMITS, MAX_FOG_CELLS } from './maps';
 import { TOKEN_LIMITS } from './tokenLimits';
 import { CarriedLightSchema } from './walls';
 import { CAMPAIGN_LIMITS } from './campaignLimits';
@@ -181,7 +181,7 @@ export const ImportFogSchema = z
   .object({
     fogCols: z.number().int().min(1).max(MAP_LIMITS.maxSide),
     fogRows: z.number().int().min(1).max(MAP_LIMITS.maxSide),
-    cellPx: z.number().int().min(MAP_LIMITS.minGridSize).max(MAP_LIMITS.maxGridSize),
+    cellPx: z.number().finite().min(MAP_LIMITS.minGridSize).max(MAP_LIMITS.maxGridSize),
     revealed: z.array(z.boolean()).max(MAX_FOG_CELLS),
   })
   .strip()
@@ -210,6 +210,10 @@ export const ImportMapSchema = z.object({
   width: MapSideSchema('Map width'),
   height: MapSideSchema('Map height'),
   gridSize: GridSizeSchema,
+  // Absent in archives from before the hex grid: squares at the corner.
+  gridType: GridTypeSchema.optional().catch(undefined),
+  gridOffsetX: GridOffsetSchema.optional().catch(undefined),
+  gridOffsetY: GridOffsetSchema.optional().catch(undefined),
   feetPerSquare: FeetPerSquareSchema,
   diagonalRule: z.enum(['flat', 'alternating']).optional().catch(undefined),
   // Absent in archives from before 1.6.0, and from a map made from a picture.

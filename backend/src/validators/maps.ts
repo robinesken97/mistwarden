@@ -12,6 +12,7 @@
 
 import { z } from 'zod';
 import { MAP_LIMITS, MAX_COORDINATE, MAX_FOG_CELLS } from './mapLimits';
+import { GRID_TYPES } from '../utils/tokenCentre';
 
 export { MAP_LIMITS, MAX_COORDINATE, MAX_FOG_CELLS };
 
@@ -26,13 +27,29 @@ export const MapSideSchema = (what: 'Map width' | 'Map height') =>
     .min(MAP_LIMITS.minSide, between(what, MAP_LIMITS.minSide, MAP_LIMITS.maxSide, ' squares'))
     .max(MAP_LIMITS.maxSide, between(what, MAP_LIMITS.minSide, MAP_LIMITS.maxSide, ' squares'));
 
-const GRID_SIZE_MESSAGE = between('Grid size', MAP_LIMITS.minGridSize, MAP_LIMITS.maxGridSize, ' pixels');
-/** Pixels per grid square. */
+const GRID_SIZE_MESSAGE = `Grid size must be a number from ${MAP_LIMITS.minGridSize} to ${MAP_LIMITS.maxGridSize} pixels`;
+/**
+ * Pixels between neighbouring cell centres. Not necessarily whole: a
+ * picture's grid detected at 70.4 pixels a square lies on it only at 70.4.
+ */
 export const GridSizeSchema = z
   .number(GRID_SIZE_MESSAGE)
-  .int(GRID_SIZE_MESSAGE)
+  .finite(GRID_SIZE_MESSAGE)
   .min(MAP_LIMITS.minGridSize, GRID_SIZE_MESSAGE)
   .max(MAP_LIMITS.maxGridSize, GRID_SIZE_MESSAGE);
+
+/** A map's grid: squares, or hexes with a point or a flat side at the top (utils/tokenCentre.ts). */
+export const GridTypeSchema = z.enum(GRID_TYPES, {
+  error: 'gridType must be "square", "hexPointy" or "hexFlat"',
+});
+
+const GRID_OFFSET_MESSAGE = `Grid offset must be a number from -${MAP_LIMITS.maxGridOffset} to ${MAP_LIMITS.maxGridOffset} pixels`;
+/** Where the grid starts, in map pixels from the frame's corner, on one axis. */
+export const GridOffsetSchema = z
+  .number(GRID_OFFSET_MESSAGE)
+  .finite(GRID_OFFSET_MESSAGE)
+  .min(-MAP_LIMITS.maxGridOffset, GRID_OFFSET_MESSAGE)
+  .max(MAP_LIMITS.maxGridOffset, GRID_OFFSET_MESSAGE);
 
 const FEET_MESSAGE = between('Feet per square', MAP_LIMITS.minFeetPerSquare, MAP_LIMITS.maxFeetPerSquare, '');
 /** Feet per grid square. */
@@ -99,6 +116,15 @@ export const LIGHT_OUTSIDE_MAP_MESSAGE =
   `A light is too far outside the map. Lights can be placed up to ${GEOMETRY_MARGIN_SQUARES} squares past its edges.`;
 
 export interface MapExtent { width: number; height: number; gridSize: number }
+
+/**
+ * The columns that place a map's cells in its frame (utils/tokenCentre.ts
+ * GridFrame), as a Prisma select: a read that places tokens takes all six,
+ * so a hex map is never judged as squares.
+ */
+export const GRID_FRAME_SELECT = {
+  width: true, height: true, gridSize: true, gridType: true, gridOffsetX: true, gridOffsetY: true,
+} as const;
 interface WallLike { id: string; x1: number; y1: number; x2: number; y2: number }
 interface LightLike { id: string; x: number; y: number }
 

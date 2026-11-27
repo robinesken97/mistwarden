@@ -5,6 +5,7 @@
 
 import type { Token } from '../../websocket/shared';
 import { coupledIds, moveCoupled, untangleMounts, uncouple, mount, mountRefusal } from '../mounts';
+import { cellCentre, cellOnMap } from '../tokenCentre';
 
 function token(id: string, extra: Partial<Token> = {}): Token {
   return {
@@ -13,7 +14,7 @@ function token(id: string, extra: Partial<Token> = {}): Token {
   };
 }
 
-const MAP = { width: 10, height: 10 };
+const MAP = { width: 10, height: 10, gridSize: 50, gridType: 'square', gridOffsetX: 0, gridOffsetY: 0 };
 const horse = token('horse', { position: { x: 2, y: 2 }, size: { width: 2, height: 2 } });
 const rider = token('rider', { position: { x: 3, y: 3 }, mountedOn: 'horse' });
 const squire = token('squire', { position: { x: 2, y: 2 }, mountedOn: 'horse' });
@@ -42,6 +43,26 @@ describe('moveCoupled', () => {
     const { tokens } = moveCoupled([horse, rider], 'rider', { x: 9, y: 0 }, MAP);
     const at = Object.fromEntries(tokens.map((t) => [t.id, t.position]));
     expect(at).toEqual({ horse: { x: 8, y: 0 }, rider: { x: 9, y: 1 } });
+  });
+  it('on a hex map keeps every rider the same step from its mount, on a hex on the map', () => {
+    const HEX = { ...MAP, gridType: 'hexPointy' };
+    const pony = token('pony', { position: { x: 4, y: 4 } });
+    const onPony = token('onPony', { position: { x: 4, y: 4 }, mountedOn: 'pony' });
+    const beside = token('beside', { position: { x: 5, y: 4 }, mountedOn: 'pony' });
+    // One row up: stored x stays, but the row shifts by half a hex.
+    const { tokens } = moveCoupled([pony, onPony, beside], 'pony', { x: 4, y: 5 }, HEX);
+    const at = Object.fromEntries(tokens.map((t) => [t.id, t.position]));
+    expect(at.pony).toEqual({ x: 4, y: 5 });
+    expect(at.onPony).toEqual({ x: 4, y: 5 });
+    const step = (a: { x: number; y: number }, b: { x: number; y: number }) => {
+      const pa = cellCentre(a, HEX);
+      const pb = cellCentre(b, HEX);
+      return [pb.x - pa.x, pb.y - pa.y];
+    };
+    expect(step(at.pony, at.beside)).toEqual(step(pony.position, beside.position));
+    // Off the map's edge, the mount stops on the nearest hex.
+    const edge = moveCoupled([pony, onPony], 'pony', { x: 30, y: 5 }, HEX);
+    for (const t of edge.tokens) expect(cellOnMap(t.position, HEX)).toBe(true);
   });
   it('moves a token that rides nothing on its own', () => {
     const { moved } = moveCoupled([horse, goblin], 'goblin', { x: 9, y: 9 }, MAP);

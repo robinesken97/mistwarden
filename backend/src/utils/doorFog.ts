@@ -20,6 +20,13 @@ export interface FogGrid {
   fogRows: number;
   /** Map pixels per fog cell, the map's grid size. */
   cellPx: number;
+  /**
+   * Where cell (0, 0) starts, in map pixels: the grid's offset
+   * (tokenCentre.ts squareOrigin), 0 when absent. The cells along the
+   * frame's edges reach to the edge, so every point of the frame is in one.
+   */
+  originX?: number;
+  originY?: number;
 }
 
 /**
@@ -40,9 +47,11 @@ export function doorBesideRevealed(
   const ny = length === 0 ? 0 : (door.x2 - door.x1) / length;
   const half = grid.cellPx / 2;
   for (const side of [1, -1]) {
-    const col = Math.floor((mx + side * nx * half) / grid.cellPx);
-    const row = Math.floor((my + side * ny * half) / grid.cellPx);
-    if (col < 0 || row < 0 || col >= grid.fogCols || row >= grid.fogRows) continue;
+    const x = mx + side * nx * half;
+    const y = my + side * ny * half;
+    if (x < 0 || y < 0 || x >= grid.fogCols * grid.cellPx || y >= grid.fogRows * grid.cellPx) continue;
+    const col = Math.min(Math.max(Math.floor((x - (grid.originX ?? 0)) / grid.cellPx), 0), grid.fogCols - 1);
+    const row = Math.min(Math.max(Math.floor((y - (grid.originY ?? 0)) / grid.cellPx), 0), grid.fogRows - 1);
     if (isRevealed(row * grid.fogCols + col)) return true;
   }
   return false;

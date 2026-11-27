@@ -47,13 +47,15 @@ const FULL_SCORE = 2 * MIN_SCORE;
 const MIN_HARMONIC_SCORE = 5;
 
 export interface GridDetectionResult {
-  gridSize: number;    // px per square in the original image, snapped to a whole number
+  gridSize: number;    // px per square in the original image, to a hundredth of a pixel
   period: number;      // unrounded px per square in the original image
   width: number;       // grid columns across the whole image
   height: number;      // grid rows across the whole image
   offsetX: number;     // px from the left edge to the first vertical grid line, in [0, period)
   offsetY: number;     // px from the top edge to the first horizontal grid line, in [0, period)
   confidence: number;  // 0.5–1, higher = more certain
+  imageWidth: number;  // the original image's size in px, which the map's frame stretches it to
+  imageHeight: number;
 }
 
 /**
@@ -158,7 +160,9 @@ export function analyseGrid(
   if (finalScore < MIN_SCORE) return null;
 
   const periodPx = period / scale;
-  const gridSize = snapToNice(periodPx);
+  // Not rounded to whole pixels: the map takes a grid size between them, and
+  // a 70.4 px grid drawn at 70 drifts a whole square off in 176 px.
+  const gridSize = Math.round(periodPx * 100) / 100;
   if (gridSize < MIN_GRID_PX) return null;
 
   // The map stretches the image over width×gridSize, so counts cover the whole
@@ -175,6 +179,8 @@ export function analyseGrid(
     offsetX: toOffset(phases[0] / scale, periodPx),
     offsetY: toOffset(phases[1] / scale, periodPx),
     confidence: Math.min(1, 0.5 + 0.5 * (finalScore - MIN_SCORE) / (FULL_SCORE - MIN_SCORE)),
+    imageWidth: originalW,
+    imageHeight: originalH,
   };
 }
 
@@ -352,15 +358,4 @@ function loadImage(url: string): Promise<HTMLImageElement> {
     img.onerror = () => reject(new Error('Image load failed'));
     img.src = url;
   });
-}
-
-/**
- * Round a raw pixel period to the nearest integer,
- * then nudge toward the closest multiple of 5 if it's within 2px.
- * e.g. 48 → 50, 97 → 100, 53 → 53 (not close enough)
- */
-function snapToNice(px: number): number {
-  const rounded = Math.round(px);
-  const nearestFive = Math.round(rounded / 5) * 5;
-  return Math.abs(nearestFive - rounded) <= 2 ? nearestFive : rounded;
 }

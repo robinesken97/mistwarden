@@ -18,6 +18,8 @@ import { Token, tokenMoveLimiter, limiterKey, withinCeiling, resendSightAfterCha
 import { readTokens, toJson } from '../../utils/prisma-json';
 import { withMapsLocked } from '../../utils/mapTokens';
 import { moveCoupled } from '../../utils/mounts';
+import { cellOnMap } from '../../utils/tokenCentre';
+import { GRID_FRAME_SELECT } from '../../validators/maps';
 import { canControlToken, canMoveTokensNow, canReadMap, PAUSED_MOVE_REFUSAL } from '../../services/permissions';
 import { bestEffort, campaignSockets, stillInCampaign } from '../utils';
 import { inBackground } from '../../utils/backgroundWork';
@@ -153,7 +155,7 @@ export function registerTokenHandlers(io: Server, socket: AuthenticatedSocket): 
     if (!map.lightingEnabled) return { sees: () => true, shown };
     const sight = playerSightOnLitMap(
       forRole, viewer, map.wallSegments as unknown as WallSegment[],
-      map.width, map.height, map.gridSize, map.lights, map.globalIllumination
+      map, map.lights, map.globalIllumination
     );
     return { sees: (t) => sight.seesToken(t), shown };
   }
@@ -434,15 +436,15 @@ export function registerTokenHandlers(io: Server, socket: AuthenticatedSocket): 
       // instead of two is the meaningful per-frame win).
       const map = await prisma.map.findUnique({
         where: { id: mapId },
-        select: { width: true, height: true, campaignId: true, tokens: true, campaign: { select: { status: true, currentMapId: true } } },
+        select: { ...GRID_FRAME_SELECT, campaignId: true, tokens: true, campaign: { select: { status: true, currentMapId: true } } },
       });
 
       if (!map || map.campaignId !== socket.campaignId || !canReadMap(socket.role, mapId, map.campaign.currentMapId)) {
         return; // Silently ignore invalid map during rapid updates
       }
 
-      // Validate coordinates are within map bounds
-      if (x < 0 || x >= map.width || y < 0 || y >= map.height) {
+      // Validate coordinates are within map bounds: a cell of its grid (utils/tokenCentre.ts)
+      if (!cellOnMap({ x, y }, map)) {
         socket.emit('error', { message: 'Token position out of bounds' });
         return;
       }
@@ -624,12 +626,12 @@ export function registerTokenHandlers(io: Server, socket: AuthenticatedSocket): 
         const fresh = await tx.map.findUniqueOrThrow({
           where: { id: mapId },
           select: {
-            tokens: true, width: true, height: true, gridSize: true,
+            tokens: true, ...GRID_FRAME_SELECT,
             lightingEnabled: true, wallSegments: true, lights: true, globalIllumination: true,
             campaign: { select: { currentMapId: true } },
           },
         });
-        if (dropX < 0 || dropX >= fresh.width || dropY < 0 || dropY >= fresh.height) return { refused: 'Token position out of bounds' };
+        if (!cellOnMap({ x: dropX, y: dropY }, fresh)) return { refused: 'Token position out of bounds' };
         const tokens = readTokens(fresh.tokens);
         const index = tokens.findIndex((t) => t.id === tokenId);
         if (index === -1) return { refused: 'Token not found' };
@@ -682,9 +684,7 @@ export function registerTokenHandlers(io: Server, socket: AuthenticatedSocket): 
             forRole,
             viewer,
             stored.wallSegments as unknown as WallSegment[],
-            stored.width,
-            stored.height,
-            stored.gridSize,
+            stored,
             true,
             stored.lights,
             stored.globalIllumination

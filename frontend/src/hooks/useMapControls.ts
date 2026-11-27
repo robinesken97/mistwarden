@@ -3,8 +3,9 @@
 // Manages zoom, pan, and coordinate conversions for map canvas
 // ============================================
 
-import { useState, useCallback, useRef } from 'react';
-import { flipGridY } from '@/components/campaign/map/coords';
+import { useState, useCallback, useMemo, useRef } from 'react';
+import { cellAt, cellCentre, cellOnMap, type GridFrame } from '@/utils/tokenCentre';
+import { gridFrame } from '@/components/campaign/map/layers/types';
 
 interface MapControlsConfig {
   /** Grid size in pixels (e.g., 50 means each grid cell is 50x50 pixels at 1x zoom) */
@@ -13,6 +14,10 @@ interface MapControlsConfig {
   mapWidth: number;
   /** Map height in grid cells */
   mapHeight: number;
+  /** The map's grid (utils/tokenCentre.ts); absent means squares from the corner. */
+  gridType?: string;
+  gridOffsetX?: number;
+  gridOffsetY?: number;
   /** Minimum zoom level */
   minZoom?: number;
   /** Maximum zoom level */
@@ -51,6 +56,11 @@ export function useMapControls(config: MapControlsConfig) {
     minZoom = 0.5,
     maxZoom = 3,
   } = config;
+  const { gridType, gridOffsetX, gridOffsetY } = config;
+  const frame: GridFrame = useMemo(
+    () => gridFrame({ width: mapWidth, height: mapHeight, gridSize, gridType, gridOffsetX, gridOffsetY }),
+    [mapWidth, mapHeight, gridSize, gridType, gridOffsetX, gridOffsetY]
+  );
 
   // State
   const [zoom, setZoom] = useState<number>(1);
@@ -246,16 +256,11 @@ export function useMapControls(config: MapControlsConfig) {
       const worldX = (screen.x - panOffset.x) / zoom;
       const worldY = (screen.y - panOffset.y) / zoom;
 
-      // Convert world coordinates to grid coordinates (top-left based)
-      const gridX = Math.floor(worldX / gridSize);
-      const gridYFromTop = Math.floor(worldY / gridSize);
-
-      // Invert Y to use bottom-left origin (the usual VTT convention) — see map/coords.ts
-      const gridY = flipGridY(gridYFromTop, mapHeight);
-
-      return { x: gridX, y: gridY };
+      // The cell under that point, y counted from the bottom (the usual VTT
+      // convention): a square, or the hex whose centre is nearest.
+      return cellAt({ x: worldX, y: worldY }, frame);
     },
-    [zoom, panOffset, gridSize, mapHeight]
+    [zoom, panOffset, frame]
   );
 
   /**
@@ -265,12 +270,10 @@ export function useMapControls(config: MapControlsConfig) {
    */
   const gridToScreen = useCallback(
     (grid: GridCoordinates): ScreenCoordinates => {
-      // Convert bottom-left grid Y to top-left world Y (flipGridY is its own inverse)
-      const gridYFromTop = flipGridY(grid.y, mapHeight);
-
-      // Convert grid coordinates to world coordinates (top-left of cell)
-      const worldX = grid.x * gridSize;
-      const worldY = gridYFromTop * gridSize;
+      // The top-left corner of the cell's box: its centre less half a cell
+      const centre = cellCentre(grid, frame);
+      const worldX = centre.x - gridSize / 2;
+      const worldY = centre.y - gridSize / 2;
 
       // Apply zoom and pan to get screen coordinates
       const screenX = worldX * zoom + panOffset.x;
@@ -278,17 +281,15 @@ export function useMapControls(config: MapControlsConfig) {
 
       return { x: screenX, y: screenY };
     },
-    [zoom, panOffset, gridSize, mapHeight]
+    [zoom, panOffset, gridSize, frame]
   );
 
   /**
    * Check if grid coordinates are within map bounds
    */
   const isWithinBounds = useCallback(
-    (grid: GridCoordinates): boolean => {
-      return grid.x >= 0 && grid.x < mapWidth && grid.y >= 0 && grid.y < mapHeight;
-    },
-    [mapWidth, mapHeight]
+    (grid: GridCoordinates): boolean => cellOnMap(grid, frame),
+    [frame]
   );
 
   /**

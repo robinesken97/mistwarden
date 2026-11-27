@@ -36,6 +36,7 @@
 import { create } from 'zustand';
 import { useStoreWithEqualityFn } from 'zustand/traditional';
 import type { CombatState, Position, Token } from '@/types';
+import type { GridFrame } from '@/utils/tokenCentre';
 import type { CharacterHpInfo } from '@/utils/characterHp';
 import type { Drawing } from '@/types/drawings';
 import { drawingOrder } from '@/components/campaign/map/drawingGeometry';
@@ -186,9 +187,9 @@ interface GameState {
    * (map/mounts.ts shiftFollowers), until their own moves arrive: this
    * screen's drop, whose followers the server moves.
    */
-  holdFollowers: (tokenId: string, position: Position) => void;
+  holdFollowers: (tokenId: string, position: Position, grid?: GridFrame | null) => void;
   /** `token.moved` — a drag frame (`dragging`) or where the token was put down. */
-  receiveTokenMove: (tokenId: string, position: Position, dragging: boolean) => void;
+  receiveTokenMove: (tokenId: string, position: Position, dragging: boolean, grid?: GridFrame | null) => void;
   /**
    * New token placed (REST response or GM action). `mapId`, the map the
    * request named, when given: a token of another map is not added.
@@ -297,13 +298,13 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({ tokens: { ...get().tokens, [tokenId]: { ...token, position } }, heldAt: withoutKey(get().heldAt, tokenId) });
   },
 
-  receiveTokenMove: (tokenId, position, dragging) => {
+  receiveTokenMove: (tokenId, position, dragging, grid) => {
     const token = get().tokens[tokenId];
     if (!token) return;
     // Its mount or riders are drawn the same step further on (map/mounts.ts).
     const from = get().heldAt[tokenId] ?? token.position;
     const follow = () => set((s) => ({
-      heldAt: shiftFollowers(Object.values(s.tokens), s.heldAt, tokenId, position.x - from.x, position.y - from.y, { onlyHeld: !dragging }),
+      heldAt: shiftFollowers(Object.values(s.tokens), s.heldAt, tokenId, position.x - from.x, position.y - from.y, { onlyHeld: !dragging, grid, from }),
     }));
     if (!dragging) {
       get().applyTokenMove(tokenId, position);
@@ -316,10 +317,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     follow();
   },
 
-  holdFollowers: (tokenId, position) => {
+  holdFollowers: (tokenId, position, grid) => {
     const token = get().tokens[tokenId];
     if (!token) return;
-    set((s) => ({ heldAt: shiftFollowers(Object.values(s.tokens), s.heldAt, tokenId, position.x - token.position.x, position.y - token.position.y) }));
+    set((s) => ({ heldAt: shiftFollowers(Object.values(s.tokens), s.heldAt, tokenId, position.x - token.position.x, position.y - token.position.y, { grid, from: token.position }) }));
   },
 
   addToken: (token, mapId) =>

@@ -11,6 +11,8 @@
 // passes a holder), since a cols×rows canvas is cheap but not free.
 // ============================================
 
+import type { FogOrigin } from './coords';
+
 /** Mutable holder for a persistent scratch canvas (a React ref works). */
 export interface ScratchHolder {
   current: HTMLCanvasElement | null;
@@ -28,7 +30,15 @@ export function exploredCellsFromCoverage(
   cols: number,
   rows: number,
   scratch: ScratchHolder,
-  createCanvas: () => HTMLCanvasElement = () => document.createElement('canvas')
+  createCanvas: () => HTMLCanvasElement = () => document.createElement('canvas'),
+  /**
+   * Where fog cell (0, 0) starts and the cell size, in map pixels
+   * (map/coords.ts fogOrigin): the coverage, which spans the frame, is
+   * drawn shifted back by it, so each scratch pixel is one cell. The strips
+   * along the edges the shift leaves out count towards no cell.
+   */
+  origin: FogOrigin = {},
+  cellPx = 1
 ): Set<number> | null {
   if (cols <= 0 || rows <= 0) return new Set();
   if (!scratch.current || scratch.current.width !== cols || scratch.current.height !== rows) {
@@ -40,7 +50,7 @@ export function exploredCellsFromCoverage(
   if (!ctx) return null;
   ctx.clearRect(0, 0, cols, rows);
   ctx.imageSmoothingEnabled = true;
-  ctx.drawImage(coverage, 0, 0, cols, rows);
+  ctx.drawImage(coverage, -(origin.originX ?? 0) / cellPx, -(origin.originY ?? 0) / cellPx, cols, rows);
   const { data } = ctx.getImageData(0, 0, cols, rows);
   const cells = new Set<number>();
   for (let i = 0; i < cols * rows; i++) {

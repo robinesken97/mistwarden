@@ -7,7 +7,13 @@
 //
 //   Token cells: whole squares, origin at the BOTTOM-LEFT, x to the right,
 //   y UP. A token's position is its bottom-left square; it covers `size`
-//   squares to the right and upward.
+//   squares to the right and upward. The grid starts at (gridOffsetX,
+//   gridOffsetY) map pixels, taken within half a square of the corner, and
+//   fog squares with it (backend/src/utils/tokenCentre.ts squareOrigin).
+//
+//   A hex map (gridType hexPointy or hexFlat) numbers its hexes otherwise
+//   (backend/src/utils/tokenCentre.ts); the helpers here that turn squares
+//   into cells refuse it rather than place a token on the wrong hex.
 
 export const LIMITS = { minSide: 1, maxSide: 500, minGrid: 10, maxGrid: 500 } as const;
 
@@ -15,10 +21,31 @@ export interface MapGrid {
   width: number;
   height: number;
   gridSize: number;
+  gridType?: string;
+  gridOffsetX?: number;
+  gridOffsetY?: number;
+}
+
+export function isHexMap(map: { gridType?: string }): boolean {
+  return map.gridType === 'hexPointy' || map.gridType === 'hexFlat';
+}
+
+/** Where square cell (0, 0) and fog cell (0, 0) start: the offset within half a square of the corner. */
+export function squareOrigin(map: MapGrid): { x: number; y: number } {
+  const half = (v: number | undefined) => (v ?? 0) - map.gridSize * Math.round((v ?? 0) / map.gridSize);
+  return { x: half(map.gridOffsetX), y: half(map.gridOffsetY) };
+}
+
+/** Refuses a hex map for the square-cell helpers below. */
+function squaresOnly(map: { gridType?: string }): void {
+  if (isHexMap(map)) {
+    throw new RangeError('This map has a hex grid: give token positions as its hexes, origin bottom-left, as get_map lists them.');
+  }
 }
 
 /** Bottom-left cell of a token from its top-left square counted from the top row (0). */
-export function cellFromTop(column: number, rowFromTop: number, size: number, mapHeight: number): { x: number; y: number } {
+export function cellFromTop(column: number, rowFromTop: number, size: number, mapHeight: number, map: { gridType?: string } = {}): { x: number; y: number } {
+  squaresOnly(map);
   return { x: column, y: mapHeight - rowFromTop - size };
 }
 
@@ -29,7 +56,9 @@ export function topRowOf(y: number, size: number, mapHeight: number): number {
 
 /** Bottom-left cell of the square holding a map-pixel point (top-left origin). */
 export function cellAtPixel(px: number, py: number, map: MapGrid): { x: number; y: number } {
-  return { x: Math.floor(px / map.gridSize), y: map.height - 1 - Math.floor(py / map.gridSize) };
+  squaresOnly(map);
+  const o = squareOrigin(map);
+  return { x: Math.floor((px - o.x) / map.gridSize), y: map.height - 1 - Math.floor((py - o.y) / map.gridSize) };
 }
 
 /**
@@ -66,11 +95,13 @@ export function gridForPicture(
  */
 export function fogCellsInRect(map: MapGrid, rect: { x: number; y: number; width: number; height: number }): number[] {
   const g = map.gridSize;
+  // Fog squares start at the grid's origin; the edge squares reach the frame's edges.
+  const o = squareOrigin(map);
   const clamp = (v: number, max: number) => Math.min(Math.max(v, 0), max);
-  const col0 = clamp(Math.floor(rect.x / g), map.width - 1);
-  const col1 = clamp(Math.ceil((rect.x + rect.width) / g) - 1, map.width - 1);
-  const row0 = clamp(Math.floor(rect.y / g), map.height - 1);
-  const row1 = clamp(Math.ceil((rect.y + rect.height) / g) - 1, map.height - 1);
+  const col0 = clamp(Math.floor((rect.x - o.x) / g), map.width - 1);
+  const col1 = clamp(Math.ceil((rect.x + rect.width - o.x) / g) - 1, map.width - 1);
+  const row0 = clamp(Math.floor((rect.y - o.y) / g), map.height - 1);
+  const row1 = clamp(Math.ceil((rect.y + rect.height - o.y) / g) - 1, map.height - 1);
   if (rect.width <= 0 || rect.height <= 0 || rect.x >= map.width * g || rect.y >= map.height * g || rect.x + rect.width <= 0 || rect.y + rect.height <= 0) {
     return [];
   }

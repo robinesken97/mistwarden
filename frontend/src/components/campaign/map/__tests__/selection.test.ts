@@ -15,6 +15,7 @@ import {
   settleArrowEcho,
   type ArrowKey,
 } from '../selection';
+import { cellCentre, cellOnMap } from '@/utils/tokenCentre';
 import type { CombatState, Token } from '@/types';
 import { TokenLayer, TokenType } from '@/types';
 
@@ -111,6 +112,43 @@ describe('the next token selected', () => {
   it('is nothing when there is nothing to select', () => {
     expect(nextSelectedId([], null, 1)).toBeNull();
     expect(nextSelectedId([], 'a', -1)).toBeNull();
+  });
+});
+
+describe('the hex an arrow key moves a token to', () => {
+  const one = { width: 1, height: 1 };
+  it.each(['hexPointy', 'hexFlat'])('on a %s map is always a neighbour, gridSize from where it stood', (gridType) => {
+    const map = { width: 10, height: 10, gridSize: 50, gridType };
+    const frame = { ...map, gridOffsetX: 0, gridOffsetY: 0 };
+    for (const key of ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'] as const) {
+      for (const from of [{ x: 4, y: 4 }, { x: 4, y: 5 }, { x: 3, y: 6 }]) {
+        const to = squareFromArrow(from, one, key, 1, map);
+        const a = cellCentre(from, frame);
+        const b = cellCentre(to, frame);
+        expect(Math.hypot(b.x - a.x, b.y - a.y)).toBeCloseTo(50, 6);
+        expect(cellOnMap(to, frame)).toBe(true);
+      }
+    }
+  });
+
+  it('on pointy hexes keeps to its column, Up falling half a hex left and right by turns', () => {
+    const map = { width: 10, height: 10, gridSize: 50, gridType: 'hexPointy' };
+    const frame = { ...map, gridOffsetX: 0, gridOffsetY: 0 };
+    let at = { x: 4, y: 2 };
+    const xs = [cellCentre(at, frame).x];
+    for (let i = 0; i < 4; i++) {
+      at = squareFromArrow(at, one, 'ArrowUp', 1, map);
+      xs.push(cellCentre(at, frame).x);
+    }
+    expect(new Set(xs).size).toBe(2);
+    expect(Math.max(...xs) - Math.min(...xs)).toBe(25);
+  });
+
+  it('stops on the nearest hex on the map at its edge', () => {
+    const map = { width: 10, height: 10, gridSize: 50, gridType: 'hexPointy' };
+    const frame = { ...map, gridOffsetX: 0, gridOffsetY: 0 };
+    const to = squareFromArrow({ x: 9, y: 0 }, one, 'ArrowRight', 1, map);
+    expect(cellOnMap(to, frame)).toBe(true);
   });
 });
 

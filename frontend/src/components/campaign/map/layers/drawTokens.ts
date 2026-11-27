@@ -10,8 +10,8 @@ import { TOKEN_HUES, HP_HUES, TEMP_HP_FILL, hpTier, hueColour, tokenKind } from 
 import type { Token } from '@/types';
 import { TokenLayer, TokenType, TokenDisposition } from '@/types';
 import type { CharacterHpInfo } from '@/utils/characterHp';
-import type { TokenAnimation, Viewport } from './types';
-import { gridYToTopPx } from '../coords';
+import { viewportFrame, type TokenAnimation, type Viewport } from './types';
+import { tokenCentre } from '@/utils/tokenCentre';
 import { conditionAbbreviation, MAX_CONDITION_BADGES } from '@/utils/conditions';
 import { isTokenDowned, isTokenVisibleTo, visibleTokenHp } from '../tokenHitTest';
 import { facing } from '@/utils/tokenRotation';
@@ -215,6 +215,7 @@ export function drawTokens(
   viewport: Viewport
 ): void {
   const { zoom, gridSize, mapWidth, mapHeight } = viewport;
+  const frame = viewportFrame(viewport);
   const { isGM } = state;
 
   // Who can see what — shared with hit testing, so the lower-left panel can no
@@ -226,6 +227,7 @@ export function drawTokens(
     gmShowSpiritTokens: state.gmShowSpiritTokens,
     mapWidth,
     mapHeight,
+    grid: frame,
   };
 
   /** Whether the loop drew the held token, on its own square. */
@@ -247,28 +249,28 @@ export function drawTokens(
     // Check if token is animating
     const animation = state.animatingTokens.get(token.id);
     const at = state.heldAt[token.id] ?? token.position;
-    let posX = at.x;
-    let posY = at.y;
+    // Grid coordinates → world coordinates: the centre of its box, or of its
+    // hex (utils/tokenCentre.ts). A tween runs between the two centres, so on
+    // a hex map it slides rather than passing between rows.
+    let centre = tokenCentre({ position: at, size: token.size }, frame);
 
     if (animation) {
       const elapsed = state.now - animation.startTime;
       const progress = Math.min(elapsed / animation.duration, 1);
       const eased = 1 - Math.pow(1 - progress, 3);
-      posX = animation.fromX + (animation.toX - animation.fromX) * eased;
-      posY = animation.fromY + (animation.toY - animation.fromY) * eased;
+      const from = tokenCentre({ position: { x: animation.fromX, y: animation.fromY }, size: token.size }, frame);
+      const to = tokenCentre({ position: { x: animation.toX, y: animation.toY }, size: token.size }, frame);
+      centre = { x: from.x + (to.x - from.x) * eased, y: from.y + (to.y - from.y) * eased };
     }
-
-    // Grid coordinates → world coordinates. position is the bottom-left grid
-    // cell; the token extends upward in grid-Y. See map/coords.ts.
-    const tokenX = posX * gridSize;
-    const tokenY = gridYToTopPx(posY, token.size.height, mapHeight, gridSize);
 
     const tokenWidth = token.size.width * gridSize;
     const tokenHeight = token.size.height * gridSize;
+    const tokenX = centre.x - tokenWidth / 2;
+    const tokenY = centre.y - tokenHeight / 2;
 
     const displayMode = token.displayMode || 'pog';
-    const centerX = tokenX + tokenWidth / 2;
-    const centerY = tokenY + tokenHeight / 2;
+    const centerX = centre.x;
+    const centerY = centre.y;
     const radius = Math.min(tokenWidth, tokenHeight) / 2;
 
     // Hidden tokens shown to GM at 50% opacity
@@ -602,13 +604,11 @@ export function drawTokens(
   if (state.draggedToken && state.heldDrawnAt && !heldDrawn) {
     const draggedToken = state.draggedToken;
     const tokenImg = cachedTokenImage(draggedToken, state.tokenImages);
-    const ghostX = state.heldDrawnAt.x * gridSize;
-    const ghostY = gridYToTopPx(state.heldDrawnAt.y, draggedToken.size.height, mapHeight, gridSize);
-
     const ghostW = draggedToken.size.width * gridSize;
     const ghostH = draggedToken.size.height * gridSize;
-    const ghostCX = ghostX + ghostW / 2;
-    const ghostCY = ghostY + ghostH / 2;
+    const { x: ghostCX, y: ghostCY } = tokenCentre({ position: state.heldDrawnAt, size: draggedToken.size }, frame);
+    const ghostX = ghostCX - ghostW / 2;
+    const ghostY = ghostCY - ghostH / 2;
     const ghostR = Math.min(ghostW, ghostH) / 2;
     const ghostDisplayMode = draggedToken.displayMode || 'pog';
 

@@ -7,7 +7,8 @@
 // ============================================
 
 import type { FogState } from '@/types/walls';
-import type { Viewport } from './types';
+import { viewportFrame, type Viewport } from './types';
+import { fogCellBox, fogOrigin, type FogOrigin } from '../coords';
 
 export interface FogDrawState {
   isGM: boolean;
@@ -110,12 +111,20 @@ function fillMist(ctx: CanvasRenderingContext2D, time: number, opacity: number, 
   return true;
 }
 
+/** A fog grid's cells and where they start (map/coords.ts fogCellBox). */
+type FogCells = { fogCols: number; fogRows: number; cellPx: number } & FogOrigin;
+
+/** Fill or outline one cell's box. */
+function cellRect(ctx: CanvasRenderingContext2D, idx: number, fog: FogCells, fill = false): void {
+  const b = fogCellBox(idx % fog.fogCols, Math.floor(idx / fog.fogCols), fog);
+  if (fill) ctx.fillRect(b.x, b.y, b.w, b.h);
+  else ctx.rect(b.x, b.y, b.w, b.h);
+}
+
 /** The outline of whole cells as one path (see fillCells). */
-function cellsPath(ctx: CanvasRenderingContext2D, cells: readonly number[], cols: number, cellPx: number): void {
+function cellsPath(ctx: CanvasRenderingContext2D, cells: readonly number[], fog: FogCells): void {
   ctx.beginPath();
-  for (const idx of cells) {
-    ctx.rect((idx % cols) * cellPx, Math.floor(idx / cols) * cellPx, cellPx, cellPx);
-  }
+  for (const idx of cells) cellRect(ctx, idx, fog);
 }
 
 /**
@@ -131,14 +140,17 @@ export function addFogFillets(
   cols: number,
   rows: number,
   cellPx: number,
-  exempt?: ReadonlySet<number>
+  exempt?: ReadonlySet<number>,
+  origin: FogOrigin = {}
 ): void {
   const h = cellPx / 2;
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       if (isHidden(col, row) || exempt?.has(row * cols + col)) continue;
-      const x = col * cellPx;
-      const y = row * cellPx;
+      // The corners of the cell's square; an edge cell's outer corners have
+      // no hidden neighbour to round towards, so its own box does not matter.
+      const x = (origin.originX ?? 0) + col * cellPx;
+      const y = (origin.originY ?? 0) + row * cellPx;
       const up = isHidden(col, row - 1);
       const down = isHidden(col, row + 1);
       const left = isHidden(col - 1, row);
@@ -161,12 +173,10 @@ export function addFogFillets(
  * hairline: the walls and the grid, which lie on those edges. One path holds
  * no edge between neighbouring cells.
  */
-function fillCells(ctx: CanvasRenderingContext2D, cells: readonly number[], cols: number, cellPx: number, style: string): void {
+function fillCells(ctx: CanvasRenderingContext2D, cells: readonly number[], fog: FogCells, style: string): void {
   if (cells.length === 0) return;
   ctx.beginPath();
-  for (const idx of cells) {
-    ctx.rect((idx % cols) * cellPx, Math.floor(idx / cols) * cellPx, cellPx, cellPx);
-  }
+  for (const idx of cells) cellRect(ctx, idx, fog);
   ctx.fillStyle = style;
   ctx.fill();
 }
@@ -176,9 +186,12 @@ export function drawFog(
   state: FogDrawState,
   viewport: Viewport
 ): void {
+  // Fog cells start at the grid's offset, within half a square of the corner (map/coords.ts).
+  const origin = fogOrigin(viewportFrame(viewport));
   // GM fog (semi-transparent, from full fogState)
   if (state.isGM && state.fogState) {
     const { fogCols, fogRows, cellPx, revealed } = state.fogState;
+    const cells: FogCells = { fogCols, fogRows, cellPx, ...origin };
     ctx.save();
     const hidden: number[] = [];
     for (let row = 0; row < fogRows; row++) {
@@ -188,22 +201,22 @@ export function drawFog(
         const fade = state.revealOpacity.get(idx);
         if (fade === undefined) continue;
         ctx.fillStyle = `rgba(15, 12, 25, ${0.55 * fade})`;
-        ctx.fillRect(col * cellPx, row * cellPx, cellPx, cellPx);
+        cellRect(ctx, idx, cells, true);
       }
     }
     // Deep dark purple, semi-transparent for the GM
     if (state.mistTime !== undefined && hidden.length > 0) {
       const isHidden = (c: number, r: number) => c >= 0 && r >= 0 && c < fogCols && r < fogRows && !revealed[r * fogCols + c];
-      cellsPath(ctx, hidden, fogCols, cellPx);
-      addFogFillets(ctx, isHidden, fogCols, fogRows, cellPx);
+      cellsPath(ctx, hidden, cells);
+      addFogFillets(ctx, isHidden, fogCols, fogRows, cellPx, undefined, origin);
       ctx.fillStyle = 'rgba(15, 12, 25, 0.55)';
       ctx.fill();
     } else {
-      fillCells(ctx, hidden, fogCols, cellPx, 'rgba(15, 12, 25, 0.55)');
+      fillCells(ctx, hidden, cells, 'rgba(15, 12, 25, 0.55)');
     }
     // Mistwarden: the same mist, still and faint, so the GM sees what the table sees without losing the map.
     if (state.mistTime !== undefined && hidden.length > 0) {
-      cellsPath(ctx, hidden, fogCols, cellPx);
+      cellsPath(ctx, hidden, cells);
       fillMist(ctx, 0, 0.6, viewport.zoom);
     }
     ctx.restore();
@@ -214,6 +227,7 @@ export function drawFog(
     const cellPx = viewport.gridSize;
     const fogCols = viewport.mapWidth;
     const fogRows = viewport.mapHeight;
+    const cells: FogCells = { fogCols, fogRows, cellPx, ...origin };
     ctx.save();
     const hidden: number[] = [];
     for (let row = 0; row < fogRows; row++) {
@@ -224,14 +238,14 @@ export function drawFog(
         const fade = state.revealOpacity.get(idx);
         if (fade === undefined) continue;
         ctx.fillStyle = `rgba(15, 12, 25, ${fade})`;
-        ctx.fillRect(col * cellPx, row * cellPx, cellPx, cellPx);
+        cellRect(ctx, idx, cells, true);
       }
     }
     if (state.mistTime !== undefined && hidden.length > 0 && mistTileCanvas()) {
       // Mistwarden: opaque fill whose shadow softens the edge outward, then the mist on top.
       const hiddenSet = new Set(hidden);
-      cellsPath(ctx, hidden, fogCols, cellPx);
-      addFogFillets(ctx, (c, r) => c >= 0 && r >= 0 && c < fogCols && r < fogRows && hiddenSet.has(r * fogCols + c), fogCols, fogRows, cellPx, state.exemptCells);
+      cellsPath(ctx, hidden, cells);
+      addFogFillets(ctx, (c, r) => c >= 0 && r >= 0 && c < fogCols && r < fogRows && hiddenSet.has(r * fogCols + c), fogCols, fogRows, cellPx, state.exemptCells, origin);
       ctx.shadowColor = 'rgba(15, 12, 25, 0.95)';
       // shadowBlur counts canvas pixels and ignores the transform: scale by it (zoom and the screen's density).
       const scale = typeof ctx.getTransform === 'function' ? Math.abs(ctx.getTransform().a) : viewport.zoom;
@@ -242,7 +256,7 @@ export function drawFog(
       ctx.shadowColor = 'transparent';
       fillMist(ctx, state.mistTime ?? 0, 0.75, viewport.zoom);
     } else {
-      fillCells(ctx, hidden, fogCols, cellPx, 'rgba(15, 12, 25, 1)');
+      fillCells(ctx, hidden, cells, 'rgba(15, 12, 25, 1)');
     }
     ctx.restore();
   }

@@ -40,7 +40,7 @@ function wallAt(x: number, type: WallSegment['type'] = 'wall'): WallSegment {
 /** Which tokens the player is sent from one read of the map: fresh arrays every time, as a read gives. */
 function sent(walls: WallSegment[], lights: LightSource[]): string[] {
   const read = JSON.parse(JSON.stringify({ walls, lights })) as { walls: unknown; lights: unknown };
-  return filterTokensByLighting(tokens, 'p1', read.walls, SIZE, SIZE, GRID, true, read.lights, false).map((t) => t.id).sort();
+  return filterTokensByLighting(tokens, 'p1', read.walls, { width: SIZE, height: SIZE, gridSize: GRID, gridType: 'square', gridOffsetX: 0, gridOffsetY: 0 }, true, read.lights, false).map((t) => t.id).sort();
 }
 
 let reaches: jest.SpyInstance;
@@ -101,7 +101,7 @@ describe('a light\'s reach across reads of the map', () => {
     sent(walls, [{ ...light('torch', 1300), dimRadius: 5 }]);
     expect(lightsRaycast()).toBe(before + 1);
     const read = JSON.parse(JSON.stringify({ walls, lights: [light('torch', 1300)] })) as { walls: unknown; lights: unknown };
-    filterTokensByLighting(tokens, 'p1', read.walls, SIZE + 1, SIZE, GRID, true, read.lights, false);
+    filterTokensByLighting(tokens, 'p1', read.walls, { width: SIZE + 1, height: SIZE, gridSize: GRID, gridType: 'square', gridOffsetX: 0, gridOffsetY: 0 }, true, read.lights, false);
     expect(lightsRaycast()).toBe(before + 2);
   });
 });

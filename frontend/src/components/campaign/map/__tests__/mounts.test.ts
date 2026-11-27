@@ -7,6 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import { TokenLayer, TokenType, type Token } from '@/types';
 import { coupledIds, mountCandidates, ridersAfterMounts, keepCoupledOnMap, shiftFollowers } from '../mounts';
+import { cellCentre, nearestHexOnMap } from '@/utils/tokenCentre';
 
 function token(id: string, extra: Partial<Token> = {}): Token {
   return {
@@ -65,5 +66,20 @@ describe('map/mounts', () => {
   it('never moves a follower this screen was not sent: a rider whose mount it is not sent names none', () => {
     const hiddenMountRider = token('rider', { position: { x: 2, y: 2 } });
     expect(shiftFollowers([hiddenMountRider, wolf], {}, 'rider', 3, 1)).toEqual({});
+  });
+
+  it('on a hex map draws a follower the same step on the lattice, not the same change of position', () => {
+    const grid = { width: 10, height: 10, gridSize: 50, gridType: 'hexPointy', gridOffsetX: 0, gridOffsetY: 0 };
+    const pony = token('pony', { position: { x: 4, y: 4 } });
+    const beside = token('beside', { position: { x: 5, y: 4 }, mountedOn: 'pony' });
+    // One row up: stored x stays, the row shifts half a hex.
+    const held = shiftFollowers([pony, beside], {}, 'pony', 0, 1, { grid, from: pony.position });
+    const step = (a: { x: number; y: number }, b: { x: number; y: number }) => {
+      const pa = cellCentre(a, grid);
+      const pb = cellCentre(b, grid);
+      return [pb.x - pa.x, pb.y - pa.y];
+    };
+    expect(step(beside.position, held.beside)).toEqual(step(pony.position, { x: 4, y: 5 }));
+    expect(keepCoupledOnMap([pony, beside], pony, { x: 30, y: 4 }, grid)).toEqual(nearestHexOnMap({ x: 30, y: 4 }, grid));
   });
 });

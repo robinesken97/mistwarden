@@ -11,6 +11,7 @@
 import { TOKEN_HUES, hueColour } from '@/utils/tokenColours';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { drawGrid } from '../layers/drawGrid';
+import { cellCentre, cellOnMap } from '@/utils/tokenCentre';
 import { drawFog } from '../layers/drawFog';
 import { drawTokens, placeholderColor, type TokenDrawState } from '../layers/drawTokens';
 import { drawWalls } from '../layers/drawWalls';
@@ -153,13 +154,61 @@ const fakeImage = {} as HTMLImageElement;
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 describe('drawGrid', () => {
-  it('draws one line per grid boundary (N+1 vertical + N+1 horizontal)', () => {
+  it('draws one line per grid boundary (N+1 vertical + N+1 horizontal), stroked once', () => {
     const ctx = makeMockCtx();
     drawGrid(ctx, { gridColor: 'black' }, viewport3x3);
     // 3×3 map → 4 vertical + 4 horizontal lines
     expect(count(ctx, 'moveTo')).toBe(8);
     expect(count(ctx, 'lineTo')).toBe(8);
-    expect(count(ctx, 'stroke')).toBe(8);
+    expect(count(ctx, 'stroke')).toBe(1);
+  });
+
+  it('moves the lines by the offset, within the frame', () => {
+    const ctx = makeMockCtx();
+    drawGrid(ctx, { gridColor: 'black' }, { ...viewport3x3, gridOffsetX: 10, gridOffsetY: 40 });
+    const starts = ctx.calls.filter((c) => c.method === 'moveTo').map((c) => c.args as [number, number]);
+    // x lines at 10, 60, 110; y lines at -10 (outside), 40, 90, 140
+    expect(starts.filter(([, y]) => y === 0).map(([x]) => x)).toEqual([10, 60, 110]);
+    expect(starts.filter(([x]) => x === 0).map(([, y]) => y)).toEqual([40, 90, 140]);
+  });
+
+  it('draws only the lines on screen', () => {
+    const ctx = makeMockCtx();
+    drawGrid(ctx, { gridColor: 'black', visible: { minX: 60, minY: -20, maxX: 140, maxY: 40 } }, viewport3x3);
+    const starts = ctx.calls.filter((c) => c.method === 'moveTo').map((c) => c.args as [number, number]);
+    expect(starts).toEqual([[100, 0], [60, 0]]);
+  });
+
+  // Every edge of every hex on screen, and none twice: a segment drawn twice
+  // shows darker where the grid's colour is see-through.
+  it.each(['hexPointy', 'hexFlat'])('draws each edge of a %s grid once', (gridType) => {
+    const ctx = makeMockCtx();
+    const viewport: Viewport = { ...viewport3x3, mapWidth: 6, mapHeight: 5, gridType, gridOffsetX: 7, gridOffsetY: -3 };
+    drawGrid(ctx, { gridColor: 'black' }, viewport);
+    expect(count(ctx, 'clip')).toBe(1);
+    expect(count(ctx, 'stroke')).toBe(1);
+    const key = (a: number[], b: number[]) => [a, b].map((p) => p.map((n) => n.toFixed(3)).join(',')).sort().join('|');
+    const segments: string[] = [];
+    let at: number[] = [];
+    for (const c of ctx.calls) {
+      if (c.method === 'moveTo') at = c.args as number[];
+      if (c.method === 'lineTo') { segments.push(key(at, c.args as number[])); at = c.args as number[]; }
+    }
+    expect(new Set(segments).size).toBe(segments.length);
+    const frame = { width: 6, height: 5, gridSize: 50, gridType, gridOffsetX: 7, gridOffsetY: -3 };
+    const drawn = new Set(segments);
+    const r = 50 / Math.sqrt(3);
+    for (let x = 0; x < 12; x++) {
+      for (let y = 0; y < 12; y++) {
+        if (!cellOnMap({ x, y }, frame)) continue;
+        const c = cellCentre({ x, y }, frame);
+        const corner = (k: number) => {
+          const angle = (Math.PI / 3) * k + (gridType === 'hexPointy' ? Math.PI / 6 : 0);
+          return [c.x + r * Math.cos(angle), c.y + r * Math.sin(angle)];
+        };
+        for (let k = 0; k < 6; k++) expect(drawn.has(key(corner(k), corner(k + 1)))).toBe(true);
+      }
+    }
   });
 });
 

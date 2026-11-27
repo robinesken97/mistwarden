@@ -42,12 +42,13 @@ function makeWall(id: string, x1: number, y1: number, x2: number, y2: number): W
 const MAP_WIDTH = 10;
 const MAP_HEIGHT = 10;
 const GRID_SIZE = 100;
+const FRAME = { width: MAP_WIDTH, height: MAP_HEIGHT, gridSize: GRID_SIZE, gridType: 'square', gridOffsetX: 0, gridOffsetY: 0 };
 const NO_WALLS: WallSegment[] = [];
 
 describe('filterTokensByLighting', () => {
   it('returns all tokens when lightingEnabled is false', () => {
     const tokens = [makeToken('a', 2, 2), makeToken('b', 7, 7)];
-    const result = filterTokensByLighting(tokens, 'user1', NO_WALLS, MAP_WIDTH, MAP_HEIGHT, GRID_SIZE, false);
+    const result = filterTokensByLighting(tokens, 'user1', NO_WALLS, FRAME, false);
     expect(result).toHaveLength(2);
   });
 
@@ -56,8 +57,8 @@ describe('filterTokensByLighting', () => {
     // viewer, and a token-less player learning positions was a leak.
     const tokens = [makeToken('a', 2, 2), { ...makeToken('b', 5, 5), visible: false }];
     const lights = [{ id: 'l', x: 250, y: 750, brightRadius: 3, dimRadius: 6, enabled: true }];
-    expect(filterTokensByLighting(tokens, 'user-nobody', NO_WALLS, MAP_WIDTH, MAP_HEIGHT, GRID_SIZE, true, lights)).toEqual([]);
-    expect(filterTokensByLighting(tokens, 'user-nobody', NO_WALLS, MAP_WIDTH, MAP_HEIGHT, GRID_SIZE, true, undefined, true)).toEqual([]);
+    expect(filterTokensByLighting(tokens, 'user-nobody', NO_WALLS, FRAME, true, lights)).toEqual([]);
+    expect(filterTokensByLighting(tokens, 'user-nobody', NO_WALLS, FRAME, true, undefined, true)).toEqual([]);
   });
 
   it('always includes the player\'s own token regardless of sight', () => {
@@ -67,7 +68,7 @@ describe('filterTokensByLighting', () => {
     const farToken = makeToken('far', 8, 8);
     const tokens = [playerToken, farToken];
 
-    const result = filterTokensByLighting(tokens, 'user1', NO_WALLS, MAP_WIDTH, MAP_HEIGHT, GRID_SIZE, true);
+    const result = filterTokensByLighting(tokens, 'user1', NO_WALLS, FRAME, true);
     // Own token always included
     expect(result.some((t) => t.id === 'mine')).toBe(true);
   });
@@ -78,7 +79,7 @@ describe('filterTokensByLighting', () => {
     const nearbyToken = makeToken('nearby', 5, 4);
     const tokens = [playerToken, nearbyToken];
 
-    const result = filterTokensByLighting(tokens, 'user1', NO_WALLS, MAP_WIDTH, MAP_HEIGHT, GRID_SIZE, true, undefined, true);
+    const result = filterTokensByLighting(tokens, 'user1', NO_WALLS, FRAME, true, undefined, true);
     expect(result.some((t) => t.id === 'nearby')).toBe(true);
   });
 
@@ -86,7 +87,7 @@ describe('filterTokensByLighting', () => {
     const playerToken = makeToken('player', 4, 4, 'user1', 0);
     const nearbyToken = makeToken('nearby', 5, 4);
 
-    const result = filterTokensByLighting([playerToken, nearbyToken], 'user1', NO_WALLS, MAP_WIDTH, MAP_HEIGHT, GRID_SIZE, true);
+    const result = filterTokensByLighting([playerToken, nearbyToken], 'user1', NO_WALLS, FRAME, true);
     expect(result.some((t) => t.id === 'nearby')).toBe(false);
   });
 
@@ -103,9 +104,7 @@ describe('filterTokensByLighting', () => {
       [playerToken, blockedToken],
       'user1',
       [wall],
-      MAP_WIDTH,
-      MAP_HEIGHT,
-      GRID_SIZE,
+      FRAME,
       true,
       undefined,
       true // global illumination: the wall alone must do the hiding
@@ -127,9 +126,7 @@ describe('filterTokensByLighting', () => {
       [playerToken, otherToken],
       'user1',
       [openDoor],
-      MAP_WIDTH,
-      MAP_HEIGHT,
-      GRID_SIZE,
+      FRAME,
       true,
       undefined,
       true
@@ -169,7 +166,7 @@ describe('filterTokensByLighting', () => {
       const inRoom = makeToken('inRoom', 6, 3); // inside the walls, fully lit
 
       const result = filterTokensByLighting(
-        [player, inRoom], 'user1', sealedRoom(), MAP_WIDTH, MAP_HEIGHT, GRID_SIZE, true, roomLight
+        [player, inRoom], 'user1', sealedRoom(), FRAME, true, roomLight
       );
 
       expect(result.some((t) => t.id === 'inRoom')).toBe(false);
@@ -183,7 +180,7 @@ describe('filterTokensByLighting', () => {
       const inRoom = makeToken('inRoom', 7, 2);
 
       const result = filterTokensByLighting(
-        [player, inRoom], 'user1', sealedRoom(), MAP_WIDTH, MAP_HEIGHT, GRID_SIZE, true, roomLight
+        [player, inRoom], 'user1', sealedRoom(), FRAME, true, roomLight
       );
 
       expect(result.some((t) => t.id === 'inRoom')).toBe(true);
@@ -194,7 +191,7 @@ describe('filterTokensByLighting', () => {
       const inRoom = makeToken('inRoom', 6, 3);
 
       const result = filterTokensByLighting(
-        [player, inRoom], 'user1', sealedRoom(true), MAP_WIDTH, MAP_HEIGHT, GRID_SIZE, true, roomLight
+        [player, inRoom], 'user1', sealedRoom(true), FRAME, true, roomLight
       );
 
       expect(result.some((t) => t.id === 'inRoom')).toBe(true);
@@ -207,7 +204,7 @@ describe('filterTokensByLighting', () => {
       const openLight = [{ id: 'l2', x: 300, y: 450, brightRadius: 3, dimRadius: 5, enabled: true }];
 
       const result = filterTokensByLighting(
-        [player, lit], 'user1', NO_WALLS, MAP_WIDTH, MAP_HEIGHT, GRID_SIZE, true, openLight
+        [player, lit], 'user1', NO_WALLS, FRAME, true, openLight
       );
 
       expect(result.some((t) => t.id === 'lit')).toBe(true);
@@ -288,14 +285,14 @@ describe('filterTokensByLighting', () => {
       const viewer = makeToken('viewer', 0, 5, 'user1', 12);
       const near = makeToken('near', 10, 5); // 10 squares off
       const far = makeToken('far', 14, 5);   // 14 squares off
-      const out = filterTokensByLighting([viewer, near, far], 'user1', NO_WALLS, W, H, GRID_SIZE, true);
+      const out = filterTokensByLighting([viewer, near, far], 'user1', NO_WALLS, { ...FRAME, width: W, height: H }, true);
       expect(out.map((t) => t.id)).toEqual(['viewer', 'near']);
     });
 
     it('a radius of 0 means none: nothing unlit is sent', () => {
       const viewer = makeToken('viewer', 2, 2, 'user1', 0);
       const next = makeToken('next', 3, 2);
-      const out = filterTokensByLighting([viewer, next], 'user1', NO_WALLS, MAP_WIDTH, MAP_HEIGHT, GRID_SIZE, true);
+      const out = filterTokensByLighting([viewer, next], 'user1', NO_WALLS, FRAME, true);
       expect(out.map((t) => t.id)).toEqual(['viewer']);
     });
 
@@ -303,7 +300,7 @@ describe('filterTokensByLighting', () => {
       const viewer = makeToken('viewer', 0, 5, 'user1', 2);
       const lit = makeToken('lit', 8, 5); // centre px (850, 1450) on a 20-high map
       const light = [{ id: 'l', x: 850, y: 1450, brightRadius: 2, dimRadius: 3, enabled: true }];
-      const out = filterTokensByLighting([viewer, lit], 'user1', NO_WALLS, W, H, GRID_SIZE, true, light);
+      const out = filterTokensByLighting([viewer, lit], 'user1', NO_WALLS, { ...FRAME, width: W, height: H }, true, light);
       expect(out.map((t) => t.id)).toEqual(['viewer', 'lit']);
     });
 
@@ -315,14 +312,14 @@ describe('filterTokensByLighting', () => {
       const viewer = makeToken('viewer', 2, 14, 'user1', 0);
       const lit = makeToken('lit', 12, 14);
       const light = [{ id: 'l', x: 500, y: 500, brightRadius: 4, dimRadius: 8, enabled: true }];
-      const out = filterTokensByLighting([viewer, lit], 'user1', NO_WALLS, W, H, GRID_SIZE, true, light);
+      const out = filterTokensByLighting([viewer, lit], 'user1', NO_WALLS, { ...FRAME, width: W, height: H }, true, light);
       expect(out.map((t) => t.id)).toEqual(['viewer', 'lit']);
     });
 
     it('with global illumination on, everything in line of sight is sent', () => {
       const viewer = makeToken('viewer', 0, 5, 'user1', 0);
       const far = makeToken('far', 19, 5);
-      const out = filterTokensByLighting([viewer, far], 'user1', NO_WALLS, W, H, GRID_SIZE, true, undefined, true);
+      const out = filterTokensByLighting([viewer, far], 'user1', NO_WALLS, { ...FRAME, width: W, height: H }, true, undefined, true);
       expect(out.map((t) => t.id)).toEqual(['viewer', 'far']);
     });
   });
@@ -342,9 +339,7 @@ describe('filterTokensByLighting', () => {
       [leftToken, rightToken, leftNPC, rightNPC],
       'user1',
       [wall],
-      MAP_WIDTH,
-      MAP_HEIGHT,
-      GRID_SIZE,
+      FRAME,
       true,
       undefined,
       true
@@ -525,6 +520,9 @@ describe('filterMapData on a whole map', () => {
     width: 20,
     height: 10,
     gridSize: 50,
+    gridType: 'square',
+    gridOffsetX: 0,
+    gridOffsetY: 0,
     feetPerSquare: 5,
     diagonalRule: 'alternating',
     drawnBackground: null,
@@ -605,7 +603,7 @@ describe('carried lights', () => {
       makeToken('lit', 11, 7), // 3.2 squares from the bearer, in p2's sight round the corner
     ].map((t) => (t.id === 'p1Bearer' ? { ...t, light: torch } : t));
     const seenBy = (user: string) =>
-      filterTokensByLighting(tokens, user, corner, W, H, GRID_SIZE, true, lights).map((t) => t.id).sort();
+      filterTokensByLighting(tokens, user, corner, { ...FRAME, width: W, height: H }, true, lights).map((t) => t.id).sort();
     expect(seenBy('user1')).toEqual(['lit', 'p1Bearer']);
     expect(seenBy('user2')).toEqual(['p2Viewer']);
     expect(seenBy('user1')).toEqual(['lit', 'p1Bearer']);
@@ -614,7 +612,7 @@ describe('carried lights', () => {
   it('sees a dragged bearer by its own light wherever it is carried in sight', () => {
     const viewer = makeToken('viewer', 2, 7, 'user1');
     const bearer = { ...makeToken('bearer', 10, 7, 'user2'), light: torch };
-    const sight = playerSightOnLitMap([viewer, bearer], 'user1', NO_WALLS, W, H, GRID_SIZE, [], false);
+    const sight = playerSightOnLitMap([viewer, bearer], 'user1', NO_WALLS, { ...FRAME, width: W, height: H }, [], false);
     // Its light is held where it stood; at a frame 5 squares on it still shines.
     const carried = { ...bearer, position: { x: 15, y: 12 } };
     expect(sight.seesToken(carried)).toBe(true);
@@ -625,7 +623,7 @@ describe('carried lights', () => {
   it('does not see a bearer round a corner, light or not', () => {
     const viewer = makeToken('viewer', 2, 7, 'user1');
     const bearer = { ...makeToken('bearer', 12, 10, 'user2'), light: torch };
-    const sight = playerSightOnLitMap([viewer, bearer], 'user1', corner, W, H, GRID_SIZE, [], false);
+    const sight = playerSightOnLitMap([viewer, bearer], 'user1', corner, { ...FRAME, width: W, height: H }, [], false);
     expect(sight.seesToken(bearer)).toBe(false);
   });
 });

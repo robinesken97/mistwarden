@@ -9,7 +9,7 @@
 import type { Token } from '@/types';
 import type { LightSource, WallSegment } from '@/types/walls';
 import { computeVisibility, type VisibilityPolygon } from '@/utils/raycasting';
-import { mapSizePx, type Viewport } from './layers/types';
+import { mapSizePx, viewportFrame, type Viewport } from './layers/types';
 import { tokenCentre } from '@/utils/tokenCentre';
 
 /**
@@ -60,7 +60,7 @@ const NO_REACH: VisibilityPolygon = { points: [] };
  * start from the same point.
  */
 function tokenSource(token: Token, viewport: Viewport): { cx: number; cy: number; r: number } {
-  const { x, y } = tokenCentre(token, viewport.gridSize, viewport.mapHeight);
+  const { x, y } = tokenCentre(token, viewportFrame(viewport));
   return { cx: x, cy: y, r: (token.sightRadius ?? 0) * viewport.gridSize };
 }
 

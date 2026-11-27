@@ -160,7 +160,7 @@ export function buildUVTT(input: UVTTExportInput): Buffer {
   // Calculate pixels_per_grid from actual image dimensions if available
   const ppg = imageWidthPx && mapWidth > 0
     ? Math.round(imageWidthPx / mapWidth)
-    : gridSizePx;
+    : Math.round(gridSizePx); // a whole number of pixels, as the format writes it
 
   // Separate walls from doors/portals. A window does not block sight, so it
   // goes out as an open portal: written into line_of_sight it would come back

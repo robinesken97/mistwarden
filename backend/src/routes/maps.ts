@@ -22,7 +22,7 @@ import { inBackgroundAfter } from '../utils/backgroundWork';
 import { canReadAssetById, canReferenceAsset, isMapPicture, isTokenPicture, canControlToken, canHoldTokens, canMoveTokensNow, canReadMap, PAUSED_MOVE_REFUSAL } from '../services/permissions';
 import { WallSegmentSchema, WallSegmentsArraySchema, FogOperationSchema, LightSourceSchema, LightSourcesArraySchema, LightSourceUpdateSchema, DUPLICATE_WALL_ID_MESSAGE, DUPLICATE_LIGHT_ID_MESSAGE, MAX_WALL_SEGMENTS, MAX_LIGHT_SOURCES, TOO_MANY_WALLS_MESSAGE, TOO_MANY_LIGHTS_MESSAGE } from '../validators/walls';
 import { validateTokenShapes, TokenMetadataSchema, MoveTokensSchema, TOKEN_TYPES, TOKEN_DISPOSITIONS, TOKEN_DISPLAY_MODES, TOKEN_IMAGE_NOT_A_TOKEN_PICTURE_MESSAGE } from '../validators/tokens';
-import { withMapsLocked, clampTokenPosition } from '../utils/mapTokens';
+import { withMapsLocked, clampTokenPosition, regridTokens } from '../utils/mapTokens';
 import { moveCoupled, untangleMounts, uncouple, mountRefusal, mount } from '../utils/mounts';
 import type { WallSegment, FogState, LightSource, SkippedWall, WallsAdded } from '../types/walls';
 import { parseUVTT } from '../services/uvttParser';
@@ -52,8 +52,9 @@ import { currentMapChanged } from '../websocket/handlers/drawings';
 import { readTokens, toJson } from '../utils/prisma-json';
 import { drawingsFor, resendDrawings, scaleDrawings } from '../services/mapDrawings';
 import type { Map as MapRow, Prisma } from '@prisma/client';
+import { cellOnMap, isHexGrid } from '../utils/tokenCentre';
 import { loadFogState, applyWsFogOperation, broadcastFogState, type Token, broadcastMapData, resendSightAfterChange, fogFits, FogTooLargeError } from '../websocket/shared';
-import { MapSideSchema, GridSizeSchema, FeetPerSquareSchema, DrawnBackgroundSchema, MAP_LIMITS, MAP_NAME_TOO_LONG_MESSAGE, MAP_IMAGE_NOT_A_MAP_PICTURE_MESSAGE, SPIRIT_LAYER_NOT_A_MAP_PICTURE_MESSAGE, dimensionProblem, wallOutsideMap, lightOutsideMap, geometryRegion, WALL_OUTSIDE_MAP_MESSAGE, LIGHT_OUTSIDE_MAP_MESSAGE, GEOMETRY_MARGIN_SQUARES, tooManyTokensMessage } from '../validators/maps';
+import { MapSideSchema, GridSizeSchema, GridTypeSchema, GridOffsetSchema, GRID_FRAME_SELECT, FeetPerSquareSchema, DrawnBackgroundSchema, MAP_LIMITS, MAP_NAME_TOO_LONG_MESSAGE, MAP_IMAGE_NOT_A_MAP_PICTURE_MESSAGE, SPIRIT_LAYER_NOT_A_MAP_PICTURE_MESSAGE, dimensionProblem, wallOutsideMap, lightOutsideMap, geometryRegion, WALL_OUTSIDE_MAP_MESSAGE, LIGHT_OUTSIDE_MAP_MESSAGE, GEOMETRY_MARGIN_SQUARES, tooManyTokensMessage } from '../validators/maps';
 
 /**
  * The largest UVTT file accepted. The picture travels as base64 text, about
@@ -69,6 +70,9 @@ const UVTT_EXPORT_NOT_A_PICTURE_MESSAGE =
   'Choose a map picture for it in Edit Map, then export it again.';
 
 /** What a map picture inside a UVTT may be. A PDF cannot be drawn as a map. */
+/** What exporting a hex map as Universal VTT answers: the format has square grids only. */
+export const UVTT_HEX_REFUSAL = 'Universal VTT files have square grids only, so a hex map cannot be exported as one. Switch the map to squares in Edit Map to export it.';
+
 const UVTT_IMAGE_TYPES: readonly string[] = ['image/png', 'image/jpeg', 'image/webp'];
 const UVTT_IMAGE_EXTENSIONS = '.png, .jpg, .jpeg, .webp';
 
@@ -305,7 +309,7 @@ async function resendInitiativeFor(campaignId: string, tokenId: string): Promise
 router.post('/', campaignGM, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { campaignId } = req.params;
-    const { name, imageUrl, width, height, gridSize, spiritLayerUrl, feetPerSquare, diagonalRule, drawnBackground } = req.body;
+    const { name, imageUrl, width, height, gridSize, gridType, gridOffsetX, gridOffsetY, spiritLayerUrl, feetPerSquare, diagonalRule, drawnBackground } = req.body;
 
     // Validation
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
@@ -334,6 +338,15 @@ router.post('/', campaignGM, async (req: AuthenticatedRequest, res: Response) =>
 
     // gridSize is optional; anything unusable gets the default of 50
     const mapGridSize = usable(GridSizeSchema, gridSize) ?? 50;
+
+    // The grid's type and where it starts are optional, square at the corner;
+    // one sent that is not one of them is refused, not taken as squares.
+    const gridProblem = (gridType === undefined ? null : dimensionProblem(GridTypeSchema, gridType))
+      ?? (gridOffsetX === undefined ? null : dimensionProblem(GridOffsetSchema, gridOffsetX))
+      ?? (gridOffsetY === undefined ? null : dimensionProblem(GridOffsetSchema, gridOffsetY));
+    if (gridProblem) {
+      return res.status(400).json({ error: 'Validation Error', message: gridProblem });
+    }
 
     // feetPerSquare: whole number from 1 to 100, defaults to 5
     const mapFeetPerSquare = usable(FeetPerSquareSchema, feetPerSquare) ?? 5;
@@ -391,6 +404,9 @@ router.post('/', campaignGM, async (req: AuthenticatedRequest, res: Response) =>
         width,
         height,
         gridSize: mapGridSize,
+        gridType: gridType ?? 'square',
+        gridOffsetX: gridOffsetX ?? 0,
+        gridOffsetY: gridOffsetY ?? 0,
         feetPerSquare: mapFeetPerSquare,
         diagonalRule: mapDiagonalRule,
         drawnBackground: mapDrawnBackground,
@@ -800,12 +816,18 @@ router.get(
             width: true,
             height: true,
             gridSize: true,
+            gridType: true,
             wallSegments: true,
             lights: true,
           },
         });
         if (!map) {
           return res.status(404).json({ error: 'Not Found', message: 'Map not found' });
+        }
+        // The format knows square grids only: a hex map's file would come
+        // back with its tokens' cells meaning something else.
+        if (isHexGrid(map)) {
+          return res.status(422).json({ error: 'Unprocessable Entity', message: UVTT_HEX_REFUSAL });
         }
         if (!map.imageUrl) {
           return res.status(422).json({ error: 'Unprocessable Entity', message: 'Map has no image' });
@@ -964,7 +986,7 @@ router.get('/:id', campaignMember, async (req: AuthenticatedRequest, res: Respon
  * send, or missing one it now would.
  */
 export const MAP_FIELDS_THAT_RESEND_THE_MAP = [
-  'name', 'imageUrl', 'baseLayerUrl', 'width', 'height', 'gridSize', 'feetPerSquare', 'diagonalRule', 'spiritLayerUrl',
+  'name', 'imageUrl', 'baseLayerUrl', 'width', 'height', 'gridSize', 'gridType', 'gridOffsetX', 'gridOffsetY', 'feetPerSquare', 'diagonalRule', 'spiritLayerUrl',
   'lightingEnabled', 'globalIllumination',
 ] as const satisfies readonly (keyof MapRow)[];
 
@@ -987,7 +1009,7 @@ export const MAP_FIELDS_THAT_DO_NOT_RESEND_THE_MAP = {
  */
 const MAP_EDIT_LOCKED_READ = {
   ...(Object.fromEntries(MAP_FIELDS_THAT_RESEND_THE_MAP.map((key) => [key, true])) as Record<(typeof MAP_FIELDS_THAT_RESEND_THE_MAP)[number], true>),
-  width: true, height: true, gridSize: true, wallSegments: true, lights: true, fogEnabled: true,
+  ...GRID_FRAME_SELECT, wallSegments: true, lights: true, fogEnabled: true,
 } as const satisfies Prisma.MapSelect;
 
 /**
@@ -998,7 +1020,7 @@ const MAP_EDIT_LOCKED_READ = {
 router.put('/:id', campaignGM, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { campaignId, id } = req.params;
-    const { name, width, height, gridSize, imageUrl, spiritLayerUrl, feetPerSquare, diagonalRule, lightingEnabled, fogEnabled, globalIllumination, explorationEnabled } = req.body;
+    const { name, width, height, gridSize, gridType, gridOffsetX, gridOffsetY, imageUrl, spiritLayerUrl, feetPerSquare, diagonalRule, lightingEnabled, fogEnabled, globalIllumination, explorationEnabled } = req.body;
 
     // Fetch the map to verify it exists and belongs to campaign
     const existingMap = await prisma.map.findUnique({
@@ -1058,6 +1080,18 @@ router.put('/:id', campaignGM, async (req: AuthenticatedRequest, res: Response) 
       if (problem) {
         return res.status(400).json({ error: 'Validation Error', message: problem });
       }
+      updateData[field] = value as number;
+    }
+
+    if (gridType !== undefined) {
+      const problem = dimensionProblem(GridTypeSchema, gridType);
+      if (problem) return res.status(400).json({ error: 'Validation Error', message: problem });
+      updateData.gridType = gridType;
+    }
+    for (const [field, value] of [['gridOffsetX', gridOffsetX], ['gridOffsetY', gridOffsetY]] as const) {
+      if (value === undefined) continue;
+      const problem = dimensionProblem(GridOffsetSchema, value);
+      if (problem) return res.status(400).json({ error: 'Validation Error', message: problem });
       updateData[field] = value as number;
     }
 
@@ -1176,6 +1210,26 @@ router.put('/:id', campaignGM, async (req: AuthenticatedRequest, res: Response) 
         typeof updateData[field] === 'number' ? (updateData[field] as number) : current[field];
       const kx = (size('width') * size('gridSize')) / (current.width * current.gridSize);
       const ky = (size('height') * size('gridSize')) / (current.height * current.gridSize);
+      // A position names a cell of the grid, so an edit of the grid's type,
+      // size or offset moves every token to the cell nearest where it stood
+      // on the picture (regridTokens), here under the lock. A change of the
+      // frame alone keeps positions, and on a hex map brings each to the
+      // nearest hex on the map. Positions stay whole cells.
+      const grid = {
+        width: size('width'), height: size('height'), gridSize: size('gridSize'),
+        gridType: typeof updateData.gridType === 'string' ? updateData.gridType : current.gridType,
+        gridOffsetX: typeof updateData.gridOffsetX === 'number' ? updateData.gridOffsetX : current.gridOffsetX,
+        gridOffsetY: typeof updateData.gridOffsetY === 'number' ? updateData.gridOffsetY : current.gridOffsetY,
+      };
+      const changed = (keys: readonly (keyof typeof grid)[]) => keys.some((k) => grid[k] !== current[k]);
+      const gridChanged = changed(['gridSize', 'gridType', 'gridOffsetX', 'gridOffsetY']);
+      if (gridChanged || (isHexGrid(grid) && changed(['width', 'height']))) {
+        const { tokens: stored } = await tx.map.findUniqueOrThrow({ where: { id }, select: { tokens: true } });
+        const tokens = gridChanged
+          ? regridTokens(readTokens(stored), current, grid)
+          : readTokens(stored).map((t) => ({ ...t, position: clampTokenPosition(t.position, t.size, grid) }));
+        updateData.tokens = toJson(tokens);
+      }
       if (kx === 1 && ky === 1) {
         return { updatedMap: await tx.map.update({ where: { id }, data: updateData }), before: current, moved: null };
       }
@@ -1589,12 +1643,14 @@ router.post('/:id/tokens', campaignGM, async (req: AuthenticatedRequest, res: Re
     // placing from a library puts a token at the map's centre, so a large
     // creature on a small map would otherwise hang off the far edge.
     const appended = await withMapsLocked([mapId], async (tx): Promise<LockedEdit<{ map: MapRow; token: typeof newToken }>> => {
-      const fresh = await tx.map.findUniqueOrThrow({ where: { id: mapId }, select: { tokens: true, width: true, height: true } });
-      if (requested.x < 0 || requested.x >= fresh.width || requested.y < 0 || requested.y >= fresh.height) {
+      const fresh = await tx.map.findUniqueOrThrow({ where: { id: mapId }, select: { tokens: true, ...GRID_FRAME_SELECT } });
+      if (!cellOnMap(requested, fresh)) {
         return {
           status: 400,
           error: 'Validation Error',
-          message: `Token position must be within map bounds (0-${fresh.width-1}, 0-${fresh.height-1})`,
+          message: isHexGrid(fresh)
+            ? 'Token position must be a hex whose centre is on the map'
+            : `Token position must be within map bounds (0-${fresh.width-1}, 0-${fresh.height-1})`,
         };
       }
       const tokens = readTokens(fresh.tokens);
@@ -1839,17 +1895,19 @@ router.put('/:id/tokens/:tokenId', campaignMember, async (req: AuthenticatedRequ
     // token, leaving it off the map's edge or its metadata written over.
     const requested = shapes.value.position;
     const written = await withMapsLocked([mapId], async (tx): Promise<LockedEdit<{ token: Token; map: MapRow }>> => {
-      const fresh = await tx.map.findUniqueOrThrow({ where: { id: mapId }, select: { tokens: true, width: true, height: true } });
+      const fresh = await tx.map.findUniqueOrThrow({ where: { id: mapId }, select: { tokens: true, ...GRID_FRAME_SELECT } });
       const tokens = readTokens(fresh.tokens);
       const index = tokens.findIndex((t) => t.id === tokenId);
       if (index === -1) return { status: 404, error: 'Not Found', message: 'Token not found on this map' };
       const current = tokens[index];
 
-      if (requested && (requested.x < 0 || requested.x >= fresh.width || requested.y < 0 || requested.y >= fresh.height)) {
+      if (requested && !cellOnMap(requested, fresh)) {
         return {
           status: 400,
           error: 'Validation Error',
-          message: `Position must be within map bounds (0-${fresh.width-1}, 0-${fresh.height-1})`,
+          message: isHexGrid(fresh)
+            ? 'Position must be a hex whose centre is on the map'
+            : `Position must be within map bounds (0-${fresh.width-1}, 0-${fresh.height-1})`,
         };
       }
 

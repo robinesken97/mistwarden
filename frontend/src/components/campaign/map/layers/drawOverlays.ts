@@ -7,7 +7,8 @@
 
 import type { FogState, WallSegment, WallType } from '@/types/walls';
 import { gridDistanceLabel, gridMeasure } from '@/utils/geometry';
-import type { Viewport } from './types';
+import { viewportFrame, type Viewport } from './types';
+import { cellCentre, isHexGrid, squareOrigin } from '@/utils/tokenCentre';
 import { mapPxToFogCell } from '../coords';
 import { fogRectFromDrag, fogRectToPx, fogRectSize } from '../fogSelection';
 import type { SelectionRect } from '../mapSelection';
@@ -303,15 +304,14 @@ export function drawRuler(
   state: RulerOverlayState,
   viewport: Viewport
 ): void {
-  const { zoom, gridSize: gs, mapHeight: mh } = viewport;
+  const { zoom } = viewport;
+  const frame = viewportFrame(viewport);
 
-  // Grid coords → world pixel coords (token-center convention)
-  const x0 = state.origin.x * gs + gs / 2;
-  const y0 = (mh - 1 - state.origin.y) * gs + gs / 2;
-  const x1 = state.target.x * gs + gs / 2;
-  const y1 = (mh - 1 - state.target.y) * gs + gs / 2;
+  // Grid coords → world pixel coords, cell centre to cell centre
+  const { x: x0, y: y0 } = cellCentre(state.origin, frame);
+  const { x: x1, y: y1 } = cellCentre(state.target, frame);
 
-  const measured = gridMeasure(state.origin, state.target, state.feetPerSquare, state.diagonalRule);
+  const measured = gridMeasure(state.origin, state.target, state.feetPerSquare, state.diagonalRule, frame);
 
   const rulerLineColor = state.color === 'purple' ? 'rgba(168, 85, 247, 0.9)' : state.color === 'black' ? 'rgba(0, 0, 0, 0.9)' : 'rgba(251, 191, 36, 0.9)';
   const rulerPillColor = state.color === 'black' ? 'rgba(255, 255, 255, 0.88)' : 'rgba(0, 0, 0, 0.65)';
@@ -421,6 +421,23 @@ export function drawAoEOverlay(
   state: AoEOverlayState,
   viewport: Viewport
 ): void {
+  const frame = viewportFrame(viewport);
+  // A square grid moved by an offset: the same template drawn on squares
+  // from the corner, shifted with them.
+  const origin = isHexGrid(frame) ? { x: 0, y: 0 } : squareOrigin(frame);
+  if (origin.x !== 0 || origin.y !== 0) {
+    const shift = (p: Pt | null) => (p ? { x: p.x - origin.x, y: p.y - origin.y } : null);
+    ctx.save();
+    ctx.translate(origin.x, origin.y);
+    drawAoEOverlay(ctx, {
+      ...state,
+      anchor: state.anchor ? { ...state.anchor, point: shift(state.anchor.point)! } : null,
+      hoverMapPx: shift(state.hoverMapPx),
+      aimMapPx: shift(state.aimMapPx),
+    }, { ...viewport, gridOffsetX: 0, gridOffsetY: 0 });
+    ctx.restore();
+    return;
+  }
   const { zoom, gridSize: gs } = viewport;
   const fps = state.feetPerSquare;
 
@@ -429,10 +446,12 @@ export function drawAoEOverlay(
   // between a few spots instead of sweeping around its square. Until it is
   // pinned the cursor stands in for it, so the preview matches what a click
   // would place.
-  const anchor: AoEAnchor | null =
+  const placed: AoEAnchor | null =
     state.anchor ??
     (state.hoverMapPx ? { point: state.hoverMapPx, exact: state.hoverExact } : null);
-  if (!anchor) return;
+  if (!placed) return;
+  // Hexes are not squares to snap to: on a hex map a template sits where it is placed.
+  const anchor = isHexGrid(frame) ? { ...placed, exact: true } : placed;
 
   // A free-placed template pivots about the exact point; otherwise about the
   // centre of the square it was placed in.

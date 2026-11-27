@@ -7,6 +7,8 @@
 // unit-testable and reusable by the upcoming draw-layer modules.
 // ============================================
 
+import { hexDistance, isHexGrid, type GridFrame } from './tokenCentre';
+
 export interface Point {
   x: number;
   y: number;
@@ -37,6 +39,8 @@ export function calcGridDistance(
 export interface GridMeasure {
   squares: number;
   feet: number;
+  /** Counted in hexes, on a hex map. */
+  hexes?: boolean;
 }
 
 /**
@@ -49,8 +53,14 @@ export function gridMeasure(
   from: Point,
   to: Point,
   feetPerSquare: number,
-  diagonalRule: 'flat' | 'alternating'
+  diagonalRule: 'flat' | 'alternating',
+  /** The map's grid. On a hex map the distance is in hexes, each step to a neighbour one; the diagonal rule does not apply. */
+  grid?: GridFrame
 ): GridMeasure {
+  if (grid && isHexGrid(grid)) {
+    const hexes = hexDistance(from, to, grid);
+    return { squares: hexes, feet: hexes * feetPerSquare, hexes: true };
+  }
   const dx = Math.abs(to.x - from.x);
   const dy = Math.abs(to.y - from.y);
   return { squares: Math.max(dx, dy), feet: calcGridDistance(dx, dy, feetPerSquare, diagonalRule) };
@@ -61,8 +71,8 @@ export function gridMeasure(
  * "15 ft  (3 sq)". The two spaces part the numbers on the ruler's canvas
  * label; a page shows them as one.
  */
-export function gridDistanceLabel({ squares, feet }: GridMeasure): string {
-  return `${feet} ft  (${squares} sq)`;
+export function gridDistanceLabel({ squares, feet, hexes }: GridMeasure): string {
+  return `${feet} ft  (${squares} ${hexes ? 'hex' : 'sq'})`;
 }
 
 /**

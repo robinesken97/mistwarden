@@ -122,7 +122,12 @@ Two frames, as in Mistwarden itself:
   the right, y upward. A token's position is its bottom-left square. The token
   tools also take `origin: "top-left"`, where y is the row of the token's top
   square counted from the top, which is how one reads a picture; `get_map`
-  gives each token's `topRow` as well.
+  gives each token's `topRow` as well. `gridOffsetX`/`gridOffsetY` move the
+  squares, and the fog squares with them, from the map's corner.
+- **Hex maps** (`gridType` `hexPointy` or `hexFlat`, in `list_maps` and
+  `get_map`): a token's cell is a hex, x counted from the first column and y
+  from the bottom row of hexes whose centres lie in the frame. `origin:
+  "top-left"` is refused there, and `topRow` is null; fog stays in squares.
 
 `create_map_from_image` takes the grid in pixels of the original picture
 (`gridPx`) or as squares across (`squaresAcross`) and computes the map size

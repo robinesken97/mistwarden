@@ -544,7 +544,12 @@ model Map {
   imageUrl String
   width    Int // In grid units
   height   Int // In grid units
-  gridSize      Int    @default(50) // Pixels per grid square
+  gridSize      Float  @default(50) // Pixels between neighbouring cell centres; a picture's grid need not be whole pixels
+  // "square", "hexPointy" or "hexFlat". The frame stays width*gridSize by height*gridSize either way.
+  gridType      String @default("square")
+  // Where the grid starts, in map pixels from the frame's top-left corner
+  gridOffsetX   Float  @default(0)
+  gridOffsetY   Float  @default(0)
   feetPerSquare Int    @default(5)  // Feet represented by one grid square
   diagonalRule  String @default("flat") // "flat" (5E: every diagonal one square) or "alternating" (Fantasy d20: 5 then 10 feet)
   // The colour a map drawn in CozyVTT was made in, as #rrggbb: what

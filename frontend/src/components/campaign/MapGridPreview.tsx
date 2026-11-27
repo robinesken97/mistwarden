@@ -12,6 +12,7 @@
 
 import { useEffect, useRef } from 'react';
 import { effectiveDpr } from './map/layerCanvas';
+import { drawGrid } from './map/layers/drawGrid';
 
 const PREVIEW_PX = 280;
 
@@ -21,12 +22,19 @@ export default function MapGridPreview({
   height,
   gridSize,
   zoom,
+  gridType = 'square',
+  gridOffsetX = 0,
+  gridOffsetY = 0,
 }: {
   imageUrl: string | null;
   width: number;
   height: number;
   gridSize: number;
   zoom: number;
+  /** The grid as the map draws it (map/layers/drawGrid.ts): squares or hexes, from its offset. */
+  gridType?: string;
+  gridOffsetX?: number;
+  gridOffsetY?: number;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dpr = effectiveDpr(window.devicePixelRatio, PREVIEW_PX, PREVIEW_PX);
@@ -83,33 +91,21 @@ export default function MapGridPreview({
       // Map image
       cx.drawImage(img, offsetX, offsetY, drawW, drawH);
 
-      // Grid overlay, clipped to the map bounds so lines don't bleed outside
-      const cellSize = gridSize * scale;
+      // The grid the map draws, in map pixels scaled onto the preview and
+      // kept within the map's bounds, so lines don't bleed outside
       cx.save();
       cx.beginPath();
       cx.rect(offsetX, offsetY, drawW, drawH);
       cx.clip();
-
-      cx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
-      cx.lineWidth = 1;
-
-      for (let x = 0; x <= width; x++) {
-        cx.beginPath();
-        cx.moveTo(offsetX + x * cellSize, offsetY);
-        cx.lineTo(offsetX + x * cellSize, offsetY + drawH);
-        cx.stroke();
-      }
-      for (let y = 0; y <= height; y++) {
-        cx.beginPath();
-        cx.moveTo(offsetX, offsetY + y * cellSize);
-        cx.lineTo(offsetX + drawW, offsetY + y * cellSize);
-        cx.stroke();
-      }
-
+      cx.translate(offsetX, offsetY);
+      cx.scale(scale, scale);
+      drawGrid(cx, { gridColor: 'black' }, {
+        zoom: scale * 2, panOffset: { x: 0, y: 0 }, gridSize, mapWidth: width, mapHeight: height, gridType, gridOffsetX, gridOffsetY,
+      });
       cx.restore();
     };
     img.src = imageUrl;
-  }, [imageUrl, width, height, gridSize, zoom, dpr]);
+  }, [imageUrl, width, height, gridSize, zoom, dpr, gridType, gridOffsetX, gridOffsetY]);
 
   return (
     <canvas

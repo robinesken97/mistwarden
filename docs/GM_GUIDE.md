@@ -179,7 +179,8 @@ You can change a map's **Width**, **Height** and **Grid Size** later with the **
 | Setting | Smallest | Largest |
 |---|---|---|
 | Width and Height (grid squares) | 1 | 500 |
-| Grid Size (pixels per square) | 10 | 500 |
+| Grid Size (pixels per square, not necessarily whole) | 10 | 500 |
+| Grid Offset X and Y (pixels) | -500 | 500 |
 | Feet per square (**Grid Scale**) | 1 | 100 |
 
 Create Map and Edit Map offer nothing outside these, and applying a **Grid detected** suggestion keeps it inside them. A Universal VTT file whose map is more than 500 squares on a side is refused when you import it. A map you draw in CozyVTT has a limit of its own besides (see [Drawing a map](#drawing-a-map)).
@@ -189,6 +190,18 @@ A map holds up to **1,000 tokens**. Adding one more, or moving tokens onto a map
 A map made before version 1.5.1 may be larger than this. It still opens, and Edit Map still saves changes that leave its size alone, but fog of war and explored areas cannot be turned on for a map with more than 250,000 squares (500 by 500). Turning either on there says so, and a map that already had fog on shows none. To use fog on it, make it 500 squares or fewer on each side in Edit Map.
 
 *Screenshot pending — Map Library panel with multiple maps.*
+
+### Hex grids and the grid offset
+
+Under **Grid Settings** in Create Map and Edit Map, **Grid Type** picks **Squares**, **Hexes, point up** (rows of hexes, every other row moved half a hex right) or **Hexes, flat top** (columns of hexes, every other column moved half a hex down). On a hex map:
+
+- **Grid Size** is the distance between the centres of two neighbouring hexes, in map pixels. The map's size in pixels stays **Width** × **Grid Size** by **Height** × **Grid Size**, so the picture, walls, doors, lights, drawings and fog stay where they are when you switch.
+- A token stands on one hex, whatever its size; a large creature is drawn around that hex's centre. A hex counts as on the map when its centre lies inside the picture. When you switch the grid type, or change the grid size or offset, every token moves to the cell nearest where it stood on the picture, and a rider stays on its mount. A token can land up to about half a cell away, and switching to hexes and back can leave it one square off where it started. A token whose hex is no longer on the map after a change of width or height moves to the nearest one.
+- The ruler and a carried token's readout count hexes, each step to a neighbour one, times the **Grid Scale**; **Diagonal Movement** is hidden, since hexes have no diagonals.
+- The arrow keys move a selected token to a neighbouring hex: Left and Right along the row (on flat-topped hexes, across the columns), Up and Down to the hex above or below, which on pointy hexes falls half a hex left and right by turns, so a run of presses keeps to its column.
+- What stays square: **fog of war** and explored areas (one square cell per grid square, as before), area templates, which are placed freely rather than snapped, and wall snapping, which is off on hexes. **Grid detected** looks for squares only, so it is not offered while a hex type is chosen. A hex map cannot be exported as a **Universal VTT** file (the format has square grids only); an imported file always makes a square map.
+
+**Grid Offset (px)**, on square and hex maps alike, moves the whole grid by that many map pixels from the picture's top-left corner, to line it up with a grid printed on the picture that starts inside a border. On a square map, fog squares move with the grid. Applying a **Grid detected** suggestion now sets the offset it found as well as the size, and keeps a size between whole pixels (70.4, say) rather than rounding it. The offset is exact when the picture is a whole number of squares wide and high; otherwise the picture is stretched a little differently each way and the lines can drift by up to half a square at the far edge.
 
 ### Drawing a map
 

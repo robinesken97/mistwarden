@@ -15,7 +15,7 @@ import { GAME_SYSTEM_SHORT_LABELS } from '@/constants/game-systems';
 import AssetPicker from '@/components/assets/AssetPicker';
 import { detectMapGrid, type GridDetectionResult } from '@/utils/detectMapGrid';
 import { MAP_LIMITS } from '@/constants/mapLimits';
-import { withinMapLimits, feetPerSquareWithinLimits } from '@/utils/mapSize';
+import { detectedGridForMap, feetPerSquareWithinLimits } from '@/utils/mapSize';
 import { diagonalStepCosts } from '@/utils/geometry';
 import { Button, Modal } from '@/components/ui';
 import { apiErrorMessage, errorSummary } from '@/utils/errors';
@@ -25,6 +25,8 @@ import { PAINT_COLOURS, pickedColour } from './map/paint/paintColours';
 import { DrawnPictureRefused, uploadDrawnPicture } from '@/services/drawnPicture';
 import MapGridPreview from './MapGridPreview';
 import MapDimensionField from './MapDimensionField';
+import MapGridShapeFields from './MapGridShapeFields';
+import type { GridType } from '@/utils/tokenCentre';
 
 interface CreateMapModalProps {
   isOpen: boolean;
@@ -65,6 +67,9 @@ export default function CreateMapModal({
   const [width, setWidth] = useState(20);
   const [height, setHeight] = useState(20);
   const [gridSize, setGridSize] = useState(50);
+  const [gridType, setGridType] = useState<GridType>('square');
+  const [gridOffsetX, setGridOffsetX] = useState(0);
+  const [gridOffsetY, setGridOffsetY] = useState(0);
   const [feetPreset, setFeetPreset] = useState<'5' | '10' | 'custom'>('5');
   const [feetCustom, setFeetCustom] = useState(5);
   const [diagonalRule, setDiagonalRule] = useState<'flat' | 'alternating'>('flat');
@@ -94,6 +99,9 @@ export default function CreateMapModal({
       setWidth(20);
       setHeight(20);
       setGridSize(50);
+      setGridType('square');
+      setGridOffsetX(0);
+      setGridOffsetY(0);
       setFeetPreset('5');
       setFeetCustom(5);
       setDiagonalRule('flat');
@@ -129,10 +137,12 @@ export default function CreateMapModal({
 
   const applyDetectedGrid = () => {
     if (!detectedGrid) return;
-    const fitted = withinMapLimits(detectedGrid);
+    const fitted = detectedGridForMap(detectedGrid);
     setWidth(fitted.width);
     setHeight(fitted.height);
     setGridSize(fitted.gridSize);
+    setGridOffsetX(fitted.gridOffsetX);
+    setGridOffsetY(fitted.gridOffsetY);
     setDetectedGrid(null); // dismiss banner after applying
   };
 
@@ -213,6 +223,9 @@ export default function CreateMapModal({
         width,
         height,
         gridSize,
+        gridType,
+        gridOffsetX,
+        gridOffsetY,
         feetPerSquare,
         diagonalRule,
         ...(spiritAssetId ? { spiritLayerUrl: spiritAssetId } : {}),
@@ -372,6 +385,7 @@ export default function CreateMapModal({
                           onChange={setGridSize}
                           min={MAP_LIMITS.minGridSize}
                           max={MAP_LIMITS.maxGridSize}
+                          decimals
                         />
                       )}
                     </div>
@@ -388,7 +402,7 @@ export default function CreateMapModal({
                       </>
                     ) : (
                       <p className="text-xs text-stone-gray/50 mt-2">
-                        Canvas will be {width * gridSize}×{height * gridSize}px
+                        Canvas will be {Math.round(width * gridSize)}×{Math.round(height * gridSize)}px
                       </p>
                     )}
                   </div>
@@ -437,6 +451,18 @@ export default function CreateMapModal({
                   <div className="border border-moss-green/20 rounded-lg p-4 space-y-4 bg-moss-green/5">
                     <h3 className="text-sm font-medium text-brand-ink">Grid Settings</h3>
 
+                    {/* A drawn map is painted on its own squares, so only a picture's grid has a type and offset. */}
+                    {!drawing && (
+                      <MapGridShapeFields
+                        gridType={gridType}
+                        onGridType={setGridType}
+                        offsetX={gridOffsetX}
+                        offsetY={gridOffsetY}
+                        onOffsetX={setGridOffsetX}
+                        onOffsetY={setGridOffsetY}
+                      />
+                    )}
+
                     {/* Grid Scale */}
                     <div>
                       <label className="block text-xs font-medium text-stone-gray mb-2">Grid Scale</label>
@@ -481,7 +507,8 @@ export default function CreateMapModal({
                       <p className="text-xs text-stone-gray/50 mt-1">How many feet each grid square represents.</p>
                     </div>
 
-                    {/* Diagonal Movement */}
+                    {/* Diagonal Movement: hexes have no diagonals */}
+                    {(drawing || gridType === 'square') && (
                     <div>
                       <label className="block text-xs font-medium text-stone-gray mb-2">Diagonal Movement</label>
                       <div className="space-y-2">
@@ -520,6 +547,7 @@ export default function CreateMapModal({
                         </label>
                       </div>
                     </div>
+                    )}
                   </div>
                 </div>
 
@@ -557,6 +585,9 @@ export default function CreateMapModal({
                     height={height}
                     gridSize={gridSize}
                     zoom={previewZoom}
+                    gridType={gridType}
+                    gridOffsetX={gridOffsetX}
+                    gridOffsetY={gridOffsetY}
                   />
 
                   {/* Zoom control */}
@@ -575,8 +606,8 @@ export default function CreateMapModal({
                     <ZoomIn className="w-4 h-4 text-stone-gray/50 shrink-0" />
                   </div>
 
-                  {/* Auto-detect suggestion banner */}
-                  {detectedGrid && (
+                  {/* Auto-detect suggestion banner: detection finds squares only */}
+                  {detectedGrid && gridType === 'square' && (
                     <div className="flex items-start gap-2 p-2.5 bg-warning/10 border border-warning/30 rounded-lg">
                       <Sparkles className="w-4 h-4 text-warning-ink shrink-0 mt-0.5" />
                       <div className="flex-1 min-w-0">
@@ -611,7 +642,7 @@ export default function CreateMapModal({
                     </div>
                   )}
 
-                  {!isDetecting && !detectedGrid && mapAssetId && (
+                  {!isDetecting && !detectedGrid && mapAssetId && gridType === 'square' && (
                     <p className="text-xs text-stone-gray/50 text-center leading-relaxed">
                       No grid detected automatically.<br />Use the sliders to align manually.
                     </p>

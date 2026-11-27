@@ -15,6 +15,7 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../config/database';
 import { createTurnQueue } from './turnQueue';
+import { cellAt, cellCentre, cellOnMap, isHexGrid, nearestHexOnMap, squareOrigin, tokenCentre, type GridFrame } from './tokenCentre';
 
 /**
  * Writers in line for each map in this process (see utils/turnQueue.ts): a
@@ -65,15 +66,93 @@ export async function withMapsLocked<T>(
  * A position that keeps the token's whole footprint on the map it arrives
  * on: pulled back from the far edge by its size, never below zero. A token
  * larger than the map starts at its corner. The same rule the client
- * applies when it offers a move.
+ * applies when it offers a move. On a hex map a token of any size stands on
+ * one hex: the nearest whose centre is in the frame.
  */
 export function clampTokenPosition(
   position: { x: number; y: number },
   size: { width: number; height: number },
-  map: { width: number; height: number }
+  map: GridFrame
 ): { x: number; y: number } {
+  if (isHexGrid(map)) return nearestHexOnMap(position, map);
   return {
     x: Math.max(0, Math.min(position.x, map.width - size.width)),
     y: Math.max(0, Math.min(position.y, map.height - size.height)),
   };
+}
+
+/** The fields a grid change reads of a token. */
+interface PlacedToken {
+  id: string;
+  position: { x: number; y: number };
+  size: { width: number; height: number };
+  mountedOn?: string | null;
+}
+
+/**
+ * The hex on the map whose centre is nearest a map-pixel point. The hex the
+ * point falls in when that is on the map; otherwise the nearest of the hexes
+ * around it, judged from the point itself (nearestHexOnMap judges from the
+ * centre of the hex off the map, which can tie the wrong way).
+ */
+function nearestHexTo(point: { x: number; y: number }, frame: GridFrame): { x: number; y: number } {
+  const under = cellAt(point, frame);
+  if (cellOnMap(under, frame)) return under;
+  const distance = (cell: { x: number; y: number }) => {
+    const c = cellCentre(cell, frame);
+    return (c.x - point.x) ** 2 + (c.y - point.y) ** 2;
+  };
+  let best = nearestHexOnMap(under, frame);
+  let bestD = distance(best);
+  for (let dx = -2; dx <= 2; dx++) {
+    for (let dy = -2; dy <= 2; dy++) {
+      const cell = { x: under.x + dx, y: under.y + dy };
+      if (!cellOnMap(cell, frame)) continue;
+      const d = distance(cell);
+      if (d < bestD - 1e-9) { best = cell; bestD = d; }
+    }
+  }
+  return best;
+}
+
+/**
+ * The tokens moved from grid `from` to grid `to` so each stays where it stood
+ * on the picture: its centre in `from`'s pixels, carried with the picture as
+ * it is stretched to `to`'s frame, then the cell of `to` nearest it. On a
+ * square grid that is the footprint whose centre is nearest, kept on the map;
+ * on a hex grid the hex on the map whose centre is nearest, whatever the
+ * token's size. A
+ * rider lands on its mount's new cell, as it was put there (utils/mounts.ts).
+ *
+ * Nearest is not always the same cell back: a point can lie up to
+ * gridSize/√3 from the nearest hex centre, so a square → hex → square round
+ * trip may end one row off.
+ */
+export function regridTokens<T extends PlacedToken>(tokens: readonly T[], from: GridFrame, to: GridFrame): T[] {
+  const kx = (to.width * to.gridSize) / (from.width * from.gridSize);
+  const ky = (to.height * to.gridSize) / (from.height * from.gridSize);
+  const placed = new Map<string, { x: number; y: number }>();
+  for (const t of tokens) {
+    const c = tokenCentre(t, from);
+    const point = { x: c.x * kx, y: c.y * ky };
+    if (isHexGrid(to)) {
+      placed.set(t.id, nearestHexTo(point, to));
+      continue;
+    }
+    // The box's corner, rounded: an even-sized box has its centre on a grid
+    // line, where taking the cell under the centre would flip with the floats.
+    const o = squareOrigin(to);
+    const width = t.size?.width ?? 1;
+    const height = t.size?.height ?? 1;
+    const corner = {
+      x: Math.round((point.x - o.x) / to.gridSize - width / 2),
+      y: Math.round(to.height - (point.y - o.y) / to.gridSize - height / 2),
+    };
+    placed.set(t.id, clampTokenPosition(corner, { width, height }, to));
+  }
+  return tokens.map((t) => {
+    const own = placed.get(t.id) as { x: number; y: number };
+    const mount = t.mountedOn ? placed.get(t.mountedOn) : undefined;
+    return { ...t, position: { ...(mount ?? own) } };
+  });
 }

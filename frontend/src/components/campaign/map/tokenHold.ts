@@ -21,6 +21,8 @@
 
 import type { CampaignMap, Position, Token, TokenMoveEvent } from '@/types';
 import { gridMeasure, type GridMeasure } from '@/utils/geometry';
+import { isHexGrid, nearestHexOnMap } from '@/utils/tokenCentre';
+import { gridFrame, type MapGrid } from './layers/types';
 
 /** The move that puts a held token back where it was picked up. */
 export function releaseHeldToken(token: Pick<Token, 'id' | 'position'>, mapId: string): TokenMoveEvent {
@@ -37,11 +39,23 @@ export interface Carrier {
 }
 
 /**
+ * The square of the token a pointer took it by, counted from the token's
+ * own. None on a hex map: a token stands on one hex, and a step in stored
+ * positions is not the same step on every row there.
+ */
+export function carryOffset(pointer: Position, token: Position, map: MapGrid): Position {
+  return isHexGrid(gridFrame(map)) ? { x: 0, y: 0 } : { x: pointer.x - token.x, y: pointer.y - token.y };
+}
+
+/**
  * The square a carried token stands on: the pointer's square less the
  * offset, so the square it was taken by stays under the pointer, and kept
- * whole on the map.
+ * whole on the map. On a hex map, the hex under the pointer, or the nearest
+ * one on the map.
  */
-export function carriedSquare(carrier: Carrier, size: Token['size'], map: { width: number; height: number }): Position {
+export function carriedSquare(carrier: Carrier, size: Token['size'], map: MapGrid): Position {
+  const frame = gridFrame(map);
+  if (isHexGrid(frame)) return nearestHexOnMap(carrier.square, frame);
   return {
     x: Math.floor(Math.max(0, Math.min(carrier.square.x - carrier.offset.x, map.width - size.width))),
     y: Math.floor(Math.max(0, Math.min(carrier.square.y - carrier.offset.y, map.height - size.height))),
@@ -53,7 +67,7 @@ export function carriedSquare(carrier: Carrier, size: Token['size'], map: { widt
  * does, and otherwise on its own square. `held` is the token as the store
  * has it, whose square someone else's move may have changed.
  */
-export function heldDrawnAt(held: Pick<Token, 'position' | 'size'>, carrier: Carrier | null, map: { width: number; height: number }): Position {
+export function heldDrawnAt(held: Pick<Token, 'position' | 'size'>, carrier: Carrier | null, map: MapGrid): Position {
   return carrier ? carriedSquare(carrier, held.size, map) : held.position;
 }
 
@@ -65,7 +79,7 @@ export function heldDrawnAt(held: Pick<Token, 'position' | 'size'>, carrier: Car
 export function carriedDistance(
   held: Pick<Token, 'position' | 'size'>,
   carrier: Carrier | null,
-  map: Pick<CampaignMap, 'width' | 'height' | 'feetPerSquare' | 'diagonalRule'>,
+  map: Pick<CampaignMap, 'width' | 'height' | 'feetPerSquare' | 'diagonalRule'> & MapGrid,
 ): GridMeasure {
-  return gridMeasure(held.position, heldDrawnAt(held, carrier, map), map.feetPerSquare, map.diagonalRule);
+  return gridMeasure(held.position, heldDrawnAt(held, carrier, map), map.feetPerSquare, map.diagonalRule, gridFrame(map));
 }

@@ -20,6 +20,8 @@ import type { OwnEdits } from '../ownEdits';
 import { answeredWithin, pastWallCap, refusalIn, WallSendLog, WALL_LIGHT_ANSWER_TIMEOUT_MS } from '../wallLightCaps';
 import type { MapLayer } from '../useRenderLoop';
 import type { MapControls, MapTool, PointerAt, ToolSocketSource } from './types';
+import { isHexGrid, squareOrigin } from '@/utils/tokenCentre';
+import { gridFrame } from '../layers/types';
 import { DOUBLE_TAP_PX } from '../mapPointer';
 
 interface UseWallToolArgs {
@@ -281,14 +283,17 @@ export function useWallTool({
   };
 
   /**
-   * Snap a map-pixel coordinate to the nearest grid intersection if snapToGrid is enabled.
+   * Snap a map-pixel coordinate to the nearest grid intersection if snapToGrid
+   * is enabled, the grid's offset included. A hex grid has no square corners
+   * to snap to, so there it snaps to endpoints only.
    */
   const snapPoint = useCallback((mapPx: { x: number; y: number }): { x: number; y: number } => {
-    if (currentMap && snapToGrid) {
+    if (currentMap && snapToGrid && !isHexGrid(gridFrame(currentMap))) {
       const gs = currentMap.gridSize;
+      const o = squareOrigin(gridFrame(currentMap));
       return {
-        x: Math.round(mapPx.x / gs) * gs,
-        y: Math.round(mapPx.y / gs) * gs,
+        x: o.x + Math.round((mapPx.x - o.x) / gs) * gs,
+        y: o.y + Math.round((mapPx.y - o.y) / gs) * gs,
       };
     }
     if (snapToEndpoint) {
