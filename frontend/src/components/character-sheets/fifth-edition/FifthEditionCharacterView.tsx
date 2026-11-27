@@ -140,9 +140,10 @@ export const FifthEditionCharacterView: React.FC<FifthEditionCharacterViewProps>
     const portrait = data.portraitUrl || character.tokenImageUrl;
     const tiles = coreNumbers();
     // Beside a portrait, three to a row; five of them as three and two wide
-    // ones, so no hole is left. Without one, all in a row from sm up.
+    // ones, so no hole is left. Without one, all in a row once the header box
+    // (the container) has 37 rem: six "Proficiency" labels need that.
     const tileSpan = (index: number) => (portrait && tiles.length === 5 && index >= 3 ? 'col-span-3' : 'col-span-2');
-    const ROW_OF = ['', 'sm:grid-cols-1', 'sm:grid-cols-2', 'sm:grid-cols-3', 'sm:grid-cols-4', 'sm:grid-cols-5', 'sm:grid-cols-6'];
+    const ROW_OF = ['', '@min-[37rem]:grid-cols-1', '@min-[37rem]:grid-cols-2', '@min-[37rem]:grid-cols-3', '@min-[37rem]:grid-cols-4', '@min-[37rem]:grid-cols-5', '@min-[37rem]:grid-cols-6'];
     const meta = [
       data.background ? <span key="bg">Background: <strong className={SHEET_LABEL}>{data.background}</strong></span> : null,
       data.playerName ? <span key="player">Player: {data.playerName}</span> : null,
@@ -150,7 +151,7 @@ export const FifthEditionCharacterView: React.FC<FifthEditionCharacterViewProps>
     ].filter(Boolean);
 
     return (
-      <section data-sheet-header className={`${SHEET_BOX} relative`}>
+      <section data-sheet-header className={`${SHEET_BOX} relative @container`}>
         {onEdit && (
           <button
             type="button"
@@ -183,7 +184,7 @@ export const FifthEditionCharacterView: React.FC<FifthEditionCharacterViewProps>
                 {meta.flatMap((item, index) => (index === 0 ? [item] : [<span key={`dot-${index}`} aria-hidden="true">·</span>, item]))}
               </div>
             )}
-            <div className={`mt-3.5 grid grid-cols-6 gap-2.5 ${portrait ? '' : `sm:[&>*]:col-span-1 ${ROW_OF[tiles.length]}`}`}>
+            <div className={`mt-3.5 grid grid-cols-6 gap-2.5 ${portrait ? '' : `@min-[37rem]:[&>*]:col-span-1 ${ROW_OF[tiles.length]}`}`}>
               {tiles.map((tile, index) => (
                 <div key={tile.label} className={`${tileSpan(index)} min-h-16 rounded-[10px] bg-black/20 px-1 py-1.5 text-center`}>
                   <div className="text-[11px] uppercase tracking-[.06em] text-ink-secondary">{tile.label}</div>

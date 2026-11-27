@@ -253,6 +253,14 @@ describe('the 5E sheet on a phone', () => {
     for (const col of cols.slice(1)) followsItsContainer(col, classes(col).find((c) => c.startsWith('@md:w-'))!);
   });
 
+  it('puts the numbers under the name three to a row, all in one once the header box has room', async () => {
+    await viewOn();
+    const tiles = above(screen.getByText('Armor Class'), ['grid']);
+    expect(classes(tiles)).toContain('grid-cols-6');
+    followsItsContainer(tiles, '@min-[37rem]:[&>*]:col-span-1');
+    expect(classes(tiles).some((c) => /^@min-\[37rem\]:grid-cols-[1-6]$/.test(c))).toBe(true);
+  });
+
   it('keeps every container query off the root, which holds the fixed roll menu', async () => {
     const { container } = await viewOn();
     expect(classes(container.querySelector('[data-sheet-root]'))).not.toContain('@container');
