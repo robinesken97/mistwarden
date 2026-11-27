@@ -27,17 +27,17 @@ export const SHEET_BAR = 'my-2.5 h-[3px] rounded-[5px] border-0 bg-(--sheet-acce
 export const SHEET_GAP = 'gap-4';
 
 /**
- * The page colour the accent has to read on, as "R G B": the theme's, as
- * applied to the document.
+ * A theme colour as applied to the document, as "R G B", or the default
+ * theme's where none is applied (a test).
  *
  * shortcut: read once per render, so a theme switched while a sheet is open
  * is picked up at its next render; follow the theme in a context if that lags.
  */
-function pageChannels(): string {
+function themeChannels(variable: '--rgb-bg-base' | '--rgb-accent', fallback: string): string {
   const applied = typeof document === 'undefined'
     ? ''
-    : getComputedStyle(document.documentElement).getPropertyValue('--rgb-bg-base').trim();
-  return applied || PRESET_THEMES[0].colors.bgBase;
+    : getComputedStyle(document.documentElement).getPropertyValue(variable).trim();
+  return applied || fallback;
 }
 
 /** A stored `themeColor` (a preset's name or `#rrggbb`) as a hex colour, or null for none. */
@@ -50,7 +50,12 @@ export function sheetThemeHex(themeColor: string | undefined): string | null {
 
 /** The CSS variables a sheet's root carries for its colour (`themeColor` as stored). */
 export function sheetAccentVariables(themeColor: string | undefined): CSSProperties {
-  const { accent, fill, onFill } = sheetAccent(sheetThemeHex(themeColor), pageChannels());
+  const theme = PRESET_THEMES[0].colors;
+  const { accent, fill, onFill } = sheetAccent(
+    sheetThemeHex(themeColor),
+    themeChannels('--rgb-bg-base', theme.bgBase),
+    themeChannels('--rgb-accent', theme.accent)
+  );
   return {
     '--sheet-accent': accent,
     '--sheet-accent-bg': 'color-mix(in srgb, var(--sheet-accent) 8%, transparent)',

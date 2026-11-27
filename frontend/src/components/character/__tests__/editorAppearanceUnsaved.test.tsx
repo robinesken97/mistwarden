@@ -30,6 +30,8 @@ const fifthEditionCharacter = {
   tokenImageUrl: null, createdAt: '2026-01-01T00:00:00.000Z', updatedAt: '2026-01-01T00:00:00.000Z',
   data: {
     characterName: 'Aldra', class: 'Fighter', level: 1, race: 'Human', proficiencyBonus: 2,
+    // A 5E sheet with no colour keeps none (it takes the theme's accent), so this one has one.
+    themeColor: 'Classic Red',
     stats: {
       strength: ability, dexterity: ability, constitution: ability,
       intelligence: ability, wisdom: ability, charisma: ability,
@@ -38,8 +40,9 @@ const fifthEditionCharacter = {
   },
 } as unknown as Character;
 
-// Each system's own presets: the first is what a sheet with no colour opens
-// with, the second is a different one.
+// Each system's own presets: the one the sheet has (for Fantasy d20 and
+// Horror d100, the first, which a sheet with no colour opens with), and a
+// different one.
 const systems = [
   { system: '5E', character: () => fifthEditionCharacter, current: 'Classic Red', other: 'Royal Blue' },
   { system: 'Fantasy d20', character: () => fantasyD20Character(), current: 'Royal Blue', other: 'Golden' },

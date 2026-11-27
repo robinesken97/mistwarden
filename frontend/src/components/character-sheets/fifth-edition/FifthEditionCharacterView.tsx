@@ -232,7 +232,7 @@ export const FifthEditionCharacterView: React.FC<FifthEditionCharacterViewProps>
     const darkvision = data.darkvisionFeet ?? 0;
     const exhaustion = exhaustionLevel(data.exhaustionLevel);
     const conditions = data.conditions ?? [];
-    const COLUMN = `flex flex-col ${SHEET_GAP} [&>*:last-child]:flex-1`;
+    const COLUMN = `flex min-w-0 flex-col ${SHEET_GAP} [&>*:last-child]:flex-1`;
 
     return (
       <div className={`grid ${SHEET_GAP} min-[760px]:grid-cols-2`}>
@@ -254,7 +254,7 @@ export const FifthEditionCharacterView: React.FC<FifthEditionCharacterViewProps>
                       <React.Fragment key={key}>
                         {index > 0 && ', '}
                         <span
-                          className={`rounded-sm ${onRoll ? ROLLABLE : ''} ${save.proficient ? 'font-semibold text-ink' : 'text-ink-muted'}`}
+                          className={`rounded-sm py-1.5 ${onRoll ? ROLLABLE : ''} ${save.proficient ? 'font-semibold text-ink' : 'text-ink-muted'}`}
                           onClick={onRoll ? () => rollTest(expr, purpose) : undefined}
                           {...(onRoll ? rollTarget(expr, purpose, character.gameSystem) : undefined)}
                         >
@@ -344,13 +344,15 @@ export const FifthEditionCharacterView: React.FC<FifthEditionCharacterViewProps>
     if (attacks.length === 0) return <p className="text-ink-muted">No attacks configured</p>;
     const CHIP = 'inline-block w-full rounded-md border border-(--sheet-accent) px-1.5 py-px text-center font-semibold text-ink tabular-nums';
     return (
-      <table className="w-full table-fixed border-collapse text-sm">
+      // On a phone the table keeps its columns and scrolls sideways in its box.
+      <div className="overflow-x-auto">
+      <table className="w-full min-w-[21rem] table-fixed border-collapse text-sm">
         <colgroup>
           <col />
           <col className="w-14 sm:w-[84px]" />
           <col className="w-12 sm:w-16" />
-          <col className="w-16 sm:w-20" />
-          <col className="w-16 sm:w-20" />
+          <col className="w-[4.5rem] sm:w-20" />
+          <col className="w-[4.5rem] sm:w-24" />
         </colgroup>
         <thead>
           <tr>
@@ -372,15 +374,15 @@ export const FifthEditionCharacterView: React.FC<FifthEditionCharacterViewProps>
                 onClick={onRoll ? () => rollTest(expr, purpose) : undefined}
                 {...(onRoll ? rollTarget(expr, purpose, character.gameSystem) : undefined)}
               >
-                <td className="border-b border-ink/10 px-0.5 py-1.5 text-center align-middle break-words sm:px-1.5">
+                <td className="border-b border-ink/10 px-0.5 py-1.5 text-center align-middle sm:px-1.5">
                   <span className="text-ink">{attack.name}</span>
                   {attack.notes && <small className="block text-[11px] leading-tight text-ink-secondary">{attack.notes}</small>}
                 </td>
-                <td className="border-b border-ink/10 px-0.5 py-1.5 text-center align-middle break-words sm:px-1.5">{attack.range != null ? `${attack.range} ft` : '—'}</td>
-                <td className="border-b border-ink/10 px-0.5 py-1.5 text-center align-middle break-words sm:px-1.5">
+                <td className="border-b border-ink/10 px-0.5 py-1.5 text-center align-middle sm:px-1.5">{attack.range != null ? `${attack.range} ft` : '—'}</td>
+                <td className="border-b border-ink/10 px-0.5 py-1.5 text-center align-middle sm:px-1.5">
                   <span className={CHIP}>{formatModifier(attack.attackBonus)}</span>
                 </td>
-                <td className="border-b border-ink/10 px-0.5 py-1.5 text-center align-middle break-words sm:px-1.5">
+                <td className="border-b border-ink/10 px-0.5 py-1.5 text-center align-middle sm:px-1.5">
                   {attack.damageRoll ? (
                     <span
                       className={`${CHIP} ${rollsDamage ? 'cursor-pointer hover:bg-(--sheet-accent-bg)' : damageProblem ? 'cursor-default' : ''}`}
@@ -393,12 +395,13 @@ export const FifthEditionCharacterView: React.FC<FifthEditionCharacterViewProps>
                     </span>
                   ) : '—'}
                 </td>
-                <td className="border-b border-ink/10 px-0.5 py-1.5 text-center align-middle break-words sm:px-1.5">{attack.damageType || '—'}</td>
+                <td className="border-b border-ink/10 px-0.5 py-1.5 text-center align-middle text-xs sm:px-1.5 sm:text-sm">{attack.damageType || '—'}</td>
               </tr>
             );
           })}
         </tbody>
       </table>
+      </div>
     );
   };
 

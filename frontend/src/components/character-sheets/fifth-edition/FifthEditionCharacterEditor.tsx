@@ -512,6 +512,9 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
   const [selectedColor, setSelectedColor] = useState(COLOR_PRESETS[0]); // Default to Classic Red
   const [customColorHex, setCustomColorHex] = useState('');
   const [isCustomColor, setIsCustomColor] = useState(false);
+  // A sheet without a colour keeps none until one is picked, and takes the
+  // theme's accent; saving it used to write the first preset's name.
+  const [hasColour, setHasColour] = useState(!!data.themeColor);
 
   // The header colour and a newly chosen token picture are kept outside the
   // form, and are unsaved changes too.
@@ -522,7 +525,7 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
     tokenImage: fileKey(picture),
     portrait: fileKey(portrait),
   });
-  const themeChoice = isCustomColor ? customColorHex : selectedColor.name;
+  const themeChoice = !hasColour ? '' : isCustomColor ? customColorHex : selectedColor.name;
   const sheetSnapshot = snapshotOf(formData, themeChoice, tokenImageFile, portraitFile);
   if (cleanSnapshotRef.current === null) {
     cleanSnapshotRef.current = sheetSnapshot;
@@ -569,6 +572,7 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
   const handleCustomColorChange = (hex: string) => {
     setCustomColorHex(hex);
     setIsCustomColor(true);
+    setHasColour(true);
     setErrors((prev) => ({ ...prev, themeColor: '' }));
   };
 
@@ -576,6 +580,7 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
   const handlePresetColorSelect = (color: typeof COLOR_PRESETS[0]) => {
     setSelectedColor(color);
     setIsCustomColor(false);
+    setHasColour(true);
     setShowColorPicker(false);
   };
 
@@ -1025,7 +1030,7 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
         // the first preset's name, so opening and saving the sheet changes it.
         // Save it back as it was until another colour is picked, as the
         // Fantasy d20 editor does.
-        themeColor: isCustomColor ? (toStoredHexColor(customColorHex) ?? '') : selectedColor.name,
+        themeColor: !hasColour ? undefined : isCustomColor ? (toStoredHexColor(customColorHex) ?? '') : selectedColor.name,
       };
 
       // Proficiencies.

@@ -66,7 +66,7 @@ export interface SheetAccent {
 
 /** A sheet with no colour of its own takes the theme's accent. */
 export const THEME_SHEET_ACCENT: SheetAccent = {
-  accent: 'rgb(var(--rgb-accent-ink))',
+  accent: 'rgb(var(--rgb-accent))',
   fill: 'rgb(var(--rgb-accent))',
   onFill: 'rgb(var(--rgb-accent-text))',
 };
@@ -75,13 +75,18 @@ export const THEME_SHEET_ACCENT: SheetAccent = {
  * The accent of a sheet whose colour is this `#rrggbb` (a preset's or a custom
  * one), on a page of `pageChannels` ("R G B"): the colour moved, keeping its
  * hue, until it reads as text there, so a dark preset is lightened on a dark
- * theme and left as it is on a light one. Without a colour, the theme's accent.
+ * theme and left as it is on a light one. Without a colour, the theme's accent
+ * (`themeAccentChannels`, when known, moved the same way where it would not read).
  */
-export function sheetAccent(hexColor: string | null | undefined, pageChannels: string): SheetAccent {
+export function sheetAccent(hexColor: string | null | undefined, pageChannels: string, themeAccentChannels?: string): SheetAccent {
   const hex = hexColor ? toStoredHexColor(hexColor) : null;
-  if (!hex) return THEME_SHEET_ACCENT;
+  const page = parseRgb(pageChannels);
+  if (!hex) {
+    if (!themeAccentChannels) return THEME_SHEET_ACCENT;
+    const readable = toChannels(ensureReadable(parseRgb(themeAccentChannels), page, AA_TEXT));
+    return { ...THEME_SHEET_ACCENT, accent: `rgb(${readable})` };
+  }
   const colour = parseRgb([1, 3, 5].map((at) => parseInt(hex.slice(at, at + 2), 16)).join(' '));
-  const readable = toChannels(ensureReadable(colour, parseRgb(pageChannels), AA_TEXT));
+  const readable = toChannels(ensureReadable(colour, page, AA_TEXT));
   return { accent: `rgb(${readable})`, fill: `rgb(${readable})`, onFill: `rgb(${readableTextOn(readable)})` };
 }
-

@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { FifthEditionCharacterView } from '../fifth-edition/FifthEditionCharacterView';
 import { FifthEditionCharacterEditor } from '../fifth-edition/FifthEditionCharacterEditor';
 import { FantasyD20CharacterEditor } from '../fantasy-d20/FantasyD20CharacterEditor';
@@ -30,7 +30,7 @@ const activeTab = () => screen.getByRole('tab', { name: /Stats & Skills/ });
 const noop = () => Promise.resolve();
 
 describe("the 5E sheet's open tab", () => {
-  const accentOf = (hex: string) => sheetAccent(hex, PRESET_THEMES[0].colors.bgBase);
+  const accentOf = (hex: string) => sheetAccent(hex, PRESET_THEMES[0].colors.bgBase, PRESET_THEMES[0].colors.accent);
   const rootOf = (tab: HTMLElement) => tab.closest('[style*="--sheet-fill"]') as HTMLElement;
 
   it.each([
@@ -54,6 +54,17 @@ describe("the 5E sheet's open tab", () => {
     render(<FifthEditionCharacterView character={fifthEditionCharacter({ themeColor: undefined })} />);
     const tab = screen.getByRole('tab', { name: /^Overview$/ });
     expect(rootOf(tab).style.getPropertyValue('--sheet-fill')).toBe('rgb(var(--rgb-accent))');
+    expect(rootOf(tab).style.getPropertyValue('--sheet-accent')).toBe(`rgb(${PRESET_THEMES[0].colors.accent})`);
+  });
+
+  it('stays without a colour in the editor until one is picked, and saves none', async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    render(<FifthEditionCharacterEditor character={fifthEditionCharacter({ themeColor: undefined })} onSave={onSave} onCancel={vi.fn()} />);
+    const tab = screen.getByRole('tab', { name: /Stats & Skills/ });
+    expect(rootOf(tab).style.getPropertyValue('--sheet-fill')).toBe('rgb(var(--rgb-accent))');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+    expect(onSave.mock.calls[0][0].themeColor).toBeUndefined();
   });
 });
 

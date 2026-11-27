@@ -105,6 +105,16 @@ describe('sheetAccent', () => {
     }
   );
 
+  it("draws the default theme's accent exactly on its page, and a pale one readable on a light page", () => {
+    const mistwarden = THEMES[0].colors;
+    expect(sheetAccent(undefined, mistwarden.bgBase, mistwarden.accent).accent).toBe(`rgb(${mistwarden.accent})`);
+    for (const theme of THEMES) {
+      const accent = sheetAccent(undefined, theme.colors.bgBase, theme.colors.accent);
+      expect(contrastRatio(channels(accent.accent), parseRgb(theme.colors.bgBase))).toBeGreaterThanOrEqual(AA_TEXT - 0.01);
+      expect(accent.fill).toBe('rgb(var(--rgb-accent))');
+    }
+  });
+
   it('leaves a colour that already reads on the page as it is', () => {
     expect(sheetAccent('#a99be0', '23 22 28').accent).toBe('rgb(169 155 224)');
     expect(sheetAccent('#1d4ed8', '255 255 255').accent).toBe('rgb(29 78 216)');
