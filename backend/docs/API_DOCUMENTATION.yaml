@@ -5550,8 +5550,9 @@ paths:
           over that map's `feetPerSquare` (not rounded, at most 200). A
           player's save stores the value and writes no token. Each map
           changed is re-sent to the table as `map.changed`, per member, when
-          it is the campaign's current map, and its campaign's initiative
-          state is resent. A failure here is logged and does not fail the save.
+          it is the campaign's current map; it counts as a token change for
+          the initiative resend and `tokensChanged` below. A failure here is
+          logged and does not fail the save.
         - If the character is in a campaign and its owner is still a member,
           the update broadcasts `character.updated` to that campaign with
           `characterId`, `character`, `userId` and `tokensChanged`, and also

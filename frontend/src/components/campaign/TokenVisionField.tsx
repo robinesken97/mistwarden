@@ -84,6 +84,9 @@ export default function TokenVisionField({ value, feetPerSquare, onChange, onCom
   useEffect(() => { setDraft(String(value)); }, [value]);
 
   const commit = () => {
+    // A sight the sheet set need not be whole (60 ft at 25 ft a square is
+    // 2.4); leaving the box untouched must not round it.
+    if (draft.trim() !== '' && Number(draft) === value) return;
     const squares = squaresFrom(draft);
     if (squares === null) { setDraft(String(value)); return; }
     setDraft(String(squares));

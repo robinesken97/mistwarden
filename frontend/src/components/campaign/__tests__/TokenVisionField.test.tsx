@@ -70,4 +70,12 @@ describe('TokenVisionField', () => {
     rerender(<TokenVisionField value={6} onChange={onChange} feetPerSquare={10} />);
     expect(screen.queryByRole('button', { name: /Apply/ })).toBeNull();
   });
+
+  it('leaves a sight the sheet set alone when the box is left untouched', () => {
+    const onCommit = vi.fn();
+    render(<TokenVisionField value={7.5} onCommit={onCommit} feetPerSquare={8} sheetFeet={60} />);
+    fireEvent.blur(screen.getByLabelText('Darkvision in grid squares'));
+    expect(onCommit).not.toHaveBeenCalled();
+    expect(screen.queryByText('Sheet: 60 ft')).toBeNull();
+  });
 });

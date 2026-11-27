@@ -128,6 +128,8 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
     const previous = characters.find((c) => c.id === characterId);
     const next = characters.find((c) => c.id === id);
     setCharacterId(id);
+    // The last character's darkvision, if the field still holds it, is not this one's.
+    if (pickedDarkvision !== undefined && sightRadius === squaresForFeet(pickedDarkvision, feetPerSquare)) setSightRadius(0);
     if (!next) return;
     if (!tokenName.trim() || tokenName === previous?.name) setTokenName(next.name);
     setAssignTo(players.some((m) => m.userId === next.userId) ? next.userId : 'none');

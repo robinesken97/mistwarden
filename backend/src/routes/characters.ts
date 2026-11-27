@@ -785,7 +785,6 @@ router.put('/:id', authenticated, async (req: AuthenticatedRequest, res: Respons
     // one token stands until the sheet value changes again.
     let tokensChanged = false;
     const campaignsWithChangedTokens = new Set<string>();
-    const campaignsWithChangedSight = new Set<string>();
     const imageChanged =
       updateData.tokenImageUrl !== undefined &&
       updateData.tokenImageUrl !== character.tokenImageUrl;
@@ -871,7 +870,9 @@ router.put('/:id', authenticated, async (req: AuthenticatedRequest, res: Respons
             return { row, painted, sighted };
           });
 
-          if (written?.painted) {
+          // Either change is a token change: the `character.updated` below
+          // has a page showing a prepared map refetch it.
+          if (written) {
             tokensChanged = true;
             campaignsWithChangedTokens.add(map.campaignId);
           }
@@ -880,7 +881,6 @@ router.put('/:id', authenticated, async (req: AuthenticatedRequest, res: Respons
             // each member may see it, since a token's sight decides what its
             // player is sent. broadcastMapData sends nothing for a map the
             // table is not on.
-            campaignsWithChangedSight.add(map.campaignId);
             try {
               await broadcastMapData(getSocketInstance(), map.campaignId, written.row);
             } catch (err) {
@@ -896,9 +896,8 @@ router.put('/:id', authenticated, async (req: AuthenticatedRequest, res: Respons
     }
 
     // A combatant bound to this character shows the token's picture, which
-    // the sync above may just have changed, and its player is sent the order
-    // by what their tokens see.
-    for (const affectedCampaignId of new Set([...campaignsWithChangedTokens, ...campaignsWithChangedSight])) {
+    // the sync above may just have changed.
+    for (const affectedCampaignId of campaignsWithChangedTokens) {
       await resendInitiative(affectedCampaignId);
     }
 

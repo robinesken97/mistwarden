@@ -129,3 +129,16 @@ it('takes the sight from a 5E sheet\'s darkvision, in the map\'s squares', async
   await waitFor(() => expect(api.addToken).toHaveBeenCalled());
   expect(sent()).toMatchObject({ characterId: 'char-aldra', sightRadius: 12 });
 });
+
+it('drops the last character\'s darkvision when the next has none', async () => {
+  api.getCharacter.mockImplementation((id: string) => Promise.resolve({
+    character: id === 'char-aldra'
+      ? { ...aldra, gameSystem: 'FIFTH_EDITION', data: { darkvisionFeet: 60 } }
+      : { ...npcOfGms, gameSystem: 'FIFTH_EDITION', data: {} },
+  }));
+  await choosePlayer();
+  await userEvent.selectOptions(screen.getByLabelText('Character'), 'char-aldra');
+  await waitFor(() => expect(screen.getByLabelText('Darkvision in grid squares')).toHaveValue(12));
+  await userEvent.selectOptions(screen.getByLabelText('Character'), 'char-mayor');
+  expect(screen.getByLabelText('Darkvision in grid squares')).toHaveValue(0);
+});
