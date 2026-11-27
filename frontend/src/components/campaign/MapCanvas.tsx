@@ -138,6 +138,7 @@ import AtmosphereOverlay from '@/components/campaign/AtmosphereOverlay';
 import GmFogControls, { type FogToolMode } from '@/components/campaign/GmFogControls';
 import type { FogShape } from '@/components/campaign/map/tools/useFogTool';
 import { fogMistMode, FOG_MIST_EVENT } from '@/components/campaign/DiceOverlay';
+import { heldLightSquares, lightsFollowDrag, LIGHTS_FOLLOW_EVENT } from './map/lightsFollow';
 import GmWallControls, { type WallToolMode } from '@/components/campaign/GmWallControls';
 import GmLightControls, { type LightToolMode } from '@/components/campaign/GmLightControls';
 import GmToolPanelContainer from '@/components/campaign/GmToolPanelContainer';
@@ -458,6 +459,13 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
     return () => window.removeEventListener(FOG_MIST_EVENT, read);
   }, []);
   const mistDrifts = mist === 'mist' && !prefersReducedMotion;
+  // This device's choice: carried lights drawn where a held token is (map/lightsFollow.ts).
+  const [lightsFollow, setLightsFollow] = useState(lightsFollowDrag);
+  useEffect(() => {
+    const read = () => setLightsFollow(lightsFollowDrag());
+    window.addEventListener(LIGHTS_FOLLOW_EVENT, read);
+    return () => window.removeEventListener(LIGHTS_FOLLOW_EVENT, read);
+  }, []);
 
   // The ruler and the AoE template (map/tools/useMeasureTools.ts).
   const {
@@ -1792,22 +1800,38 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   // Canvas Rendering
   // ============================================
 
+  // Where held tokens' lights are drawn while lights follow a drag, or null
+  // for none. Keyed by content, so a frame that moves nothing redraws nothing.
+  const heldLightsKey = lightsFollow && currentMap?.lightingEnabled
+    ? JSON.stringify(heldLightSquares(tokens, heldAt, draggedToken && carrierSquare && dragOffset
+      ? { id: draggedToken.id, at: carriedSquare({ square: carrierSquare, offset: dragOffset }, draggedToken.size, currentMap) }
+      : null))
+    : '[]';
+  const heldLights = useMemo(() => {
+    const entries = JSON.parse(heldLightsKey) as Array<[string, Position]>;
+    return entries.length > 0 ? new Map(entries) : null;
+  }, [heldLightsKey]);
+  useEffect(() => {
+    if (currentMap?.lightingEnabled) markDirty('overlay');
+  }, [markDirty, heldLights, currentMap?.lightingEnabled]);
+
   /**
    * The visibility rule's inputs for a set of viewer tokens on this map, from
    * the memoized raycasts. The token layer (what to draw in preview), the
    * lighting layer and the door filter all ask this, so they cannot disagree.
    */
-  const ruleFor = useCallback((myTokens: readonly Token[], viewport: Viewport) => {
+  const ruleFor = useCallback((myTokens: readonly Token[], viewport: Viewport, held: ReadonlyMap<string, Position> | null = null) => {
     const globalIllumination = currentMap?.globalIllumination ?? true;
     const inside: InsideFn = (p, poly) => poly.points.length >= 3 && isPointVisible(p, poly);
     // Lights tokens carry, at their centres. Like sight, a light moves when
-    // its token is put down, not while a hand carries it. A player holds only
+    // its token is put down, unless `held` places it where a hand carries it
+    // (the lighting layer's drag preview). A player holds only
     // the tokens the server sends; a GM preview holds every token, so only
     // those the previewed player could be sent bear a light (visible, on
     // their plane).
     const pool = isGM ? tokensShownInPreview(tokens, () => true, null, viewport, previewedPlane) : tokens;
     const bearers = pool.flatMap((t) => (t.light?.enabled === true
-      ? [{ id: t.id, light: { ...t.light, id: `carried:${t.id}`, ...tokenCentre(t, viewport.gridSize, viewport.mapHeight) } }]
+      ? [{ id: t.id, light: { ...t.light, id: `carried:${t.id}`, ...tokenCentre({ size: t.size, position: held?.get(t.id) ?? t.position }, viewport.gridSize, viewport.mapHeight) } }]
       : []));
     const carried: LightSource[] = bearers.map((b) => b.light);
     const mapLights = lightSources.filter((l) => l.enabled);
@@ -2089,7 +2113,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
         let canSee: (x: number, y: number) => boolean = () => true;
         if (lightingEnabled && !renderIsGM) {
           const myTokens = tokens.filter(viewerOwn);
-          const rule = ruleFor(myTokens, viewport);
+          const rule = ruleFor(myTokens, viewport, heldLights);
           canSee = rule.canSee;
           drawDynamicLighting(ctx, {
             myTokens,
@@ -2116,8 +2140,10 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
           // token the GM moves for an absent player still remembers its ground.
           // The party and an uncontrolled token explore as nobody, and write
           // nothing.
+          // Never from a drag preview (heldLights): only the dropped, stored
+          // state may record explored ground, as only it moves server sight.
           const now = Date.now();
-          if (exploringAs !== null && explorationEnabled && exploredCells !== null && lightCoverageOffscreenRef.current
+          if (heldLights === null && exploringAs !== null && explorationEnabled && exploredCells !== null && lightCoverageOffscreenRef.current
             && now - lastExploredReportRef.current >= 300
             && (lastExploredSourceRef.current.composite !== lightingCompositeRef.current
               || lastExploredSourceRef.current.explored !== exploredCells)) {
@@ -2324,7 +2350,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
         drawPings(ctx, { pings, now: Date.now(), reducedMotion: prefersReducedMotion }, viewport);
       }
     });
-  }, [mist, mistOnScreen, currentMap, mapShown, mapControls.zoom, mapControls.panOffset, dpr, campaign?.gameSystem, tokens, lightSources, selectedLightId, lightMode, wallSegments, wallColor, hoveredWallId, selectedWallIds, hoveredDoorId, wallMode, selectedEndpoint, wallInProgress, wallType, brushSize, splitHoverPoint, polygonPoints, showRuler, rulerColor, effectiveRulerOrigin, rulerEnd, rulerStartByTouch, showAoE, aoeConfig, aoeAnchor, aoeSnap, hoverCoords, fogMode, isGM, fogState, viewerRevealed, viewerOwn, previewing, ruleFor, ownTokenCells, explorationEnabled, exploringAs, exploredCells, exploredRaster, socket, fogDragCurrent, fogShape, fogBrushSquares, fogLasso, wallMarquee, pings, prefersReducedMotion, POLYGON_CLOSE_RADIUS, WALL_ERASE_RADIUS, addExplored, aoeAimRef, aoeAltHeldRef, findWallAtPoint, fogDragAnchorRef, revealOpacityRef, snapPoint, wallBrushPointsRef, wallDragEndpointRef, wallErasedIdsRef, mapDrawings.previews, mapDrawings.drawings, drawingCache, canvasSize.width, canvasSize.height, drawTool, paintStrokes]);
+  }, [mist, mistOnScreen, currentMap, mapShown, mapControls.zoom, mapControls.panOffset, dpr, campaign?.gameSystem, tokens, lightSources, selectedLightId, lightMode, wallSegments, wallColor, hoveredWallId, selectedWallIds, hoveredDoorId, wallMode, selectedEndpoint, wallInProgress, wallType, brushSize, splitHoverPoint, polygonPoints, showRuler, rulerColor, effectiveRulerOrigin, rulerEnd, rulerStartByTouch, showAoE, aoeConfig, aoeAnchor, aoeSnap, hoverCoords, fogMode, isGM, fogState, viewerRevealed, viewerOwn, previewing, ruleFor, ownTokenCells, explorationEnabled, exploringAs, exploredCells, exploredRaster, heldLights, socket, fogDragCurrent, fogShape, fogBrushSquares, fogLasso, wallMarquee, pings, prefersReducedMotion, POLYGON_CLOSE_RADIUS, WALL_ERASE_RADIUS, addExplored, aoeAimRef, aoeAltHeldRef, findWallAtPoint, fogDragAnchorRef, revealOpacityRef, snapPoint, wallBrushPointsRef, wallDragEndpointRef, wallErasedIdsRef, mapDrawings.previews, mapDrawings.drawings, drawingCache, canvasSize.width, canvasSize.height, drawTool, paintStrokes]);
 
   // ── Layer draw dispatch + dirty-flag scheduling ──────────
   // A single rAF coalesces every repaint request; only the dirty layers

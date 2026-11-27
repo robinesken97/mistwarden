@@ -17,6 +17,7 @@ it('opens the fog and dice choices, and closes on Escape and on a press outside'
   const panel = screen.getByRole('group', { name: 'Display on this device' });
   expect(screen.getByRole('combobox', { name: 'Fog' })).toBeInTheDocument();
   expect(screen.getByRole('combobox', { name: 'Dice animation' })).toBeInTheDocument();
+  expect(screen.getByRole('checkbox', { name: 'Lights follow while dragging' })).toBeChecked();
 
   fireEvent.pointerDown(panel);
   expect(button).toHaveAttribute('aria-expanded', 'true');
@@ -27,4 +28,16 @@ it('opens the fog and dice choices, and closes on Escape and on a press outside'
   fireEvent.click(button);
   fireEvent.pointerDown(document.body);
   expect(screen.queryByRole('group', { name: 'Display on this device' })).toBeNull();
+});
+
+it('keeps whether carried lights follow a drag on this device', () => {
+  window.localStorage.clear();
+  render(<DisplaySettingsButton />);
+  fireEvent.click(screen.getByRole('button', { name: 'Display on this device' }));
+  const follow = screen.getByRole('checkbox', { name: 'Lights follow while dragging' });
+  expect(follow).toBeChecked();
+  fireEvent.click(follow);
+  expect(window.localStorage.getItem('mistwarden.lightsFollowDrag')).toBe('off');
+  fireEvent.click(follow);
+  expect(window.localStorage.getItem('mistwarden.lightsFollowDrag')).toBe('on');
 });

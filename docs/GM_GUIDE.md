@@ -1627,7 +1627,7 @@ Switch to **Select** mode to click on a light. You can then drag it to repositio
 
 #### Carried Lights
 
-A token can carry its own light, a torch or a lantern that moves with it. Open the token in the Quick Editor (or set it when placing it in the Token Manager), tick **Carries a light**, and pick a preset, radii and a colour as for a map light. Only you can give a token a light or change it; players cannot. The light is lit at the token's centre and moves when the token is put down, as its sight does.
+A token can carry its own light, a torch or a lantern that moves with it. Open the token in the Quick Editor (or set it when placing it in the Token Manager), tick **Carries a light**, and pick a preset, radii and a colour as for a map light. Only you can give a token a light or change it; players cannot. The light is lit at the token's centre. While the token is dragged, the light follows it on every screen that sees the drag; untick **Lights follow while dragging** in **Display on this device** to have it move only when the token is put down, as its sight does.
 
 A carried light lights things for a player only while they can see the token carrying it: their own token's light always, another's only while one of their characters has it in line of sight. Light from a torchbearer round a corner, out of their sight, lights nothing on their screen, even where it would spill into what they can see, so a light never gives away where an unseen creature is. A hidden token's light lights nothing for any player.
 
