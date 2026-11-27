@@ -79,14 +79,28 @@ function mistTileCanvas(): HTMLCanvasElement | null {
   return canvas;
 }
 
+/** The smallest the tile is drawn on screen, in CSS pixels; under it the repeats line up into a visible grid. */
+const MIST_MIN_SCREEN_PX = 400;
+
+/**
+ * How much larger than map size the tile is drawn at `zoom`, so that it never
+ * covers fewer than MIST_MIN_SCREEN_PX on screen: 1 from about 80% zoom up,
+ * so the mist looks as it always has there.
+ */
+export function mistTileBoost(zoom: number): number {
+  return zoom > 0 ? Math.max(1, MIST_MIN_SCREEN_PX / (MIST_TILE * zoom)) : 1;
+}
+
 /** Lay the mist over the current path, drifting with `time`. The path must already be filled. */
-function fillMist(ctx: CanvasRenderingContext2D, time: number, opacity: number): boolean {
+function fillMist(ctx: CanvasRenderingContext2D, time: number, opacity: number, zoom: number): boolean {
   const tile = mistTileCanvas();
   if (!tile || typeof DOMMatrix === 'undefined') return false;
   const pattern = ctx.createPattern(tile, 'repeat');
   if (!pattern || typeof pattern.setTransform !== 'function') return false;
+  const boost = mistTileBoost(zoom);
   // Two layers drifting at different speeds and directions read as moving mist.
-  for (const [speedX, speedY, scale] of [[0.012, 0.004, 1], [-0.007, 0.009, 1.7]] as const) {
+  for (const [speedX, speedY, layerScale] of [[0.012, 0.004, 1], [-0.007, 0.009, 1.7]] as const) {
+    const scale = layerScale * boost;
     pattern.setTransform(new DOMMatrix().translateSelf((time * speedX) % (MIST_TILE * scale), (time * speedY) % (MIST_TILE * scale)).scaleSelf(scale));
     ctx.globalAlpha = opacity;
     ctx.fillStyle = pattern;
@@ -190,7 +204,7 @@ export function drawFog(
     // Mistwarden: the same mist, still and faint, so the GM sees what the table sees without losing the map.
     if (state.mistTime !== undefined && hidden.length > 0) {
       cellsPath(ctx, hidden, fogCols, cellPx);
-      fillMist(ctx, 0, 0.6);
+      fillMist(ctx, 0, 0.6, viewport.zoom);
     }
     ctx.restore();
   }
@@ -226,7 +240,7 @@ export function drawFog(
       ctx.fill();
       ctx.shadowBlur = 0;
       ctx.shadowColor = 'transparent';
-      fillMist(ctx, state.mistTime ?? 0, 0.75);
+      fillMist(ctx, state.mistTime ?? 0, 0.75, viewport.zoom);
     } else {
       fillCells(ctx, hidden, fogCols, cellPx, 'rgba(15, 12, 25, 1)');
     }
