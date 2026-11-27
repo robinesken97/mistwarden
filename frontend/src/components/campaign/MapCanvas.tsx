@@ -137,7 +137,7 @@ import { setTokenFlag } from '@/utils/tokenFlags';
 import AtmosphereOverlay from '@/components/campaign/AtmosphereOverlay';
 import GmFogControls, { type FogToolMode } from '@/components/campaign/GmFogControls';
 import type { FogShape } from '@/components/campaign/map/tools/useFogTool';
-import { fogMistMode } from '@/components/campaign/DiceOverlay';
+import { fogMistMode, FOG_MIST_EVENT } from '@/components/campaign/DiceOverlay';
 import GmWallControls, { type WallToolMode } from '@/components/campaign/GmWallControls';
 import GmLightControls, { type LightToolMode } from '@/components/campaign/GmLightControls';
 import GmToolPanelContainer from '@/components/campaign/GmToolPanelContainer';
@@ -451,7 +451,12 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   const { markDirty } = useRenderLoop(drawLayerRef);
   // Mistwarden, 2026-11-27: this device's mist (DiceOverlay's sibling setting);
   // still under reduced motion.
-  const mist = fogMistMode();
+  const [mist, setMist] = useState(fogMistMode);
+  useEffect(() => {
+    const read = () => setMist(fogMistMode());
+    window.addEventListener(FOG_MIST_EVENT, read);
+    return () => window.removeEventListener(FOG_MIST_EVENT, read);
+  }, []);
   const mistDrifts = mist === 'mist' && !prefersReducedMotion;
 
   // The ruler and the AoE template (map/tools/useMeasureTools.ts).
@@ -683,7 +688,8 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
 
   // The fog boxes (map/tools/useFogTool.ts).
   // Mistwarden: a player's mist drifts, about ten frames a second, while there is fog to show.
-  const mistOnScreen = mistDrifts && !isGM && (currentMap?.fogEnabled ?? false);
+  // A player's fog, or a GM's preview of it: the timer and the drift go together.
+  const mistOnScreen = mistDrifts && (!isGM || previewing) && (currentMap?.fogEnabled ?? false);
   useEffect(() => {
     if (!mistOnScreen) return;
     const timer = window.setInterval(() => markDirty('overlay'), 100);
@@ -2253,7 +2259,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
             revealedCells: viewerRevealed,
             exemptCells: ownTokenCells,
             revealOpacity: revealOpacityRef.current,
-            mistTime: mist === 'flat' ? undefined : mistDrifts ? performance.now() : null,
+            mistTime: mist === 'flat' ? undefined : mistOnScreen ? performance.now() : null,
           }, viewport);
         }
       }
@@ -2294,7 +2300,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
         drawPings(ctx, { pings, now: Date.now(), reducedMotion: prefersReducedMotion }, viewport);
       }
     });
-  }, [mist, mistDrifts, currentMap, mapShown, mapControls.zoom, mapControls.panOffset, dpr, campaign?.gameSystem, tokens, lightSources, selectedLightId, lightMode, wallSegments, wallColor, hoveredWallId, selectedWallIds, hoveredDoorId, wallMode, selectedEndpoint, wallInProgress, wallType, brushSize, splitHoverPoint, polygonPoints, showRuler, rulerColor, effectiveRulerOrigin, rulerEnd, rulerStartByTouch, showAoE, aoeConfig, aoeAnchor, aoeSnap, hoverCoords, fogMode, isGM, fogState, viewerRevealed, viewerOwn, previewing, ruleFor, ownTokenCells, explorationEnabled, exploringAs, exploredCells, exploredRaster, socket, fogDragCurrent, fogShape, fogBrushSquares, fogLasso, wallMarquee, pings, prefersReducedMotion, POLYGON_CLOSE_RADIUS, WALL_ERASE_RADIUS, addExplored, aoeAimRef, aoeAltHeldRef, findWallAtPoint, fogDragAnchorRef, revealOpacityRef, snapPoint, wallBrushPointsRef, wallDragEndpointRef, wallErasedIdsRef, mapDrawings.previews, mapDrawings.drawings, drawingCache, canvasSize.width, canvasSize.height, drawTool, paintStrokes]);
+  }, [mist, mistOnScreen, currentMap, mapShown, mapControls.zoom, mapControls.panOffset, dpr, campaign?.gameSystem, tokens, lightSources, selectedLightId, lightMode, wallSegments, wallColor, hoveredWallId, selectedWallIds, hoveredDoorId, wallMode, selectedEndpoint, wallInProgress, wallType, brushSize, splitHoverPoint, polygonPoints, showRuler, rulerColor, effectiveRulerOrigin, rulerEnd, rulerStartByTouch, showAoE, aoeConfig, aoeAnchor, aoeSnap, hoverCoords, fogMode, isGM, fogState, viewerRevealed, viewerOwn, previewing, ruleFor, ownTokenCells, explorationEnabled, exploringAs, exploredCells, exploredRaster, socket, fogDragCurrent, fogShape, fogBrushSquares, fogLasso, wallMarquee, pings, prefersReducedMotion, POLYGON_CLOSE_RADIUS, WALL_ERASE_RADIUS, addExplored, aoeAimRef, aoeAltHeldRef, findWallAtPoint, fogDragAnchorRef, revealOpacityRef, snapPoint, wallBrushPointsRef, wallDragEndpointRef, wallErasedIdsRef, mapDrawings.previews, mapDrawings.drawings, drawingCache, canvasSize.width, canvasSize.height, drawTool, paintStrokes]);
 
   // ── Layer draw dispatch + dirty-flag scheduling ──────────
   // A single rAF coalesces every repaint request; only the dirty layers

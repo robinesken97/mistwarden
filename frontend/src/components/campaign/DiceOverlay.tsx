@@ -58,6 +58,8 @@ const LABELS: Record<DiceMode, string> = { '3d': '3D', simple: 'Simple', off: 'O
 export const FOG_MIST_MODES = ['mist', 'still', 'flat'] as const;
 export type FogMistMode = (typeof FOG_MIST_MODES)[number];
 export const FOG_MIST_KEY = 'mistwarden.fogMist';
+/** Sent when this device's choice changes, so the map redraws without a reload. */
+export const FOG_MIST_EVENT = 'mistwarden:fogmist';
 export const fogMistMode = (): FogMistMode => {
   const value = optionalStorage.getItem(FOG_MIST_KEY);
   return FOG_MIST_MODES.some((m) => m === value) ? (value as FogMistMode) : 'mist';
@@ -72,7 +74,7 @@ export function DiceAnimationSetting() {
       Fog
       <select
         defaultValue={fogMistMode()}
-        onChange={(e) => { optionalStorage.setItem(FOG_MIST_KEY, e.target.value); window.location.reload(); }}
+        onChange={(e) => { optionalStorage.setItem(FOG_MIST_KEY, e.target.value); window.dispatchEvent(new Event(FOG_MIST_EVENT)); }}
         className="px-1.5 py-0.5 text-xs border border-warm-amber/30 rounded-cozy bg-parchment/60"
       >
         {FOG_MIST_MODES.map((mode) => <option key={mode} value={mode}>{MIST_LABELS[mode]}</option>)}

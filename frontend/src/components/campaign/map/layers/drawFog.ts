@@ -173,7 +173,9 @@ export function drawFog(
       // Mistwarden: opaque fill whose shadow softens the edge outward, then the mist on top.
       cellsPath(ctx, hidden, fogCols, cellPx);
       ctx.shadowColor = 'rgba(15, 12, 25, 0.95)';
-      ctx.shadowBlur = cellPx * 0.6 * viewport.zoom;
+      // shadowBlur counts canvas pixels and ignores the transform: scale by it (zoom and the screen's density).
+      const scale = typeof ctx.getTransform === 'function' ? Math.abs(ctx.getTransform().a) : viewport.zoom;
+      ctx.shadowBlur = cellPx * 0.6 * scale;
       ctx.fillStyle = 'rgba(15, 12, 25, 1)';
       ctx.fill();
       ctx.shadowBlur = 0;

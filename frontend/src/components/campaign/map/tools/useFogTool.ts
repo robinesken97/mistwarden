@@ -105,16 +105,23 @@ export function useFogTool({ isGM, mapId, fogMode, fogShape, brushRadius, fogSta
     }
   }, [mapId, socket]);
 
+  // The cells a stroke changed on this screen, for a cancel to put back exactly.
+  const brushChangedRef = useRef<number[]>([]);
+
   const brushTo = useCallback((fog: FogState, point: { x: number; y: number }) => {
+    const reveal = fogMode === 'fog-reveal';
     const from = brushLastRef.current ?? point;
     brushLastRef.current = point;
     const fresh = fogCellsAlongStroke(fog, from, point, brushRadius).filter((c) => !brushCellsRef.current.has(c));
     for (const c of fresh) brushCellsRef.current.add(c);
-    if (fresh.length > 0) paintLocally(fresh, fogMode === 'fog-reveal');
+    const changing = fresh.filter((c) => fog.revealed[c] !== reveal);
+    brushChangedRef.current.push(...changing);
+    if (changing.length > 0) paintLocally(changing, reveal);
   }, [brushRadius, paintLocally, fogMode]);
 
   const endStrokes = useCallback(() => {
     brushCellsRef.current = new Set();
+    brushChangedRef.current = [];
     brushLastRef.current = null;
     lassoRef.current = null;
     setLassoPoints(null);
@@ -136,10 +143,10 @@ export function useFogTool({ isGM, mapId, fogMode, fogShape, brushRadius, fogSta
   const cancelFogDrag = useCallback(() => {
     fogDragAnchorRef.current = null;
     setFogDragCurrent(null);
-    // A brush stroke already painted stays painted on this screen only until
-    // the next state from the server; nothing of it was sent.
+    // A cancelled brush stroke sent nothing: put back what it painted here.
+    if (brushChangedRef.current.length > 0) paintLocally(brushChangedRef.current, fogMode !== 'fog-reveal');
     endStrokes();
-  }, [setFogDragCurrent, endStrokes]);
+  }, [setFogDragCurrent, endStrokes, paintLocally, fogMode]);
 
   // Leaving fog mode, or switching maps, drops any drag in progress.
   useEffect(() => {
