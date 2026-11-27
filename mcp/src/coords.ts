@@ -5,9 +5,10 @@
 //   of the map, x to the right, y DOWN. The frame is width * gridSize by
 //   height * gridSize; the picture is stretched to fill it.
 //
-//   Token cells: whole squares, origin at the BOTTOM-LEFT, x to the right,
-//   y UP. A token's position is its bottom-left square; it covers `size`
-//   squares to the right and upward. The grid starts at (gridOffsetX,
+//   Token cells: squares, origin at the BOTTOM-LEFT, x to the right, y UP. A
+//   token's position is its bottom-left square; it covers `size` squares to
+//   the right and upward. Whole squares, unless the map's snapTokens is false:
+//   then x and y may lie between squares, kept to hundredths by the server. The grid starts at (gridOffsetX,
 //   gridOffsetY) map pixels, taken within half a square of the corner, and
 //   fog squares with it (backend/src/utils/tokenCentre.ts squareOrigin).
 //
@@ -24,6 +25,7 @@ export interface MapGrid {
   gridType?: string;
   gridOffsetX?: number;
   gridOffsetY?: number;
+  snapTokens?: boolean;
 }
 
 export function isHexMap(map: { gridType?: string }): boolean {
@@ -34,6 +36,18 @@ export function isHexMap(map: { gridType?: string }): boolean {
 export function squareOrigin(map: MapGrid): { x: number; y: number } {
   const half = (v: number | undefined) => (v ?? 0) - map.gridSize * Math.round((v ?? 0) / map.gridSize);
   return { x: half(map.gridOffsetX), y: half(map.gridOffsetY) };
+}
+
+/**
+ * Refuses a token position between squares on a map whose tokens snap (a
+ * hex map always does). The server would take one from the GM; this server
+ * keeps to whole squares there, as a player's move must.
+ */
+export function assertPlaceable(map: Pick<MapGrid, 'gridType' | 'snapTokens'>, position: { x: number; y: number }): void {
+  if (Number.isInteger(position.x) && Number.isInteger(position.y)) return;
+  if (isHexMap(map) || map.snapTokens !== false) {
+    throw new RangeError('This map\'s tokens snap to the grid: give whole squares, or turn snapping off for the map first.');
+  }
 }
 
 /** Refuses a hex map for the square-cell helpers below. */

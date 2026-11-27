@@ -11,7 +11,7 @@ import { pipeline } from 'node:stream/promises';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { Settings } from './config.ts';
-import { cellFromTop, fogCellsInRect, gridForPicture, isHexMap, topRowOf } from './coords.ts';
+import { assertPlaceable, cellFromTop, fogCellsInRect, gridForPicture, isHexMap, topRowOf } from './coords.ts';
 import { assertEditable, assertNewName, assertUuid, GuardError, inMap, Manifest, resolveInRoot } from './guards.ts';
 import { type Api, ApiError } from './http.ts';
 import { pictureInfo } from './image.ts';
@@ -21,7 +21,7 @@ import { pictureInfo } from './image.ts';
 interface Member { userId: string; role: string; user?: { displayName?: string } }
 interface MapRow {
   id: string; name: string; width: number; height: number; gridSize: number; feetPerSquare?: number;
-  gridType?: string; gridOffsetX?: number; gridOffsetY?: number;
+  gridType?: string; gridOffsetX?: number; gridOffsetY?: number; snapTokens?: boolean;
   lightingEnabled?: boolean; fogEnabled?: boolean; globalIllumination?: boolean; explorationEnabled?: boolean;
   tokens?: TokenRow[]; wallSegments?: WallRow[]; lights?: LightRow[];
 }
@@ -118,7 +118,8 @@ function fogSummary(fog: FogState) {
 
 const COORDS =
   'Coordinates: walls, doors, lights and fog rectangles use MAP PIXELS with the origin at the TOP-LEFT corner (y grows downward); ' +
-  'the map-pixel frame is width*gridSize by height*gridSize. Tokens use whole GRID CELLS with the origin at the BOTTOM-LEFT (y grows upward). ' +
+  'the map-pixel frame is width*gridSize by height*gridSize. Tokens use GRID CELLS with the origin at the BOTTOM-LEFT (y grows upward): ' +
+  'whole cells, unless the map\'s snapTokens is false, where x and y may lie between squares (kept to hundredths). ' +
   'gridOffsetX/Y move the grid (and fog squares) from the frame\'s corner. On a hex map (gridType hexPointy or hexFlat) a cell is a hex: ' +
   'x counts from the first column and y from the bottom row of hexes whose centres lie in the frame; origin "top-left" is refused there.';
 
@@ -153,7 +154,7 @@ export function registerTools(server: McpServer, ctx: Context): string[] {
     const { maps } = await ctx.api.json<{ maps: MapRow[] }>('GET', `/api/campaigns/${campaignId}/maps`);
     return maps.map((m) => ({
       id: m.id, name: m.name, width: m.width, height: m.height, gridSize: m.gridSize,
-      gridType: m.gridType ?? 'square', gridOffsetX: m.gridOffsetX ?? 0, gridOffsetY: m.gridOffsetY ?? 0,
+      gridType: m.gridType ?? 'square', gridOffsetX: m.gridOffsetX ?? 0, gridOffsetY: m.gridOffsetY ?? 0, snapTokens: m.snapTokens ?? true,
       pixelWidth: m.width * m.gridSize, pixelHeight: m.height * m.gridSize,
       current: m.id === campaign.currentMapId, createdByThisServer: manifest.has('map', m.id),
     }));
@@ -170,7 +171,7 @@ export function registerTools(server: McpServer, ctx: Context): string[] {
     for (const w of walls) byType[w.type] = (byType[w.type] ?? 0) + 1;
     return {
       id: map.id, name: map.name, width: map.width, height: map.height, gridSize: map.gridSize, feetPerSquare: map.feetPerSquare,
-      gridType: map.gridType ?? 'square', gridOffsetX: map.gridOffsetX ?? 0, gridOffsetY: map.gridOffsetY ?? 0,
+      gridType: map.gridType ?? 'square', gridOffsetX: map.gridOffsetX ?? 0, gridOffsetY: map.gridOffsetY ?? 0, snapTokens: map.snapTokens ?? true,
       pixelWidth: map.width * map.gridSize, pixelHeight: map.height * map.gridSize,
       current: map.id === campaign.currentMapId, createdByThisServer: manifest.has('map', map.id),
       settings: { lightingEnabled: map.lightingEnabled, fogEnabled: map.fogEnabled, globalIllumination: map.globalIllumination, explorationEnabled: map.explorationEnabled },
@@ -286,12 +287,13 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
     fogEnabled: z.boolean().optional().describe('Fog of war; needed before the fog tools work.'),
     globalIllumination: z.boolean().optional().describe('Everything lit, as by daylight.'),
     explorationEnabled: z.boolean().optional().describe('Remember what player tokens have seen.'),
+    snapTokens: z.boolean().optional().describe('Tokens stand on whole squares (default). Off lets tokens stop between squares; turning it on moves every token to its nearest square. A hex map always snaps.'),
   }, async ({ campaignId, mapId, ...changes }) => {
     const { campaign, manifest } = await campaignAsGm(ctx, campaignId);
     assertEditable(manifest, 'map', mapId, ctx.settings.allowAnyEdit);
     assertNotLive(ctx, campaign, mapId);
     const { map } = await ctx.api.json<{ map: MapRow }>('PUT', `/api/campaigns/${campaignId}/maps/${mapId}`, { json: changes });
-    return { id: map.id, name: map.name, lightingEnabled: map.lightingEnabled, fogEnabled: map.fogEnabled, globalIllumination: map.globalIllumination, explorationEnabled: map.explorationEnabled };
+    return { id: map.id, name: map.name, lightingEnabled: map.lightingEnabled, fogEnabled: map.fogEnabled, globalIllumination: map.globalIllumination, explorationEnabled: map.explorationEnabled, snapTokens: map.snapTokens ?? true };
   });
 
   tool('delete_map', `Delete a map with its tokens, walls and lights. Only maps this server created (unless MISTWARDEN_MCP_ALLOW_ANY_EDIT=1); never the map players currently see without MISTWARDEN_MCP_PLAYER_VISIBLE=1. Cannot be undone. ${BACKUP_FIRST}`, {
@@ -308,12 +310,15 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
   // ---- Tokens ----
 
   const tokenPosition = {
-    x: z.number().int().min(0).describe('Column of the token\'s left square, 0 = left edge.'),
-    y: z.number().int().min(0).describe('Row of the token\'s BOTTOM square counted from the BOTTOM edge (0 = bottom row), unless origin is "top-left".'),
+    x: z.number().min(0).describe('Column of the token\'s left square, 0 = left edge. Whole squares unless the map\'s snapTokens is false.'),
+    y: z.number().min(0).describe('Row of the token\'s BOTTOM square counted from the BOTTOM edge (0 = bottom row), unless origin is "top-left". Whole squares unless the map\'s snapTokens is false.'),
     origin: z.enum(['bottom-left', 'top-left']).optional().describe('"top-left": y is the row of the token\'s TOP square counted from the top (0 = top row), as when reading a picture. Default "bottom-left", Mistwarden\'s own frame.'),
   };
-  const toCell = (map: MapRow, x: number, y: number, origin: string | undefined, size: number) =>
-    origin === 'top-left' ? cellFromTop(x, y, size, map.height, map) : { x, y };
+  const toCell = (map: MapRow, x: number, y: number, origin: string | undefined, size: number) => {
+    const cell = origin === 'top-left' ? cellFromTop(x, y, size, map.height, map) : { x, y };
+    assertPlaceable(map, cell);
+    return cell;
+  };
 
   // Mistwarden, 2026-11-27: the symbols the server allows (backend/src/utils/tokenIcons.ts), and a name kept from players.
   const tokenLook = {

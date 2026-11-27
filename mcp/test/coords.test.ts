@@ -1,6 +1,6 @@
 // Added for Mistwarden on 2026-11-27.
 import { describe, expect, it } from 'vitest';
-import { cellAtPixel, cellFromTop, fogCellsInRect, gridForPicture, topRowOf } from '../src/coords.ts';
+import { assertPlaceable, cellAtPixel, cellFromTop, fogCellsInRect, gridForPicture, topRowOf } from '../src/coords.ts';
 import { pictureInfo } from '../src/image.ts';
 import { gridPng } from './png.ts';
 
@@ -35,6 +35,20 @@ describe('token cells (bottom-left origin)', () => {
   it('refuses a hex map rather than name the wrong hex', () => {
     expect(() => cellFromTop(3, 0, 1, 10, { gridType: 'hexPointy' })).toThrow(/hex grid/);
     expect(() => cellAtPixel(10, 10, { width: 10, height: 10, gridSize: 50, gridType: 'hexFlat' })).toThrow(/hex grid/);
+  });
+});
+
+describe('a token position between squares', () => {
+  it('is taken on a square map whose tokens do not snap, and refused where they snap or on hexes', () => {
+    expect(() => assertPlaceable({ snapTokens: false }, { x: 2.5, y: 1.25 })).not.toThrow();
+    expect(() => assertPlaceable({}, { x: 2.5, y: 1 })).toThrow(RangeError);
+    expect(() => assertPlaceable({ snapTokens: true }, { x: 2, y: 1.5 })).toThrow(RangeError);
+    expect(() => assertPlaceable({ gridType: 'hexPointy', snapTokens: false }, { x: 2.5, y: 1 })).toThrow(RangeError);
+    expect(() => assertPlaceable({ snapTokens: true }, { x: 2, y: 1 })).not.toThrow();
+  });
+
+  it('keeps a fraction through the top-left origin', () => {
+    expect(cellFromTop(2.5, 1.25, 1, 10)).toEqual({ x: 2.5, y: 7.75 });
   });
 });
 
