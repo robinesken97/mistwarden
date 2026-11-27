@@ -13,6 +13,7 @@ import { NpcStatBlockSchema } from './statBlock';
 import { TokenHpSchema, TokenSightRadiusSchema, TokenSizeSchema, TOKEN_TYPES, TOKEN_DISPOSITIONS, TOKEN_DISPLAY_MODES } from './tokens';
 import { MapSideSchema, GridSizeSchema, FeetPerSquareSchema, DrawnBackgroundSchema, MAP_LIMITS, MAX_FOG_CELLS } from './maps';
 import { TOKEN_LIMITS } from './tokenLimits';
+import { CarriedLightSchema } from './walls';
 import { CAMPAIGN_LIMITS } from './campaignLimits';
 import { ASSET_LIMITS } from './assetLimits';
 import { tidyTags, isDrawnMapTag } from './assets';
@@ -160,6 +161,8 @@ export const ImportTokenSchema = z.object({
   notes: z.string().max(5000).nullable().optional(),
   initiative: z.number().nullable().optional().catch(null),
   sightRadius: TokenSightRadiusSchema.nullable().optional().catch(null),
+  // A carried light that is not one is left off; the token is kept.
+  light: CarriedLightSchema.nullable().optional().catch(null),
   displayMode: TokenDisplayModeSchema.default('pog').catch('pog'),
   statBlock: StatBlockSchema.nullable().optional(),
   // A UUID, as the token routes require; anything else links to nothing.

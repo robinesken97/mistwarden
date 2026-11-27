@@ -9,10 +9,14 @@
 
 import { readFileSync } from 'fs';
 import path from 'path';
-import { filterTokensByLighting } from '../spirit-layer';
+import { filterTokensByLighting, filterTokensByRole } from '../spirit-layer';
 import type { Token } from '../../websocket/shared';
+import type { CarriedLight } from '../../types/walls';
 
-interface ScenarioToken { id: string; x: number; y: number; controlledBy?: string; sightRadius?: number; size?: { width: number; height: number } }
+interface ScenarioToken {
+  id: string; x: number; y: number; controlledBy?: string; sightRadius?: number;
+  size?: { width: number; height: number }; visible?: boolean; light?: CarriedLight;
+}
 interface Scenario {
   name: string;
   globalIllumination: boolean;
@@ -28,17 +32,19 @@ const fixture = JSON.parse(readFileSync(path.resolve(__dirname, '../__fixtures__
 function toToken(t: ScenarioToken): Token {
   return {
     id: t.id, name: t.id, imageUrl: '', position: { x: t.x, y: t.y },
-    size: t.size ?? { width: 1, height: 1 }, layer: 'token', visible: true,
+    size: t.size ?? { width: 1, height: 1 }, layer: 'token', visible: t.visible ?? true,
     controlledBy: t.controlledBy ?? null, rotation: 0, conditions: [], metadata: {},
-    sightRadius: t.sightRadius ?? 0,
+    sightRadius: t.sightRadius ?? 0, light: t.light ?? null,
   } as unknown as Token;
 }
 
 describe('vision scenarios (server: which tokens are sent)', () => {
   it.each(fixture.scenarios.map((s) => [s.name, s] as const))('%s', (_name, s) => {
     const { width, height, gridSize } = fixture.map;
+    // As the map fetch does: the role filter first (a hidden token), then sight.
+    const forRole = filterTokensByRole(s.tokens.map(toToken), 'PLAYER', false, fixture.viewer);
     const sent = filterTokensByLighting(
-      s.tokens.map(toToken), fixture.viewer, s.walls, width, height, gridSize, true, s.lights, s.globalIllumination
+      forRole, fixture.viewer, s.walls, width, height, gridSize, true, s.lights, s.globalIllumination
     );
     expect(sent.map((t) => t.id).sort()).toEqual([...s.expectVisible].sort());
   });

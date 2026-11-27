@@ -94,3 +94,22 @@ export function isSeen(
 ): boolean {
   return tierAt(p, viewers, lights, globalIllumination, inside) !== 'dark';
 }
+
+/**
+ * Whether a light a token carries counts for these viewers: always for a
+ * token they control, otherwise while one of them has its bearer in line of
+ * sight. A bearer in sight stands at the heart of its own light, so tierAt
+ * sees it exactly then and it is sent; one out of sight is not sent, and its
+ * light must not count either, or what it lights around a corner would let
+ * a player follow it through walls. Walls alone decide this, so no light has
+ * to be known first, and the browser, which holds only the tokens it is
+ * sent, counts the same lights the server does.
+ */
+export function carriedLightCounts(
+  own: boolean,
+  bearer: RulePoint,
+  viewers: readonly Viewer[],
+  inside: InsideFn
+): boolean {
+  return own || viewers.some((v) => inside(bearer, v.sight));
+}

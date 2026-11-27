@@ -116,6 +116,27 @@ it('shows a creature behind a door once the door opens', async () => {
   gm.disconnect();
 });
 
+it('shows a creature to a player once a torch carried past it is put down beside it, by whoever carries it', async () => {
+  const mapId = await litMap('Torch carried', false);
+  const torch = { brightRadius: 2, dimRadius: 4, color: '#ffcc66', enabled: true };
+  // A torchbearer nobody controls, in the hero's sight on an open map: seen
+  // by its own light, far from the goblin at (8, 2).
+  await prisma.map.update({
+    where: { id: mapId },
+    data: { tokens: toJson([token('hero', 2, 2, playerId), token('goblin', 8, 2, null), { ...token('bearer', 15, 2, null), light: torch }]) },
+  });
+  const player = await server.connectAndAuth(await server.loginAs(playerId), campaignId);
+  const gm = await server.connectAndAuth(await server.loginAs(gmId), campaignId);
+
+  // Not the player's own token that moved, so only the re-send can show it.
+  const shown = mapWhere(player, (ids) => ids.includes('goblin'));
+  gm.emit('token.move.start', { tokenId: 'bearer', mapId });
+  gm.emit('token.move.end', { tokenId: 'bearer', mapId, x: 9, y: 2 });
+  expect(await shown).toEqual(expect.arrayContaining(['hero', 'goblin', 'bearer']));
+  player.disconnect();
+  gm.disconnect();
+});
+
 // So a shutdown, and the end of a test file, let it run first.
 it('counts a re-send waiting for its time as work under way, once for a burst, until it has gone', async () => {
   const mapId = await litMap('Counted', true);

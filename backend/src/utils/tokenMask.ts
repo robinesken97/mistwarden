@@ -22,7 +22,8 @@
 // the ring drawn around a token encodes it. No hit points. No controller,
 // because the campaign roster maps a user id to a name. The plain creature
 // kind, because a player-type token is somebody's character. No facing, no
-// initiative, the plain display mode.
+// initiative, the plain display mode. The light it carries is kept: every
+// browser it is sent to counts that light, as the server does.
 // ============================================
 
 /** The fields the rule and the mask read; any token shape with them will do. */
@@ -50,6 +51,7 @@ export interface MaskableToken {
   notes?: unknown;
   statBlock?: unknown;
   sightRadius?: unknown;
+  light?: unknown;
 }
 
 /** Every field a masked token has, so a test can pin the exact set. */
@@ -74,6 +76,7 @@ export const MASKED_TOKEN_FIELDS = [
   'initiative',
   'displayMode',
   'creatureTemplateId',
+  'light',
 ] as const;
 
 export type MaskedField = (typeof MASKED_TOKEN_FIELDS)[number];
@@ -101,6 +104,10 @@ export function maskObscuredToken<T extends MaskableToken>(token: T): T {
     initiative: null,
     displayMode: 'pog',
     creatureTemplateId: null,
+    // The light it carries, since the server counts it for whoever is sent
+    // the token (carriedLightCounts): a torch says something is there, not
+    // what.
+    light: token.light ?? null,
   };
   // Whatever fields T has beyond these are exactly what the mask leaves out.
   return masked as T;
@@ -137,6 +144,7 @@ export const PLAYER_TOKEN_FIELDS = [
   'displayMode',
   'creatureTemplateId',
   'obscured',
+  'light',
 ] as const satisfies readonly (keyof MaskableToken)[];
 
 /**

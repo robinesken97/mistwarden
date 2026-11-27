@@ -56,6 +56,12 @@ describe('maskObscuredToken', () => {
     expect(Object.keys(sent).sort()).toEqual([...MASKED_TOKEN_FIELDS].sort());
   });
 
+  it('keeps the light it carries, which the server counts for whoever is sent it', () => {
+    const torch = { brightRadius: 4, dimRadius: 8, color: '#ffcc66', enabled: true };
+    expect(maskObscuredToken({ ...token, light: torch }).light).toEqual(torch);
+    expect(maskObscuredToken({ ...token, light: null }).light).toBeNull();
+  });
+
   it('leaves the stored token untouched', () => {
     const before = JSON.stringify(token);
     maskObscuredToken(token);
@@ -88,6 +94,11 @@ describe('tokenSentTo', () => {
     expect(tokenSentTo({ ...token, showHpBar: true }, false).hp).toEqual(hp);
   });
 
+  it('carries the light it carries to everyone it is sent to', () => {
+    const torch = { brightRadius: 4, dimRadius: 8, color: '#ffcc66', enabled: true };
+    for (const own of [true, false]) expect(tokenSentTo({ ...token, light: torch }, own).light).toEqual(torch);
+  });
+
   it('carries darkvision to the controller only', () => {
     expect(tokenSentTo(token, true).sightRadius).toBe(12);
     expect(tokenSentTo(token, false)).not.toHaveProperty('sightRadius');
@@ -115,6 +126,7 @@ describe('tokenSentTo', () => {
     const everything = {
       ...token, characterId: 'char-1', type: 'npc' as const, disposition: 'hostile' as const, initiative: 12,
       displayMode: 'pog' as const, creatureTemplateId: 'tmpl-1', showHpBar: true,
+      light: { brightRadius: 4, dimRadius: 8, color: '#ffcc66', enabled: true },
       // A field tokens do not have today, standing in for a GM-only one added later.
       trapTrigger: 'the third flagstone',
     };

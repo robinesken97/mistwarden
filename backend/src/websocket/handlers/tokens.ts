@@ -14,7 +14,7 @@ import {
 import type { Map as MapRow } from '@prisma/client';
 import type { WallSegment } from '../../types/walls';
 import logger from '../../utils/logger';
-import { Token, tokenMoveLimiter, limiterKey, withinCeiling } from '../shared';
+import { Token, tokenMoveLimiter, limiterKey, withinCeiling, resendSightAfterChange } from '../shared';
 import { readTokens, toJson } from '../../utils/prisma-json';
 import { withMapsLocked, clampTokenPosition } from '../../utils/mapTokens';
 import { canControlToken, canMoveTokensNow, canReadMap, PAUSED_MOVE_REFUSAL } from '../../services/permissions';
@@ -719,6 +719,12 @@ export function registerTokenHandlers(io: Server, socket: AuthenticatedSocket): 
               }
             }
           }
+        }
+        // A light the token carries moved with it, which changes what every
+        // player sees, not just its controller. A hidden bearer's light counts
+        // for no player, and re-sending them the map would tell them it moved.
+        if (written.light?.enabled === true && written.visible !== false) {
+          resendSightAfterChange(io, socket.campaignId!, mapId);
         }
       } else {
         // The sender included, as confirmation that the write went through.

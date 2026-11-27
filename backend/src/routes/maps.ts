@@ -1570,6 +1570,9 @@ router.post('/:id/tokens', campaignGM, async (req: AuthenticatedRequest, res: Re
       // Darkvision in squares; 0 = none. Decides what the server sends this
       // token's owner, so it is set here and by the GM, never by a player.
       sightRadius: shapes.value.sightRadius ?? 0,
+      // A carried torch or lantern; it decides what players are sent, so the
+      // GM's alone, like the darkvision above.
+      light: shapes.value.light ?? null,
       displayMode: displayMode,
       statBlock: shapes.value.statBlock ?? null,
       creatureTemplateId: shapes.value.creatureTemplateId ?? null,
@@ -1757,10 +1760,10 @@ router.put('/:id/tokens/:tokenId', campaignMember, async (req: AuthenticatedRequ
       // write-only channel into the map's JSON that served no purpose. The
       // create route, which is the only place the app sends metadata at all, is
       // GM-only already.
-      // `size` and `sightRadius` are here because both decide what the server
-      // sends this player: a token always sees half its own footprint, so a
+      // `size`, `sightRadius` and `light` are here because each decides what
+      // the server sends this player: a token always sees half its own footprint, so a
       // player who could enlarge their token would enlarge their sight.
-      const restrictedFields = ['hp', 'notes', 'showHpBar', 'type', 'disposition', 'initiative', 'visible', 'name', 'imageUrl', 'layer', 'controlledBy', 'displayMode', 'statBlock', 'creatureTemplateId', 'metadata', 'sightRadius', 'size', 'obscured'];
+      const restrictedFields = ['hp', 'notes', 'showHpBar', 'type', 'disposition', 'initiative', 'visible', 'name', 'imageUrl', 'layer', 'controlledBy', 'displayMode', 'statBlock', 'creatureTemplateId', 'metadata', 'sightRadius', 'light', 'size', 'obscured'];
       for (const field of restrictedFields) {
         if (updates[field] !== undefined) {
           return res.status(403).json({ error: 'Forbidden', message: `Only the GM can update token field: ${field}` });
@@ -1814,6 +1817,7 @@ router.put('/:id/tokens/:tokenId', campaignMember, async (req: AuthenticatedRequ
       ...(updates.notes !== undefined && { notes: shapes.value.notes ?? '' }),
       ...(updates.initiative !== undefined && { initiative: shapes.value.initiative ?? null }),
       ...(updates.sightRadius !== undefined && { sightRadius: shapes.value.sightRadius ?? 0 }),
+      ...(updates.light !== undefined && { light: shapes.value.light ?? null }),
       ...(updates.displayMode !== undefined && { displayMode: updates.displayMode }),
       // The parsed value, not the raw one: Zod drops keys the schema does not
       // declare, and storing what arrived instead of what was checked is how

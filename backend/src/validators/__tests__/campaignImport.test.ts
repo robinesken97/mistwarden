@@ -135,6 +135,12 @@ describe('imported token allowlists and limits', () => {
     expect(importedTokens(map({ size: { width: 100, height: 100 } }))[0].size).toEqual({ width: 1, height: 1 });
   });
 
+  it('keeps the light a token carries, and leaves off one the live routes would refuse', () => {
+    const torch = { brightRadius: 4, dimRadius: 8, color: '#ffcc66', enabled: true };
+    expect(importedTokens(map({ light: torch }))[0].light).toEqual(torch);
+    expect(importedTokens(map({ light: { ...torch, dimRadius: 1 } }))[0].light).toBeNull();
+  });
+
   it('holds conditions and hit points to the live limits, one condition at a time', () => {
     const t = importedTokens(map({ conditions: ['Prone', 'x'.repeat(100)], hp: { current: 1, max: 999999, temp: 0 } }))[0];
     expect(t.conditions).toEqual(['Prone']);

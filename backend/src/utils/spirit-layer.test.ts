@@ -6,7 +6,7 @@
  * raycasting visibility polygon (or tokens controlled by the player themselves).
  */
 
-import { filterTokensByLighting, filterMapData, filterTokensByRole } from './spirit-layer';
+import { filterTokensByLighting, filterMapData, filterTokensByRole, playerSightOnLitMap } from './spirit-layer';
 import type { WallSegment } from '../types/walls';
 import type { Map as MapRow } from '@prisma/client';
 
@@ -581,5 +581,51 @@ describe('filterMapData on a whole map', () => {
       spiritLayerUrl: null,
       annotations: [],
     });
+  });
+});
+
+/**
+ * Lights tokens carry. Which count differs per player (carriedLightCounts),
+ * while the map's own lights are worked out once per read and shared by
+ * every player of it; a carried light must never ride along into that.
+ */
+describe('carried lights', () => {
+  const W = 20;
+  const H = 20;
+  const torch = { brightRadius: 2, dimRadius: 4, color: '#ffcc66', enabled: true };
+  // A wall from the top edge down to y=1100: a corner the viewer at (2,7)
+  // sees round below its end, but not past to (12,10).
+  const corner = [makeWall('corner', 1000, 0, 1000, 1100)];
+
+  it('counts a light for the player whose bearer it is, not for another of the same read', () => {
+    const lights: never[] = [];
+    const tokens = [
+      makeToken('p1Bearer', 12, 10, 'user1'),
+      makeToken('p2Viewer', 2, 7, 'user2'),
+      makeToken('lit', 11, 7), // 3.2 squares from the bearer, in p2's sight round the corner
+    ].map((t) => (t.id === 'p1Bearer' ? { ...t, light: torch } : t));
+    const seenBy = (user: string) =>
+      filterTokensByLighting(tokens, user, corner, W, H, GRID_SIZE, true, lights).map((t) => t.id).sort();
+    expect(seenBy('user1')).toEqual(['lit', 'p1Bearer']);
+    expect(seenBy('user2')).toEqual(['p2Viewer']);
+    expect(seenBy('user1')).toEqual(['lit', 'p1Bearer']);
+  });
+
+  it('sees a dragged bearer by its own light wherever it is carried in sight', () => {
+    const viewer = makeToken('viewer', 2, 7, 'user1');
+    const bearer = { ...makeToken('bearer', 10, 7, 'user2'), light: torch };
+    const sight = playerSightOnLitMap([viewer, bearer], 'user1', NO_WALLS, W, H, GRID_SIZE, [], false);
+    // Its light is held where it stood; at a frame 5 squares on it still shines.
+    const carried = { ...bearer, position: { x: 15, y: 12 } };
+    expect(sight.seesToken(carried)).toBe(true);
+    expect(sight.seesToken({ ...carried, light: { ...torch, enabled: false } })).toBe(false);
+    expect(sight.seesToken({ ...carried, position: { x: 15, y: 12 }, light: null })).toBe(false);
+  });
+
+  it('does not see a bearer round a corner, light or not', () => {
+    const viewer = makeToken('viewer', 2, 7, 'user1');
+    const bearer = { ...makeToken('bearer', 12, 10, 'user2'), light: torch };
+    const sight = playerSightOnLitMap([viewer, bearer], 'user1', corner, W, H, GRID_SIZE, [], false);
+    expect(sight.seesToken(bearer)).toBe(false);
   });
 });

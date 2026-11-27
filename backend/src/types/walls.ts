@@ -63,3 +63,9 @@ export interface LightSource {
   color: string;        // hex color e.g. '#ffcc66' (warm amber default)
   enabled: boolean;     // toggle without deleting (extinguished torch)
 }
+
+/**
+ * A light a token carries: a light source without a place of its own, since
+ * it stands at the token's centre and moves with it. GM-only on write.
+ */
+export type CarriedLight = Pick<LightSource, 'brightRadius' | 'dimRadius' | 'color' | 'enabled'>;

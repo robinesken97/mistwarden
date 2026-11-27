@@ -3,7 +3,7 @@ import { createHash } from 'crypto';
 import type { Map as MapRow, Prisma } from '@prisma/client';
 import { prisma } from '../config/database';
 import { computeVisibility, isPointVisible, type VisibilityPolygon } from './raycasting';
-import { isSeen, type Viewer, type Lit, type InsideFn } from './visibilityRule';
+import { isSeen, carriedLightCounts, type Viewer, type Lit, type InsideFn } from './visibilityRule';
 import { tokenCentre } from './tokenCentre';
 import type { WallSegment, LightSource } from '../types/walls';
 import { tokenSentTo } from './tokenMask';
@@ -380,8 +380,38 @@ function wallsFingerprint(walls: WallSegment[]): string {
   return createHash('sha256').update(JSON.stringify(ends)).digest('base64');
 }
 
+/** wallsFingerprint, once per read of the walls: carried lights ask it for every player. */
+const wallsKeys = new WeakMap<WallSegment[], string>();
+function wallsKeyOf(wallSegs: WallSegment[]): string {
+  let key = wallsKeys.get(wallSegs);
+  if (key === undefined) {
+    key = wallsFingerprint(wallSegs);
+    wallsKeys.set(wallSegs, key);
+  }
+  return key;
+}
+
+/** What one light reaches and how brightly, for the visibility rule. */
+function litOf(
+  light: Pick<LightSource, 'x' | 'y' | 'brightRadius' | 'dimRadius'>,
+  wallsKey: string,
+  wallSegs: WallSegment[],
+  mapWidthPx: number,
+  mapHeightPx: number,
+  gridSize: number
+): Lit {
+  const dimRadiusPx = (light.dimRadius ?? light.brightRadius ?? 3) * gridSize;
+  return {
+    cx: light.x,
+    cy: light.y,
+    reach: lightReach(light, dimRadiusPx, wallsKey, wallSegs, mapWidthPx, mapHeightPx),
+    brightPx: (light.brightRadius ?? 0) * gridSize,
+    dimPx: dimRadiusPx,
+  };
+}
+
 function lightReach(
-  light: LightSource,
+  light: Pick<LightSource, 'x' | 'y'>,
   dimRadiusPx: number,
   wallsKey: string,
   wallSegs: WallSegment[],
@@ -424,17 +454,8 @@ function litsFor(
   if (hit && hit.key === key) return hit.lits;
   // Light positions are already in map-space pixels (Y=0 at top), so no flip
   // is needed.
-  const wallsKey = enabledLights.length > 0 ? wallsFingerprint(wallSegs) : '';
-  const lits: Lit[] = enabledLights.map((light) => {
-    const dimRadiusPx = (light.dimRadius ?? light.brightRadius ?? 3) * gridSize;
-    return {
-      cx: light.x,
-      cy: light.y,
-      reach: lightReach(light, dimRadiusPx, wallsKey, wallSegs, mapWidthPx, mapHeightPx),
-      brightPx: (light.brightRadius ?? 0) * gridSize,
-      dimPx: dimRadiusPx,
-    };
-  });
+  const wallsKey = enabledLights.length > 0 ? wallsKeyOf(wallSegs) : '';
+  const lits: Lit[] = enabledLights.map((light) => litOf(light, wallsKey, wallSegs, mapWidthPx, mapHeightPx, gridSize));
   if (Array.isArray(lights) && Array.isArray(walls)) {
     const entry = litCache.get(lights) ?? new WeakMap<object, { key: string; lits: Lit[] }>();
     entry.set(walls, { key, lits });
@@ -450,7 +471,7 @@ export interface PlayerSight {
    * otherwise when the visibility rule says its centre is seen. A drag asks
    * it of the carried token at each frame's position.
    */
-  seesToken(token: Pick<Token, 'position' | 'size' | 'controlledBy'>): boolean;
+  seesToken(token: Pick<Token, 'position' | 'size' | 'controlledBy' | 'light'>): boolean;
   /**
    * Whether one of the player's tokens makes out a point in map pixels, such
    * as a door's middle. Each viewer tests the point nudged 2 px toward
@@ -526,8 +547,23 @@ export function playerSightOnLitMap(
 
   // What each light reaches, bounded by its own walls: the same for every
   // player, so worked out once per map read (litsFor).
-  const lits = litsFor(walls, lights, wallSegs, enabledLights, mapWidthPx, mapHeightPx, gridSize);
   const inside: InsideFn = (p, poly) => isPointVisible(p, poly);
+  const mapLits = litsFor(walls, lights, wallSegs, enabledLights, mapWidthPx, mapHeightPx, gridSize);
+
+  // Lights the tokens carry, at their centres. Which count differs from one
+  // player to the next (carriedLightCounts: their own, and those whose bearer
+  // they have in line of sight, the bearers they are sent), so these are
+  // never put through litsFor, whose answer every player of a read shares.
+  // `tokens` are the role-filtered ones, so a hidden or other-plane bearer
+  // never shines. One pass: whether a bearer counts needs walls only.
+  const carriedLits: Lit[] = [];
+  for (const t of tokens) {
+    if (t.light?.enabled !== true) continue;
+    const at = tokenCentre(t, gridSize, mapHeight);
+    if (!carriedLightCounts(t.controlledBy === playerUserId, at, viewers, inside)) continue;
+    carriedLits.push(litOf({ ...t.light, ...at }, wallsKeyOf(wallSegs), wallSegs, mapWidthPx, mapHeightPx, gridSize));
+  }
+  const lits = carriedLits.length > 0 ? [...mapLits, ...carriedLits] : mapLits;
 
   const elapsed = Date.now() - startMs;
   if (elapsed > 50) {
@@ -540,8 +576,12 @@ export function playerSightOnLitMap(
   // your behalf. Then Global Illumination, darkvision, the token's own square,
   // and light.
   return {
+    // A bearer is seen by its own light wherever it is in sight. Asked
+    // outright, since a drag asks at each frame's position while `lits`
+    // hold the light where the token stood.
     seesToken: (t) =>
       t.controlledBy === playerUserId
+      || (t.light?.enabled === true && carriedLightCounts(false, tokenCentre(t, gridSize, mapHeight), viewers, inside))
       || isSeen(tokenCentre(t, gridSize, mapHeight), viewers, lits, globalIllumination, inside),
     seesPoint: (x, y) => viewers.some((v) => {
       const dx = v.cx - x;
