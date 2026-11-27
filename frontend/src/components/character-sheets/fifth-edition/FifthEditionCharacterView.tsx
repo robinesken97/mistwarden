@@ -224,7 +224,8 @@ export const FifthEditionCharacterView: React.FC<FifthEditionCharacterViewProps>
     );
   };
 
-  // The Overview tab: what a stat block shows, in two columns.
+  // The Overview tab: what a stat block shows, in two columns once the sheet
+  // itself is wide enough (its body is the container), whatever the screen.
   const renderOverviewTab = () => {
     const proficiencies = readProficiencyGroups(data);
     const features = collectSheetFeatures(data);
@@ -235,16 +236,17 @@ export const FifthEditionCharacterView: React.FC<FifthEditionCharacterViewProps>
     const COLUMN = `flex min-w-0 flex-col ${SHEET_GAP} [&>*:last-child]:flex-1`;
 
     return (
-      <div className={`grid ${SHEET_GAP} min-[760px]:grid-cols-2`}>
+      <div className={`grid ${SHEET_GAP} @min-[56rem]:grid-cols-2`}>
         <div className={COLUMN}>
           <section className={SHEET_BOX}>
             <h3 className={SHEET_BOX_HEADING}>Saves &amp; Senses</h3>
             <div className="space-y-1.5">
               {data.savingThrows && (
-                <div>
+                // Six to a row once the box has room for six, else three.
+                <div className="@container">
                   <strong className={SHEET_LABEL}>Saving Throws</strong>
                   {/* Six tiles in the order of the abilities, whatever order the sheet stores them in. */}
-                  <div className="mt-1 mb-1 grid grid-cols-3 gap-1.5 sm:grid-cols-6">
+                  <div className="mt-1 mb-1 grid grid-cols-3 gap-1.5 @min-[27rem]:grid-cols-6">
                     {ABILITIES.filter(([, , key]) => data.savingThrows?.[key]).map(([, , key]) => {
                       const save = data.savingThrows![key] as FifthEditionSavingThrow;
                       // Worked out from the scores plus the other bonus, as the
@@ -358,20 +360,21 @@ export const FifthEditionCharacterView: React.FC<FifthEditionCharacterViewProps>
     if (attacks.length === 0) return <p className="text-ink-muted">No attacks configured</p>;
     const CHIP = 'inline-block w-full rounded-md border border-(--sheet-accent) px-1.5 py-px text-center font-semibold text-ink tabular-nums';
     return (
-      // On a phone the table keeps its columns and scrolls sideways in its box.
-      <div className="overflow-x-auto">
+      // Its columns follow the box's width, not the screen's; in a box too
+      // narrow even for the small ones it scrolls sideways.
+      <div className="@container overflow-x-auto">
       <table className="w-full min-w-[21rem] table-fixed border-collapse text-sm">
         <colgroup>
           <col />
-          <col className="w-14 sm:w-[84px]" />
-          <col className="w-12 sm:w-16" />
-          <col className="w-[4.5rem] sm:w-20" />
-          <col className="w-[4.5rem] sm:w-24" />
+          <col className="w-14 @md:w-[84px]" />
+          <col className="w-12 @md:w-16" />
+          <col className="w-[4.5rem] @md:w-20" />
+          <col className="w-[4.5rem] @md:w-24" />
         </colgroup>
         <thead>
           <tr>
             {['Weapon', 'Range', 'Hit', 'Damage', 'Type'].map((heading) => (
-              <th key={heading} className="border-b-2 border-(--sheet-accent) px-0.5 py-1 sm:px-1.5 text-center font-semibold text-(--sheet-accent)">{heading}</th>
+              <th key={heading} className="border-b-2 border-(--sheet-accent) px-0.5 py-1 @md:px-1.5 text-center font-semibold text-(--sheet-accent)">{heading}</th>
             ))}
           </tr>
         </thead>
@@ -388,15 +391,15 @@ export const FifthEditionCharacterView: React.FC<FifthEditionCharacterViewProps>
                 onClick={onRoll ? () => rollTest(expr, purpose) : undefined}
                 {...(onRoll ? rollTarget(expr, purpose, character.gameSystem) : undefined)}
               >
-                <td className="border-b border-ink/10 px-0.5 py-1.5 text-center align-middle sm:px-1.5">
+                <td className="border-b border-ink/10 px-0.5 py-1.5 text-center align-middle wrap-break-word @md:px-1.5">
                   <span className="text-ink">{attack.name}</span>
                   {attack.notes && <small className="block text-[11px] leading-tight text-ink-secondary">{attack.notes}</small>}
                 </td>
-                <td className="border-b border-ink/10 px-0.5 py-1.5 text-center align-middle sm:px-1.5">{attack.range != null ? `${attack.range} ft` : '—'}</td>
-                <td className="border-b border-ink/10 px-0.5 py-1.5 text-center align-middle sm:px-1.5">
+                <td className="border-b border-ink/10 px-0.5 py-1.5 text-center align-middle @md:px-1.5">{attack.range != null ? `${attack.range} ft` : '—'}</td>
+                <td className="border-b border-ink/10 px-0.5 py-1.5 text-center align-middle @md:px-1.5">
                   <span className={CHIP}>{formatModifier(attack.attackBonus)}</span>
                 </td>
-                <td className="border-b border-ink/10 px-0.5 py-1.5 text-center align-middle sm:px-1.5">
+                <td className="border-b border-ink/10 px-0.5 py-1.5 text-center align-middle @md:px-1.5">
                   {attack.damageRoll ? (
                     <span
                       className={`${CHIP} ${rollsDamage ? 'cursor-pointer hover:bg-(--sheet-accent-bg)' : damageProblem ? 'cursor-default' : ''}`}
@@ -409,7 +412,7 @@ export const FifthEditionCharacterView: React.FC<FifthEditionCharacterViewProps>
                     </span>
                   ) : '—'}
                 </td>
-                <td className="border-b border-ink/10 px-0.5 py-1.5 text-center align-middle text-xs sm:px-1.5 sm:text-sm">{attack.damageType || '—'}</td>
+                <td className="border-b border-ink/10 px-0.5 py-1.5 text-center align-middle text-xs @md:px-1.5 @md:text-sm">{attack.damageType || '—'}</td>
               </tr>
             );
           })}
@@ -818,7 +821,10 @@ export const FifthEditionCharacterView: React.FC<FifthEditionCharacterViewProps>
     <div data-sheet-root className={`grid ${SHEET_GAP}`} style={sheetAccentVariables(data.themeColor)} {...rollRoot}>
       {renderHeader()}
       <SheetTabs id={sheetTabsId} tabs={TABS} active={activeTab} onSelect={setActiveTab} variant="boxed" />
-      <div data-sheet-body {...sheetTabPanel(sheetTabsId, activeTab)}>{renderTabContent()}</div>
+      {/* The container the open tab lays out against (`@min-[…]:`). Not the
+          root: a container holds position: fixed descendants, and the roll
+          menu is one. */}
+      <div data-sheet-body className="@container" {...sheetTabPanel(sheetTabsId, activeTab)}>{renderTabContent()}</div>
 
       {/* Advantage / Disadvantage, on a right-click or a press and hold of any d20 test */}
       {rollMenu}

@@ -1241,12 +1241,15 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
 
     return (
       <div className="px-3 pt-3 sm:px-6 sm:pt-4">
-      <section data-sheet-header className={`${SHEET_BOX} relative`}>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5">
+      {/* The box is the container its layout follows, not the screen: the
+          pictures go beside the fields once the box has 37.5 rem inside, room
+          for both pictures and two fields of 8 rem. */}
+      <section data-sheet-header className={`${SHEET_BOX} relative @container`}>
+      <div className="flex flex-col gap-4 @min-[37.5rem]:flex-row @min-[37.5rem]:items-start @min-[37.5rem]:gap-5">
           {/* Token Image Upload. As wide as the portrait, so its caption
               wraps under it. */}
           {allowTokenPicture && (
-          <div className="shrink-0 relative group w-24 sm:w-40">
+          <div className="shrink-0 relative group w-24 @min-[37.5rem]:w-40">
             <input
               type="file"
               id="token-upload"
@@ -1262,15 +1265,15 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
                 <img
                   src={tokenImagePreview}
                   alt={formData.characterName || 'Character'}
-                  className="w-24 h-24 sm:w-40 sm:h-40 rounded-full border-[3px] border-(--sheet-accent) object-cover"
+                  className="w-24 h-24 @min-[37.5rem]:w-40 @min-[37.5rem]:h-40 rounded-full border-[3px] border-(--sheet-accent) object-cover"
                 />
               ) : (
-                <div className="w-24 h-24 sm:w-40 sm:h-40 rounded-full border-[3px] border-(--sheet-accent) bg-black/20 flex items-center justify-center">
-                  <User className="w-12 h-12 sm:w-20 sm:h-20 text-ink-muted" />
+                <div className="w-24 h-24 @min-[37.5rem]:w-40 @min-[37.5rem]:h-40 rounded-full border-[3px] border-(--sheet-accent) bg-black/20 flex items-center justify-center">
+                  <User className="w-12 h-12 @min-[37.5rem]:w-20 @min-[37.5rem]:h-20 text-ink-muted" />
                 </div>
               )}
               <div className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                <Upload className="w-8 h-8 sm:w-12 sm:h-12 text-white" />
+                <Upload className="w-8 h-8 @min-[37.5rem]:w-12 @min-[37.5rem]:h-12 text-white" />
               </div>
             </label>
             <PortraitNotes error={errors.tokenImage} personal={!character.campaignId} errorClassName="text-danger-ink" noteClassName="text-ink-secondary" />
@@ -1280,7 +1283,7 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
           {/* The sheet's portrait, shown tall in the read-only header. Without
               one the header shows the token picture. */}
           {allowTokenPicture && (
-          <div className="shrink-0 w-24 sm:w-32">
+          <div className="shrink-0 w-24 @min-[37.5rem]:w-32">
             <input
               type="file"
               id={portraitInputId}
@@ -1293,10 +1296,10 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
                 <img
                   src={portraitPreview || formData.portraitUrl}
                   alt="Portrait"
-                  className="h-30 w-24 rounded-xl border-[3px] border-(--sheet-accent) object-cover sm:h-40 sm:w-32"
+                  className="h-30 w-24 rounded-xl border-[3px] border-(--sheet-accent) object-cover @min-[37.5rem]:h-40 @min-[37.5rem]:w-32"
                 />
               ) : (
-                <div className="flex h-30 w-24 flex-col items-center justify-center gap-1 rounded-xl border-[3px] border-dashed border-(--sheet-accent) bg-black/20 text-xs text-ink-secondary sm:h-40 sm:w-32">
+                <div className="flex h-30 w-24 flex-col items-center justify-center gap-1 rounded-xl border-[3px] border-dashed border-(--sheet-accent) bg-black/20 text-xs text-ink-secondary @min-[37.5rem]:h-40 @min-[37.5rem]:w-32">
                   <Upload className="h-6 w-6" aria-hidden="true" />
                   Portrait
                 </div>
@@ -1318,10 +1321,12 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
           </div>
           )}
 
-          {/* Character Info. min-w-0 so the column can shrink inside the row. */}
-          <div className="w-full min-w-0 flex-1 space-y-2.5">
-            {/* The name, with Save, Cancel and the colour beside it; on a
-                narrow box the buttons wrap under the name. */}
+          {/* Character Info. min-w-0 so the column can shrink inside the row;
+              the container the name and the fields below lay out against. */}
+          <div className="w-full min-w-0 flex-1 space-y-2.5 @container">
+            {/* The name, with Save, Cancel and the colour beside it once the
+                column has 36 rem; narrower, the name has a row of its own
+                and the buttons go under it. */}
             <div className="flex flex-wrap items-start gap-2">
               <input
                 type="text"
@@ -1330,7 +1335,7 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
                 maxLength={SHEET_NAME_MAX}
                 placeholder="Character Name"
                 aria-label="Character name"
-                className={`min-w-0 flex-[1_1_14rem] rounded-[10px] border-2 ${
+                className={`min-w-0 flex-[1_1_100%] @min-[36rem]:flex-[1_1_14rem] rounded-[10px] border-2 ${
                   errors.characterName ? 'border-danger' : 'border-ink/20'
                 } bg-transparent px-3 py-1 font-heading text-[30px] leading-[1.1] font-semibold text-(--sheet-accent) placeholder:text-ink-muted focus:outline-hidden focus:border-(--sheet-accent)`}
               />
@@ -1439,9 +1444,10 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
                 filled from their display name when the character is created
                 and is shown rather than edited. */}
             <p className="text-sm text-ink-secondary">Player: {formData.playerName || '—'}</p>
-            {/* Level, race, class and experience in one grid: two to a row on
-                a phone, one row from sm up. */}
-            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-[4.5rem_minmax(0,1fr)_minmax(0,1fr)_8rem]">
+            {/* Level, race, class and experience in one grid: two to a row,
+                and one row once the column has 31 rem, where race and class
+                still get 8 rem each. */}
+            <div className="grid grid-cols-2 gap-2.5 @min-[31rem]:grid-cols-[4.5rem_minmax(0,1fr)_minmax(0,1fr)_8rem]">
               <div>
                 <label htmlFor="fifth-edition-level" className={FIELD_LABEL}>Level</label>
                 <span
@@ -3420,7 +3426,7 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
     >
       {renderHeader()}
       <div className="px-3 pt-3 sm:px-6 sm:pt-4">
-        <SheetTabs id={sheetTabsId} tabs={TABS} active={activeTab} onSelect={setActiveTab} variant="boxed" />
+        <SheetTabs id={sheetTabsId} tabs={TABS} active={activeTab} onSelect={setActiveTab} variant="boxed" longLabels />
       </div>
       {refusals.length > 0 && (
         <div role="alert" className="mx-3 sm:mx-6 mt-4 px-3 py-2 text-sm text-danger-ink bg-danger/10 border border-danger/30 rounded-lg">

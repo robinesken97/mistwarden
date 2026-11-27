@@ -42,9 +42,16 @@ function around(a: Element, b: Element): Element {
   return at;
 }
 
-/** A row that stacks below sm and is the old row from sm up. */
+/**
+ * A row that stacks when narrow and is the old row when wide: from sm up, or,
+ * in the 5E editor, once its box is wide (a container query on the box).
+ */
 const stacksOnAPhone = (row: Element) => {
-  expect(classes(row)).toEqual(expect.arrayContaining(['flex', 'flex-col', 'sm:flex-row']));
+  expect(classes(row)).toEqual(expect.arrayContaining(['flex', 'flex-col']));
+  const wide = classes(row).find((c) => c.endsWith(':flex-row'));
+  expect(wide).toBeDefined();
+  if (wide!.startsWith('@')) expect(row.parentElement?.closest('.\\@container')).not.toBeNull();
+  else expect(wide).toBe('sm:flex-row');
 };
 
 describe('the 5E read-only header', () => {
@@ -124,9 +131,11 @@ describe.each([
     it('draws the portrait at 96 px on a phone and 160 px from sm up', () => {
       const { container } = show();
       const holder = picture(container);
-      expect(classes(holder)).toEqual(expect.arrayContaining(['w-24', 'sm:w-40']));
+      // 160 px where the row is a row: the same breakpoint as the row's.
+      const at = classes(around(holder, screen.getByLabelText(name))).find((c) => c.endsWith(':flex-row'))!.replace(/flex-row$/, '');
+      expect(classes(holder)).toEqual(expect.arrayContaining(['w-24', `${at}w-40`]));
       const circle = holder.querySelector('label > :first-child');
-      expect(classes(circle)).toEqual(expect.arrayContaining(['w-24', 'h-24', 'sm:w-40', 'sm:h-40']));
+      expect(classes(circle)).toEqual(expect.arrayContaining(['w-24', 'h-24', `${at}w-40`, `${at}h-40`]));
     });
   }
 
@@ -140,6 +149,11 @@ describe('the 5E editor header', () => {
     expect(grid.contains(screen.getByLabelText('Class'))).toBe(true);
     expect(grid.contains(screen.getByLabelText('Character name'))).toBe(false);
     expect(classes(grid)).toEqual(expect.arrayContaining(['grid', 'grid-cols-2']));
+    // One row only once the column, not the screen, has room for race and
+    // class at 8 rem each.
+    const row = classes(grid).find((c) => c.endsWith(':grid-cols-[4.5rem_minmax(0,1fr)_minmax(0,1fr)_8rem]'));
+    expect(row).toMatch(/^@min-\[\d+(\.\d+)?rem\]:/);
+    expect(grid.parentElement?.closest('.\\@container')).not.toBeNull();
     expect(classes(screen.getByText('Experience Points'))).toContain('whitespace-nowrap');
   });
 });
