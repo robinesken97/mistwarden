@@ -323,6 +323,8 @@ tags:
     description: Chat message history
   - name: Documents
     description: PDF, text and Markdown files uploaded as assets, shared with a campaign by its GM and read inline
+  - name: Gallery
+    description: Pictures a GM files in folders and shows to every player or to chosen ones (Mistwarden)
   - name: Dice Macros
     description: A player's own saved dice rolls for one campaign, private to whoever saved them
   - name: Admin
@@ -3869,6 +3871,152 @@ paths:
   # note belonging to somebody else answers 404 rather than 403 — a 403 would
   # confirm the id exists. The GM has no access to a player's notes.
   # ============================================
+
+  # Mistwarden, 2026-11-27: the campaign gallery.
+  /api/campaigns/{campaignId}/gallery:
+    get:
+      tags:
+        - Gallery
+      summary: List a campaign's gallery pictures
+      description: >-
+        The GM gets every picture with its folder and who sees it. A player
+        gets only the pictures shown to them, without folder or the other
+        players. A gallery picture is a MAP asset of the campaign, and the
+        map-picture rule opens its file and thumbnail exactly for the players
+        it is shown to.
+      operationId: listGalleryPictures
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CampaignId'
+      responses:
+        '200':
+          description: The pictures
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pictures:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string, format: uuid }
+                        assetId: { type: string, format: uuid }
+                        name: { type: string }
+                        folder: { type: string, description: GM only }
+                        shownToAll: { type: boolean, description: GM only }
+                        shownTo: { type: array, items: { type: string, format: uuid }, description: GM only }
+                        url: { type: string }
+                        thumbnailUrl: { type: string }
+                        updatedAt: { type: string, format: date-time }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags:
+        - Gallery
+      summary: File a picture in the gallery
+      description: >-
+        GM only. The picture must be a MAP asset of this campaign; it is shown
+        to nobody until it is changed. A picture already in the gallery
+        answers 409.
+      operationId: addGalleryPicture
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CampaignId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [assetId, name]
+              properties:
+                assetId: { type: string, format: uuid }
+                name: { type: string, maxLength: 120 }
+                folder: { type: string, maxLength: 80 }
+      responses:
+        '201':
+          description: Filed
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Already in the gallery
+
+  /api/campaigns/{campaignId}/gallery/{pictureId}:
+    patch:
+      tags:
+        - Gallery
+      summary: Rename, refile or show a gallery picture
+      description: >-
+        GM only. `shownTo` names players of this campaign; anyone else answers
+        400. Each player who can see the picture after the change and could
+        not before receives `gallery.shown` on their sockets, and the
+        campaign's room receives `gallery.changed`.
+      operationId: updateGalleryPicture
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CampaignId'
+        - name: pictureId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string, maxLength: 120 }
+                folder: { type: string, maxLength: 80 }
+                shownToAll: { type: boolean }
+                shownTo: { type: array, items: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Changed
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - Gallery
+      summary: Take a picture out of the gallery
+      description: GM only. The asset stays in the campaign, hidden from players again.
+      operationId: removeGalleryPicture
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CampaignId'
+        - name: pictureId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Removed
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /api/campaigns/{campaignId}/documents:
     get:
