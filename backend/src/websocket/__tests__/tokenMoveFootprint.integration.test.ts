@@ -156,6 +156,20 @@ describe('drag frames', () => {
     gm.disconnect();
     player.disconnect();
   });
+
+  it('relays a player\'s frame back to where a token the GM placed between squares stands, as a cancelled hold sends', async () => {
+    const token = { ...ogre(playerId), position: { x: 1.25, y: 1 } };
+    const mapId = await newMap([token]);
+    const gm = await server.connectAndAuth(gmCookie, campaignId);
+    const player = await server.connectAndAuth(playerCookie, campaignId);
+    player.emit('token.move.start', { tokenId: token.id, mapId });
+
+    const frame = waitForEvent<{ x: number; y: number }>(gm, 'token.moved');
+    player.emit('token.move', { tokenId: token.id, mapId, x: 1.25, y: 1 });
+    expect(await frame).toMatchObject({ x: 1.25, y: 1 });
+    gm.disconnect();
+    player.disconnect();
+  });
 });
 
 it('pulls a drop that would hang off the edge back onto the map, and says where it went', async () => {

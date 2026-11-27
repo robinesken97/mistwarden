@@ -444,11 +444,6 @@ export function registerTokenHandlers(io: Server, socket: AuthenticatedSocket): 
         return; // Silently ignore invalid map during rapid updates
       }
 
-      // Between squares only where the drop would be taken (utils/mapTokens.ts mayPlaceFreely).
-      if (!isWholeCell({ x, y }) && !mayPlaceFreely(socket.role, map)) {
-        return;
-      }
-
       // Validate coordinates are within map bounds: a cell of its grid (utils/tokenCentre.ts)
       if (!cellOnMap({ x, y }, map)) {
         socket.emit('error', { message: 'Token position out of bounds' });
@@ -465,6 +460,14 @@ export function registerTokenHandlers(io: Server, socket: AuthenticatedSocket): 
       // fires up to 60 times a second and an error per frame would be its own
       // problem; token.move.end answers properly.
       if (!movingToken) {
+        return;
+      }
+
+      // Between squares only where the drop would be taken (utils/mapTokens.ts
+      // mayPlaceFreely), or back to where it stands: a cancelled hold of a
+      // token the GM placed between squares sends that.
+      const home = x === movingToken.position.x && y === movingToken.position.y;
+      if (!home && !isWholeCell({ x, y }) && !mayPlaceFreely(socket.role, map)) {
         return;
       }
 

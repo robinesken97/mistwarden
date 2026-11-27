@@ -632,8 +632,9 @@ answers properly.
 
 **Validation:**
 - Coordinates must be finite numbers, counted in grid squares; a frame
-  between squares is dropped where the drop would be refused (below), and
-  relayed to hundredths otherwise
+  between squares is dropped where the drop would be refused (below), unless
+  it is where the token stands (a cancelled hold), and relayed to hundredths
+  otherwise
 - X must be >= 0 and < map.width (the map's width in squares)
 - Y must be >= 0 and < map.height (the map's height in squares)
 - A position off the map is answered with `error` "Token position out of bounds" on every frame, and this check comes before the permission check, so a sender who may not move the token gets it too. Other invalid data (a missing id, a coordinate that is not a number, a map the sender may not read) is ignored without an answer

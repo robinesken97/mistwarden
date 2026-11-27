@@ -17,8 +17,11 @@ import {
   gridXToFogCol,
   fogCellIndex,
   mapPxToFogCell,
+  fogOrigin,
+  tokenFogCell,
 } from '../coords';
 import type { FogState } from '@/types/walls';
+import { tokenCentre, type GridFrame } from '@/utils/tokenCentre';
 
 /** 20 cols × 15 rows at 50px, a common map's shape. */
 const fog: FogState = {
@@ -118,6 +121,22 @@ describe('fog cell lookup', () => {
     // And the row agrees with the fog cell under the centre's pixel.
     const centrePx = gridYToCentrePx(2.7, 1, MAP_HEIGHT, GRID);
     expect(mapPxToFogCell(25, centrePx, fog)?.row).toBe(gridYToFogRow(2.7, 1, MAP_HEIGHT));
+  });
+
+  it('takes a token between squares by the fog cell under its centre (utils/tokenCentre.ts, shared with the server), with the grid moved too', () => {
+    for (const [ox, oy] of [[0, 0], [12.5, -20]]) {
+      const frame: GridFrame = { width: 20, height: 15, gridSize: GRID, gridType: 'square', gridOffsetX: ox, gridOffsetY: oy };
+      const cells = { ...fog, ...fogOrigin(frame) };
+      for (let size = 1; size <= 4; size++) {
+        for (const x of [0.13, 3.37, 7.71, 20 - size - 0.29]) {
+          for (const y of [0.21, 5.63, 9.07, 15 - size - 0.42]) {
+            const token = { position: { x, y }, size: { width: size, height: size } };
+            const c = tokenCentre(token, frame);
+            expect(tokenFogCell(token, frame)).toBe(mapPxToFogCell(c.x, c.y, cells)?.index);
+          }
+        }
+      }
+    }
   });
 
   it('fogCellIndex is row-major', () => {
