@@ -5,7 +5,7 @@
 // the drawn grid up with one printed on the picture.
 // ============================================
 
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import type { GridType } from '@/utils/tokenCentre';
 import { MAP_LIMITS } from '@/constants/mapLimits';
 
@@ -20,6 +20,39 @@ export function gridOffsetWithinLimits(raw: string): number {
   const value = Number(raw);
   if (!Number.isFinite(value)) return 0;
   return Math.max(-MAP_LIMITS.maxGridOffset, Math.min(MAP_LIMITS.maxGridOffset, value));
+}
+
+/**
+ * A box for one offset that keeps what is typed while it is not yet a
+ * number ("-", "", "12."), so typing -12.5 over another value is not cut
+ * short to 0; each number it reads is passed on, and a new value from
+ * outside (Apply) replaces the text.
+ */
+function OffsetBox({ id, value, onChange }: { id: string; value: number; onChange: (v: number) => void }) {
+  const [text, setText] = useState(String(value));
+  const [shown, setShown] = useState(value);
+  if (value !== shown) {
+    setShown(value);
+    setText(String(value));
+  }
+  return (
+    <input
+      id={id}
+      type="text"
+      inputMode="decimal"
+      value={text}
+      onChange={(e) => {
+        const raw = e.target.value;
+        setText(raw);
+        if (raw.trim() === '' || !Number.isFinite(Number(raw))) return;
+        const next = gridOffsetWithinLimits(raw);
+        setShown(next);
+        onChange(next);
+      }}
+      onBlur={() => setText(String(value))}
+      className="input-cozy w-24"
+    />
+  );
 }
 
 export default function MapGridShapeFields({
@@ -72,29 +105,11 @@ export default function MapGridShapeFields({
         <div className="flex gap-2">
           <label htmlFor={xId} className="flex items-center gap-1.5 text-xs text-stone-gray/70">
             X
-            <input
-              id={xId}
-              type="number"
-              step="any"
-              value={offsetX}
-              onChange={(e) => onOffsetX(gridOffsetWithinLimits(e.target.value))}
-              min={-MAP_LIMITS.maxGridOffset}
-              max={MAP_LIMITS.maxGridOffset}
-              className="input-cozy w-24"
-            />
+            <OffsetBox id={xId} value={offsetX} onChange={onOffsetX} />
           </label>
           <label htmlFor={yId} className="flex items-center gap-1.5 text-xs text-stone-gray/70">
             Y
-            <input
-              id={yId}
-              type="number"
-              step="any"
-              value={offsetY}
-              onChange={(e) => onOffsetY(gridOffsetWithinLimits(e.target.value))}
-              min={-MAP_LIMITS.maxGridOffset}
-              max={MAP_LIMITS.maxGridOffset}
-              className="input-cozy w-24"
-            />
+            <OffsetBox id={yId} value={offsetY} onChange={onOffsetY} />
           </label>
         </div>
         <p className="text-xs text-stone-gray/50 mt-1">Where the grid starts, from the picture&apos;s top-left corner.</p>

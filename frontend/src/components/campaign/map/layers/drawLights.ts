@@ -13,6 +13,7 @@ import type { Token } from '@/types';
 import type { LightSource } from '@/types/walls';
 import type { LightToolMode } from '@/components/campaign/GmLightControls';
 import { mapSizePx, viewportFrame, type Viewport } from './types';
+import { fogOrigin } from '../coords';
 import { GRID_TYPES, tokenCentre, type GridType } from '@/utils/tokenCentre';
 import type { VisionSource } from '../vision';
 import { applyViewport, withinBackingLimit } from '../layerCanvas';
@@ -209,7 +210,12 @@ export function drawDynamicLighting(
     maskCtx.clearRect(0, 0, sw, sh);
     maskCtx.imageSmoothingEnabled = false;
     applyViewport(maskCtx, viewport, state.dpr);
-    maskCtx.drawImage(state.explored, 0, 0, mapWidthPx, mapHeightPx);
+    // One pixel a fog cell, so from the cells' origin (map/coords.ts fogOrigin).
+    // shortcut: the strips under half a square wide that an offset leaves at
+    // the frame's edges are not remembered; draw the edge cells stretched if
+    // that shows at the table.
+    const exploredAt = fogOrigin(viewportFrame(viewport));
+    maskCtx.drawImage(state.explored, exploredAt.originX, exploredAt.originY, mapWidthPx, mapHeightPx);
     // What is in sight now is not memory. Dim areas are 0.5 alpha, so three
     // subtractions leave 12.5%, visually nothing.
     maskCtx.globalCompositeOperation = 'destination-out';
@@ -503,7 +509,8 @@ function drawComposite(
     lightCtx.globalCompositeOperation = 'source-over';
     lightCtx.clearRect(0, 0, mapWidthPx, mapHeightPx);
     lightCtx.imageSmoothingEnabled = false;
-    lightCtx.drawImage(state.explored, 0, 0, mapWidthPx, mapHeightPx);
+    const exploredAt = fogOrigin(viewportFrame(viewport));
+    lightCtx.drawImage(state.explored, exploredAt.originX, exploredAt.originY, mapWidthPx, mapHeightPx);
     lightCtx.imageSmoothingEnabled = true;
     lightCtx.globalCompositeOperation = 'destination-out';
     for (let i = 0; i < 3; i++) lightCtx.drawImage(coverage, 0, 0, mapWidthPx, mapHeightPx);

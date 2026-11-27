@@ -68,4 +68,14 @@ describe('Edit Map grid', () => {
     expect(sent()).toMatchObject({ gridType: 'hexPointy' });
     expect(sent()).not.toHaveProperty('gridOffsetX');
   });
+
+  it('takes an offset typed over another one character by character', async () => {
+    render(<EditMapModal isOpen map={{ ...map, gridOffsetX: 30 } as CampaignMap} campaignId="c" onClose={vi.fn()} onUpdated={vi.fn()} />);
+    const box = screen.getByLabelText('X') as HTMLInputElement;
+    for (const typed of ['', '-', '-1', '-12', '-12.', '-12.5']) fireEvent.change(box, { target: { value: typed } });
+    expect(box.value).toBe('-12.5');
+    fireEvent.click(screen.getByText('Save Changes'));
+    await waitFor(() => expect(updateMap).toHaveBeenCalled());
+    expect(sent()).toEqual({ gridOffsetX: -12.5 });
+  });
 });
