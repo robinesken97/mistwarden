@@ -8209,6 +8209,19 @@ paths:
                     - $ref: '#/components/schemas/CarriedLight'
                   nullable: true
                   description: GM only; null removes it. It decides what the server sends players.
+                mountedOn:
+                  type: string
+                  nullable: true
+                  maxLength: 100
+                  description: |
+                    The id of a token on this map for this one to ride; null gets off. The GM may
+                    couple any two tokens; a player only two they control (403 otherwise, the same
+                    answer for a token that is not there), and may always take their rider off.
+                    One level only, on one plane (400 otherwise). The rider is put on the mount's
+                    square and listed after it, and from then on a move of either, over this route
+                    or `token.move.end`, moves both by the same step, kept on the map as one.
+                    A new controller, a crossing to the other plane, the mount's deletion or a
+                    move of only one of them to another map lets go of the coupling.
                 obscured:
                   type: boolean
                   description: Hide what the token is from players who do not control it. GM only; this route is the only way to change it after creation.
@@ -13959,6 +13972,13 @@ components:
             - $ref: '#/components/schemas/CarriedLight'
           nullable: true
           description: The light the token carries; null for none.
+        mountedOn:
+          type: string
+          nullable: true
+          description: |
+            The token this one rides; the two move as one. Sent to a player only when
+            they are sent the mount too, so a hidden mount is never named; its rider
+            is still sent. Never set by the create route, and left out of exports.
 
     CarriedLight:
       type: object
