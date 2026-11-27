@@ -40,11 +40,13 @@ function groups(): Array<[string, string[]]> {
   const sheet = screen.getByRole('dialog', { name: 'More' });
   return within(sheet).getAllByRole('group').map((group) => [
     within(group).getByRole('heading', { level: 3 }).textContent ?? '',
-    within(group).getAllByRole('button').map((row) => row.textContent ?? ''),
+    within(group).queryAllByRole('button').map((row) => row.textContent ?? ''),
   ]);
 }
 
 const AT_THE_TABLE: [string, string[]] = ['At the table', ['Notes', 'Gallery', 'Session', 'Documents', 'Shortcuts']];
+/** This device's display settings: two dropdowns, no rows. */
+const DISPLAY: [string, string[]] = ['Display on this device', []];
 
 describe('More', () => {
   it('is a modal sheet at full height, named More', () => {
@@ -58,19 +60,19 @@ describe('More', () => {
     render(<SessionToolbar openPanels={{}} onOpen={() => undefined} />);
     const toolbar = within(screen.getByRole('toolbar', { name: 'GM tools' })).getAllByRole('button').map((b) => b.getAttribute('aria-label'));
     expect(toolbar).toHaveLength(7);
-    expect(groups()).toEqual([AT_THE_TABLE, ['GM tools', toolbar]]);
+    expect(groups()).toEqual([AT_THE_TABLE, DISPLAY, ['GM tools', toolbar]]);
   });
 
   it('offers a player the table alone', () => {
     seat.role = 'PLAYER';
     more();
-    expect(groups()).toEqual([AT_THE_TABLE]);
+    expect(groups()).toEqual([AT_THE_TABLE, DISPLAY]);
   });
 
   it('offers an owner who is not the GM Owner Settings, as the desktop header does', () => {
     seat.role = 'PLAYER';
     more({ isOwner: true });
-    expect(groups()).toEqual([AT_THE_TABLE, ['Owner', ['Owner Settings']]]);
+    expect(groups()).toEqual([AT_THE_TABLE, DISPLAY, ['Owner', ['Owner Settings']]]);
   });
 
   it('offers a GM who owns the campaign Campaign Settings, and no Owner Settings', () => {
@@ -104,8 +106,24 @@ describe('More', () => {
 
   it('draws rows a finger can press', () => {
     more();
-    for (const row of within(screen.getByRole('dialog', { name: 'More' })).getAllByRole('group').flatMap((g) => within(g).getAllByRole('button'))) {
+    for (const row of within(screen.getByRole('dialog', { name: 'More' })).getAllByRole('group').flatMap((g) => within(g).queryAllByRole('button'))) {
       expect(row.className).toContain('min-h-13');
     }
+  });
+
+  it("changes this device's fog and dice animation in place, keeping the stored choices", () => {
+    localStorage.setItem('mistwarden.fogMist', 'still');
+    const redraw = vi.fn();
+    window.addEventListener('mistwarden:fogmist', redraw);
+    more();
+    const fog = screen.getByRole('combobox', { name: 'Fog' });
+    expect(fog).toHaveValue('still');
+    fireEvent.change(fog, { target: { value: 'flat' } });
+    expect(localStorage.getItem('mistwarden.fogMist')).toBe('flat');
+    expect(redraw).toHaveBeenCalledTimes(1);
+    fireEvent.change(screen.getByRole('combobox', { name: 'Dice animation' }), { target: { value: 'off' } });
+    expect(localStorage.getItem('mistwarden.diceMode')).toBe('off');
+    window.removeEventListener('mistwarden:fogmist', redraw);
+    localStorage.clear();
   });
 });

@@ -33,6 +33,7 @@ import {
 } from 'react-resizable-panels';
 import { useCampaign } from '@/contexts/CampaignContext';
 import SessionSidebar from '@/components/campaign/SessionSidebar';
+import { DisplaySettingsButton } from '@/components/campaign/DisplaySettings';
 import SessionToolbar, { type SessionToolKey } from '@/components/campaign/SessionToolbar';
 import { useTableSlot } from '@/components/campaign/tableHosts';
 import ConnectionStatus from '@/components/ConnectionStatus';
@@ -204,6 +205,8 @@ export default function DesktopTable({
               onClick={onOpenShortcuts}
             />
           </Tooltip>
+          {/* Mistwarden: how this device draws fog and dice. */}
+          <DisplaySettingsButton />
 
           {/* Sidebar collapse toggles (all roles) */}
           <div className="h-6 w-px bg-moss-green/20" />
