@@ -79,15 +79,27 @@ function mistTileCanvas(): HTMLCanvasElement | null {
   return canvas;
 }
 
+/**
+ * Mist over the rectangle (0, 0, width, height) of `ctx`, drifting with
+ * `time`, for the darkness of dynamic lighting (drawLights.ts). False where
+ * no mist can be drawn.
+ */
+export function paintMistRect(ctx: CanvasRenderingContext2D, width: number, height: number, time: number, scale: number, opacity: number): boolean {
+  ctx.beginPath();
+  ctx.rect(0, 0, width, height);
+  return fillMist(ctx, time, opacity, scale);
+}
+
 /** Lay the mist over the current path, drifting with `time`. The path must already be filled. */
-function fillMist(ctx: CanvasRenderingContext2D, time: number, opacity: number): boolean {
+function fillMist(ctx: CanvasRenderingContext2D, time: number, opacity: number, tileScale = 1): boolean {
   const tile = mistTileCanvas();
   if (!tile || typeof DOMMatrix === 'undefined') return false;
   const pattern = ctx.createPattern(tile, 'repeat');
   if (!pattern || typeof pattern.setTransform !== 'function') return false;
   // Two layers drifting at different speeds and directions read as moving mist.
-  for (const [speedX, speedY, scale] of [[0.012, 0.004, 1], [-0.007, 0.009, 1.7]] as const) {
-    pattern.setTransform(new DOMMatrix().translateSelf((time * speedX) % (MIST_TILE * scale), (time * speedY) % (MIST_TILE * scale)).scaleSelf(scale));
+  for (const [speedX, speedY, layerScale] of [[0.012, 0.004, 1], [-0.007, 0.009, 1.7]] as const) {
+    const scale = layerScale * tileScale;
+    pattern.setTransform(new DOMMatrix().translateSelf((time * speedX * tileScale) % (MIST_TILE * scale), (time * speedY * tileScale) % (MIST_TILE * scale)).scaleSelf(scale));
     ctx.globalAlpha = opacity;
     ctx.fillStyle = pattern;
     ctx.fill();
@@ -101,6 +113,42 @@ function cellsPath(ctx: CanvasRenderingContext2D, cells: readonly number[], cols
   ctx.beginPath();
   for (const idx of cells) {
     ctx.rect((idx % cols) * cellPx, Math.floor(idx / cols) * cellPx, cellPx, cellPx);
+  }
+}
+
+/**
+ * Mistwarden, 2026-11-27: round off the fog's steps. Where a clear cell
+ * meets hidden cells on two sides that share a corner, a triangle of fog
+ * with legs of half a cell fills that corner of the clear cell, so a
+ * staircase reads as a slope. Only ever over clear ground, never off the
+ * hidden; a cell in `exempt` (a player's own token) is left alone.
+ */
+export function addFogFillets(
+  ctx: CanvasRenderingContext2D,
+  isHidden: (col: number, row: number) => boolean,
+  cols: number,
+  rows: number,
+  cellPx: number,
+  exempt?: ReadonlySet<number>
+): void {
+  const h = cellPx / 2;
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      if (isHidden(col, row) || exempt?.has(row * cols + col)) continue;
+      const x = col * cellPx;
+      const y = row * cellPx;
+      const up = isHidden(col, row - 1);
+      const down = isHidden(col, row + 1);
+      const left = isHidden(col - 1, row);
+      const right = isHidden(col + 1, row);
+      const corner = (ax: number, ay: number, bx: number, by: number, cx: number, cy: number) => {
+        ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.lineTo(cx, cy); ctx.closePath();
+      };
+      if (up && left) corner(x, y, x + h, y, x, y + h);
+      if (up && right) corner(x + cellPx, y, x + cellPx, y + h, x + cellPx - h, y);
+      if (down && left) corner(x, y + cellPx, x, y + cellPx - h, x + h, y + cellPx);
+      if (down && right) corner(x + cellPx, y + cellPx, x + cellPx - h, y + cellPx, x + cellPx, y + cellPx - h);
+    }
   }
 }
 
@@ -142,7 +190,15 @@ export function drawFog(
       }
     }
     // Deep dark purple, semi-transparent for the GM
-    fillCells(ctx, hidden, fogCols, cellPx, 'rgba(15, 12, 25, 0.55)');
+    if (state.mistTime !== undefined && hidden.length > 0) {
+      const isHidden = (c: number, r: number) => c >= 0 && r >= 0 && c < fogCols && r < fogRows && !revealed[r * fogCols + c];
+      cellsPath(ctx, hidden, fogCols, cellPx);
+      addFogFillets(ctx, isHidden, fogCols, fogRows, cellPx);
+      ctx.fillStyle = 'rgba(15, 12, 25, 0.55)';
+      ctx.fill();
+    } else {
+      fillCells(ctx, hidden, fogCols, cellPx, 'rgba(15, 12, 25, 0.55)');
+    }
     // Mistwarden: the same mist, still and faint, so the GM sees what the table sees without losing the map.
     if (state.mistTime !== undefined && hidden.length > 0) {
       cellsPath(ctx, hidden, fogCols, cellPx);
@@ -171,7 +227,9 @@ export function drawFog(
     }
     if (state.mistTime !== undefined && hidden.length > 0 && mistTileCanvas()) {
       // Mistwarden: opaque fill whose shadow softens the edge outward, then the mist on top.
+      const hiddenSet = new Set(hidden);
       cellsPath(ctx, hidden, fogCols, cellPx);
+      addFogFillets(ctx, (c, r) => c >= 0 && r >= 0 && c < fogCols && r < fogRows && hiddenSet.has(r * fogCols + c), fogCols, fogRows, cellPx, state.exemptCells);
       ctx.shadowColor = 'rgba(15, 12, 25, 0.95)';
       // shadowBlur counts canvas pixels and ignores the transform: scale by it (zoom and the screen's density).
       const scale = typeof ctx.getTransform === 'function' ? Math.abs(ctx.getTransform().a) : viewport.zoom;

@@ -9,6 +9,7 @@
 // drawn again only when what they are made from changes (compositeCache).
 // ============================================
 
+import { paintMistRect } from './drawFog';
 import type { Token } from '@/types';
 import type { LightSource } from '@/types/walls';
 import { gridYToCentrePx } from '../coords';
@@ -57,6 +58,12 @@ export interface LightingDrawState {
   /** Two screen-sized scratch canvases for the memory pass, allocated on first use. */
   memoryMaskCanvas: CanvasHolder;
   memoryCanvas: CanvasHolder;
+  /**
+   * Mistwarden, 2026-11-27: mist over the darkness where the viewer has not
+   * been: its canvas, and its clock (null: still; absent: no mist).
+   */
+  mistCanvas?: CanvasHolder;
+  mistTime?: number | null;
   /**
    * The ratio the visible canvases are drawn at (map/layerCanvas.ts). The
    * memory pass works in their pixels, and the blur is measured in them.
@@ -264,6 +271,31 @@ export function drawDynamicLighting(
   ctx.clip('evenodd');
   ctx.drawImage(offscreen, 0, 0, mapWidthPx, mapHeightPx);
   ctx.restore();
+
+  // Mistwarden: mist in the dark the viewer has never seen, laid on top of
+  // the darkness, so it never lets anything through. Made at a quarter of
+  // the lighting canvas's size: mist is soft, and this runs ten times a second.
+  if (state.mistTime !== undefined && state.mistCanvas) {
+    const mw = Math.max(1, Math.round(size.width / 4));
+    const mh = Math.max(1, Math.round(size.height / 4));
+    const mist = ensureCanvas(state.mistCanvas, mw, mh);
+    const m = mist.getContext('2d');
+    if (m) {
+      m.setTransform(1, 0, 0, 1, 0, 0);
+      m.globalCompositeOperation = 'source-over';
+      m.clearRect(0, 0, mw, mh);
+      if (paintMistRect(m, mw, mh, state.mistTime ?? 0, mw / mapWidthPx, 0.7)) {
+        m.globalCompositeOperation = 'destination-in';
+        m.drawImage(offscreen, 0, 0, mw, mh);
+        if (state.explored) {
+          m.globalCompositeOperation = 'destination-out';
+          m.drawImage(state.explored, 0, 0, mw, mh);
+        }
+        m.globalCompositeOperation = 'source-over';
+        ctx.drawImage(mist, 0, 0, mapWidthPx, mapHeightPx);
+      }
+    }
+  }
 
   // Cozy torch-glow: warm radial gradient around each controlled token
   ctx.save();
