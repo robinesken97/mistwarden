@@ -53,6 +53,7 @@ import {
   campaignExportLimiter,
 } from '../../middleware/campaignArchiveLimits';
 import { invitationEmailLimiter } from '../../middleware/invitationEmailLimiter';
+import { aiLimiter } from '../campaignAi';
 import { leftNotesDownloadLimiter } from '../../middleware/leftNotesDownloadLimiter';
 
 jest.setTimeout(60000);
@@ -72,6 +73,7 @@ const LIMITERS = new Map<RequestHandler, string>([
   [campaignExportLimiter, 'campaignExportLimiter'],
   [invitationEmailLimiter, 'invitationEmailLimiter'],
   [leftNotesDownloadLimiter, 'leftNotesDownloadLimiter'],
+  [aiLimiter, 'aiLimiter'],
 ]);
 
 /** What a row's requests are sent with. */
@@ -129,6 +131,7 @@ const ROWS: Row[] = [
   { route: 'POST /api/campaigns/import', limiter: 'campaignImportLimiter', limit: 20, testedIn: 'routes/__tests__/campaignArchiveLimits.e2e.test.ts' },
   { route: 'POST /api/campaigns/:campaignId/invite', limiter: 'invitationEmailLimiter', limit: 20, testedIn: 'routes/__tests__/campaignInvite.e2e.test.ts' },
   { route: 'GET /api/campaigns/left/:campaignId/notes', limiter: 'leftNotesDownloadLimiter', limit: 60, send: (c) => c.agent.get(`/api/campaigns/left/${c.campaignId}/notes`) },
+  { route: 'POST /api/campaigns/:campaignId/ai/write', limiter: 'aiLimiter', limit: 10, send: (c) => c.agent.post(`/api/campaigns/${c.campaignId}/ai/write`).send({}) },
 ];
 
 const rowKey = (route: string, limiter: string) => `${route} ${limiter}`;

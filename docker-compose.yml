@@ -130,6 +130,12 @@ services:
       SMTP_FROM: ${SMTP_FROM:-}
       SMTP_SECURE: ${SMTP_SECURE:-false}
       APP_URL: ${APP_URL:-${CORS_ORIGIN}}
+      # Mistwarden: a GM's writing help (backend/src/services/aiWriter.ts); off unless set
+      AI_PROVIDER: ${AI_PROVIDER:-}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-}
+      AI_BASE_URL: ${AI_BASE_URL:-}
+      AI_RATE_LIMIT: ${AI_RATE_LIMIT:-10}
       # Upload limits
       MAX_MAP_SIZE_MB: ${MAX_MAP_SIZE_MB:-50}
       MAX_TOKEN_SIZE_MB: ${MAX_TOKEN_SIZE_MB:-5}

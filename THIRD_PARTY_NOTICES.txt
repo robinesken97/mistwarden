@@ -288,6 +288,11 @@ The packages the backend lists as its dependencies, which its image installs.
 Each is given by its major version line; the exact versions are in
 backend/package-lock.json.
 
+@anthropic-ai/sdk 1.x
+  Copyright 2023 Anthropic, PBC.
+  License: Apache-2.0
+  https://github.com/anthropics/anthropic-sdk-typescript
+
 @prisma/adapter-pg 7.x
   Copyright (c) Prisma
   License: Apache-2.0
