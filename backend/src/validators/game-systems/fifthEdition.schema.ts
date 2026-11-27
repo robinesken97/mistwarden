@@ -11,6 +11,7 @@ import {
   sheetLongTextSchema as longText,
 } from './sheetText';
 import { featureEntrySchema } from './featureEntry.schema';
+import { isExactAssetAddress } from '../../utils/asset-urls';
 import { alliesAndOrganizationsSchema } from './alliesAndOrganizations.schema';
 import {
   FIFTH_EDITION_ATTACK_DAMAGE_ROLLS_MAX,
@@ -400,6 +401,10 @@ export const fifthEditionCharacterDataSchema = z.object({
   // Darkvision in feet; 0 or absent is none. A token bound to the character
   // takes it as its sight when the GM saves a changed value (routes/characters.ts).
   darkvisionFeet: z.number().int().min(0).max(FIFTH_EDITION_DARKVISION_FEET_MAX).optional(),
+  // The sheet's portrait: a picture uploaded to this server, never an outside
+  // address. The routes check, as for tokenImageUrl, that the saver may read
+  // it and that it is a token picture (routes/characters.ts).
+  portraitUrl: z.string().max(500).refine(isExactAssetAddress, 'A portrait must be a picture uploaded here').optional(),
   hp: hitPointsSchema.optional(),
   conditions: sheetList(shortText).optional(),
   // Exhaustion is six cumulative levels, not a condition you either have or do

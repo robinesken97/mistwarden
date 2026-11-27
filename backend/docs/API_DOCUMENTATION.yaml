@@ -5529,6 +5529,13 @@ paths:
         - A new `tokenImageUrl` follows the rule on create (403, or 400 for an
           asset that is not a token picture); the address already stored may
           be sent back unchanged, whatever it names.
+        - A 5E sheet's optional `portraitUrl` must be exactly an asset address
+          on this server (`/api/assets/{type}/{id}`, else 400) and follows the
+          same rule as `tokenImageUrl` (403, or 400 for an asset that is not a
+          token picture); the portrait already stored may be sent back
+          unchanged. The same holds on create. A character template keeps no
+          `portraitUrl`. Members who share a campaign with the character and
+          its picture's uploader may read the picture, as for `tokenImageUrl`.
         - Send `updatedAt` exactly as the character was loaded with, as a UTC
           ISO timestamp ending in `Z`, to have the save refused with 409 if the
           character has changed since, by another save or by a hit point or

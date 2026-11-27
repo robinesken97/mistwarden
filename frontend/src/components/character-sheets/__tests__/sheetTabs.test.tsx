@@ -35,19 +35,27 @@ vi.mock('@/hooks/queries', () => ({ useServerConfigQuery: () => ({ data: undefin
 const noop = () => Promise.resolve();
 const classes = (element: Element | null) => (element?.getAttribute('class') ?? '').split(/\s+/).filter(Boolean);
 
+// The underlined bar wraps; the 5E sheet's boxed one is three to a row below
+// 760 px and one row of equal tabs above.
+const WRAPS = ['flex', 'flex-wrap', 'gap-1'];
+const BOXED = ['grid', 'grid-cols-3', 'min-[760px]:grid-flow-col', 'min-[760px]:auto-cols-fr'];
+
 describe.each([
-  ['the 5E sheet', () => render(<FifthEditionCharacterView character={fifthEditionCharacter()} />), 6],
-  ['the 5E editor', () => render(<FifthEditionCharacterEditor character={fifthEditionCharacter()} onSave={noop} onCancel={vi.fn()} />), 6],
-  ['the Fantasy d20 editor', () => render(<FantasyD20CharacterEditor character={fantasyD20Character()} onSave={noop} onCancel={vi.fn()} />), 6],
-  ['the Horror d100 sheet', () => render(<HorrorD100CharacterView character={horrorD100Character()} />), 5],
-  ['the Horror d100 editor', () => render(<HorrorD100CharacterEditor character={horrorD100Character()} onSave={noop} onCancel={vi.fn()} />), 5],
-])('%s', (_name, show, count) => {
-  it('draws its tabs with the shared bar, which wraps', () => {
+  ['the 5E sheet', () => render(<FifthEditionCharacterView character={fifthEditionCharacter()} />), 6, BOXED],
+  ['the 5E editor', () => render(<FifthEditionCharacterEditor character={fifthEditionCharacter()} onSave={noop} onCancel={vi.fn()} />), 6, BOXED],
+  ['the Fantasy d20 editor', () => render(<FantasyD20CharacterEditor character={fantasyD20Character()} onSave={noop} onCancel={vi.fn()} />), 6, WRAPS],
+  ['the Horror d100 sheet', () => render(<HorrorD100CharacterView character={horrorD100Character()} />), 5, WRAPS],
+  ['the Horror d100 editor', () => render(<HorrorD100CharacterEditor character={horrorD100Character()} onSave={noop} onCancel={vi.fn()} />), 5, WRAPS],
+])('%s', (_name, show, count, layout) => {
+  it('draws its tabs with the shared bar, every row reachable', () => {
     const { container } = show();
     const bars = container.querySelectorAll('[data-sheet-tabs]');
     expect(bars).toHaveLength(1);
-    expect(classes(bars[0])).toEqual(expect.arrayContaining(['flex', 'flex-wrap', 'gap-1']));
+    expect(classes(bars[0])).toEqual(expect.arrayContaining(layout));
     expect(classes(bars[0])).not.toContain('space-x-1');
+    if (layout === BOXED) {
+      for (const tab of bars[0].querySelectorAll('[role=tab]')) expect(classes(tab)).toContain('min-h-11');
+    }
     expect(bars[0]).toHaveAttribute('role', 'tablist');
     expect(bars[0].querySelectorAll('[role=tab]')).toHaveLength(count);
   });

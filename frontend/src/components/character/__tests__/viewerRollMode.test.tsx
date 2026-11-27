@@ -65,7 +65,7 @@ describe('Roll mode on a 5E sheet', () => {
     open(mine(fifthEditionCharacter({ attacks: [spear] })));
 
     choose('Advantage');
-    fireEvent.click(screen.getByText('dexterity'));
+    fireEvent.click(screen.getByText('Dex'));
     fireEvent.click(screen.getByText('Stealth'));
     fireEvent.click(screen.getByText('STR'));
     fireEvent.click(screen.getByRole('tab', { name: 'Combat' }));
@@ -83,10 +83,10 @@ describe('Roll mode on a 5E sheet', () => {
     open(mine(fifthEditionCharacter()));
 
     choose('Disadvantage');
-    fireEvent.click(screen.getByText('dexterity'));
-    fireEvent.click(screen.getByText('dexterity'));
+    fireEvent.click(screen.getByText('Dex'));
+    fireEvent.click(screen.getByText('Dex'));
     choose('Normal');
-    fireEvent.click(screen.getByText('dexterity'));
+    fireEvent.click(screen.getByText('Dex'));
 
     expect(rolled()).toEqual([
       ['2d20kl1+0', 'Dexterity Save (Disadvantage)'],
@@ -125,7 +125,7 @@ describe('Roll mode on a 5E sheet', () => {
     open(mine(fifthEditionCharacter()));
 
     choose('Advantage');
-    fireEvent.contextMenu(screen.getByText('dexterity'), { clientX: 40, clientY: 40 });
+    fireEvent.contextMenu(screen.getByText('Dex'), { clientX: 40, clientY: 40 });
     fireEvent.click(screen.getByRole('menuitem', { name: 'Normal' }));
 
     expect(rolled()).toEqual([['1d20+0', 'Dexterity Save']]);
@@ -149,7 +149,7 @@ describe('where Roll mode sits in the header', () => {
   // column under the close button. Either way it is drawn after the close
   // button, so Tab reaches it after the close button too.
   it('comes after the close button, as it is drawn', () => {
-    open(mine(fifthEditionCharacter()));
+    open(mine(fantasyD20Character()));
 
     const close = screen.getByRole('button', { name: 'Close dialog' });
     const group = rollMode()!;
@@ -160,6 +160,21 @@ describe('where Roll mode sits in the header', () => {
     // The right column is as wide as Roll mode, so the close button keeps to
     // its end, in the header's corner, and not at its start.
     expect(close.parentElement!.className.split(/\s+/)).toContain('justify-self-end');
+  });
+
+  // The 5E sheet names itself, so its dialog has no title bar: the close
+  // button is in the dialog's corner and the bar holds Roll mode alone, clear of it.
+  it('on a 5E sheet shares the strip above the sheet with the close button, before it', () => {
+    open(mine(fifthEditionCharacter()));
+
+    const close = screen.getByRole('button', { name: 'Close dialog' });
+    const group = rollMode()!;
+    const strip = close.closest('[data-sheet-shell="header"]')!;
+    // In the strip, not laid over the scrolling sheet.
+    expect(strip).toContainElement(group);
+    expect(close.className.split(/\s+/)).not.toContain('absolute');
+    expect(group.compareDocumentPosition(close) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Close' })).toBeNull();
   });
 });
 

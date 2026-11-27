@@ -108,3 +108,9 @@ export function readJsonObject(value: JsonColumn): Record<string, unknown> | nul
     ? (value as Record<string, unknown>)
     : null;
 }
+
+/** A character sheet's portrait address (a 5E sheet's `portraitUrl`), or null. */
+export function sheetPortrait(sheet: unknown): string | null {
+  const portrait = readJsonObject(sheet as Prisma.JsonValue)?.portraitUrl;
+  return typeof portrait === 'string' ? portrait : null;
+}

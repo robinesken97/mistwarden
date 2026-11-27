@@ -41,7 +41,7 @@ describe('press and hold a stat', () => {
     fifthEdition();
     const finger = contact('touch', 1);
 
-    finger.down(screen.getByText('dexterity'), at(40, 20));
+    finger.down(screen.getByText('Dex'), at(40, 20));
     wait(499);
     expect(menu()).toBeNull();
     wait(1);
@@ -53,11 +53,11 @@ describe('press and hold a stat', () => {
     const onRoll = fifthEdition();
     const finger = contact('touch', 1);
 
-    finger.down(screen.getByText('dexterity'), at(40, 20));
+    finger.down(screen.getByText('Dex'), at(40, 20));
     wait(500);
-    finger.up(screen.getByText('dexterity'), at(40, 20));
-    fireEvent.mouseDown(screen.getByText('dexterity'));
-    fireEvent.click(screen.getByText('dexterity'), { detail: 1 });
+    finger.up(screen.getByText('Dex'), at(40, 20));
+    fireEvent.mouseDown(screen.getByText('Dex'));
+    fireEvent.click(screen.getByText('Dex'), { detail: 1 });
 
     expect(onRoll).not.toHaveBeenCalled();
     expect(menu()).toBeInTheDocument();
@@ -120,9 +120,9 @@ describe('press and hold a stat', () => {
     fifthEdition();
     const finger = contact('touch', 1);
 
-    finger.down(screen.getByText('dexterity'), at(40, 20));
+    finger.down(screen.getByText('Dex'), at(40, 20));
     wait(300);
-    const unhandled = fireEvent.contextMenu(screen.getByText('dexterity'), at(41, 21));
+    const unhandled = fireEvent.contextMenu(screen.getByText('Dex'), at(41, 21));
     wait(700);
 
     expect(unhandled).toBe(false);
@@ -150,7 +150,7 @@ describe('away from the stats', () => {
     finger.down(screen.getByText('Saving Throws'), at(40, 5));
     wait(1000);
     finger.up(screen.getByText('Saving Throws'), at(40, 5));
-    fireEvent.click(screen.getByText('dexterity'), { detail: 1 });
+    fireEvent.click(screen.getByText('Dex'), { detail: 1 });
 
     expect(menu()).toBeNull();
     expect(onRoll).toHaveBeenCalledWith('1d20+0', 'Dexterity Save');
@@ -167,7 +167,7 @@ describe('away from the stats', () => {
   it('a sheet that cannot roll opens nothing', () => {
     render(<FifthEditionCharacterView character={fifthEditionCharacter()} />);
 
-    contact('touch', 1).down(screen.getByText('dexterity'), at(40, 20));
+    contact('touch', 1).down(screen.getByText('Dex'), at(40, 20));
     wait(1000);
 
     expect(menu()).toBeNull();
@@ -178,14 +178,14 @@ describe('with a mouse, as before', () => {
   it('a click rolls, holding the button opens nothing, and a right-click opens the menu', () => {
     const onRoll = fifthEdition();
 
-    mouse.down(screen.getByText('dexterity'), at(40, 20));
+    mouse.down(screen.getByText('Dex'), at(40, 20));
     wait(1000);
-    mouse.up(screen.getByText('dexterity'), at(40, 20));
-    fireEvent.click(screen.getByText('dexterity'), { detail: 1 });
+    mouse.up(screen.getByText('Dex'), at(40, 20));
+    fireEvent.click(screen.getByText('Dex'), { detail: 1 });
     expect(menu()).toBeNull();
     expect(onRoll).toHaveBeenCalledWith('1d20+0', 'Dexterity Save');
 
-    expect(fireEvent.contextMenu(screen.getByText('dexterity'), at(40, 20))).toBe(false);
+    expect(fireEvent.contextMenu(screen.getByText('Dex'), at(40, 20))).toBe(false);
     expect(screen.getByRole('menu', { name: 'Dexterity Save' })).toBeInTheDocument();
   });
 });
@@ -194,7 +194,7 @@ describe('the rows', () => {
   it('say how they roll, and take no text selection or iOS callout under a held finger', () => {
     fifthEdition();
 
-    const save = screen.getByText('dexterity').closest('[data-roll]');
+    const save = screen.getByText('Dex').closest('[data-roll]');
     expect(save).toHaveAttribute('title', 'Click: roll  |  Right-click or press and hold: Advantage / Disadvantage');
     expect(save?.className.split(/\s+/)).toEqual(expect.arrayContaining(['select-none', '[-webkit-touch-callout:none]']));
     for (const row of document.querySelectorAll('[data-roll]')) {

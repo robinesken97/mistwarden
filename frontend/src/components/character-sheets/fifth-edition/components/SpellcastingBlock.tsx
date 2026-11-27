@@ -9,6 +9,7 @@ import { Sparkles, Circle, CircleDot, BookOpen, Zap } from 'lucide-react';
 import { fifthEditionSpellSaveDC, fifthEditionSpellAttackBonus } from '@/utils/rules/fifthEdition';
 import { SPELL_SLOTS_MAX } from '@/constants/sheetLimits';
 
+import { SHEET_BOX, SHEET_BOX_HEADING } from '../sheetStyle';
 import type {
   FifthEditionSpellcasting as Spellcasting,
   FifthEditionSpell as Spell,
@@ -133,10 +134,10 @@ export const SpellcastingBlock: React.FC<SpellcastingBlockProps> = ({
   return (
     <div className="space-y-4">
       {/* Spellcasting Header */}
-      <div className="p-4 bg-info/10 border-2 border-info/30 rounded-lg">
-        <div className="flex items-center space-x-2 mb-3">
-          <Sparkles className="w-5 h-5 text-info-ink" />
-          <h4 className="font-semibold text-ink">
+      <div className={SHEET_BOX}>
+        <div className={SHEET_BOX_HEADING}>
+          <h4 className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5" aria-hidden="true" />
             {/* Without a class recorded this used to render " Spellcasting"
                 with a leading gap — or, from the templates, "Wizard" on a sheet
                 belonging to anything but a wizard. */}
@@ -163,11 +164,10 @@ export const SpellcastingBlock: React.FC<SpellcastingBlockProps> = ({
 
       {/* Cantrips */}
       {cantrips.length > 0 && (
-        <div className="bg-ink/5 border border-ink/10 rounded-lg p-4">
-          <div className="flex items-center space-x-2 mb-2">
-            <Zap className="w-4 h-4 text-warning-ink" />
-            <h5 className="font-semibold text-ink">Cantrips</h5>
-          </div>
+        <div className={SHEET_BOX}>
+          <h5 className={SHEET_BOX_HEADING}>
+            <span className="flex items-center gap-2"><Zap className="w-4 h-4" aria-hidden="true" />Cantrips</span>
+          </h5>
           <div className="flex flex-wrap gap-2">
             {cantrips.map((cantrip, idx) => (
               <span
@@ -182,8 +182,8 @@ export const SpellcastingBlock: React.FC<SpellcastingBlockProps> = ({
       )}
 
       {/* Spell Slots */}
-      <div className="bg-ink/5 border border-ink/10 rounded-lg p-4">
-        <h5 className="font-semibold text-ink mb-3">Spell Slots</h5>
+      <div className={SHEET_BOX}>
+        <h5 className={SHEET_BOX_HEADING}>Spell Slots</h5>
         <div className="grid grid-cols-3 md:grid-cols-5 gap-3">
           {slots.map(([level, slot]) => (
             <div key={level} className="text-center">
@@ -195,17 +195,15 @@ export const SpellcastingBlock: React.FC<SpellcastingBlockProps> = ({
       </div>
 
       {/* Spells by Level */}
-      <div className="bg-ink/5 border border-ink/10 rounded-lg overflow-hidden">
-        <div className="p-3 bg-ink/10 border-b border-ink/10">
-          <h5 className="font-semibold text-ink">Spell List</h5>
-        </div>
+      <div className={SHEET_BOX}>
+        <h5 className={SHEET_BOX_HEADING}>Spell List</h5>
         <div className="divide-y divide-ink/10">
           {Object.keys(spellsByLevel)
             .map(Number)
             .sort((a, b) => a - b)
             .map((level) => (
-              <div key={level} className="p-3">
-                <h6 className="text-sm font-semibold text-ink-secondary mb-2">
+              <div key={level} className="py-2">
+                <h6 className="text-sm font-bold text-(--sheet-accent) mb-2">
                   {level === 0 ? 'Cantrips' : `Level ${level}`}
                 </h6>
                 <div className="space-y-1">

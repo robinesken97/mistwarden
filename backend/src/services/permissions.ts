@@ -1,7 +1,7 @@
 import { CampaignRole, PlatformRole, AssetType, AssetScope } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import { prisma } from '../config/database';
-import { readTokens } from '../utils/prisma-json';
+import { readTokens, sheetPortrait } from '../utils/prisma-json';
 import { getSpiritVisibility, getSpiritVisibilityAcrossCampaigns } from '../utils/spirit-layer';
 import { extractAssetId, isExactAssetAddress, isSameOriginPath } from '../utils/asset-urls';
 import { escapeLikePattern } from '../utils/likePattern';
@@ -686,9 +686,13 @@ async function assetUsedInUserCampaign(
   }
 
   const [characters, creatures, tokenTemplates] = await Promise.all([
+    // A character's token picture, and its sheet's portrait (a 5E sheet's portraitUrl).
     prisma.character.findMany({
-      where: { campaignId: { in: campaignIds }, tokenImageUrl: { contains: assetId } },
-      select: { tokenImageUrl: true },
+      where: {
+        campaignId: { in: campaignIds },
+        OR: [{ tokenImageUrl: { contains: assetId } }, { data: { path: ['portraitUrl'], string_contains: assetId } }],
+      },
+      select: { tokenImageUrl: true, data: true },
     }),
     prisma.creatureTemplate.findMany({
       where: { campaignId: { in: campaignIds }, imageUrl: { contains: assetId } },
@@ -700,7 +704,7 @@ async function assetUsedInUserCampaign(
     }),
   ]);
   if (
-    characters.some((c) => names(c.tokenImageUrl)) ||
+    characters.some((c) => names(c.tokenImageUrl) || names(sheetPortrait(c.data))) ||
     creatures.some((c) => names(c.imageUrl)) ||
     tokenTemplates.some((t) => names(t.imageUrl))
   ) {
@@ -979,7 +983,9 @@ async function addressUsedInCampaign(address: string, campaignId: string): Promi
   const [templates, creatures, characters] = await Promise.all([
     prisma.tokenTemplate.count({ where: { campaignId, imageUrl: address } }),
     prisma.creatureTemplate.count({ where: { campaignId, imageUrl: address } }),
-    prisma.character.count({ where: { campaignId, tokenImageUrl: address } }),
+    prisma.character.count({
+      where: { campaignId, OR: [{ tokenImageUrl: address }, { data: { path: ['portraitUrl'], equals: address } }] },
+    }),
   ]);
   if (templates + creatures + characters > 0) return true;
   const maps = await prisma.map.findMany({

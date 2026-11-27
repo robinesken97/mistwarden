@@ -61,12 +61,10 @@ function characterWith(
   } as unknown as Character;
 }
 
-/** The number rendered in the "Passive Perception" row. */
+/** The number in the Senses line's "passive Perception N". */
 function renderedPassivePerception(): number {
-  const label = screen.getByText('Passive Perception');
-  const row = label.parentElement!;
-  const value = row.querySelector('span:last-child')!.textContent!.trim();
-  return Number(value);
+  const senses = screen.getByText('Senses').parentElement!.textContent!;
+  return Number(/passive Perception (-?\d+)/.exec(senses)![1]);
 }
 
 describe('5E passive Perception in the character view', () => {

@@ -61,6 +61,9 @@ function openOnCombat() {
   expect(screen.getByRole('heading', { name: 'Death Saves' })).toBeInTheDocument();
 }
 
+/** The hit points the sheet's header shows, as "current/maximum". */
+const hitPoints = () => screen.getByText('Hit Points').nextElementSibling?.textContent;
+
 describe('the open sheet tab', () => {
   beforeEach(() => {
     handlers.clear();
@@ -77,7 +80,7 @@ describe('the open sheet tab', () => {
 
     expect(getCharacter).toHaveBeenCalledWith('char-1');
     expect(screen.getByRole('heading', { name: 'Death Saves' })).toBeInTheDocument();
-    expect(screen.getByText('4/12')).toBeInTheDocument();
+    expect(hitPoints()).toBe('4/12');
   });
 
   it('stays open when the character is saved', () => {
@@ -88,6 +91,6 @@ describe('the open sheet tab', () => {
     });
 
     expect(screen.getByRole('heading', { name: 'Death Saves' })).toBeInTheDocument();
-    expect(screen.getByText('7/12')).toBeInTheDocument();
+    expect(hitPoints()).toBe('7/12');
   });
 });

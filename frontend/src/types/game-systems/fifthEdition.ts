@@ -325,6 +325,8 @@ export interface FifthEditionCharacterData extends SheetChrome {
   speed?: number;
   /** Darkvision in feet; 0 or absent is none. Linked tokens follow it when the GM changes it. */
   darkvisionFeet?: number;
+  /** The sheet's portrait, an uploaded picture's address. The token picture stands in without one. */
+  portraitUrl?: string;
   hp?: FifthEditionHitPoints;
   conditions?: string[];
   /** Exhaustion 0-6; six cumulative levels, not a yes/no condition. */

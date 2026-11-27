@@ -200,6 +200,8 @@ export default function CharacterSheetViewerModal({
     ? (index: number) => socket.emitHitDiceSpend({ characterId: character.id, index })
     : undefined;
 
+  const sheetNamesItself = character.gameSystem === 'FIFTH_EDITION';
+
   // Render appropriate character sheet view based on game system
   const renderCharacterSheet = () => {
     // A system CozyVTT no longer supports: its data, read-only.
@@ -232,8 +234,50 @@ export default function CharacterSheetViewerModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="character-sheet-viewer-title"
-        className={SHEET_SHELL_DIALOG}
+        className={sheetNamesItself ? `${SHEET_SHELL_DIALOG.replace('max-w-6xl', 'max-w-[1040px]')}` : SHEET_SHELL_DIALOG}
       >
+        {sheetNamesItself ? (
+          <>
+        {/* The 5E sheet names itself in its own header, so its dialog has no
+            title bar: the title is for a screen reader alone, the close button
+            sits in a slim strip above the sheet, with the GM's banner or Roll
+            mode beside it when there is one. Escape and the button close it. */}
+        <div className="sr-only">
+          <h2 id="character-sheet-viewer-title">{character.name}</h2>
+          <p><span>Player: {ownerName}</span> • <span>{gameSystemName(character.gameSystem)}</span></p>
+        </div>
+        {/* A strip of its own above the scrolling sheet, so the close button
+            never lies over the sheet's boxes or the scrollbar. No rule or tint:
+            it reads as the dialog's top margin. */}
+        <div data-sheet-shell="header" className="flex flex-wrap items-center justify-end gap-3 px-3 pt-2 sm:px-6 short:px-3">
+            {/* GM Edit Banner */}
+            {isGMEditingOtherCharacter && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-moss-green/10 border border-moss-green/30 rounded-lg">
+                <Shield className="w-4 h-4 text-brand-ink" />
+                <p className="text-sm text-brand-ink">
+                  You are viewing <strong>{ownerName}'s</strong> character as GM
+                </p>
+              </div>
+            )}
+            {offersRollMode && (
+              <RollModeControl
+                mode={rollMode}
+                onChange={setRollMode}
+                gameSystem={character.gameSystem}
+                className="mr-auto"
+              />
+            )}
+            <button
+              onClick={onClose}
+              aria-label="Close dialog"
+              className="touch-target inline-flex size-11 items-center justify-center rounded-lg hover:bg-stone-gray/10 transition-colors"
+            >
+              <X className="w-5 h-5 text-stone-gray" />
+            </button>
+        </div>
+          </>
+        ) : (
+          <>
         {/* Header. Below sm, Roll mode takes a line of its own under the name
             and the close button; from sm up it sits in the right column under
             the close button. Either way it is drawn after the close button,
@@ -291,17 +335,21 @@ export default function CharacterSheetViewerModal({
           )}
         </div>
 
+          </>
+        )}
+
         {/* Character Sheet Content. A sheet that cannot be drawn fails here,
             inside the dialog, and not across the whole page; a new version of
             the character tries it again. Keyed on the character alone, so a
             sheet that is drawn keeps its open tab through every update. */}
-        <div data-sheet-shell="content" className="flex-1 overflow-y-auto p-3 sm:p-6 short:p-3" onClickCapture={rollFeedback.onClickCapture}>
+        <div data-sheet-shell="content" className={`flex-1 overflow-y-auto p-3 sm:p-6 short:p-3 ${sheetNamesItself ? 'pt-1 sm:pt-1 short:pt-1' : ''}`} onClickCapture={rollFeedback.onClickCapture}>
           <CharacterSheetErrorBoundary key={character.id} resetKey={character.updatedAt}>
             {renderCharacterSheet()}
           </CharacterSheetErrorBoundary>
         </div>
 
-        {/* Footer */}
+        {/* Footer. The 5E dialog closes from its corner and with Escape. */}
+        {!sheetNamesItself && (
         <div data-sheet-shell="footer" className="flex items-center justify-end gap-3 p-2 sm:p-4 short:p-2 border-t border-moss-green/20 bg-parchment/30">
           <button
             onClick={onClose}
@@ -310,6 +358,7 @@ export default function CharacterSheetViewerModal({
             Close
           </button>
         </div>
+        )}
       </div>
     </div>,
     document.body

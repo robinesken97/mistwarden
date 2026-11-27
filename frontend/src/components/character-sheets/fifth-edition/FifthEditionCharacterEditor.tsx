@@ -87,6 +87,7 @@ import {
 import { COLOR_PRESETS } from './colorPresets';
 import Button from '@/components/ui/Button';
 import { SheetTabs, sheetTabPanel, type SheetTab } from '../SheetTabs';
+import { SHEET_BOX, SHEET_BOX_HEADING, SHEET_BOX_TITLE, sheetAccentVariables } from './sheetStyle';
 
 /**
  * The sheet as this editor holds it.
@@ -133,7 +134,7 @@ function tabOfError(key: string): TabId | null {
  * picture are not about a box, and the colour's is shown in the colour picker,
  * which Save opens.
  */
-const NOT_IN_SUMMARY = new Set(['submit', 'tokenImage', 'themeColor']);
+const NOT_IN_SUMMARY = new Set(['submit', 'tokenImage', 'portrait', 'themeColor']);
 
 /**
  * The columns of the hit dice rows and the labels over them, written once so
@@ -356,6 +357,7 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
 }) => {
   const [activeTab, setActiveTab] = useState<TabId>('stats');
   const sheetTabsId = useId();
+  const portraitInputId = useId();
   const [isSaving, setIsSaving] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
   // Set when the last change to the cantrips box was turned away for adding one entry too many.
@@ -501,20 +503,30 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
     character.tokenImageUrl
   );
 
+  // A newly chosen portrait, uploaded on save as the token picture is. The
+  // stored one is the form's `portraitUrl`.
+  const [portraitFile, setPortraitFile] = useState<File | null>(null);
+  const [portraitPreview, setPortraitPreview] = useState<string | null>(null);
+
   // Color customization state
   const [selectedColor, setSelectedColor] = useState(COLOR_PRESETS[0]); // Default to Classic Red
   const [customColorHex, setCustomColorHex] = useState('');
   const [isCustomColor, setIsCustomColor] = useState(false);
+  // A sheet without a colour keeps none until one is picked, and takes the
+  // theme's accent; saving it used to write the first preset's name.
+  const [hasColour, setHasColour] = useState(!!data.themeColor);
 
   // The header colour and a newly chosen token picture are kept outside the
   // form, and are unsaved changes too.
-  const snapshotOf = (form: typeof formData, theme: string, picture: File | null) => JSON.stringify({
+  const fileKey = (file: File | null) => (file ? `${file.name}:${file.size}:${file.lastModified}` : null);
+  const snapshotOf = (form: typeof formData, theme: string, picture: File | null, portrait: File | null = null) => JSON.stringify({
     formData: form,
     themeColor: theme,
-    tokenImage: picture ? `${picture.name}:${picture.size}:${picture.lastModified}` : null,
+    tokenImage: fileKey(picture),
+    portrait: fileKey(portrait),
   });
-  const themeChoice = isCustomColor ? customColorHex : selectedColor.name;
-  const sheetSnapshot = snapshotOf(formData, themeChoice, tokenImageFile);
+  const themeChoice = !hasColour ? '' : isCustomColor ? customColorHex : selectedColor.name;
+  const sheetSnapshot = snapshotOf(formData, themeChoice, tokenImageFile, portraitFile);
   if (cleanSnapshotRef.current === null) {
     cleanSnapshotRef.current = sheetSnapshot;
   }
@@ -560,6 +572,7 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
   const handleCustomColorChange = (hex: string) => {
     setCustomColorHex(hex);
     setIsCustomColor(true);
+    setHasColour(true);
     setErrors((prev) => ({ ...prev, themeColor: '' }));
   };
 
@@ -567,6 +580,7 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
   const handlePresetColorSelect = (color: typeof COLOR_PRESETS[0]) => {
     setSelectedColor(color);
     setIsCustomColor(false);
+    setHasColour(true);
     setShowColorPicker(false);
   };
 
@@ -869,6 +883,28 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
     }
   };
 
+  // The portrait, checked as the token picture is.
+  const handlePortraitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const problem = tokenPictureProblem(file, serverConfig);
+    if (problem) {
+      setErrors((prev) => ({ ...prev, portrait: problem }));
+      return;
+    }
+    setPortraitFile(file);
+    setErrors((prev) => ({ ...prev, portrait: '' }));
+    const reader = new FileReader();
+    reader.onloadend = () => setPortraitPreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const removePortrait = () => {
+    setPortraitFile(null);
+    setPortraitPreview(null);
+    updateField('portraitUrl', undefined);
+  };
+
   // Validate form data: what the server would refuse and typing cannot
   // prevent, keyed by the box it is about.
   const validateForm = (): Record<string, string> => {
@@ -950,16 +986,28 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
     const savedForm = formData;
     const savedTheme = themeChoice;
     const uploadedPicture = tokenImageFile;
+    const uploadedPortrait = portraitFile;
+    let uploadedPortraitUrl: string | undefined;
     const markClean = () => {
       const stillDirty = latestSnapshotRef.current !== savedSnapshot;
       // A picture that went up with this save is on the character now, so the
       // next save must not upload it again. One chosen while saving stays.
       if (uploadedPicture) {
         setTokenImageFile((current) => (current === uploadedPicture ? null : current));
-        cleanSnapshotRef.current = snapshotOf(savedForm, savedTheme, null);
-      } else {
-        cleanSnapshotRef.current = savedSnapshot;
       }
+      // The portrait went up into the sheet, so the form holds its address
+      // from here on, and a later save keeps it.
+      if (uploadedPortraitUrl) {
+        const url = uploadedPortraitUrl;
+        setPortraitFile((current) => (current === uploadedPortrait ? null : current));
+        setFormData((prev) => ({ ...prev, portraitUrl: url }));
+      }
+      cleanSnapshotRef.current = snapshotOf(
+        uploadedPortraitUrl ? { ...savedForm, portraitUrl: uploadedPortraitUrl } : savedForm,
+        savedTheme,
+        null,
+        null
+      );
       dirtyRef.current = stillDirty;
       onDirtyChange?.(stillDirty);
       // Typed while the save was in flight: the editor keeps it, unsaved.
@@ -982,7 +1030,7 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
         // the first preset's name, so opening and saving the sheet changes it.
         // Save it back as it was until another colour is picked, as the
         // Fantasy d20 editor does.
-        themeColor: isCustomColor ? (toStoredHexColor(customColorHex) ?? '') : selectedColor.name,
+        themeColor: !hasColour ? undefined : isCustomColor ? (toStoredHexColor(customColorHex) ?? '') : selectedColor.name,
       };
 
       // Proficiencies.
@@ -1043,6 +1091,18 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
         } catch (uploadError: unknown) {
           console.error('Error uploading token image:', errorSummary(uploadError));
           setErrors((prev) => ({ ...prev, tokenImage: apiErrorMessage(uploadError) || 'Failed to upload token image' }));
+          setIsSaving(false);
+          return;
+        }
+      }
+
+      if (portraitFile) {
+        try {
+          uploadedPortraitUrl = await uploadTokenPicture(portraitFile, formData.characterName || 'Character', character.campaignId);
+          updatedData.portraitUrl = uploadedPortraitUrl;
+        } catch (uploadError: unknown) {
+          console.error('Error uploading portrait:', errorSummary(uploadError));
+          setErrors((prev) => ({ ...prev, portrait: apiErrorMessage(uploadError) || 'Failed to upload portrait' }));
           setIsSaving(false);
           return;
         }
@@ -1337,6 +1397,47 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
           </div>
           )}
 
+          {/* The sheet's portrait, shown tall in the read-only header. Without
+              one the header shows the token picture. */}
+          {allowTokenPicture && (
+          <div className="shrink-0 w-24 sm:w-32">
+            <input
+              type="file"
+              id={portraitInputId}
+              accept="image/*"
+              onChange={handlePortraitChange}
+              className="hidden"
+            />
+            <label htmlFor={portraitInputId} className="group relative block cursor-pointer" title="Choose a portrait">
+              {portraitPreview || formData.portraitUrl ? (
+                <img
+                  src={portraitPreview || formData.portraitUrl}
+                  alt="Portrait"
+                  className="h-30 w-24 rounded-xl border-4 border-white/20 object-cover sm:h-40 sm:w-32"
+                />
+              ) : (
+                <div className="flex h-30 w-24 flex-col items-center justify-center gap-1 rounded-xl border-4 border-dashed border-white/30 bg-black/40 text-xs text-white/80 sm:h-40 sm:w-32">
+                  <Upload className="h-6 w-6" aria-hidden="true" />
+                  Portrait
+                </div>
+              )}
+              <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+                <Upload className="h-8 w-8 text-white" aria-hidden="true" />
+              </div>
+            </label>
+            {(portraitPreview || formData.portraitUrl) && (
+              <button
+                type="button"
+                onClick={removePortrait}
+                className={`touch-target mt-1 text-xs underline ${headerHintColor}`}
+              >
+                Remove portrait
+              </button>
+            )}
+            <PortraitNotes error={errors.portrait} personal={false} errorClassName={headerHintColor} noteClassName={headerHintColor} />
+          </div>
+          )}
+
           {/* Character Info */}
           <div className="space-y-2 min-w-0">
             <input
@@ -1425,7 +1526,7 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
 
   // Render Stats & Skills tab
   const renderStatsTab = () => (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Character Details */}
       <div className="grid grid-cols-2 gap-4">
         <div>
@@ -1495,8 +1596,8 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
       </div>
 
       {/* Ability Scores */}
-      <div className="bg-ink/5 border-2 border-ink/20 rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-ink mb-4">Ability Scores</h3>
+      <div className={SHEET_BOX}>
+        <h3 className={SHEET_BOX_HEADING}>Ability Scores</h3>
         <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
           {(['strength', 'dexterity', 'constitution', 'intelligence', 'wisdom', 'charisma'] as const).map((ability) => {
             const abilityData = formData.stats?.[ability] || { score: 10, modifier: 0 };
@@ -1549,8 +1650,8 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
       </div>
 
       {/* Saving Throws */}
-      <div className="bg-ink/5 border border-ink/10 rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-ink mb-1">Saving Throws</h3>
+      <div className={SHEET_BOX}>
+        <h3 className={SHEET_BOX_HEADING}>Saving Throws</h3>
         <p className="text-xs text-ink-muted mb-3">
           Worked out from your ability scores and proficiency. Use the box beside each one for
           anything else that adds to it, such as Aura of Protection or a Ring of Protection.
@@ -1594,8 +1695,8 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
       </div>
 
       {/* Skills */}
-      <div className="bg-ink/5 border border-ink/10 rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-ink mb-1">Skills</h3>
+      <div className={SHEET_BOX}>
+        <h3 className={SHEET_BOX_HEADING}>Skills</h3>
         <p className="text-xs text-ink-muted mb-3">
           Worked out from your ability scores, proficiency and expertise. Use the box beside each
           one for anything else that adds to it, such as Jack of All Trades or a magic item.
@@ -1681,9 +1782,9 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
           your proficiency bonus to any ability check you make using that tool"
           (SRD 5.1, "Tools"). Same arithmetic as a skill, so the bonus is
           derived here too rather than typed in. */}
-      <div className="bg-ink/5 border border-ink/10 rounded-lg p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2 sm:flex-nowrap mb-1">
-          <h3 className="text-lg font-semibold text-ink">Your Own Skills</h3>
+      <div className={SHEET_BOX}>
+        <div className="flex flex-wrap items-center justify-between gap-2 sm:flex-nowrap mb-2.5 border-b-2 border-(--sheet-accent) pb-1">
+          <h3 className={SHEET_BOX_TITLE}>Your Own Skills</h3>
           <Button
             variant="primary"
             size="sm"
@@ -1815,8 +1916,8 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
       {/* Passive Perception — derived from the Perception bonus plus anything
           that is not the skill itself, never from the stored field, so this
           matches the view exactly. */}
-      <div className="bg-ink/5 border border-ink/10 rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-ink mb-2">Passive Perception</h3>
+      <div className={SHEET_BOX}>
+        <h3 className={SHEET_BOX_HEADING}>Passive Perception</h3>
         <div className="flex items-end gap-4">
           <div className="text-2xl font-bold text-ink">
             {passiveScore(
@@ -1863,7 +1964,7 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
 
   // Render Combat tab
   const renderCombatTab = () => (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Combat Stats */}
       <div className="grid grid-cols-3 gap-4">
         <div>
@@ -1970,8 +2071,8 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
       </div>
 
       {/* Hit Points */}
-      <div className="bg-ink/5 border-2 border-ink/20 rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-ink mb-3">Hit Points</h3>
+      <div className={SHEET_BOX}>
+        <h3 className={SHEET_BOX_HEADING}>Hit Points</h3>
         <div className="grid grid-cols-3 gap-4">
           <div>
             <label htmlFor="fifth-edition-hp-maximum" className="block text-xs font-semibold text-ink-secondary mb-1">Maximum</label>
@@ -2014,9 +2115,9 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
       </div>
 
       {/* Hit Dice */}
-      <div className="bg-ink/5 border border-ink/10 rounded-lg p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2 sm:flex-nowrap mb-3">
-          <h3 className="text-lg font-semibold text-ink">Hit Dice</h3>
+      <div className={SHEET_BOX}>
+        <div className="flex flex-wrap items-center justify-between gap-2 sm:flex-nowrap mb-2.5 border-b-2 border-(--sheet-accent) pb-1">
+          <h3 className={SHEET_BOX_TITLE}>Hit Dice</h3>
           <Button
             variant="primary"
             size="sm"
@@ -2116,8 +2217,8 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
       </div>
 
       {/* Death Saves */}
-      <div className="bg-ink/5 border border-ink/10 rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-ink mb-3">Death Saves</h3>
+      <div className={SHEET_BOX}>
+        <h3 className={SHEET_BOX_HEADING}>Death Saves</h3>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-semibold text-success-ink mb-2">Successes</label>
@@ -2165,8 +2266,8 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
       </div>
 
       {/* Conditions */}
-      <div className="bg-ink/5 border border-ink/10 rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-ink mb-3">Conditions</h3>
+      <div className={SHEET_BOX}>
+        <h3 className={SHEET_BOX_HEADING}>Conditions</h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {conditions.map((condition) => (
             <label key={condition} className="flex items-center space-x-2 cursor-pointer hover:bg-ink/10 p-1 rounded-sm">
@@ -2193,8 +2294,8 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
           SRD 5.1, "Exhaustion": six cumulative levels, not something you
           either have or do not. It used to be one checkbox in the list above,
           which could not tell disadvantage on ability checks apart from death. */}
-      <div className="bg-ink/5 border border-ink/10 rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-ink mb-1">Exhaustion</h3>
+      <div className={SHEET_BOX}>
+        <h3 className={SHEET_BOX_HEADING}>Exhaustion</h3>
         <p className="text-xs text-ink-secondary mb-3">
           Six levels, and each one carries every level below it. A long rest with food
           and drink removes one.
@@ -2238,9 +2339,9 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
       </div>
 
       {/* Attacks */}
-      <div className="bg-ink/5 border-2 border-ink/20 rounded-lg p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2 sm:flex-nowrap mb-3">
-          <h3 className="text-lg font-semibold text-ink">Attacks & Spellcasting</h3>
+      <div className={SHEET_BOX}>
+        <div className="flex flex-wrap items-center justify-between gap-2 sm:flex-nowrap mb-2.5 border-b-2 border-(--sheet-accent) pb-1">
+          <h3 className={SHEET_BOX_TITLE}>Attacks & Spellcasting</h3>
           <Button
             variant="primary"
             size="sm"
@@ -2536,7 +2637,7 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
       : (formData.spellcasting?.cantrips || []).join(', ');
 
   const renderSpellsTab = () => (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Spellcasting class and ability */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
@@ -2624,8 +2725,8 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
       </p>
 
       {/* Cantrips */}
-      <div className="bg-ink/5 border border-ink/10 rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-ink mb-3">Cantrips</h3>
+      <div className={SHEET_BOX}>
+        <h3 className={SHEET_BOX_HEADING}>Cantrips</h3>
         <textarea
           value={cantripsText}
           onChange={(e) => {
@@ -2647,8 +2748,8 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
       </div>
 
       {/* Spell Slots */}
-      <div className="bg-ink/5 border-2 border-ink/20 rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-ink mb-3">Spell Slots</h3>
+      <div className={SHEET_BOX}>
+        <h3 className={SHEET_BOX_HEADING}>Spell Slots</h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {([1, 2, 3, 4, 5, 6, 7, 8, 9] as const).map((level) => {
             const slotData = formData.spellcasting?.slots?.[level] || { total: 0, expended: 0 };
@@ -2691,9 +2792,9 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
       </div>
 
       {/* Spells List */}
-      <div className="bg-ink/5 border-2 border-ink/20 rounded-lg p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2 sm:flex-nowrap mb-3">
-          <h3 className="text-lg font-semibold text-ink">Spells</h3>
+      <div className={SHEET_BOX}>
+        <div className="flex flex-wrap items-center justify-between gap-2 sm:flex-nowrap mb-2.5 border-b-2 border-(--sheet-accent) pb-1">
+          <h3 className={SHEET_BOX_TITLE}>Spells</h3>
           <Button
             variant="primary"
             size="sm"
@@ -2787,10 +2888,10 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
 
   // Render Inventory tab
   const renderInventoryTab = () => (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Currency */}
-      <div className="bg-ink/5 border-2 border-ink/20 rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-ink mb-3">Currency</h3>
+      <div className={SHEET_BOX}>
+        <h3 className={SHEET_BOX_HEADING}>Currency</h3>
         <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
           {([
             { key: 'cp', label: 'Copper (CP)' },
@@ -2817,9 +2918,9 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
       </div>
 
       {/* Inventory Items */}
-      <div className="bg-ink/5 border-2 border-ink/20 rounded-lg p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2 sm:flex-nowrap mb-3">
-          <h3 className="text-lg font-semibold text-ink">Inventory</h3>
+      <div className={SHEET_BOX}>
+        <div className="flex flex-wrap items-center justify-between gap-2 sm:flex-nowrap mb-2.5 border-b-2 border-(--sheet-accent) pb-1">
+          <h3 className={SHEET_BOX_TITLE}>Inventory</h3>
           <Button
             variant="primary"
             size="sm"
@@ -2988,10 +3089,10 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
     const profs = getProficienciesByCategory();
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Proficiencies */}
-        <div className="bg-ink/5 border-2 border-ink/20 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-ink mb-4">Proficiencies & Training</h3>
+        <div className={SHEET_BOX}>
+          <h3 className={SHEET_BOX_HEADING}>Proficiencies & Training</h3>
 
           <div className="space-y-4">
             {/* Armor */}
@@ -3053,9 +3154,9 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
         </div>
 
         {/* Features & Traits */}
-        <div className="bg-ink/5 border-2 border-ink/20 rounded-lg p-4">
-          <div className="flex flex-wrap items-center justify-between gap-2 sm:flex-nowrap mb-3">
-            <h3 className="text-lg font-semibold text-ink">Features &amp; Traits</h3>
+        <div className={SHEET_BOX}>
+          <div className="flex flex-wrap items-center justify-between gap-2 sm:flex-nowrap mb-2.5 border-b-2 border-(--sheet-accent) pb-1">
+            <h3 className={SHEET_BOX_TITLE}>Features &amp; Traits</h3>
             <Button
               variant="primary"
               size="sm"
@@ -3129,8 +3230,8 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
         </div>
 
         {/* Additional Features & Traits */}
-        <div className="bg-ink/5 border border-ink/10 rounded-lg p-4">
-          <h3 className="text-lg font-semibold text-ink mb-3">
+        <div className={SHEET_BOX}>
+          <h3 className={SHEET_BOX_HEADING}>
             <label htmlFor="fifth-edition-additional-features">Additional Features & Traits</label>
           </h3>
           <p className="text-xs text-ink-secondary mb-3">Detailed descriptions of features, special abilities, or notes</p>
@@ -3149,10 +3250,10 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
 
   // Render Biography tab
   const renderBiographyTab = () => (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Appearance */}
-      <div className="bg-ink/5 border-2 border-ink/20 rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-ink mb-3">Appearance</h3>
+      <div className={SHEET_BOX}>
+        <h3 className={SHEET_BOX_HEADING}>Appearance</h3>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           <div>
             <label htmlFor="fifth-edition-appearance-age" className="block text-xs font-semibold text-ink-secondary mb-1">Age</label>
@@ -3226,8 +3327,8 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
       </div>
 
       {/* Personality */}
-      <div className="bg-ink/5 border-2 border-ink/20 rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-ink mb-3">Personality</h3>
+      <div className={SHEET_BOX}>
+        <h3 className={SHEET_BOX_HEADING}>Personality</h3>
         <div className="space-y-3">
           <div>
             <label htmlFor="fifth-edition-personality-traits" className="block text-sm font-semibold text-ink-secondary mb-1">Personality Traits</label>
@@ -3277,8 +3378,8 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
       </div>
 
       {/* Backstory */}
-      <div className="bg-ink/5 border border-ink/10 rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-ink mb-3">
+      <div className={SHEET_BOX}>
+        <h3 className={SHEET_BOX_HEADING}>
           <label htmlFor="fifth-edition-backstory">Backstory</label>
         </h3>
         <textarea
@@ -3292,8 +3393,8 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
       </div>
 
       {/* Allies & Organizations */}
-      <div className="bg-ink/5 border border-ink/10 rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-ink mb-3">Allies & Organizations</h3>
+      <div className={SHEET_BOX}>
+        <h3 className={SHEET_BOX_HEADING}>Allies & Organizations</h3>
         <div className="space-y-2">
           <div>
             <label htmlFor="fifth-edition-allies-name" className="block text-xs font-semibold text-ink-secondary mb-1">Name</label>
@@ -3321,8 +3422,8 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
       </div>
 
       {/* Treasure */}
-      <div className="bg-ink/5 border border-ink/10 rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-ink mb-3">
+      <div className={SHEET_BOX}>
+        <h3 className={SHEET_BOX_HEADING}>
           <label htmlFor="fifth-edition-treasure">Treasure & Other Notes</label>
         </h3>
         <textarea
@@ -3343,12 +3444,15 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
   return (
     <div
       className="bg-paper border-2 border-ink/10 rounded-lg overflow-hidden shadow-lg"
+      style={sheetAccentVariables(themeChoice)}
       onInputCapture={noteInteraction}
       onChangeCapture={noteInteraction}
       onPointerDownCapture={noteInteraction}
     >
       {renderHeader()}
-      <SheetTabs id={sheetTabsId} tabs={TABS} active={activeTab} onSelect={setActiveTab} underline={isCustomColor ? customColorHex : selectedColor.hex} />
+      <div className="px-3 pt-3 sm:px-6 sm:pt-4">
+        <SheetTabs id={sheetTabsId} tabs={TABS} active={activeTab} onSelect={setActiveTab} variant="boxed" />
+      </div>
       {refusals.length > 0 && (
         <div role="alert" className="mx-3 sm:mx-6 mt-4 px-3 py-2 text-sm text-danger-ink bg-danger/10 border border-danger/30 rounded-lg">
           <p className="font-semibold">This sheet can&apos;t be saved yet:</p>

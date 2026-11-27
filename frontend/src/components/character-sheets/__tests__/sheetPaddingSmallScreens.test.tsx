@@ -31,8 +31,15 @@ const noop = () => Promise.resolve();
 const classes = (element: Element | null) => (element?.getAttribute('class') ?? '').split(/\s+/).filter(Boolean);
 const PHONE_PADDING = ['p-3', 'sm:p-6'];
 
+// The 5E sheet is boxes on the page, 12 px in on a phone and 20 from sm up.
+describe('the 5E sheet', () => {
+  it('pads its header box 12 px on a phone and 20 px from sm up', () => {
+    const { container } = render(<FifthEditionCharacterView character={fifthEditionCharacter()} />);
+    expect(classes(container.querySelector('[data-sheet-header]'))).toEqual(expect.arrayContaining(['px-3', 'sm:px-5']));
+  });
+});
+
 describe.each([
-  ['5E sheet', () => render(<FifthEditionCharacterView character={fifthEditionCharacter()} />)],
   ['5E editor', () => render(<FifthEditionCharacterEditor character={fifthEditionCharacter()} onSave={noop} onCancel={vi.fn()} />)],
   ['Fantasy d20 sheet', () => render(<FantasyD20CharacterView character={fantasyD20Character()} />)],
   ['Fantasy d20 editor', () => render(<FantasyD20CharacterEditor character={fantasyD20Character()} onSave={noop} onCancel={vi.fn()} />)],
