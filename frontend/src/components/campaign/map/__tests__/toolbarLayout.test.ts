@@ -61,7 +61,8 @@ describe('measureTopBand', () => {
     expect(measureTopBand(beside.bandEl, beside.toolbar, beside.container)?.wrapped).toBe(false);
 
     const under = band([[25, 25, 152, 34]], [480, 76, 104, 28]);
-    expect(measureTopBand(under.bandEl, under.toolbar, under.container)).toEqual({ bottom: 104, buttonsRight: 177, width: 600, wrapped: true });
+    // Mistwarden: the label's right edge counts too, for the tool stack's corner.
+    expect(measureTopBand(under.bandEl, under.toolbar, under.container)).toEqual({ bottom: 104, buttonsRight: 584, width: 600, wrapped: true });
   });
 
   // jsdom, or a page not laid out yet: nothing to place anything from.
@@ -123,7 +124,9 @@ describe('stackCornerTop: the GM tool stack in its corner', () => {
     expect(stackCornerTop({ ...oneRow, buttonsRight: 547 }, 200, 8)).toBe(68 + BAND_GAP);
   });
 
-  it('starts under the band when it wraps', () => {
-    expect(stackCornerTop({ ...oneRow, bottom: 130, wrapped: true }, 200, 8)).toBe(130 + BAND_GAP);
+  // Mistwarden, 2026-11-27: the toolbar's two rows sit at the left; only
+  // what reaches under the corner moves the stack.
+  it('stays in its corner when the band wraps at its left', () => {
+    expect(stackCornerTop({ ...oneRow, bottom: 130, wrapped: true }, 200, 8)).toBeNull();
   });
 });
