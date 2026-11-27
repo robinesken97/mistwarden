@@ -15,6 +15,7 @@
 
 import { useState } from 'react';
 import { useLeavePage } from '@/hooks/useLeaveGuard';
+import { useSessionLayout } from '@/hooks/useSessionLayout';
 import {
   ArrowLeft,
   Sun,
@@ -27,7 +28,6 @@ import {
   Group,
   Panel,
   Separator,
-  useDefaultLayout,
   usePanelRef,
   type PanelImperativeHandle,
 } from 'react-resizable-panels';
@@ -41,8 +41,6 @@ import { CampaignStatus } from '@/types';
 import type { Campaign } from '@/types';
 import Button from '@/components/ui/Button';
 import Tooltip from '@/components/ui/Tooltip';
-import { TABLET_WIDTH_QUERY } from '@/constants/layout';
-import { optionalStorage } from '@/utils/optionalStorage';
 
 interface DesktopTableProps {
   campaign: Campaign;
@@ -69,15 +67,9 @@ export default function DesktopTable({
   const mapSlot = useTableSlot('map');
   const partySlot = useTableSlot('party');
 
-  // Resizable panel layout — persisted to localStorage so each user's
-  // column sizes survive reloads.
-  const { defaultLayout: savedLayout, onLayoutChanged } = useDefaultLayout({
-    id: 'cozyvtt-session-layout',
-    storage: optionalStorage,
-  });
-  // No saved layout and a tablet-width window: start with the left column
-  // folded so the map has the room. A saved layout, collapsed or not, wins.
-  const defaultLayout = savedLayout ?? (window.matchMedia(TABLET_WIDTH_QUERY).matches ? { party: 0, map: 75, rail: 25 } : undefined);
+  // Resizable panel layout — the user's own column sizes survive reloads;
+  // a tablet-width window without them starts with the left column folded.
+  const { defaultLayout, onLayoutChanged, markUserChange } = useSessionLayout();
   const leftPanelRef = usePanelRef();
   const rightPanelRef = usePanelRef();
   const [leftCollapsed, setLeftCollapsed] = useState(false);
@@ -89,6 +81,7 @@ export default function DesktopTable({
   ) => {
     const panel = panelRef.current;
     if (!panel) return;
+    markUserChange();
     if (panel.isCollapsed()) {
       panel.expand();
       // A panel restored from a collapsed saved layout has no previous
