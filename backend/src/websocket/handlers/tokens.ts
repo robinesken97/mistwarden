@@ -16,7 +16,7 @@ import type { WallSegment } from '../../types/walls';
 import logger from '../../utils/logger';
 import { Token, tokenMoveLimiter, limiterKey, withinCeiling, resendSightAfterChange } from '../shared';
 import { readTokens, toJson } from '../../utils/prisma-json';
-import { withMapsLocked } from '../../utils/mapTokens';
+import { withMapsLocked, isWholeCell, mayPlaceFreely, roundTokenPosition } from '../../utils/mapTokens';
 import { moveCoupled } from '../../utils/mounts';
 import { cellOnMap } from '../../utils/tokenCentre';
 import { GRID_FRAME_SELECT } from '../../validators/maps';
@@ -427,7 +427,8 @@ export function registerTokenHandlers(io: Server, socket: AuthenticatedSocket): 
 
       const { tokenId, mapId, x, y } = data;
 
-      if (!tokenId || !mapId || typeof x !== 'number' || typeof y !== 'number') {
+      // Finite numbers only: NaN or Infinity would be broadcast as they came.
+      if (!tokenId || !mapId || !Number.isFinite(x) || !Number.isFinite(y)) {
         return; // Silently ignore invalid data during rapid updates
       }
 
@@ -436,11 +437,16 @@ export function registerTokenHandlers(io: Server, socket: AuthenticatedSocket): 
       // instead of two is the meaningful per-frame win).
       const map = await prisma.map.findUnique({
         where: { id: mapId },
-        select: { ...GRID_FRAME_SELECT, campaignId: true, tokens: true, campaign: { select: { status: true, currentMapId: true } } },
+        select: { ...GRID_FRAME_SELECT, snapTokens: true, campaignId: true, tokens: true, campaign: { select: { status: true, currentMapId: true } } },
       });
 
       if (!map || map.campaignId !== socket.campaignId || !canReadMap(socket.role, mapId, map.campaign.currentMapId)) {
         return; // Silently ignore invalid map during rapid updates
+      }
+
+      // Between squares only where the drop would be taken (utils/mapTokens.ts mayPlaceFreely).
+      if (!isWholeCell({ x, y }) && !mayPlaceFreely(socket.role, map)) {
+        return;
       }
 
       // Validate coordinates are within map bounds: a cell of its grid (utils/tokenCentre.ts)
@@ -483,7 +489,8 @@ export function registerTokenHandlers(io: Server, socket: AuthenticatedSocket): 
       // draws the token where it is being carried but leaves where it
       // stands, which decides sight and explored memory, until the drop, so
       // carrying a player's token about reveals nothing on the way.
-      await emitDragFrame(movingToken, mapId, map.campaign.currentMapId, x, y);
+      const at = roundTokenPosition({ x, y });
+      await emitDragFrame(movingToken, mapId, map.campaign.currentMapId, at.x, at.y);
     } catch (error) {
       logger.error('token.move failed', { err: error });
     }
@@ -513,9 +520,9 @@ export function registerTokenHandlers(io: Server, socket: AuthenticatedSocket): 
 
       const { tokenId, mapId, x: dropX, y: dropY } = data;
 
-      // Whole squares, as the client always sends: other clients draw a
-      // fraction half a square from where sight and stored position count it.
-      if (typeof tokenId !== 'string' || !tokenId || typeof mapId !== 'string' || !mapId || !Number.isInteger(dropX) || !Number.isInteger(dropY)) {
+      // Finite numbers; whether one may lie between squares is decided from
+      // the map under its lock, below.
+      if (typeof tokenId !== 'string' || !tokenId || typeof mapId !== 'string' || !mapId || !Number.isFinite(dropX) || !Number.isFinite(dropY)) {
         socket.emit('error', { message: 'Invalid token move data' });
         return;
       }
@@ -626,11 +633,16 @@ export function registerTokenHandlers(io: Server, socket: AuthenticatedSocket): 
         const fresh = await tx.map.findUniqueOrThrow({
           where: { id: mapId },
           select: {
-            tokens: true, ...GRID_FRAME_SELECT,
+            tokens: true, ...GRID_FRAME_SELECT, snapTokens: true,
             lightingEnabled: true, wallSegments: true, lights: true, globalIllumination: true,
             campaign: { select: { currentMapId: true } },
           },
         });
+        // Whole squares unless the map lets this mover place freely: a
+        // player's drop on a map whose tokens snap, or anyone's on a hex map.
+        if (!isWholeCell({ x: dropX, y: dropY }) && !mayPlaceFreely(socket.role, fresh)) {
+          return { refused: 'Invalid token move data', putBack: true };
+        }
         if (!cellOnMap({ x: dropX, y: dropY }, fresh)) return { refused: 'Token position out of bounds' };
         const tokens = readTokens(fresh.tokens);
         const index = tokens.findIndex((t) => t.id === tokenId);
@@ -645,6 +657,7 @@ export function registerTokenHandlers(io: Server, socket: AuthenticatedSocket): 
         // on no screen, so the mover and those the frames reached keep the token where it was carried. Put it
         // back as the refusals above do, judged from the map as read under the lock.
         socket.emit('error', { message: dropped.refused });
+        if ('putBack' in dropped) await putBack();
         return;
       }
       const { written, moved, stored } = dropped;

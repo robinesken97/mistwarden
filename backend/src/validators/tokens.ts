@@ -80,18 +80,21 @@ export const TokenMetadataSchema = z.record(z.string(), z.unknown()).refine(
 );
 
 /**
- * Where a token stands, in whole grid squares: the client only ever sends
- * whole ones, and other clients draw a fraction half a square from where it
- * counts. Rebuilt from x and y, so nothing that arrives beside them is
- * stored: a player may move their own token, and the stored position goes to
- * every member on each map fetch. Whether the square is on the map is the
- * route's check, since only it has the map; it also keeps the footprint on
- * the map with clampTokenPosition.
+ * Where a token stands, in grid squares: finite numbers. Whether it may lie
+ * between squares is the route's check, since only it has the map and the
+ * mover's role (utils/mapTokens.ts mayPlaceFreely), as is whether the square
+ * is on the map; it also keeps the footprint on the map with
+ * clampTokenPosition and rounds to hundredths. Rebuilt from x and y, so
+ * nothing that arrives beside them is stored: a player may move their own
+ * token, and the stored position goes to every member on each map fetch.
  */
 export const TokenPositionSchema = z.object({
-  x: z.number().int('must be a whole number of squares'),
-  y: z.number().int('must be a whole number of squares'),
+  x: z.number(),
+  y: z.number(),
 });
+
+/** The refusal for a position between squares where the mover may not place one. */
+export const WHOLE_SQUARES_MESSAGE = 'Invalid token position: must be a whole number of squares';
 
 /** Which way a token faces, in degrees. */
 export const TokenRotationSchema = z.number().min(0).max(360);

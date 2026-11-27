@@ -21,8 +21,8 @@ import { storedFilePath } from '../utils/storedPath';
 import { inBackgroundAfter } from '../utils/backgroundWork';
 import { canReadAssetById, canReferenceAsset, isMapPicture, isTokenPicture, canControlToken, canHoldTokens, canMoveTokensNow, canReadMap, PAUSED_MOVE_REFUSAL } from '../services/permissions';
 import { WallSegmentSchema, WallSegmentsArraySchema, FogOperationSchema, LightSourceSchema, LightSourcesArraySchema, LightSourceUpdateSchema, DUPLICATE_WALL_ID_MESSAGE, DUPLICATE_LIGHT_ID_MESSAGE, MAX_WALL_SEGMENTS, MAX_LIGHT_SOURCES, TOO_MANY_WALLS_MESSAGE, TOO_MANY_LIGHTS_MESSAGE } from '../validators/walls';
-import { validateTokenShapes, TokenMetadataSchema, MoveTokensSchema, TOKEN_TYPES, TOKEN_DISPOSITIONS, TOKEN_DISPLAY_MODES, TOKEN_IMAGE_NOT_A_TOKEN_PICTURE_MESSAGE } from '../validators/tokens';
-import { withMapsLocked, clampTokenPosition, regridTokens } from '../utils/mapTokens';
+import { validateTokenShapes, TokenMetadataSchema, MoveTokensSchema, TOKEN_TYPES, TOKEN_DISPOSITIONS, TOKEN_DISPLAY_MODES, TOKEN_IMAGE_NOT_A_TOKEN_PICTURE_MESSAGE, WHOLE_SQUARES_MESSAGE } from '../validators/tokens';
+import { withMapsLocked, clampTokenPosition, regridTokens, roundTokenPosition, mayPlaceFreely, isWholeCell, snapTokenPositions, tokensSnap } from '../utils/mapTokens';
 import { moveCoupled, untangleMounts, uncouple, mountRefusal, mount } from '../utils/mounts';
 import type { WallSegment, FogState, LightSource, SkippedWall, WallsAdded } from '../types/walls';
 import { parseUVTT } from '../services/uvttParser';
@@ -309,7 +309,7 @@ async function resendInitiativeFor(campaignId: string, tokenId: string): Promise
 router.post('/', campaignGM, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { campaignId } = req.params;
-    const { name, imageUrl, width, height, gridSize, gridType, gridOffsetX, gridOffsetY, spiritLayerUrl, feetPerSquare, diagonalRule, drawnBackground } = req.body;
+    const { name, imageUrl, width, height, gridSize, gridType, gridOffsetX, gridOffsetY, spiritLayerUrl, feetPerSquare, diagonalRule, drawnBackground, snapTokens } = req.body;
 
     // Validation
     if (!name || typeof name !== 'string' || name.trim().length === 0) {
@@ -346,6 +346,9 @@ router.post('/', campaignGM, async (req: AuthenticatedRequest, res: Response) =>
       ?? (gridOffsetY === undefined ? null : dimensionProblem(GridOffsetSchema, gridOffsetY));
     if (gridProblem) {
       return res.status(400).json({ error: 'Validation Error', message: gridProblem });
+    }
+    if (snapTokens !== undefined && typeof snapTokens !== 'boolean') {
+      return res.status(400).json({ error: 'Validation Error', message: 'snapTokens must be a boolean' });
     }
 
     // feetPerSquare: whole number from 1 to 100, defaults to 5
@@ -409,6 +412,8 @@ router.post('/', campaignGM, async (req: AuthenticatedRequest, res: Response) =>
         gridOffsetY: gridOffsetY ?? 0,
         feetPerSquare: mapFeetPerSquare,
         diagonalRule: mapDiagonalRule,
+        // A hex map always snaps.
+        snapTokens: snapTokens === false && !isHexGrid({ gridType: gridType ?? 'square' }) ? false : true,
         drawnBackground: mapDrawnBackground,
         spiritLayerUrl: normalizedSpiritLayerUrl,
         tokens: [], // Initialize empty tokens array
@@ -987,7 +992,7 @@ router.get('/:id', campaignMember, async (req: AuthenticatedRequest, res: Respon
  */
 export const MAP_FIELDS_THAT_RESEND_THE_MAP = [
   'name', 'imageUrl', 'baseLayerUrl', 'width', 'height', 'gridSize', 'gridType', 'gridOffsetX', 'gridOffsetY', 'feetPerSquare', 'diagonalRule', 'spiritLayerUrl',
-  'lightingEnabled', 'globalIllumination',
+  'lightingEnabled', 'globalIllumination', 'snapTokens',
 ] as const satisfies readonly (keyof MapRow)[];
 
 /** The columns everyone is sent whose change does not send the map again, each with the reason. */
@@ -1020,7 +1025,7 @@ const MAP_EDIT_LOCKED_READ = {
 router.put('/:id', campaignGM, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { campaignId, id } = req.params;
-    const { name, width, height, gridSize, gridType, gridOffsetX, gridOffsetY, imageUrl, spiritLayerUrl, feetPerSquare, diagonalRule, lightingEnabled, fogEnabled, globalIllumination, explorationEnabled } = req.body;
+    const { name, width, height, gridSize, gridType, gridOffsetX, gridOffsetY, imageUrl, spiritLayerUrl, feetPerSquare, diagonalRule, lightingEnabled, fogEnabled, globalIllumination, explorationEnabled, snapTokens } = req.body;
 
     // Fetch the map to verify it exists and belongs to campaign
     const existingMap = await prisma.map.findUnique({
@@ -1178,6 +1183,13 @@ router.put('/:id', campaignGM, async (req: AuthenticatedRequest, res: Response) 
       updateData.explorationEnabled = explorationEnabled;
     }
 
+    if (snapTokens !== undefined) {
+      if (typeof snapTokens !== 'boolean') {
+        return res.status(400).json({ error: 'Validation Error', message: 'snapTokens must be a boolean' });
+      }
+      updateData.snapTokens = snapTokens;
+    }
+
     // Fog and explored areas are one stored cell per grid square, so a map
     // too large for them (only one stored before the size limits can be)
     // may not turn either on. One already on stays on, and its fog requests
@@ -1214,20 +1226,27 @@ router.put('/:id', campaignGM, async (req: AuthenticatedRequest, res: Response) 
       // size or offset moves every token to the cell nearest where it stood
       // on the picture (regridTokens), here under the lock. A change of the
       // frame alone keeps positions, and on a hex map brings each to the
-      // nearest hex on the map. Positions stay whole cells.
+      // nearest hex on the map. Positions stay whole cells where tokens snap,
+      // and keep hundredths where they do not. A hex grid always snaps, so a
+      // change to one stores snapping on; turning snapping on puts every
+      // token on its nearest whole square, a rider on its mount's.
       const grid = {
         width: size('width'), height: size('height'), gridSize: size('gridSize'),
         gridType: typeof updateData.gridType === 'string' ? updateData.gridType : current.gridType,
         gridOffsetX: typeof updateData.gridOffsetX === 'number' ? updateData.gridOffsetX : current.gridOffsetX,
         gridOffsetY: typeof updateData.gridOffsetY === 'number' ? updateData.gridOffsetY : current.gridOffsetY,
       };
+      if (isHexGrid(grid)) updateData.snapTokens = true;
+      const snap = tokensSnap({ gridType: grid.gridType, snapTokens: typeof updateData.snapTokens === 'boolean' ? updateData.snapTokens : current.snapTokens });
       const changed = (keys: readonly (keyof typeof grid)[]) => keys.some((k) => grid[k] !== current[k]);
       const gridChanged = changed(['gridSize', 'gridType', 'gridOffsetX', 'gridOffsetY']);
-      if (gridChanged || (isHexGrid(grid) && changed(['width', 'height']))) {
+      const snapTurnedOn = snap && !tokensSnap(current);
+      if (gridChanged || snapTurnedOn || (isHexGrid(grid) && changed(['width', 'height']))) {
         const { tokens: stored } = await tx.map.findUniqueOrThrow({ where: { id }, select: { tokens: true } });
-        const tokens = gridChanged
-          ? regridTokens(readTokens(stored), current, grid)
+        let tokens = gridChanged
+          ? regridTokens(readTokens(stored), current, grid, snap)
           : readTokens(stored).map((t) => ({ ...t, position: clampTokenPosition(t.position, t.size, grid) }));
+        if (snapTurnedOn && !isHexGrid(grid)) tokens = snapTokenPositions(tokens, grid);
         updateData.tokens = toJson(tokens);
       }
       if (kx === 1 && ky === 1) {
@@ -1645,7 +1664,10 @@ router.post('/:id/tokens', campaignGM, async (req: AuthenticatedRequest, res: Re
     // placing from a library puts a token at the map's centre, so a large
     // creature on a small map would otherwise hang off the far edge.
     const appended = await withMapsLocked([mapId], async (tx): Promise<LockedEdit<{ map: MapRow; token: typeof newToken }>> => {
-      const fresh = await tx.map.findUniqueOrThrow({ where: { id: mapId }, select: { tokens: true, ...GRID_FRAME_SELECT } });
+      const fresh = await tx.map.findUniqueOrThrow({ where: { id: mapId }, select: { tokens: true, snapTokens: true, ...GRID_FRAME_SELECT } });
+      if (!isWholeCell(requested) && !mayPlaceFreely('GM', fresh)) {
+        return { status: 400, error: 'Validation Error', message: WHOLE_SQUARES_MESSAGE };
+      }
       if (!cellOnMap(requested, fresh)) {
         return {
           status: 400,
@@ -1659,7 +1681,7 @@ router.post('/:id/tokens', campaignGM, async (req: AuthenticatedRequest, res: Re
       if (tokens.length >= MAP_LIMITS.maxTokens) {
         return { status: 400, error: 'Limit Exceeded', message: tooManyTokensMessage(tokens.length + 1) };
       }
-      const token = { ...newToken, position: clampTokenPosition(requested, size, fresh) };
+      const token = { ...newToken, position: roundTokenPosition(clampTokenPosition(requested, size, fresh)) };
       return { done: { map: await tx.map.update({ where: { id: mapId }, data: { tokens: toJson([...tokens, token]) } }), token } };
     });
     if (!('done' in appended)) return sendRefusal(res, appended);
@@ -1899,12 +1921,16 @@ router.put('/:id/tokens/:tokenId', campaignMember, async (req: AuthenticatedRequ
     // token, leaving it off the map's edge or its metadata written over.
     const requested = shapes.value.position;
     const written = await withMapsLocked([mapId], async (tx): Promise<LockedEdit<{ token: Token; map: MapRow }>> => {
-      const fresh = await tx.map.findUniqueOrThrow({ where: { id: mapId }, select: { tokens: true, ...GRID_FRAME_SELECT } });
+      const fresh = await tx.map.findUniqueOrThrow({ where: { id: mapId }, select: { tokens: true, snapTokens: true, ...GRID_FRAME_SELECT } });
       const tokens = readTokens(fresh.tokens);
       const index = tokens.findIndex((t) => t.id === tokenId);
       if (index === -1) return { status: 404, error: 'Not Found', message: 'Token not found on this map' };
       const current = tokens[index];
 
+      // Between squares only where the map and the mover's role allow it, judged here, from the map under the lock.
+      if (requested && !isWholeCell(requested) && !mayPlaceFreely(membership.role, fresh)) {
+        return { status: 400, error: 'Validation Error', message: WHOLE_SQUARES_MESSAGE };
+      }
       if (requested && !cellOnMap(requested, fresh)) {
         return {
           status: 400,
@@ -2038,9 +2064,11 @@ router.post('/:id/tokens/move', campaignGM, async (req: AuthenticatedRequest, re
       if (missing.length > 0) {
         return { refused: `Token not found on this map: ${missing.join(', ')}` };
       }
-      const moved = sourceTokens
-        .filter((t) => wanted.has(t.id))
-        .map((t) => ({ ...t, position: clampTokenPosition(t.position, t.size, target) }));
+      // Placed as the target map keeps tokens: on whole squares where they snap, as they were where they do not.
+      const travelling = sourceTokens.filter((t) => wanted.has(t.id));
+      const moved = tokensSnap(target)
+        ? snapTokenPositions(travelling, target)
+        : travelling.map((t) => ({ ...t, position: clampTokenPosition(t.position, t.size, target) }));
       // A rider or a mount that travels without the other lets go of it, on both maps.
       const targetTokens = untangleMounts([...readTokens(target.tokens).filter((t) => !wanted.has(t.id)), ...moved]);
       if (targetTokens.length > MAP_LIMITS.maxTokens) {

@@ -53,6 +53,18 @@ describe('an imported map\'s tokens', () => {
     expect(importedTokens(map)[0].obscured).toBe(true);
   });
 
+  it('keeps a position between squares on a map whose tokens do not snap, to hundredths', () => {
+    const loose = { ...map, snapTokens: false, tokens: [{ name: 'Loose', position: { x: 2.345, y: 1.5 }, size: { width: 1, height: 1 } }] };
+    expect(importedTokens(loose)[0].position).toEqual({ x: 2.35, y: 1.5 });
+    expect(prepareMap(loose, { index: 0, importTokens: true, remapAsset: () => null, isMapPicture: () => true, isTokenPicture: () => true, report: new ImportReport() })?.data.snapTokens).toBe(false);
+  });
+
+  it('rounds a position to whole squares on a map whose tokens snap, and on one from an archive that does not say', () => {
+    const tokens = [{ name: 'Loose', position: { x: 2.4, y: 1.6 }, size: { width: 1, height: 1 } }];
+    expect(importedTokens({ ...map, tokens })[0].position).toEqual({ x: 2, y: 2 });
+    expect(importedTokens({ ...map, snapTokens: true, tokens })[0].position).toEqual({ x: 2, y: 2 });
+  });
+
   it('treats a token that says nothing about it as not obscured', () => {
     expect(importedTokens({ ...map, tokens: [{ name: 'Plain', position: { x: 1, y: 1 }, size: { width: 1, height: 1 } }] })[0].obscured).toBe(false);
   });

@@ -11,7 +11,7 @@
  */
 
 import type { Token } from '../websocket/shared';
-import { clampTokenPosition } from './mapTokens';
+import { clampTokenPosition, roundTokenPosition } from './mapTokens';
 import { isHexGrid, nearestHexOnMap, shiftCell, type GridFrame } from './tokenCentre';
 
 /**
@@ -62,7 +62,8 @@ export function moveCoupled(
   const kept = clampTokenPosition({ x: left, y: top }, { width: right - left, height: bottom - top }, map);
   const stepX = dx + kept.x - left;
   const stepY = dy + kept.y - top;
-  const next = tokens.map((t) => (ids.has(t.id) ? { ...t, position: { x: t.position.x + stepX, y: t.position.y + stepY } } : t));
+  // Rounded, so a rider's sum of hundredths compares equal to what the client works out.
+  const next = tokens.map((t) => (ids.has(t.id) ? { ...t, position: roundTokenPosition({ x: t.position.x + stepX, y: t.position.y + stepY }) } : t));
   const moved = next.filter((t) => ids.has(t.id)).sort((a, b) => Number(b.id === tokenId) - Number(a.id === tokenId));
   return { tokens: next, moved };
 }

@@ -1,5 +1,5 @@
 {
-  "_comment": "Shared vision scenarios. Tokens are in grid units (x from the left, y from the bottom row); walls, lights and samples are map pixels (y from the top). Both packages run every scenario; the backend checks which tokens are sent, the frontend checks the tier at each sample and that a token is seen exactly when it is sent. A token's `light` is the torch it carries, lit at its centre; `visible: false` is a hidden token, which no player is sent. Keep both copies identical. A scenario's `grid` replaces the map's grid type and offset for it; on a hex map a token's x and y are its hex (utils/tokenCentre.ts).",
+  "_comment": "Shared vision scenarios. Tokens are in grid units (x from the left, y from the bottom row); walls, lights and samples are map pixels (y from the top). Both packages run every scenario; the backend checks which tokens are sent, the frontend checks the tier at each sample and that a token is seen exactly when it is sent. A token's `light` is the torch it carries, lit at its centre; `visible: false` is a hidden token, which no player is sent. Keep both copies identical. A scenario's `grid` replaces the map's grid type and offset for it; on a hex map a token's x and y are its hex (utils/tokenCentre.ts). A token's x and y may lie between squares (a map whose tokens do not snap): it sees and is seen from the centre of its box, never from a square.",
   "map": {
     "width": 20,
     "height": 20,
@@ -868,6 +868,55 @@
         {
           "x": 600,
           "y": 1010,
+          "tier": "dark"
+        }
+      ]
+    },
+    {
+      "name": "a token between squares sees from its own centre, just beside a wall, and a token just across it is not seen",
+      "globalIllumination": true,
+      "walls": [
+        {
+          "id": "w",
+          "x1": 300,
+          "y1": 0,
+          "x2": 300,
+          "y2": 2000,
+          "type": "wall"
+        }
+      ],
+      "lights": [],
+      "tokens": [
+        {
+          "id": "me",
+          "x": 2.35,
+          "y": 5,
+          "controlledBy": "p1"
+        },
+        {
+          "id": "near",
+          "x": 1.4,
+          "y": 5.5
+        },
+        {
+          "id": "across",
+          "x": 2.62,
+          "y": 5
+        }
+      ],
+      "expectVisible": [
+        "me",
+        "near"
+      ],
+      "samples": [
+        {
+          "x": 250,
+          "y": 1450,
+          "tier": "bright"
+        },
+        {
+          "x": 350,
+          "y": 1450,
           "tier": "dark"
         }
       ]
