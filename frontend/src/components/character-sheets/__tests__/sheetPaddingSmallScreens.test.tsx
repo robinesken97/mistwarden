@@ -32,15 +32,24 @@ const classes = (element: Element | null) => (element?.getAttribute('class') ?? 
 const PHONE_PADDING = ['p-3', 'sm:p-6'];
 
 // The 5E sheet is boxes on the page, 12 px in on a phone and 20 from sm up.
-describe('the 5E sheet', () => {
+describe.each([
+  ['sheet', () => render(<FifthEditionCharacterView character={fifthEditionCharacter()} />)],
+  ['editor', () => render(<FifthEditionCharacterEditor character={fifthEditionCharacter()} onSave={noop} onCancel={vi.fn()} />)],
+])('the 5E %s', (_name, show) => {
   it('pads its header box 12 px on a phone and 20 px from sm up', () => {
-    const { container } = render(<FifthEditionCharacterView character={fifthEditionCharacter()} />);
+    const { container } = show();
     expect(classes(container.querySelector('[data-sheet-header]'))).toEqual(expect.arrayContaining(['px-3', 'sm:px-5']));
   });
 });
 
+it("pads the 5E editor's body 12 px on a phone and 24 px from sm up", () => {
+  const { container } = render(<FifthEditionCharacterEditor character={fifthEditionCharacter()} onSave={noop} onCancel={vi.fn()} />);
+  const body = container.querySelector('[data-sheet-body]');
+  expect(classes(body)).toEqual(expect.arrayContaining(PHONE_PADDING));
+  expect(classes(body)).not.toContain('p-6');
+});
+
 describe.each([
-  ['5E editor', () => render(<FifthEditionCharacterEditor character={fifthEditionCharacter()} onSave={noop} onCancel={vi.fn()} />)],
   ['Fantasy d20 sheet', () => render(<FantasyD20CharacterView character={fantasyD20Character()} />)],
   ['Fantasy d20 editor', () => render(<FantasyD20CharacterEditor character={fantasyD20Character()} onSave={noop} onCancel={vi.fn()} />)],
   ['Horror d100 sheet', () => render(<HorrorD100CharacterView character={horrorD100Character()} />)],

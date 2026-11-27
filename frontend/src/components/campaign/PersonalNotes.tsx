@@ -358,7 +358,7 @@ export default function PersonalNotes() {
         {error && <p className="text-xs text-danger-ink">{error}</p>}
 
         {!selectedId ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
+          <div className="flex-1 flex flex-col items-center text-center px-4 pt-6">
             <NotebookPen className="w-9 h-9 text-warm-gray/40 mb-2" />
             <p className="text-xs text-warm-gray">
               Notes only you can read. Write in Markdown — headings, lists, links — and

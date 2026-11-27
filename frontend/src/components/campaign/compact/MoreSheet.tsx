@@ -7,6 +7,8 @@
 // - At the table, for everyone: Notes and Session (the session panels the
 //   rail's tabs open, which the compact layout opens in its session sheet),
 //   Documents and Shortcuts.
+// - Display on this device: the fog's mist and the dice animation, in place
+//   (DisplaySettings), as the desktop's header offers them.
 // - GM tools, for the GM: the header's toolbar, every tool in its order
 //   (SessionToolbar's TOOL_GROUPS), each opening its slide-over or window.
 // - Owner Settings, for an owner who has handed the GM's seat to someone
@@ -25,6 +27,7 @@ import { SESSION_TABS, SESSION_TAB_LOOKS, type SessionTab } from '@/components/c
 import { BottomSheet, type SheetEdges } from './BottomSheet';
 import { onTheBar, type BarPanel } from './BottomBar';
 import SheetMenuRows from './SheetMenuRows';
+import { DISPLAY_SETTINGS_LABEL, DisplaySettings } from '@/components/campaign/DisplaySettings';
 
 /** The session panels More opens: every one the bar has no button for (BAR_PANELS). */
 export type MorePanel = Exclude<SessionTab, BarPanel>;
@@ -66,6 +69,19 @@ function Group({ heading, items, onClose }: { heading: string; items: MenuAction
   );
 }
 
+/** This device's display settings, changed in place rather than opened. */
+function DisplayGroup() {
+  const headingId = useId();
+  return (
+    <div role="group" aria-labelledby={headingId} className="mt-4">
+      <h3 id={headingId} className="mx-1 mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-muted">{DISPLAY_SETTINGS_LABEL}</h3>
+      <div className="rounded-cozy border border-ink/10 bg-paper/60 p-3">
+        <DisplaySettings />
+      </div>
+    </div>
+  );
+}
+
 export default function MoreSheet({
   open,
   onClose,
@@ -95,6 +111,7 @@ export default function MoreSheet({
     <BottomSheet open={open} title="More" height="full" onClose={onClose} edges={edges} id={id}>
       <div className="px-3 pb-3">
         <Group heading="At the table" items={atTheTable} onClose={onClose} />
+        <DisplayGroup />
         {userRole === 'GM' && <Group heading="GM tools" items={gmTools} onClose={onClose} />}
         {isOwner && userRole !== 'GM' && <Group heading="Owner" items={ownerSettings} onClose={onClose} />}
       </div>

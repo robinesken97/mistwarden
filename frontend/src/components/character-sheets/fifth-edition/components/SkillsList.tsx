@@ -104,7 +104,7 @@ const SkillRow: React.FC<{
 
   return (
     <div
-      className={`grid grid-cols-[16px_1fr_auto] items-center gap-x-1 break-inside-avoid border-b border-dotted border-ink/10 px-1 py-0.5 rounded-sm group ${
+      className={`grid grid-cols-[16px_1fr_auto] items-center gap-x-1 break-inside-avoid border-b border-dotted border-ink/10 px-1 py-0.5 pointer-coarse:min-h-11 rounded-sm group ${
         isClickable ? 'cursor-pointer hover:bg-accent/10 select-none [-webkit-touch-callout:none]' : ''
       }`}
       onClick={isClickable ? () => onRoll(expression, purpose) : undefined}

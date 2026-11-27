@@ -2320,10 +2320,11 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   drawLayerRef.current = drawLayer;
 
   // Structural changes (world transform, canvas size, map identity) repaint
-  // every layer.
+  // every layer; so does this device's fog look (mist), which the GM's fog
+  // draws in the terrain and a player's in the overlay.
   useEffect(() => {
     markDirty('terrain', 'tokens', 'overlay');
-  }, [markDirty, mapControls.zoom, mapControls.panOffset, canvasSize, currentMap, terrainSource]);
+  }, [markDirty, mapControls.zoom, mapControls.panOffset, canvasSize, currentMap, terrainSource, mist]);
 
   // Terrain-only content.
   useEffect(() => {

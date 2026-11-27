@@ -224,9 +224,17 @@ describe('the 5E sheet on a phone', () => {
     expect(classes(grid)).not.toContain('grid-cols-2');
   });
 
-  it('wraps the saving throws as a line of text', async () => {
+  it('lays the saving throws out as tiles, three to a row and six from sm up', async () => {
     await viewOn();
-    expect(screen.getByText('Saving Throws').parentElement?.tagName).toBe('P');
+    const tile = screen.getAllByTitle('Strength').find((e) => e.tagName === 'ABBR')!.parentElement!;
+    expect(classes(tile.parentElement)).toEqual(expect.arrayContaining(['grid', 'grid-cols-3', 'sm:grid-cols-6']));
+    expect(classes(tile)).toContain('pointer-coarse:min-h-11');
+  });
+
+  it('gives a skill row 44 px on a touch screen', async () => {
+    await viewOn();
+    const row = screen.getByText('Acrobatics').parentElement!;
+    expect(classes(row)).toEqual(expect.arrayContaining(['py-0.5', 'pointer-coarse:min-h-11']));
   });
 
   it('shows the ability scores three to a row, six from sm up', async () => {

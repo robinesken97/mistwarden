@@ -163,11 +163,11 @@ export default function DashboardPage() {
             <section className="glass-panel p-6">
               <div className="flex items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="p-2 rounded-lg bg-moss-green/10">
+                  <div className="p-2 rounded-lg bg-moss-green/10 md:max-xl:hidden">
                     <User className="w-6 h-6 text-brand-ink" />
                   </div>
-                  <div>
-                    <h2 className="text-xl font-semibold text-brand-ink font-heading">
+                  <div className="min-w-0">
+                    <h2 className="text-xl font-semibold text-brand-ink font-heading truncate">
                       Your Characters
                     </h2>
                     <p className="text-sm text-warm-gray">
@@ -261,11 +261,11 @@ export default function DashboardPage() {
             <section className="glass-panel p-6">
               <div className="flex items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="p-2 rounded-lg bg-moss-green/10">
+                  <div className="p-2 rounded-lg bg-moss-green/10 md:max-xl:hidden">
                     <FolderOpen className="w-6 h-6 text-brand-ink" />
                   </div>
-                  <div>
-                    <h2 className="text-xl font-semibold text-brand-ink font-heading">
+                  <div className="min-w-0">
+                    <h2 className="text-xl font-semibold text-brand-ink font-heading truncate">
                       Asset Library
                     </h2>
                     <p className="text-sm text-warm-gray">
@@ -303,11 +303,11 @@ export default function DashboardPage() {
             <section className="glass-panel p-6">
               <div className="flex items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="p-2 rounded-lg bg-moss-green/10">
+                  <div className="p-2 rounded-lg bg-moss-green/10 md:max-xl:hidden">
                     <BookOpen className="w-6 h-6 text-brand-ink" />
                   </div>
-                  <div>
-                    <h2 className="text-xl font-semibold text-brand-ink font-heading">
+                  <div className="min-w-0">
+                    <h2 className="text-xl font-semibold text-brand-ink font-heading truncate">
                       Documents
                     </h2>
                     <p className="text-sm text-warm-gray">
@@ -345,11 +345,11 @@ export default function DashboardPage() {
             <section className="glass-panel p-6">
               <div className="flex items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="p-2 rounded-lg bg-moss-green/10">
+                  <div className="p-2 rounded-lg bg-moss-green/10 md:max-xl:hidden">
                     <FileText className="w-6 h-6 text-brand-ink" />
                   </div>
-                  <div>
-                    <h2 className="text-xl font-semibold text-brand-ink font-heading">
+                  <div className="min-w-0">
+                    <h2 className="text-xl font-semibold text-brand-ink font-heading truncate">
                       Character Templates
                     </h2>
                     <p className="text-sm text-warm-gray">Shared starter sheets</p>

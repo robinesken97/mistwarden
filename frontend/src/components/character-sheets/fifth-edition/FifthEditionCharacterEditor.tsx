@@ -67,7 +67,7 @@ import {
   customWeaponProperties,
   addCustomWeaponProperty,
 } from '@/utils/weaponProperties';
-import { toStoredHexColor, HEX_COLOUR_HINT, shouldUseWhiteText, headerInk } from '@/utils/themeColor';
+import { toStoredHexColor, HEX_COLOUR_HINT } from '@/utils/themeColor';
 import {
   FIFTH_EDITION_ATTACK_DAMAGE_ROLLS_MAX,
   FIFTH_EDITION_CUSTOM_SKILLS_MAX,
@@ -1231,138 +1231,18 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
     });
   };
 
-  // Render character header with token upload and color picker
+  // The header: the same accent box as the read-only sheet's, its colour from
+  // the root's --sheet-* variables (the theme's accent until one is picked).
   const renderHeader = () => {
-    // Determine the current background style
-    const headerStyle = isCustomColor
-      ? { background: `linear-gradient(to right, ${customColorHex}, ${customColorHex}dd)` }
-      : {};
-
-    // Text and buttons on the header follow its colour.
-    const ink = headerInk(isCustomColor ? customColorHex : selectedColor.hex);
-    const headerTextColor = ink.text;
-    // Hints under the token picture, a little softer than the header text.
-    const headerHintColor = ink.soft;
-
-    const headerClasses = isCustomColor
-      ? `${headerTextColor} p-3 sm:p-6 rounded-t-lg relative`
-      : `bg-linear-to-r/srgb ${selectedColor.from} ${selectedColor.to} ${headerTextColor} p-3 sm:p-6 rounded-t-lg relative`;
+    // A labelled box in the details grid under the name.
+    const FIELD_LABEL = 'block text-xs font-semibold text-ink-secondary whitespace-nowrap';
+    const field = (error?: string) =>
+      `mt-1 w-full rounded-lg border ${error ? 'border-danger' : 'border-ink/20'} bg-transparent px-2 py-1.5 pointer-coarse:min-h-11 text-sm text-ink placeholder:text-ink-muted focus:outline-hidden focus:ring-2 focus:ring-brand`;
 
     return (
-      <div data-sheet-header className={headerClasses} style={headerStyle}>
-        {/* Save and Cancel Buttons */}
-        <div className="flex justify-end items-center space-x-2 mb-4 mr-12 sm:absolute sm:top-4 sm:right-16 sm:mb-0 sm:mr-0">
-          {/* Fixed colours: the header is the player's colour, not the theme's. */}
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={isSaving}
-            className="px-4 py-2 bg-white text-black hover:bg-white/90 rounded-lg transition-colors flex items-center space-x-2 font-medium shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Save className="w-4 h-4" />
-            <span>{isSaving ? 'Saving...' : 'Save'}</span>
-          </button>
-          <button
-            onClick={onCancel}
-            className={`px-4 py-2 ${ink.button} rounded-lg transition-colors flex items-center space-x-2 font-medium shadow-lg`}
-          >
-            <X className="w-4 h-4" />
-            <span>Cancel</span>
-          </button>
-        </div>
-
-        {/* Color Picker Button */}
-        <button
-          onClick={() => setShowColorPicker(!showColorPicker)}
-          className={`absolute top-4 right-4 p-2 ${ink.button} rounded-lg transition-colors`}
-          title="Change theme color"
-        >
-          <Palette className="w-5 h-5" />
-        </button>
-
-        {/* Color Picker Dropdown */}
-        {showColorPicker && (
-          <div className="absolute top-16 right-4 bg-paper text-ink rounded-lg shadow-xl p-4 z-10 border-2 border-ink/10 max-w-md">
-            <h4 className="font-semibold mb-3">Theme Color</h4>
-
-            {/* Preset Colors */}
-            <div className="grid grid-cols-3 gap-2 mb-4">
-              {COLOR_PRESETS.map((color) => (
-                <button
-                  key={color.name}
-                  onClick={() => handlePresetColorSelect(color)}
-                  className={`px-2 py-2 rounded-lg text-sm font-medium transition-all ${
-                    !isCustomColor && selectedColor.name === color.name
-                      ? 'ring-2 ring-brand bg-ink/10'
-                      : 'hover:bg-ink/5'
-                  }`}
-                >
-                  <div className={`w-full h-6 rounded-sm mb-1 bg-linear-to-r/srgb ${color.from} ${color.to}`} />
-                  <div className="text-xs">{color.name}</div>
-                </button>
-              ))}
-            </div>
-
-            {/* Custom Color Section */}
-            <div className="border-t border-ink/10 pt-4 space-y-3">
-              <h5 className="text-sm font-semibold text-ink-secondary">Custom Color</h5>
-
-              <div className="flex items-center space-x-2">
-                {/* Native Color Picker */}
-                <input
-                  type="color"
-                  value={customColorHex || '#b91c1c'}
-                  onChange={(e) => handleCustomColorChange(e.target.value)}
-                  className="w-12 h-12 rounded-sm cursor-pointer border-2 border-ink/20"
-                  title="Pick a custom color"
-                />
-
-                {/* Hex Code Input */}
-                <div className="flex-1">
-                  <input
-                    type="text"
-                    value={customColorHex}
-                    onChange={(e) => {
-                      const hex = e.target.value;
-                      // Validate hex format
-                      if (hex === '' || /^#[0-9A-Fa-f]{0,6}$/.test(hex)) {
-                        handleCustomColorChange(hex);
-                      }
-                    }}
-                    placeholder="#b91c1c"
-                    aria-label="Custom colour hex code"
-                    className="w-full px-3 py-2 border border-ink/20 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand"
-                  />
-                  <div className="text-xs text-ink-muted mt-1">Enter hex code (e.g., #b91c1c)</div>
-                  {errors.themeColor && <div className="text-xs text-danger-ink mt-1">{errors.themeColor}</div>}
-                </div>
-              </div>
-
-              {/* Custom Color Preview */}
-              {isCustomColor && customColorHex && /^#[0-9A-Fa-f]{6}$/.test(customColorHex) && (
-                <div className="flex items-center space-x-2 p-2 bg-ink/5 rounded-sm">
-                  <div
-                    className="w-8 h-8 rounded-sm"
-                    style={{ background: `linear-gradient(to right, ${customColorHex}, ${customColorHex}dd)` }}
-                  />
-                  <span className="text-sm font-medium">Custom: {customColorHex}</span>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-      {/* From sm up, pr-64 reserves the strip the absolutely-positioned
-          Save/Cancel cluster and palette button occupy above. Without it the
-          Experience Points field sits underneath them. On a phone the cluster
-          is in the flow above this row instead, where a tap reaches it, and
-          the portrait, the name and the experience are one column. */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-0 sm:pr-64">
-        {/* min-w-0 so this column can shrink. Flex children default to
-            min-width:auto, which lets the character-name input push out past
-            the reserved padding on a narrow window and back under the
-            buttons. */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start min-w-0">
+      <div className="px-3 pt-3 sm:px-6 sm:pt-4">
+      <section data-sheet-header className={`${SHEET_BOX} relative`}>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5">
           {/* Token Image Upload. As wide as the portrait, so its caption
               wraps under it. */}
           {allowTokenPicture && (
@@ -1382,18 +1262,18 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
                 <img
                   src={tokenImagePreview}
                   alt={formData.characterName || 'Character'}
-                  className="w-24 h-24 sm:w-40 sm:h-40 rounded-full border-4 border-white/20 object-cover"
+                  className="w-24 h-24 sm:w-40 sm:h-40 rounded-full border-[3px] border-(--sheet-accent) object-cover"
                 />
               ) : (
-                <div className="w-24 h-24 sm:w-40 sm:h-40 rounded-full border-4 border-white/20 bg-black/70 flex items-center justify-center">
-                  <User className="w-12 h-12 sm:w-20 sm:h-20 text-white/40" />
+                <div className="w-24 h-24 sm:w-40 sm:h-40 rounded-full border-[3px] border-(--sheet-accent) bg-black/20 flex items-center justify-center">
+                  <User className="w-12 h-12 sm:w-20 sm:h-20 text-ink-muted" />
                 </div>
               )}
               <div className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                 <Upload className="w-8 h-8 sm:w-12 sm:h-12 text-white" />
               </div>
             </label>
-            <PortraitNotes error={errors.tokenImage} personal={!character.campaignId} errorClassName={headerHintColor} noteClassName={headerHintColor} />
+            <PortraitNotes error={errors.tokenImage} personal={!character.campaignId} errorClassName="text-danger-ink" noteClassName="text-ink-secondary" />
           </div>
           )}
 
@@ -1413,10 +1293,10 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
                 <img
                   src={portraitPreview || formData.portraitUrl}
                   alt="Portrait"
-                  className="h-30 w-24 rounded-xl border-4 border-white/20 object-cover sm:h-40 sm:w-32"
+                  className="h-30 w-24 rounded-xl border-[3px] border-(--sheet-accent) object-cover sm:h-40 sm:w-32"
                 />
               ) : (
-                <div className="flex h-30 w-24 flex-col items-center justify-center gap-1 rounded-xl border-4 border-dashed border-white/30 bg-black/40 text-xs text-white/80 sm:h-40 sm:w-32">
+                <div className="flex h-30 w-24 flex-col items-center justify-center gap-1 rounded-xl border-[3px] border-dashed border-(--sheet-accent) bg-black/20 text-xs text-ink-secondary sm:h-40 sm:w-32">
                   <Upload className="h-6 w-6" aria-hidden="true" />
                   Portrait
                 </div>
@@ -1429,39 +1309,141 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
               <button
                 type="button"
                 onClick={removePortrait}
-                className={`touch-target mt-1 text-xs underline ${headerHintColor}`}
+                className="touch-target mt-1 text-xs underline text-ink-secondary"
               >
                 Remove portrait
               </button>
             )}
-            <PortraitNotes error={errors.portrait} personal={false} errorClassName={headerHintColor} noteClassName={headerHintColor} />
+            <PortraitNotes error={errors.portrait} personal={false} errorClassName="text-danger-ink" noteClassName="text-ink-secondary" />
           </div>
           )}
 
-          {/* Character Info */}
-          <div className="space-y-2 min-w-0">
-            <input
-              type="text"
-              value={formData.characterName || ''}
-              onChange={(e) => updateField('characterName', e.target.value)}
-              maxLength={SHEET_NAME_MAX}
-              placeholder="Character Name"
-              aria-label="Character name"
-              className={`w-full text-3xl font-bold bg-white/10 border-2 ${
-                errors.characterName ? 'border-white' : 'border-white/20'
-              } rounded px-3 py-1 ${headerTextColor} placeholder-current/50 focus:outline-hidden focus:border-white/40`}
-            />
+          {/* Character Info. min-w-0 so the column can shrink inside the row. */}
+          <div className="w-full min-w-0 flex-1 space-y-2.5">
+            {/* The name, with Save, Cancel and the colour beside it; on a
+                narrow box the buttons wrap under the name. */}
+            <div className="flex flex-wrap items-start gap-2">
+              <input
+                type="text"
+                value={formData.characterName || ''}
+                onChange={(e) => updateField('characterName', e.target.value)}
+                maxLength={SHEET_NAME_MAX}
+                placeholder="Character Name"
+                aria-label="Character name"
+                className={`min-w-0 flex-[1_1_14rem] rounded-[10px] border-2 ${
+                  errors.characterName ? 'border-danger' : 'border-ink/20'
+                } bg-transparent px-3 py-1 font-heading text-[30px] leading-[1.1] font-semibold text-(--sheet-accent) placeholder:text-ink-muted focus:outline-hidden focus:border-(--sheet-accent)`}
+              />
+              <div className="relative ml-auto flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={isSaving}
+                  className="flex min-h-11 items-center gap-2 rounded-[10px] bg-(--sheet-fill) px-3.5 font-semibold text-(--sheet-on-fill) transition-opacity hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Save className="w-4 h-4" aria-hidden="true" />
+                  <span>{isSaving ? 'Saving...' : 'Save'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  className="flex min-h-11 items-center gap-2 rounded-[10px] border-2 border-(--sheet-accent) px-3.5 font-semibold text-(--sheet-accent) transition-colors hover:bg-(--sheet-accent-bg)"
+                >
+                  <X className="w-4 h-4" aria-hidden="true" />
+                  <span>Cancel</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowColorPicker(!showColorPicker)}
+                  className="flex min-h-11 min-w-11 items-center justify-center rounded-[10px] border-2 border-(--sheet-accent) text-(--sheet-accent) transition-colors hover:bg-(--sheet-accent-bg)"
+                  title="Change theme color"
+                  aria-expanded={showColorPicker}
+                >
+                  <Palette className="w-5 h-5" aria-hidden="true" />
+                </button>
+
+                {/* Color Picker Dropdown */}
+                {showColorPicker && (
+                  <div className="absolute top-full right-0 mt-2 w-80 max-w-[calc(100vw-3rem)] bg-paper text-ink rounded-lg shadow-xl p-4 z-10 border-2 border-ink/10">
+                  <h4 className="font-semibold mb-3">Theme Color</h4>
+
+                  {/* Preset Colors */}
+                  <div className="grid grid-cols-3 gap-2 mb-4">
+                    {COLOR_PRESETS.map((color) => (
+                      <button
+                        key={color.name}
+                        onClick={() => handlePresetColorSelect(color)}
+                        className={`px-2 py-2 rounded-lg text-sm font-medium transition-all ${
+                          !isCustomColor && selectedColor.name === color.name
+                            ? 'ring-2 ring-brand bg-ink/10'
+                            : 'hover:bg-ink/5'
+                        }`}
+                      >
+                        <div className={`w-full h-6 rounded-sm mb-1 bg-linear-to-r/srgb ${color.from} ${color.to}`} />
+                        <div className="text-xs">{color.name}</div>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Custom Color Section */}
+                  <div className="border-t border-ink/10 pt-4 space-y-3">
+                    <h5 className="text-sm font-semibold text-ink-secondary">Custom Color</h5>
+
+                    <div className="flex items-center space-x-2">
+                      {/* Native Color Picker */}
+                      <input
+                        type="color"
+                        value={customColorHex || '#b91c1c'}
+                        onChange={(e) => handleCustomColorChange(e.target.value)}
+                        className="w-12 h-12 rounded-sm cursor-pointer border-2 border-ink/20"
+                        title="Pick a custom color"
+                      />
+
+                      {/* Hex Code Input */}
+                      <div className="flex-1">
+                        <input
+                          type="text"
+                          value={customColorHex}
+                          onChange={(e) => {
+                            const hex = e.target.value;
+                            // Validate hex format
+                            if (hex === '' || /^#[0-9A-Fa-f]{0,6}$/.test(hex)) {
+                              handleCustomColorChange(hex);
+                            }
+                          }}
+                          placeholder="#b91c1c"
+                          aria-label="Custom colour hex code"
+                          className="w-full px-3 py-2 border border-ink/20 rounded-lg text-sm focus:outline-hidden focus:ring-2 focus:ring-brand"
+                        />
+                        <div className="text-xs text-ink-muted mt-1">Enter hex code (e.g., #b91c1c)</div>
+                        {errors.themeColor && <div className="text-xs text-danger-ink mt-1">{errors.themeColor}</div>}
+                      </div>
+                    </div>
+
+                    {/* Custom Color Preview */}
+                    {isCustomColor && customColorHex && /^#[0-9A-Fa-f]{6}$/.test(customColorHex) && (
+                      <div className="flex items-center space-x-2 p-2 bg-ink/5 rounded-sm">
+                        <div
+                          className="w-8 h-8 rounded-sm"
+                          style={{ background: `linear-gradient(to right, ${customColorHex}, ${customColorHex}dd)` }}
+                        />
+                        <span className="text-sm font-medium">Custom: {customColorHex}</span>
+                      </div>
+                    )}
+                  </div>
+                  </div>
+                )}
+              </div>
+            </div>
             {/* Player name is who owns this character, not free text — it is
                 filled from their display name when the character is created
                 and is shown rather than edited. */}
-            <div className={`flex items-center space-x-3 opacity-80`}>
-              <span className={`text-sm ${headerTextColor}`}>
-                {formData.playerName || '—'}
-              </span>
-            </div>
-            <div className={`flex items-center flex-wrap gap-2 opacity-80`}>
-              <div className="flex items-center space-x-2">
-                <label htmlFor="fifth-edition-level" className="text-xs">Level</label>
+            <p className="text-sm text-ink-secondary">Player: {formData.playerName || '—'}</p>
+            {/* Level, race, class and experience in one grid: two to a row on
+                a phone, one row from sm up. */}
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-[4.5rem_minmax(0,1fr)_minmax(0,1fr)_8rem]">
+              <div>
+                <label htmlFor="fifth-edition-level" className={FIELD_LABEL}>Level</label>
                 <span
                   className="contents"
                   onFocus={() => {
@@ -1477,50 +1459,53 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
                   max={20}
                   value={formData.level}
                   onChange={changeLevel}
-                  className={`w-16 bg-white/10 border ${
-                    errors.level ? 'border-white border-2' : 'border-white/20'
-                  } rounded px-2 py-0.5 text-sm ${headerTextColor} focus:outline-hidden focus:border-white/40`}
+                  className={field(errors.level)}
                 fallback={1}
                 />
                 </span>
               </div>
-              <input
-                type="text"
-                value={formData.race || ''}
-                onChange={(e) => updateField('race', e.target.value)}
-                placeholder="Race"
-                aria-label="Race"
-                maxLength={SHEET_SHORT_TEXT_MAX}
-                aria-invalid={!!errors.race}
-                className={`bg-white/10 border ${errors.race ? 'border-white border-2' : 'border-white/20'} rounded-sm px-2 py-0.5 text-sm ${headerTextColor} placeholder-current/50 focus:outline-hidden focus:border-white/40`}
-              />
-              <input
-                type="text"
-                value={formData.class || ''}
-                onChange={(e) => updateField('class', e.target.value)}
-                placeholder="Class"
-                aria-label="Class"
-                maxLength={SHEET_SHORT_TEXT_MAX}
-                aria-invalid={!!errors.class}
-                className={`bg-white/10 border ${errors.class ? 'border-white border-2' : 'border-white/20'} rounded-sm px-2 py-0.5 text-sm ${headerTextColor} placeholder-current/50 focus:outline-hidden focus:border-white/40`}
-              />
+              <div>
+                <label htmlFor="fifth-edition-race" className={FIELD_LABEL}>Race</label>
+                <input
+                  id="fifth-edition-race"
+                  type="text"
+                  value={formData.race || ''}
+                  onChange={(e) => updateField('race', e.target.value)}
+                  placeholder="e.g., Human"
+                  maxLength={SHEET_SHORT_TEXT_MAX}
+                  aria-invalid={!!errors.race}
+                  className={field(errors.race)}
+                />
+              </div>
+              <div>
+                <label htmlFor="fifth-edition-class" className={FIELD_LABEL}>Class</label>
+                <input
+                  id="fifth-edition-class"
+                  type="text"
+                  value={formData.class || ''}
+                  onChange={(e) => updateField('class', e.target.value)}
+                  placeholder="e.g., Fighter"
+                  maxLength={SHEET_SHORT_TEXT_MAX}
+                  aria-invalid={!!errors.class}
+                  className={field(errors.class)}
+                />
+              </div>
+              <div>
+                <label htmlFor="fifth-edition-experience" className={FIELD_LABEL}>Experience Points</label>
+                <NumberField
+                  id="fifth-edition-experience"
+                  min={0}
+                  value={formData.experiencePoints}
+                  onChange={(v: number) => updateField('experiencePoints', v)}
+                  className={`${field()} text-right tabular-nums`}
+                fallback={0}
+                />
+              </div>
             </div>
           </div>
-        </div>
-
-        <div className="sm:text-right space-y-1">
-          <label htmlFor="fifth-edition-experience" className="block text-xs opacity-70">Experience Points</label>
-          <NumberField
-            id="fifth-edition-experience"
-            min={0}
-            value={formData.experiencePoints}
-            onChange={(v: number) => updateField('experiencePoints', v)}
-            className={`w-24 text-xl font-bold bg-white/10 border border-white/20 rounded-sm px-2 py-1 ${headerTextColor} text-right focus:outline-hidden focus:border-white/40`}
-          fallback={0}
-          />
-        </div>
       </div>
-    </div>
+      </section>
+      </div>
     );
   };
 
@@ -1603,30 +1588,14 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
             const abilityData = formData.stats?.[ability] || { score: 10, modifier: 0 };
             const error = errors[`stats.${ability}`];
 
-            // Determine circle style and text color
-            const circleStyle = isCustomColor
-              ? { background: `linear-gradient(to bottom right, ${customColorHex}, ${customColorHex}dd)` }
-              : {};
-            const circleClasses = isCustomColor
-              ? 'w-12 h-12 rounded-full flex items-center justify-center shadow-lg border-2'
-              : `w-12 h-12 rounded-full bg-linear-to-br/srgb ${selectedColor.from} ${selectedColor.to} flex items-center justify-center shadow-lg border-2`;
-
-            // Determine border color based on theme
-            const borderColor = isCustomColor ? customColorHex : selectedColor.hex;
-            const borderStyle = { borderColor: borderColor };
-
-            // Determine text color based on background luminance
-            const textColor = isCustomColor
-              ? (shouldUseWhiteText(customColorHex) ? 'text-white' : 'text-black')
-              : 'text-white';
-
             return (
               <div key={ability} className="flex flex-col items-center space-y-1">
                 <div className="text-xs font-semibold text-ink-secondary uppercase tracking-wide">
                   {ability.slice(0, 3)}
                 </div>
-                <div className={circleClasses} style={{ ...circleStyle, ...borderStyle }}>
-                  <span className={`text-xl font-bold ${textColor}`}>
+                {/* Filled in the sheet's colour, as the open tab is; the theme's accent without one. */}
+                <div className="w-12 h-12 rounded-full flex items-center justify-center bg-(--sheet-fill) text-(--sheet-on-fill)">
+                  <span className="text-xl font-bold">
                     {formatModifier(abilityData.modifier)}
                   </span>
                 </div>

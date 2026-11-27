@@ -1,5 +1,4 @@
 import { Fragment, useState, useEffect, useEffectEvent, useLayoutEffect, useRef, useCallback, useMemo, FormEvent, KeyboardEvent } from 'react';
-import { DiceAnimationSetting } from './DiceOverlay';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Dices, Send, AlertCircle, RotateCcw, Trash2, EyeOff, Eye, Plus, ChevronDown } from 'lucide-react';
 import { useWebSocket } from '@/contexts/WebSocketContext';
@@ -647,7 +646,7 @@ export default function DiceRoller() {
       value={expression}
       onChange={(e) => setExpression(e.target.value)}
       onKeyDown={handleKeyDown}
-      placeholder="e.g., 2d6+3, 1d20+5, 4d6kh3"
+      placeholder="2d6+3"
       aria-label="Dice expression"
       // Read-only while a roll is on its way: disabled, it threw keyboard
       // focus to the page after every roll.
@@ -954,7 +953,6 @@ export default function DiceRoller() {
           )}
         </AnimatePresence>
 
-        <div className="mb-1.5 flex justify-end"><DiceAnimationSetting /></div>
         {/* The seven dice, one row, each a share of the width. */}
         <div role="group" aria-label="Dice" className={cn('grid grid-cols-7 gap-1', compact ? 'mb-1.5' : 'mb-2')}>
           {quickRollButtons}

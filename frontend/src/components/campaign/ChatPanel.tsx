@@ -1056,7 +1056,7 @@ export default function ChatPanel() {
             </p>
           )}
           {canSend && countedLength < LENGTH_WARNING_AT && (
-            <p id="chat-hint" className={compact ? 'sr-only' : 'text-xs text-stone-gray/70 text-center'}>
+            <p id="chat-hint" className={compact ? 'sr-only' : 'text-xs text-stone-gray/70 text-center pointer-coarse:sr-only'}>
               Press Enter to send, Shift+Enter for new line
             </p>
           )}

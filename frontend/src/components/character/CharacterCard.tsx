@@ -187,7 +187,7 @@ function CharacterCardInner({
 
         {/* Character Avatar/Token */}
         <div className="mb-4 flex items-center gap-4">
-          <div className="w-16 h-16 rounded-lg bg-moss-green/10 border-2 border-moss-green/30
+          <div className="w-16 h-16 shrink-0 rounded-lg bg-moss-green/10 border-2 border-moss-green/30
                         flex items-center justify-center overflow-hidden">
             {character.tokenImageUrl ? (
               <img
@@ -203,7 +203,7 @@ function CharacterCardInner({
 
           <div className="flex-1 min-w-0 pr-8">
             {/* Character Name */}
-            <h3 className="text-xl font-semibold text-brand-ink mb-1 truncate
+            <h3 className="text-xl font-semibold text-brand-ink mb-1 line-clamp-2 break-words
                          group-hover:text-spirit-ink transition-colors">
               {character.name}
             </h3>

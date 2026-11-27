@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { drawFog } from '../layers/drawFog';
+import { drawFog, mistTileBoost } from '../layers/drawFog';
 import type { Viewport } from '../layers/types';
 
 function recordingContext() {
@@ -31,5 +31,16 @@ describe('the mist over a player’s fog', () => {
     drawFog(ctx, { isGM: false, fogState: null, revealedCells: new Set([0, 4]), revealOpacity: new Map(), mistTime }, viewport);
     // Six cells, two revealed: one opaque fill of the four hidden ones comes first.
     expect(fills[0]).toEqual({ style: 'rgba(15, 12, 25, 1)', alpha: 1, rects: 4 });
+  });
+});
+
+// The mist tile is 512 map px; zoomed far out its repeats lined up into a grid.
+describe('the mist tile on screen', () => {
+  it.each([[0.14], [0.39], [0.6]])('never covers fewer than 400 CSS px at zoom %s', (zoom) => {
+    expect(512 * zoom * mistTileBoost(zoom)).toBeCloseTo(400);
+  });
+
+  it.each([[0.8], [1], [3]])('keeps its map size at zoom %s', (zoom) => {
+    expect(mistTileBoost(zoom)).toBe(1);
   });
 });

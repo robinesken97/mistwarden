@@ -90,7 +90,7 @@ export default function VibeTracker() {
           {activePeriod ? (
             <>
               <div
-                className="w-4 h-4 rounded-full shrink-0 ring-1 ring-black/10"
+                className="w-4 h-4 rounded-full shrink-0 ring-1 ring-ink/40"
                 style={{ backgroundColor: activePeriod.hue }}
               />
               <div className="flex items-center gap-1.5 text-stone-gray">
@@ -136,7 +136,7 @@ export default function VibeTracker() {
                   `}
                 >
                   <div
-                    className="w-3.5 h-3.5 rounded-full shrink-0 ring-1 ring-black/10"
+                    className="w-3.5 h-3.5 rounded-full shrink-0 ring-1 ring-ink/40"
                     style={{ backgroundColor: period.hue }}
                   />
                   <span className="capitalize truncate">{period.name}</span>

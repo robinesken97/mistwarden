@@ -12,6 +12,13 @@
 export const COMPACT_LAYOUT_QUERY = '(width < 64rem)';
 
 /**
+ * Up to and including 1,024 CSS pixels: an iPad turned sideways, which is
+ * wide enough for the full table layout but short of room for three columns.
+ * The campaign table starts its left column folded here.
+ */
+export const TABLET_WIDTH_QUERY = '(width <= 64rem)';
+
+/**
  * A screen under 500 px tall, such as a phone turned sideways: the query
  * Tailwind's `short:` variant asks (`@custom-variant short` in index.css).
  * Code that must change with it asks `useMediaQuery(SHORT_SCREEN_QUERY)`, so

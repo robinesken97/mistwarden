@@ -25,7 +25,7 @@ import {
   AlertTriangle,
   Eye,
   EyeOff,
-  ChevronLeft,
+  ArrowLeft,
   ZoomIn,
   ZoomOut,
   Move,
@@ -702,13 +702,10 @@ export default function ProfilePage() {
       {/* Header */}
       <header className="bg-moss-green/10 border-b border-moss-green/20">
         <div className="max-w-4xl mx-auto px-4 py-5 flex items-center gap-4">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="p-2 rounded-lg hover:bg-moss-green/10 transition-colors text-brand-ink"
-            aria-label="Back to dashboard"
-          >
-            <ChevronLeft className="w-5 h-5" aria-hidden="true" />
-          </button>
+          <Button onClick={() => navigate('/dashboard')} variant="secondary" className="flex items-center gap-2">
+            <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+            <span className="max-sm:sr-only">Dashboard</span>
+          </Button>
           <div>
             <h1 className="text-2xl font-bold text-brand-ink font-heading">Profile & Settings</h1>
             <p className="text-sm text-warm-gray">Manage your account and preferences</p>

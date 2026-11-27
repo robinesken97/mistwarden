@@ -2,8 +2,9 @@
  * The Overview lists saves and skills in a fixed order, whatever order a
  * stored sheet holds them in, and shows darkvision where the sheet has it.
  */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { FifthEditionCharacterView } from '../FifthEditionCharacterView';
 import { FIFTH_EDITION_SHEET, fifthEditionCharacter } from './fifthEditionFixture';
 
@@ -14,6 +15,18 @@ describe('the Overview', () => {
     render(<FifthEditionCharacterView character={fifthEditionCharacter({ savingThrows: reversed(FIFTH_EDITION_SHEET.savingThrows) })} />);
     const line = screen.getByText('Saving Throws').parentElement!.textContent!;
     expect([...line.matchAll(/(Str|Dex|Con|Int|Wis|Cha) [+-]\d/g)].map((m) => m[1])).toEqual(['Str', 'Dex', 'Con', 'Int', 'Wis', 'Cha']);
+  });
+
+  it('rolls a saving throw from its tile, by click or by Enter', async () => {
+    const onRoll = vi.fn();
+    render(<FifthEditionCharacterView character={fifthEditionCharacter()} onRoll={onRoll} />);
+    const tiles = screen.getAllByRole('button', { name: /^(Str|Dex|Con|Int|Wis|Cha) [+-]\d/ });
+    expect(tiles.map((tile) => tile.textContent!.slice(0, 3))).toEqual(['Str', 'Dex', 'Con', 'Int', 'Wis', 'Cha']);
+    await userEvent.click(tiles[0]);
+    expect(onRoll).toHaveBeenLastCalledWith(expect.stringMatching(/^1d20[+-]\d+$/), 'Strength Save');
+    tiles[1].focus();
+    await userEvent.keyboard('{Enter}');
+    expect(onRoll).toHaveBeenLastCalledWith(expect.stringMatching(/^1d20[+-]\d+$/), 'Dexterity Save');
   });
 
   it('lists the skills alphabetically, down one column and then the next', () => {
