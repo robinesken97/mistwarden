@@ -22,7 +22,7 @@ interface Member { userId: string; role: string; user?: { displayName?: string }
 interface MapRow {
   id: string; name: string; width: number; height: number; gridSize: number; feetPerSquare?: number;
   lightingEnabled?: boolean; fogEnabled?: boolean; globalIllumination?: boolean; explorationEnabled?: boolean;
-  tokens?: TokenRow[]; wallSegments?: WallRow[]; lightSources?: LightRow[];
+  tokens?: TokenRow[]; wallSegments?: WallRow[]; lights?: LightRow[];
 }
 interface Campaign { id: string; name: string; userRole: string; currentMapId: string | null; memberships: Member[]; maps: MapRow[] }
 interface TokenRow {
@@ -168,7 +168,7 @@ export function registerTools(server: McpServer, ctx: Context): string[] {
       tokens: (map.tokens ?? []).map((t) => tokenSummary(t, map)),
       wallCounts: byType,
       walls: includeWalls ? walls : walls.filter((w) => w.type !== 'wall' && w.type !== 'window'),
-      lights: map.lightSources ?? [],
+      lights: map.lights ?? [],
     };
   }, true);
 
@@ -264,7 +264,7 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
     await manifest.add('map', [map.id]);
     const full = await getMap(ctx, a.campaignId, map.id);
     await manifest.add('wall', (full.wallSegments ?? []).map((w) => inMap(map.id, w.id)));
-    await manifest.add('light', (full.lightSources ?? []).map((l) => inMap(map.id, l.id)));
+    await manifest.add('light', (full.lights ?? []).map((l) => inMap(map.id, l.id)));
     return { mapId: map.id, name: map.name, width: map.width, height: map.height, gridSize: map.gridSize, walls: body.wallCount, doors: body.portalCount, lights: body.lightCount };
   });
 
