@@ -41,6 +41,7 @@ import { removeAvatars, clearAvatarIfNoneLeft } from '../services/avatars';
 import path from 'path';
 import fs from 'fs';
 import { pipeline } from 'stream';
+import { shrinkMapPicture } from '../utils/mapPicture';
 import { generateThumbnail } from '../utils/thumbnails';
 import logger from '../utils/logger';
 import { errorCode } from '../utils/errors';
@@ -548,6 +549,15 @@ router.post(
       // the export writes this into its archive, and it decides the thumbnail.
       const mimeType = req.detectedMimeType ?? 'application/octet-stream';
       const originalName = shortenFileName(file.originalname, MAX_ORIGINAL_NAME_LENGTH);
+
+      // A map larger than a tablet can hold is stored shrunk (utils/mapPicture.ts).
+      if (req.assetType === 'MAP' && mimeType.startsWith('image/')) {
+        const shrunk = await shrinkMapPicture(file.path);
+        if (shrunk) {
+          await writeFileAtomically(file.path, shrunk);
+          file.size = shrunk.length;
+        }
+      }
 
       // Generate thumbnail for images (MAP and TOKEN types)
       thumbnailPath =

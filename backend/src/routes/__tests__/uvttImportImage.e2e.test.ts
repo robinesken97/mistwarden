@@ -20,6 +20,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import request from 'supertest';
+import sharp from 'sharp';
 
 const UPLOAD_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'cozyvtt-uvtt-image-'));
 process.env.UPLOAD_DIR = UPLOAD_DIR;
@@ -174,5 +175,24 @@ describe('a UVTT whose picture is too big for a map', () => {
     expect(res.status).toBe(400);
     expect(res.body.message).toMatch(/too large|size/i);
     expect(await mapCount()).toBe(0);
+  }, 30000);
+});
+
+// Mistwarden, 2026-11-27: large pictures are stored shrunk (utils/mapPicture.ts).
+describe('a UVTT whose picture is larger than a tablet can hold', () => {
+  it('stores the picture shrunk and keeps the map, its grid and its walls', async () => {
+    const big = await sharp({ create: { width: 6000, height: 3000, channels: 3, background: '#335533' } }).png().toBuffer();
+    const res = await importUvtt(uvttWithImage(big), 'big');
+    expect(res.status).toBe(201);
+    const asset = await prisma.asset.findFirst({
+      where: { campaignId, tags: { has: 'uvtt-import' } },
+      orderBy: { createdAt: 'desc' },
+    });
+    const stored = await sharp(asset!.filePath).metadata();
+    expect([stored.width, stored.height]).toEqual([4096, 2048]);
+    expect(asset!.fileSize).toBe(fs.statSync(asset!.filePath).size);
+    const map = await prisma.map.findFirstOrThrow({ where: { campaignId } });
+    expect([map.width, map.height, map.gridSize]).toEqual([10, 10, 70]);
+    expect(map.wallSegments).toEqual([expect.objectContaining({ x1: 70, y1: 70, x2: 140, y2: 70 })]);
   }, 30000);
 });

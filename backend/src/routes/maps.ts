@@ -42,6 +42,7 @@ import { uvttImportQueue, UVTT_IMPORT_TIME_LIMIT_MS } from '../services/uvttImpo
 import { uploadLimiter } from './assets';
 import { openPicture, NotAPictureError } from '../utils/sharpInput';
 import { pictureLimitProblem } from '../utils/pictureLimits';
+import { shrinkMapPicture } from '../utils/mapPicture';
 import logger from '../utils/logger';
 import { errorMessage } from '../utils/errors';
 import { getState as getCombatState, setState as setCombatState, removeCombatants } from '../websocket/initiativeState';
@@ -655,6 +656,9 @@ async function importUvttFile(req: AuthenticatedRequest, res: Response, signal: 
         });
       }
 
+      // A map larger than a tablet can hold is stored shrunk (utils/mapPicture.ts).
+      const imageBuffer = (await shrinkMapPicture(parsed.imageBuffer)) ?? parsed.imageBuffer;
+
       // ── Save the embedded image as an asset ──────────────────────────────
       signal.throwIfAborted();
       const ext = `.${imageType.ext}`;
@@ -675,7 +679,7 @@ async function importUvttFile(req: AuthenticatedRequest, res: Response, signal: 
 
       let asset;
       try {
-        await fs.writeFile(filePath, parsed.imageBuffer);
+        await fs.writeFile(filePath, imageBuffer);
         thumbnailPath = await generateThumbnail(filePath);
         signal.throwIfAborted();
 
@@ -689,7 +693,7 @@ async function importUvttFile(req: AuthenticatedRequest, res: Response, signal: 
             filename,
             originalName: `${mapName}${ext}`,
             mimeType: imageType.mime,
-            fileSize: parsed.imageBuffer.length,
+            fileSize: imageBuffer.length,
             filePath,
             thumbnailPath,
             name: mapName,

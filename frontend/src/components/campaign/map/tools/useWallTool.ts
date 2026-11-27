@@ -840,7 +840,7 @@ export function useWallTool({
           const epsilon = gridPx * 0.4;
           let simplified = douglasPeucker(rawPoints, epsilon);
           if (!snapToGrid && mapImage && simplified.length >= 2) {
-            simplified = edgeSnapPoints(simplified, mapImage, gridPx * 0.6);
+            simplified = edgeSnapPoints(simplified, mapImage, gridPx * 0.6, { width: currentMap.width * gridPx, height: currentMap.height * gridPx });
           }
           if (simplified.length >= 2) {
             const newSegs: WallSegment[] = [];
