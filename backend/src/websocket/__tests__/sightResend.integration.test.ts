@@ -137,6 +137,25 @@ it('shows a creature to a player once a torch carried past it is put down beside
   gm.disconnect();
 });
 
+it('sends players nothing when a hidden torchbearer is put down', async () => {
+  const mapId = await litMap('Hidden torch', false);
+  const torch = { brightRadius: 2, dimRadius: 4, color: '#ffcc66', enabled: true };
+  await prisma.map.update({
+    where: { id: mapId },
+    data: { tokens: toJson([token('hero', 2, 2, playerId), token('goblin', 8, 2, null), { ...token('bearer', 15, 2, null), visible: false, light: torch }]) },
+  });
+  const player = await server.connectAndAuth(await server.loginAs(playerId), campaignId);
+  const gm = await server.connectAndAuth(await server.loginAs(gmId), campaignId);
+
+  // Its light counts for no player, so the map arriving would only say it moved.
+  const nothing = expectNoEvent(player, 'map.changed', 1500);
+  gm.emit('token.move.start', { tokenId: 'bearer', mapId });
+  gm.emit('token.move.end', { tokenId: 'bearer', mapId, x: 9, y: 2 });
+  await nothing;
+  player.disconnect();
+  gm.disconnect();
+});
+
 // So a shutdown, and the end of a test file, let it run first.
 it('counts a re-send waiting for its time as work under way, once for a burst, until it has gone', async () => {
   const mapId = await litMap('Counted', true);
