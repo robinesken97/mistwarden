@@ -9,7 +9,7 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Home, Plus, Search, X, Loader2, Pencil, Trash2, Copy, Upload, User as UserIcon } from 'lucide-react';
+import { ArrowLeft, Plus, Search, X, Loader2, Pencil, Trash2, Copy, Upload, User as UserIcon } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCharacterTemplatesQuery, storeCharacterInList } from '@/hooks/queries';
@@ -125,14 +125,9 @@ export default function CharacterTemplatesPage() {
         <div className="max-w-7xl mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Button
-                onClick={() => navigate('/dashboard')}
-                variant="secondary"
-                className="flex items-center gap-2"
-                title="Back to Dashboard"
-              >
-                <Home className="w-5 h-5" />
-                <span className="hidden sm:inline">Dashboard</span>
+              <Button onClick={() => navigate('/dashboard')} variant="secondary" className="flex items-center gap-2">
+                <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+                <span className="max-sm:sr-only">Dashboard</span>
               </Button>
               <div>
                 <h1 className="text-3xl font-bold text-brand-ink mb-2">Character Templates</h1>

@@ -195,7 +195,7 @@ function AssetCardInner({ asset, viewMode, onView, onDelete }: AssetCardProps) {
             <button
               type="button"
               onClick={onView}
-              className="p-2 rounded-lg bg-moss-green/10 hover:bg-moss-green/15 text-brand-ink transition-colors"
+              className="touch-target inline-flex items-center justify-center p-2 rounded-lg bg-moss-green/10 hover:bg-moss-green/15 text-brand-ink transition-colors"
               title="View details"
               aria-label={`View ${asset.name}`}
             >
@@ -204,7 +204,7 @@ function AssetCardInner({ asset, viewMode, onView, onDelete }: AssetCardProps) {
             <button
               type="button"
               onClick={handleDownload}
-              className="p-2 rounded-lg bg-sunset-orange/10 hover:bg-sunset-orange/15 text-accent-ink transition-colors"
+              className="touch-target inline-flex items-center justify-center p-2 rounded-lg bg-sunset-orange/10 hover:bg-sunset-orange/15 text-accent-ink transition-colors"
               title="Download"
               aria-label={`Download ${asset.name}`}
             >
@@ -214,7 +214,7 @@ function AssetCardInner({ asset, viewMode, onView, onDelete }: AssetCardProps) {
               <button
                 onClick={handleDelete}
                 disabled={isDeleting}
-                className="p-2 rounded-lg bg-danger/10 hover:bg-danger/15 text-danger-ink transition-colors disabled:opacity-50"
+                className="touch-target inline-flex items-center justify-center p-2 rounded-lg bg-danger/10 hover:bg-danger/15 text-danger-ink transition-colors disabled:opacity-50"
                 title="Delete"
                 aria-label={`Delete ${asset.name}`}
               >
@@ -279,7 +279,7 @@ function AssetCardInner({ asset, viewMode, onView, onDelete }: AssetCardProps) {
           <button
             type="button"
             onClick={onView}
-            className="p-3 [@media(hover:none)]:p-2 [@media(hover:none)]:shadow-md bg-paper-white rounded-full hover:bg-white transition-colors"
+            className="touch-target inline-flex items-center justify-center p-3 [@media(hover:none)]:p-2 [@media(hover:none)]:shadow-md bg-paper-white rounded-full hover:bg-white transition-colors"
             title="View details"
             aria-label={`View ${asset.name}`}
           >
@@ -288,7 +288,7 @@ function AssetCardInner({ asset, viewMode, onView, onDelete }: AssetCardProps) {
           <button
             type="button"
             onClick={handleDownload}
-            className="p-3 [@media(hover:none)]:p-2 [@media(hover:none)]:shadow-md bg-paper-white rounded-full hover:bg-white transition-colors"
+            className="touch-target inline-flex items-center justify-center p-3 [@media(hover:none)]:p-2 [@media(hover:none)]:shadow-md bg-paper-white rounded-full hover:bg-white transition-colors"
             title="Download"
             aria-label={`Download ${asset.name}`}
           >
@@ -299,7 +299,7 @@ function AssetCardInner({ asset, viewMode, onView, onDelete }: AssetCardProps) {
               type="button"
               onClick={handleDelete}
               disabled={isDeleting}
-              className="p-3 [@media(hover:none)]:p-2 [@media(hover:none)]:shadow-md bg-danger/90 rounded-full hover:bg-danger transition-colors disabled:opacity-50"
+              className="touch-target inline-flex items-center justify-center p-3 [@media(hover:none)]:p-2 [@media(hover:none)]:shadow-md bg-danger/90 rounded-full hover:bg-danger transition-colors disabled:opacity-50"
               title="Delete"
               aria-label={`Delete ${asset.name}`}
             >

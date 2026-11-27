@@ -125,7 +125,7 @@ function AdminMfaBanner({ deadline }: { deadline: string }) {
   return (
     <div role="status" className="bg-warning/15 border-b border-warning/40 text-warning-ink text-sm px-4 py-2 text-center">
       Administrator accounts must use two-factor authentication. Yours has none; set it up by {date} or you will be asked to before you can continue.{' '}
-      <Link to="/auth/mfa-setup" className="font-semibold underline">Set it up now</Link>
+      <Link to="/auth/mfa-setup" className="inline-flex items-center touch-target font-semibold underline">Set it up now</Link>
     </div>
   );
 }

@@ -644,12 +644,13 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
           type="text"
           value={name}
           aria-label="Token name"
+          title={name}
           onChange={(e) => setNameDraft(e.target.value)}
           onBlur={handleNameBlur}
           // min-w-0 is load-bearing: a flex child defaults to min-width:auto,
           // and an <input>'s intrinsic minimum is wide enough that a long
           // token name pushed the badge and close button off the panel edge.
-          className="flex-1 min-w-0 text-base font-bold text-brand-ink bg-transparent border-b border-transparent hover:border-moss-green/30 focus:border-moss-green focus:outline-hidden px-0"
+          className="flex-1 min-w-0 text-ellipsis text-base font-bold text-brand-ink bg-transparent border-b border-transparent hover:border-moss-green/30 focus:border-moss-green focus:outline-hidden px-0"
         />
 
         {/* Badge */}

@@ -76,7 +76,7 @@ export default function VibeTracker() {
           {userRole === 'GM' && (
             <button
               onClick={() => setIsConfigureOpen(true)}
-              className="p-1.5 rounded-lg hover:bg-moss-green/10 transition-colors text-stone-gray hover:text-brand-ink"
+              className="touch-target inline-flex items-center justify-center p-1.5 rounded-lg hover:bg-moss-green/10 transition-colors text-stone-gray hover:text-brand-ink"
               title="Configure periods"
               aria-label="Configure periods"
             >
@@ -126,7 +126,7 @@ export default function VibeTracker() {
                   disabled={isSwitching}
                   title={`Set vibe to ${period.name}`}
                   className={`
-                    flex items-center gap-2 px-3 py-2 rounded-lg border text-left
+                    touch-target flex items-center gap-2 px-3 py-2 rounded-lg border text-left
                     transition-all duration-200 text-sm
                     ${isActive
                       ? 'border-moss-green bg-moss-green/10 text-brand-ink font-semibold ring-1 ring-moss-green/30'

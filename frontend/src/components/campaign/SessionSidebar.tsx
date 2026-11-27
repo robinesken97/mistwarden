@@ -62,7 +62,7 @@ export default function SessionSidebar() {
               onKeyDown={(e) => handleTabKeyDown(e, index)}
               title={label}
               className={cn(
-                'flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-t-lg',
+                'touch-target flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-t-lg',
                 'text-xs font-medium transition-colors duration-150',
                 'focus:outline-hidden focus-visible:ring-2 focus-visible:ring-brand',
                 active

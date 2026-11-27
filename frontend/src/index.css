@@ -487,6 +487,15 @@
   }
 }
 
+/* A select a finger's size. A height, not a min-height: WebKit ignores
+   min-height on a styled select (it stays 23 px). Outside any layer, so a
+   panel's own height class cannot undo it; a list box keeps its rows. */
+@media (pointer: coarse) {
+  select:not([multiple], [size]) {
+    height: 2.75rem;
+  }
+}
+
 /* The compact layout's sheets and map (components/campaign/compact/
    CompactTable.tsx marks them): every control a finger's size, 44 by 44 CSS
    px, whatever the panel inside was written with for a desktop column and a
