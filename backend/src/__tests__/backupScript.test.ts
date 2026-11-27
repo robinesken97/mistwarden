@@ -142,4 +142,66 @@ describeOnPosix('backup.sh', () => {
     await expect(fs.access(seen)).rejects.toThrow();
     expect((await fs.readdir(backups)).filter((f) => f.endsWith('.sql.gz'))).toEqual([]);
   });
+
+  describe('uploads', () => {
+    const runWith = (extra: Record<string, string>) =>
+      spawnSync('bash', [SCRIPT], {
+        cwd: root,
+        encoding: 'utf8',
+        env: { PATH: `${bin}:${process.env.PATH ?? ''}`, DATABASE_URL: 'postgresql://cozyvtt:secret@localhost:5432/cozyvtt', BACKUP_DIR: backups, ...extra },
+      });
+
+    it('archives the uploads folder next to the dump under the same timestamp', async () => {
+      await fs.mkdir(path.join(root, 'backend/uploads/maps'), { recursive: true });
+      await fs.writeFile(path.join(root, 'backend/uploads/maps/a.png'), 'png');
+
+      const result = runWith({});
+
+      expect(result.status).toBe(0);
+      const files = (await fs.readdir(backups)).sort();
+      expect(files).toHaveLength(2);
+      const stamp = files[0].replace('.sql.gz', '');
+      expect(files[1]).toBe(`${stamp}.uploads.tar.gz`);
+      const listing = spawnSync('tar', ['-tzf', path.join(backups, files[1])], { encoding: 'utf8' }).stdout;
+      expect(listing).toContain('uploads/maps/a.png');
+      expect(await modeOf(path.join(backups, files[1]))).toBe(0o600);
+    });
+
+    it('skips the uploads with BACKUP_UPLOADS=no', async () => {
+      await fs.mkdir(path.join(root, 'backend/uploads'), { recursive: true });
+      const result = runWith({ BACKUP_UPLOADS: 'no' });
+      expect(result.status).toBe(0);
+      expect((await fs.readdir(backups)).filter((f) => f.endsWith('.uploads.tar.gz'))).toEqual([]);
+    });
+
+    it('prunes old uploads archives with the dumps', async () => {
+      await fs.mkdir(backups);
+      const old = path.join(backups, 'cozyvtt_20200101_000000.uploads.tar.gz');
+      await fs.writeFile(old, 'x');
+      const longAgo = new Date('2020-01-01');
+      await fs.utimes(old, longAgo, longAgo);
+      expect(runWith({}).status).toBe(0);
+      await expect(fs.access(old)).rejects.toThrow();
+    });
+
+    it('under Docker, tars /app/uploads inside the backend container and fails the run if that fails', async () => {
+      const seen = path.join(root, 'docker.txt');
+      await fs.writeFile(
+        path.join(bin, 'docker'),
+        `#!/bin/sh\necho "$@" >> "${seen}"\ncase "$*" in\n"compose ps"*) printf 'database\\nbackend\\n';;\n*"exec -T database"*) echo "-- PostgreSQL database dump complete";;\n*"exec -T backend tar"*) [ -n "$FAIL_TAR" ] && exit 1; echo uploads | gzip;;\nesac\n`,
+        { mode: 0o755 }
+      );
+      const env = { DATABASE_URL: '' };
+
+      const ok = runWith(env);
+      expect(ok.status).toBe(0);
+      expect(await fs.readFile(seen, 'utf8')).toContain('compose exec -T backend tar -czf - -C /app uploads');
+      expect((await fs.readdir(backups)).filter((f) => f.endsWith('.uploads.tar.gz'))).toHaveLength(1);
+
+      await fs.rm(backups, { recursive: true });
+      const bad = runWith({ ...env, FAIL_TAR: '1' });
+      expect(bad.status).toBe(1);
+      expect((await fs.readdir(backups)).filter((f) => f.endsWith('.uploads.tar.gz'))).toEqual([]);
+    });
+  });
 });

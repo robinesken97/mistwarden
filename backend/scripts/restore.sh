@@ -1,5 +1,5 @@
 #!/bin/bash
-# CozyVTT Database Restore Script
+# Mistwarden Restore Script (database + uploaded files)
 #
 # Usage (Docker):
 #   ./backend/scripts/restore.sh ./backups/cozyvtt_20260101_030000.sql.gz
@@ -7,6 +7,10 @@
 # Usage (non-Docker, with explicit DATABASE_URL):
 #   DATABASE_URL="postgresql://user:pass@host:5432/dbname" \
 #     ./backend/scripts/restore.sh ./backups/cozyvtt_20260101_030000.sql.gz
+#
+# If a matching cozyvtt_<timestamp>.uploads.tar.gz sits beside the dump, the
+# uploaded files are restored too (extracted over ./backend/uploads; files not
+# in the archive are kept). RESTORE_UPLOADS=no skips this.
 #
 # WARNING: This replaces everything in the target database with the backup.
 #          Make a backup first (./backend/scripts/backup.sh).
@@ -38,6 +42,16 @@ if ! gzip -t "$BACKUP_FILE" 2>/dev/null; then
   echo "❌ $BACKUP_FILE is not a complete gzip archive. Nothing was changed."
   echo "   The file is truncated or corrupted. Try another backup."
   exit 1
+fi
+
+UPLOADS_FILE=""
+if [[ "${RESTORE_UPLOADS:-yes}" != "no" && "$BACKUP_FILE" == *.sql.gz \
+    && -f "${BACKUP_FILE%.sql.gz}.uploads.tar.gz" ]]; then
+  UPLOADS_FILE="${BACKUP_FILE%.sql.gz}.uploads.tar.gz"
+  if ! gzip -t "$UPLOADS_FILE" 2>/dev/null; then
+    echo "❌ $UPLOADS_FILE is not a complete gzip archive. Nothing was changed."
+    exit 1
+  fi
 fi
 
 # ------------------------------------------------------------------
@@ -160,11 +174,33 @@ fi
 
 confirm_or_abort() {
   echo "⚠️  WARNING: This will REPLACE all existing data in '$DB_NAME' with the backup."
+  if [[ -n "$UPLOADS_FILE" ]]; then
+    echo "   Uploaded files from $UPLOADS_FILE are extracted over the current uploads."
+  fi
   echo "   Make sure you have a current backup before proceeding."
   echo ""
   if [[ "${RESTORE_ASSUME_YES:-}" != "yes" ]]; then
     read -r -p "Type 'yes' to confirm: " CONFIRM
     [[ "$CONFIRM" == "yes" ]] || { echo "Aborted."; exit 0; }
+  fi
+}
+
+restore_uploads() {
+  [[ -n "$UPLOADS_FILE" ]] || { echo "ℹ️  No matching .uploads.tar.gz found: uploaded files were not restored."; return 0; }
+  echo "🔄 Restoring uploads from $UPLOADS_FILE..."
+  local ok=1
+  if [[ -z "${DATABASE_URL:-}" ]] && command -v docker >/dev/null 2>&1 \
+      && docker compose ps --status running --services 2>/dev/null | grep -qx "${BACKEND_SERVICE:-backend}"; then
+    docker compose exec -T "${BACKEND_SERVICE:-backend}" tar -xzf - -C /app < "$UPLOADS_FILE" || ok=0
+  else
+    local dir="${UPLOADS_DIR:-./backend/uploads}"
+    mkdir -p "$dir" && tar -xzf "$UPLOADS_FILE" -C "$(dirname "$dir")" || ok=0
+  fi
+  if [[ $ok -eq 1 ]]; then
+    echo "✅ Uploads restored."
+  else
+    echo "❌ Database restored, but extracting the uploads failed. Re-run: tar -xzf $UPLOADS_FILE -C backend/"
+    exit 1
   fi
 }
 
@@ -189,7 +225,7 @@ if [[ -z "${DATABASE_URL:-}" ]] && command -v docker >/dev/null 2>&1; then
     DB_NAME="${DATABASE_NAME:-cozyvtt}"
 
     echo "================================================"
-    echo "CozyVTT Database Restore"
+    echo "Mistwarden Restore"
     echo "================================================"
     echo "  Target: docker compose service '$DB_SERVICE'"
     echo "  DB:     $DB_NAME"
@@ -204,6 +240,7 @@ if [[ -z "${DATABASE_URL:-}" ]] && command -v docker >/dev/null 2>&1; then
     if docker compose exec -T "$DB_SERVICE" \
         psql -U "$DB_USER" -d "$DB_NAME" -q -o /dev/null \
         -v ON_ERROR_STOP=1 --single-transaction < "$PREPARED"; then
+      restore_uploads
       echo "✅ Restore complete. Every sign-in has ended, so everyone signs in again."
       echo ""
       echo "Next steps:"
@@ -276,7 +313,7 @@ else
 fi
 
 echo "================================================"
-echo "CozyVTT Database Restore"
+echo "Mistwarden Restore"
 echo "================================================"
 echo "  Host:   $DB_HOST:$DB_PORT"
 echo "  DB:     $DB_NAME"
@@ -299,6 +336,7 @@ if psql \
     -q -o /dev/null \
     -v ON_ERROR_STOP=1 \
     --single-transaction < "$PREPARED"; then
+  restore_uploads
   echo "✅ Restore complete. Every sign-in has ended, so everyone signs in again."
   echo ""
   echo "Next steps:"

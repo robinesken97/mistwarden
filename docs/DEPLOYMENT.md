@@ -1370,6 +1370,19 @@ Run these from the folder you installed CozyVTT into, with the stack running:
 
 Both notice that you are running under Docker and do the work inside the
 database container, so you do **not** need PostgreSQL installed on the host.
+
+`backup.sh` also archives the uploaded files (maps, tokens, pictures, audio,
+documents: `backend/uploads/`, mounted at `/app/uploads`) to
+`./backups/cozyvtt_YYYYMMDD_HHMMSS.uploads.tar.gz`, with the same timestamp as
+the dump, inside the backend container under Docker, from `./backend/uploads`
+otherwise (`UPLOADS_DIR` changes that folder). It exits non-zero if the
+archive fails, and prunes archives and dumps older than `BACKUP_RETAIN_DAYS`
+together. The archive is a full copy every time, so check the free disk space
+(`du -sh backend/uploads`, `df -h .`) and set `BACKUP_UPLOADS=no` if the
+library is too large to copy before each deploy. `restore.sh` extracts the
+`.uploads.tar.gz` that sits beside the dump you name over the uploads folder
+(files not in the archive stay; `RESTORE_UPLOADS=no` skips it) after the same
+confirmation. Restore both before `docker compose restart backend`.
 Backups older than 30 days are pruned; set `BACKUP_RETAIN_DAYS` to change that.
 
 **A restore either works completely or changes nothing.** The restore script

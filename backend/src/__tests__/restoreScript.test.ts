@@ -189,4 +189,23 @@ describeOnPosix('restore.sh', () => {
     expect(result.stdout).toContain('HTTP_PORT=127.0.0.1:8080');
     expect(result.stdout).not.toMatch(/where PORT is/);
   });
+
+  it('extracts the matching .uploads.tar.gz over the uploads folder, and RESTORE_UPLOADS=no skips it', async () => {
+    const src = path.join(root, 'src/uploads');
+    await fs.mkdir(src, { recursive: true });
+    await fs.writeFile(path.join(src, 'a.png'), 'png');
+    spawnSync('tar', ['-czf', path.join(root, 'cozyvtt_20260927_120000.uploads.tar.gz'), '-C', path.join(root, 'src'), 'uploads']);
+
+    const skipped = spawnSync('bash', [SCRIPT, backup], {
+      cwd: root,
+      encoding: 'utf8',
+      env: { PATH: `${bin}:${process.env.PATH ?? ''}`, DATABASE_URL: 'postgresql://cozyvtt:secret@localhost:5432/cozyvtt', RESTORE_ASSUME_YES: 'yes', TMPDIR: root, RESTORE_UPLOADS: 'no' },
+    });
+    expect(skipped.status).toBe(0);
+    await expect(fs.access(path.join(root, 'backend/uploads/a.png'))).rejects.toThrow();
+
+    const result = run();
+    expect(result.status).toBe(0);
+    expect(await fs.readFile(path.join(root, 'backend/uploads/a.png'), 'utf8')).toBe('png');
+  });
 });
