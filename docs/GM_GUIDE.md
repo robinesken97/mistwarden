@@ -1280,6 +1280,16 @@ To toggle a single square, just click it without dragging. Before you start a dr
 
 *GIF pending — Dragging a fog reveal box across a corridor.*
 
+**Brush and Lasso** (Mistwarden). Under Reveal and Hide the panel offers three shapes:
+
+- **Box** — the box described above.
+- **Brush** — paint over the map; what the brush touches is revealed or hidden as you go, and sent when you let go. **S**, **M** and **L** set its size: half a square, one square or two squares round the pointer.
+- **Lasso** — draw round an area of any shape; letting go reveals or hides the fog cells whose middles lie inside it. A click without drawing takes the square under it, as the box does.
+
+Esc, a right-drag or a second finger cancels a stroke or a lasso before anything is sent, and puts back what a cancelled brush stroke had painted.
+
+**Mist** (Mistwarden). Players see fog as a slowly drifting mist with soft edges; hidden ground stays fully covered under it. You see the same mist, still and faint, over your translucent fog. Each device picks **Fog: Mist**, **Still mist** or **Flat** in the Dice tab; a device set to reduce motion shows the mist still. The darkness of dynamic lighting is not mist; it stays black.
+
 Some details worth knowing:
 
 - **Drag in any direction.** Right-to-left and bottom-to-top work exactly like dragging forward.

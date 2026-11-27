@@ -136,6 +136,8 @@ import { tokenDisplayName, tokenPublicName, characterRollPublicName, UNKNOWN_CRE
 import { setTokenFlag } from '@/utils/tokenFlags';
 import AtmosphereOverlay from '@/components/campaign/AtmosphereOverlay';
 import GmFogControls, { type FogToolMode } from '@/components/campaign/GmFogControls';
+import type { FogShape } from '@/components/campaign/map/tools/useFogTool';
+import { fogMistMode, FOG_MIST_EVENT } from '@/components/campaign/DiceOverlay';
 import GmWallControls, { type WallToolMode } from '@/components/campaign/GmWallControls';
 import GmLightControls, { type LightToolMode } from '@/components/campaign/GmLightControls';
 import GmToolPanelContainer from '@/components/campaign/GmToolPanelContainer';
@@ -447,6 +449,15 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   // call the newest closure through it.
   const drawLayerRef = useRef<(layer: MapLayer) => void>(() => {});
   const { markDirty } = useRenderLoop(drawLayerRef);
+  // Mistwarden, 2026-11-27: this device's mist (DiceOverlay's sibling setting);
+  // still under reduced motion.
+  const [mist, setMist] = useState(fogMistMode);
+  useEffect(() => {
+    const read = () => setMist(fogMistMode());
+    window.addEventListener(FOG_MIST_EVENT, read);
+    return () => window.removeEventListener(FOG_MIST_EVENT, read);
+  }, []);
+  const mistDrifts = mist === 'mist' && !prefersReducedMotion;
 
   // The ruler and the AoE template (map/tools/useMeasureTools.ts).
   const {
@@ -501,6 +512,9 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   const [gmTool, setGmTool] = useState<GmTool | null>(null);
   const wallMode: WallToolMode = gmTool?.kind === 'wall' ? gmTool.mode : null;
   const fogMode: FogToolMode = gmTool?.kind === 'fog' ? gmTool.mode : null;
+  // Mistwarden, 2026-11-27: the fog drag's shape and the brush's radius, in squares.
+  const [fogShape, setFogShape] = useState<FogShape>('box');
+  const [fogBrushSquares, setFogBrushSquares] = useState(1);
   const lightMode: LightToolMode = gmTool?.kind === 'light' ? gmTool.mode : null;
   const setWallMode = useCallback((mode: WallToolMode) => {
     setGmTool((prev) => (mode ? { kind: 'wall', mode } : prev?.kind === 'wall' ? null : prev));
@@ -673,8 +687,18 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   });
 
   // The fog boxes (map/tools/useFogTool.ts).
-  const { tool: fogTool, fogDragAnchorRef, fogDragCurrent, cancelFogDrag } = useFogTool({
-    isGM, mapId: currentMap?.id, fogMode, fogState, setFogState, socket, mapControls, rightPanActiveRef, markDirty,
+  // Mistwarden: a player's mist drifts, about ten frames a second, while there is fog to show.
+  // A player's fog, or a GM's preview of it: the timer and the drift go together.
+  const mistOnScreen = mistDrifts && (!isGM || previewing) && (currentMap?.fogEnabled ?? false);
+  useEffect(() => {
+    if (!mistOnScreen) return;
+    const timer = window.setInterval(() => markDirty('overlay'), 100);
+    return () => window.clearInterval(timer);
+  }, [mistOnScreen, markDirty]);
+
+  const { tool: fogTool, fogDragAnchorRef, fogDragCurrent, cancelFogDrag, lassoPoints: fogLasso } = useFogTool({
+    isGM, mapId: currentMap?.id, fogMode, fogShape, brushRadius: fogBrushSquares * (currentMap?.gridSize ?? 50),
+    fogState, setFogState, socket, mapControls, rightPanActiveRef, markDirty,
   });
 
   // The map's drawings and the strokes on their way (map/useMapDrawings.ts),
@@ -1917,6 +1941,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
           fogState: effectiveFogState,
           revealedCells: null,
           revealOpacity: revealOpacityRef.current,
+          mistTime: mist === 'flat' ? undefined : null,
         }, viewport);
       }
 
@@ -1932,7 +1957,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
         }, viewport);
       }
     });
-  }, [currentMap, terrainSource, paint.on, mapControls.panOffset, mapControls.zoom, dpr, userRole, campaign?.spiritLayerEnabled, playerSpiritVisible, gmViewBothPlanes, showGrid, gridColor, effectiveFogState, previewing, previewedPlane, spiritLayerImage, spiritLayerOpacity, isGM, revealOpacityRef, canvasSize.width, canvasSize.height, mapDrawings.drawings, drawingCache]);
+  }, [mist, currentMap, terrainSource, paint.on, mapControls.panOffset, mapControls.zoom, dpr, userRole, campaign?.spiritLayerEnabled, playerSpiritVisible, gmViewBothPlanes, showGrid, gridColor, effectiveFogState, previewing, previewedPlane, spiritLayerImage, spiritLayerOpacity, isGM, revealOpacityRef, canvasSize.width, canvasSize.height, mapDrawings.drawings, drawingCache]);
 
   /**
    * Draw the TOKENS layer (middle canvas): every token + the drag ghost.
@@ -2192,6 +2217,9 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
             fog: fogState,
             anchor: fogDragAnchorRef.current,
             cursor: fogDragCurrent,
+            shape: fogShape,
+            brushRadius: fogBrushSquares * (currentMap?.gridSize ?? 50),
+            lasso: fogLasso,
           }, viewport);
         }
 
@@ -2231,6 +2259,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
             revealedCells: viewerRevealed,
             exemptCells: ownTokenCells,
             revealOpacity: revealOpacityRef.current,
+            mistTime: mist === 'flat' ? undefined : mistOnScreen ? performance.now() : null,
           }, viewport);
         }
       }
@@ -2271,7 +2300,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
         drawPings(ctx, { pings, now: Date.now(), reducedMotion: prefersReducedMotion }, viewport);
       }
     });
-  }, [currentMap, mapShown, mapControls.zoom, mapControls.panOffset, dpr, campaign?.gameSystem, tokens, lightSources, selectedLightId, lightMode, wallSegments, wallColor, hoveredWallId, selectedWallIds, hoveredDoorId, wallMode, selectedEndpoint, wallInProgress, wallType, brushSize, splitHoverPoint, polygonPoints, showRuler, rulerColor, effectiveRulerOrigin, rulerEnd, rulerStartByTouch, showAoE, aoeConfig, aoeAnchor, aoeSnap, hoverCoords, fogMode, isGM, fogState, viewerRevealed, viewerOwn, previewing, ruleFor, ownTokenCells, explorationEnabled, exploringAs, exploredCells, exploredRaster, socket, fogDragCurrent, wallMarquee, pings, prefersReducedMotion, POLYGON_CLOSE_RADIUS, WALL_ERASE_RADIUS, addExplored, aoeAimRef, aoeAltHeldRef, findWallAtPoint, fogDragAnchorRef, revealOpacityRef, snapPoint, wallBrushPointsRef, wallDragEndpointRef, wallErasedIdsRef, mapDrawings.previews, mapDrawings.drawings, drawingCache, canvasSize.width, canvasSize.height, drawTool, paintStrokes]);
+  }, [mist, mistOnScreen, currentMap, mapShown, mapControls.zoom, mapControls.panOffset, dpr, campaign?.gameSystem, tokens, lightSources, selectedLightId, lightMode, wallSegments, wallColor, hoveredWallId, selectedWallIds, hoveredDoorId, wallMode, selectedEndpoint, wallInProgress, wallType, brushSize, splitHoverPoint, polygonPoints, showRuler, rulerColor, effectiveRulerOrigin, rulerEnd, rulerStartByTouch, showAoE, aoeConfig, aoeAnchor, aoeSnap, hoverCoords, fogMode, isGM, fogState, viewerRevealed, viewerOwn, previewing, ruleFor, ownTokenCells, explorationEnabled, exploringAs, exploredCells, exploredRaster, socket, fogDragCurrent, fogShape, fogBrushSquares, fogLasso, wallMarquee, pings, prefersReducedMotion, POLYGON_CLOSE_RADIUS, WALL_ERASE_RADIUS, addExplored, aoeAimRef, aoeAltHeldRef, findWallAtPoint, fogDragAnchorRef, revealOpacityRef, snapPoint, wallBrushPointsRef, wallDragEndpointRef, wallErasedIdsRef, mapDrawings.previews, mapDrawings.drawings, drawingCache, canvasSize.width, canvasSize.height, drawTool, paintStrokes]);
 
   // ── Layer draw dispatch + dirty-flag scheduling ──────────
   // A single rAF coalesces every repaint request; only the dirty layers
@@ -2325,7 +2354,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   // Overlay content — walls, lights, GM tools, measurement, pings, fog cursor.
   useEffect(() => {
     markDirty('overlay');
-  }, [markDirty, wallSegments, wallColor, wallMode, wallInProgress, polygonPoints, hoveredWallId, selectedWallIds, hoveredDoorId, splitHoverPoint, selectedEndpoint, wallType, snapToGrid, brushSize, lightSources, selectedLightId, lightMode, gmPreviewPlayerView, showRuler, rulerOrigin, rulerEnd, rulerStartByTouch, rulerColor, effectiveRulerOrigin, showAoE, aoeConfig, aoeAnchor, aoeSnap, fogMode, fogDragCurrent, fogState, viewerRevealed, previewing, ownTokenCells, exploredRaster, pings, mapDrawings.drawings]);
+  }, [markDirty, wallSegments, wallColor, wallMode, wallInProgress, polygonPoints, hoveredWallId, selectedWallIds, hoveredDoorId, splitHoverPoint, selectedEndpoint, wallType, snapToGrid, brushSize, lightSources, selectedLightId, lightMode, gmPreviewPlayerView, showRuler, rulerOrigin, rulerEnd, rulerStartByTouch, rulerColor, effectiveRulerOrigin, showAoE, aoeConfig, aoeAnchor, aoeSnap, fogMode, fogDragCurrent, fogShape, fogLasso, fogState, viewerRevealed, previewing, ownTokenCells, exploredRaster, pings, mapDrawings.drawings]);
 
   // ============================================
   // Token Hit Testing
@@ -4712,6 +4741,10 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
           {userRole === 'GM' && !(compact && paint.on) && (<>
           <GmFogControls
             fogMode={fogMode}
+            fogShape={fogShape}
+            onFogShapeChange={setFogShape}
+            brushSquares={fogBrushSquares}
+            onBrushSquaresChange={setFogBrushSquares}
             fogEnabled={fogEnabled}
             onResetExploration={(currentMap.lightingEnabled ?? false) && explorationEnabled
               ? () => { socket?.getSocket()?.emit('exploration:reset', { mapId: currentMap.id }); }
