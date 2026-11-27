@@ -41,7 +41,7 @@ import type { Drawing } from '@/types/drawings';
 import { drawingOrder } from '@/components/campaign/map/drawingGeometry';
 import { isSessionTab, type SessionTab } from '@/components/campaign/sessionTabs';
 import { optionalStorage } from '@/utils/optionalStorage';
-import { ridersAfterMounts } from '@/components/campaign/map/mounts';
+import { ridersAfterMounts, shiftFollowers } from '@/components/campaign/map/mounts';
 
 /** Combat is inactive until the GM starts it; matches the server's default. */
 /** The same record without `key`, or the same record when it has none. */
@@ -181,6 +181,12 @@ interface GameState {
   onMapTokens: (mapId: string, apply: () => void, options?: { hold?: boolean }) => void;
   /** `token.moved` stream + local drag commit: position-only update. */
   applyTokenMove: (tokenId: string, position: Position) => void;
+  /**
+   * Draw the tokens coupled with `tokenId` as if it stood on `position`
+   * (map/mounts.ts shiftFollowers), until their own moves arrive: this
+   * screen's drop, whose followers the server moves.
+   */
+  holdFollowers: (tokenId: string, position: Position) => void;
   /** `token.moved` — a drag frame (`dragging`) or where the token was put down. */
   receiveTokenMove: (tokenId: string, position: Position, dragging: boolean) => void;
   /**
@@ -294,13 +300,26 @@ export const useGameStore = create<GameState>((set, get) => ({
   receiveTokenMove: (tokenId, position, dragging) => {
     const token = get().tokens[tokenId];
     if (!token) return;
+    // Its mount or riders are drawn the same step further on (map/mounts.ts).
+    const from = get().heldAt[tokenId] ?? token.position;
+    const follow = () => set((s) => ({
+      heldAt: shiftFollowers(Object.values(s.tokens), s.heldAt, tokenId, position.x - from.x, position.y - from.y, { onlyHeld: !dragging }),
+    }));
     if (!dragging) {
       get().applyTokenMove(tokenId, position);
+      follow();
       return;
     }
     // A cancelled drag sends one last frame back to where the token stands.
     const home = token.position.x === position.x && token.position.y === position.y;
     set({ heldAt: home ? withoutKey(get().heldAt, tokenId) : { ...get().heldAt, [tokenId]: position } });
+    follow();
+  },
+
+  holdFollowers: (tokenId, position) => {
+    const token = get().tokens[tokenId];
+    if (!token) return;
+    set((s) => ({ heldAt: shiftFollowers(Object.values(s.tokens), s.heldAt, tokenId, position.x - token.position.x, position.y - token.position.y) }));
   },
 
   addToken: (token, mapId) =>

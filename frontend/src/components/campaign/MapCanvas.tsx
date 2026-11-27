@@ -64,7 +64,7 @@ import {
 } from './map/layers';
 import { createVisionCache } from './map/vision';
 import { pickTokenAt, pickMovableTokenAt, blockingTokensAt, visibleTokenHp, isTokenVisibleTo, tokenCoversCell } from './map/tokenHitTest';
-import { mountCandidates, keepCoupledOnMap } from './map/mounts';
+import { mountCandidates, keepCoupledOnMap, shiftFollowers } from './map/mounts';
 import { cachedTokenImage } from './map/layers/drawTokens';
 import { revealedSetFromFogState } from './map/fogSelection';
 import { exploredCellsFromCoverage, diffNew } from './map/exploration';
@@ -1801,12 +1801,27 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   // Canvas Rendering
   // ============================================
 
+  // Where this screen carries the token it holds, its mount and riders
+  // stopping with it at the edge, or null while it carries none.
+  const heldHere = useMemo(() => {
+    if (!draggedToken || !carrierSquare || !dragOffset || !currentMap) return null;
+    const stored = tokens.find((t) => t.id === draggedToken.id) ?? draggedToken;
+    return { token: stored, at: keepCoupledOnMap(tokens, stored, carriedSquare({ square: carrierSquare, offset: dragOffset }, stored.size, currentMap), currentMap) };
+  }, [draggedToken, carrierSquare, dragOffset, currentMap, tokens]);
+  // Where held tokens are drawn: others' drags as their frames place them,
+  // with their mounts and riders (the store), and the mount and riders of
+  // the token this screen carries, beside it.
+  const drawnHeldAt = useMemo(
+    () => (heldHere
+      ? shiftFollowers(tokens, heldAt, heldHere.token.id, heldHere.at.x - heldHere.token.position.x, heldHere.at.y - heldHere.token.position.y)
+      : heldAt),
+    [heldHere, heldAt, tokens]
+  );
+
   // Where held tokens' lights are drawn while lights follow a drag, or null
   // for none. Keyed by content, so a frame that moves nothing redraws nothing.
   const heldLightsKey = lightsFollow && currentMap?.lightingEnabled
-    ? JSON.stringify(heldLightSquares(tokens, heldAt, draggedToken && carrierSquare && dragOffset
-      ? { id: draggedToken.id, at: carriedSquare({ square: carrierSquare, offset: dragOffset }, draggedToken.size, currentMap) }
-      : null))
+    ? JSON.stringify(heldLightSquares(tokens, drawnHeldAt, heldHere ? { id: heldHere.token.id, at: heldHere.at } : null))
     : '[]';
   const heldLights = useMemo(() => {
     const entries = JSON.parse(heldLightsKey) as Array<[string, Position]>;
@@ -2045,17 +2060,17 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
         tokens: drawn,
         tokenImages,
         animatingTokens,
-        heldAt,
+        heldAt: drawnHeldAt,
         now: Date.now(),
         // In a preview the ghost is the token as the viewer is sent it, or
         // nothing when the viewer would not have it at all.
         draggedToken: held,
         heldDrawnAt: held
-          ? heldDrawnAt(
+          ? (heldHere?.at ?? heldDrawnAt(
             tokens.find((t) => t.id === held.id) ?? held,
             carrierSquare && dragOffset ? { square: carrierSquare, offset: dragOffset } : null,
             currentMap,
-          )
+          ))
           : null,
         hoverTokenId: hoverToken?.id ?? null,
         revealedCells: viewerRevealed,
@@ -2072,7 +2087,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
         selectedTokenId,
       }, viewport);
     });
-  }, [currentMap, mapShown, mapControls.panOffset, mapControls.zoom, dpr, campaign?.spiritLayerStyle, tokens, tokenImages, animatingTokens, heldAt, draggedToken, dragOffset, carrierSquare, hoverToken, viewerRevealed, viewerOwn, previewing, previewedPlane, ruleFor, gmShowSpiritTokens, gmViewBothPlanes, characterHpCache, currentTurnTokenId, prefersReducedMotion, peekTokenId, selectedTokenId, isGM, previewControls]);
+  }, [currentMap, mapShown, mapControls.panOffset, mapControls.zoom, dpr, campaign?.spiritLayerStyle, tokens, tokenImages, animatingTokens, drawnHeldAt, heldHere, draggedToken, dragOffset, carrierSquare, hoverToken, viewerRevealed, viewerOwn, previewing, previewedPlane, ruleFor, gmShowSpiritTokens, gmViewBothPlanes, characterHpCache, currentTurnTokenId, prefersReducedMotion, peekTokenId, selectedTokenId, isGM, previewControls]);
 
   /**
    * Draw the OVERLAY layer (top canvas): dynamic-lighting darkness, GM light
@@ -2590,8 +2605,10 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
    * pair and a drop the server refuses is put back on this screen. True when
    * the drop was sent.
    */
-  const putDown = (token: Token, square: Position, { start = false }: { start?: boolean } = {}): boolean => {
+  const putDown = (token: Token, at: Position, { start = false }: { start?: boolean } = {}): boolean => {
     if (!currentMap) return false;
+    // A rider and its mount stop together at the edge, where the server will put them.
+    const square = keepCoupledOnMap(tokens, token, at, currentMap);
     // Two creatures do not share a square. The rules are blunt about it
     // (SRD 5.1, "Moving Around Other Creatures"): "Whether a creature is a
     // friend or an enemy, you can't willingly end your move in its space."
@@ -2637,7 +2654,9 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
       console.warn('⚠️ Cannot emit token.move.end - socket not connected');
     }
 
-    // Update local token position; the token put down stays selected
+    // Update local token position; the token put down stays selected. Its
+    // mount or riders stay drawn beside it until the server moves them too.
+    useGameStore.getState().holdFollowers(token.id, square);
     useGameStore.getState().applyTokenMove(token.id, square);
     useGameStore.getState().selectToken(token.id);
 
@@ -2770,7 +2789,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
           : (draggedToken && dragOffset ? { token: draggedToken, offset: dragOffset } : null);
         if (carried?.token) {
           const { token, offset } = carried;
-          const square = carriedSquare({ square: gridCoords, offset }, token.size, currentMap);
+          const square = keepCoupledOnMap(tokens, token, carriedSquare({ square: gridCoords, offset }, token.size, currentMap), currentMap);
 
           // Throttle move events to 60fps
           const now = Date.now();

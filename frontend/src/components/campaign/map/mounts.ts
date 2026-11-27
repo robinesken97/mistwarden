@@ -4,7 +4,7 @@
 // (backend/src/utils/mounts.ts). Pure: no React, no DOM.
 // ============================================
 
-import type { Token } from '@/types';
+import type { Position, Token } from '@/types';
 
 /**
  * The ids that move with `tokenId`, itself included: a mount and all its
@@ -66,4 +66,40 @@ export function keepCoupledOnMap(
   const x = Math.max(0, Math.min(left, map.width - (right - left)));
   const y = Math.max(0, Math.min(top, map.height - (bottom - top)));
   return { x: square.x + x - left, y: square.y + y - top };
+}
+
+/**
+ * Where the tokens coupled with `tokenId` are drawn once it is drawn
+ * (dx, dy) further on: `heldAt` with each follower this screen holds moved
+ * by the same step, and dropped from it once it is back on its own square.
+ *
+ * Followers are found from the tokens this screen holds and the mounts they
+ * name, and a rider names its mount only to a screen sent the mount
+ * (tokenMask.ts), so this never draws a token the screen was not sent, and
+ * drag frames need carry nothing more than the dragged token's square.
+ * `onlyHeld` moves only followers already drawn away from their square: a
+ * drop or a put-back settles where a drag left them, and the followers' own
+ * moves, which come after it, must not move the token back.
+ */
+export function shiftFollowers(
+  tokens: readonly Token[],
+  heldAt: Record<string, Position>,
+  tokenId: string,
+  dx: number,
+  dy: number,
+  { onlyHeld = false }: { onlyHeld?: boolean } = {}
+): Record<string, Position> {
+  if (dx === 0 && dy === 0) return heldAt;
+  const followers = coupledIds(tokens, tokenId).filter((id) => id !== tokenId && (!onlyHeld || id in heldAt));
+  if (followers.length === 0) return heldAt;
+  const next = { ...heldAt };
+  for (const id of followers) {
+    const t = tokens.find((f) => f.id === id);
+    if (!t) continue;
+    const from = heldAt[id] ?? t.position;
+    const at = { x: from.x + dx, y: from.y + dy };
+    if (at.x === t.position.x && at.y === t.position.y) delete next[id];
+    else next[id] = at;
+  }
+  return next;
 }
