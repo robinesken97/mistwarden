@@ -583,6 +583,9 @@ export default function CreateMapModal({
                         <p className="text-xs font-medium text-warning-ink">Grid detected</p>
                         <p className="text-xs text-warning-ink mt-0.5">
                           {detectedGrid.width}×{detectedGrid.height} squares · {detectedGrid.gridSize}px/sq
+                          {(detectedGrid.offsetX > 0 || detectedGrid.offsetY > 0) && (
+                            <> · lines start {detectedGrid.offsetX}, {detectedGrid.offsetY}px in</>
+                          )}
                           <span className="text-warning-ink ml-1">
                             ({Math.round(detectedGrid.confidence * 100)}% confidence)
                           </span>
