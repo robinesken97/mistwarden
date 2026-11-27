@@ -700,6 +700,16 @@ erDiagram
         datetime createdAt
     }
 
+    GalleryPicture {
+        string id PK
+        string campaignId FK
+        string assetId FK
+        string name
+        string folder
+        bool shownToAll
+        string[] shownTo
+    }
+
     SystemSettings {
         string id PK
         bool setupCompleted
@@ -760,6 +770,8 @@ erDiagram
     Campaign ||--o{ TokenTemplate : "has"
     Campaign ||--o{ CampaignDocument : "shares"
     Asset ||--o{ CampaignDocument : "shared as"
+    Campaign ||--o{ GalleryPicture : "shows"
+    Asset ||--o{ GalleryPicture : "filed as"
     Asset ||--o{ DocumentPicture : "names, as a document"
     Asset ||--o{ DocumentPicture : "is named in"
     User ||--o{ CampaignDocument : "linked by"

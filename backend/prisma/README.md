@@ -7,7 +7,7 @@ through the `pg` driver (`src/config/prismaClient.ts`).
 
 ## Models
 
-The schema is in [`schema.prisma`](./schema.prisma) — 24 models grouped by domain:
+The schema is in [`schema.prisma`](./schema.prisma) — 25 models grouped by domain:
 
 **User & auth**
 - `User` — accounts with optional MFA, which an administrator must turn on within 7 days
@@ -47,6 +47,10 @@ The schema is in [`schema.prisma`](./schema.prisma) — 24 models grouped by dom
   campaign's members read it, and `canReadAsset` in `services/permissions.ts`
   is where that is decided. Deleting the campaign removes the link and keeps the
   document; deleting the asset removes every link to it
+- `GalleryPicture` — (Mistwarden) a `MAP` asset filed in one campaign's gallery,
+  with a name, a folder and who sees it (`shownToAll`, or the user ids in
+  `shownTo`). The map-picture rule keeps the picture from players; a row
+  showing it to a player opens it for them (`services/permissions.ts`)
 - `DocumentPicture` — one asset a plain text or Markdown document names by its
   address (`/api/assets/<kind>/<id>`), read from the first 1 MiB of its text,
   at most 200 of them, when it is uploaded, written or saved
