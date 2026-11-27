@@ -766,10 +766,6 @@ router.post(
       }
       const metadata = parseUploadMetadata({ tags: req.body.tags });
       if (!metadata.ok) return refuse(400, 'Validation Error', metadata.message);
-      if (hasRunningZipImport(userId)) {
-        return refuse(409, 'Conflict', 'An import of yours is still running. Wait for it to finish.');
-      }
-
       let directory;
       try {
         directory = await openArchiveFile(archive, ASSET_ZIP_LIMITS.maxEntries);
@@ -786,6 +782,10 @@ router.post(
         dropTopFolder: req.body.dropTopFolder !== 'false',
         allowDuplicates: req.body.allowDuplicates === 'true',
       };
+      // Checked after the last await, so two requests at once cannot both start.
+      if (hasRunningZipImport(userId)) {
+        return refuse(409, 'Conflict', 'An import of yours is still running. Wait for it to finish.');
+      }
       const job = startZipImport(archive, planZipImport(directory, options), options);
       started = true;
       return res.status(202).json({ job: describeZipImportJob(job) });

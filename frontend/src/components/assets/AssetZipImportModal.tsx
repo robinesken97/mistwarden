@@ -220,7 +220,7 @@ export default function AssetZipImportModal({ isOpen, onClose, onImported }: Ass
                 onChange={(e) => setTags(e.target.value)}
                 disabled={running}
                 placeholder="e.g. Token pack"
-                className="input-cozy"
+                className="input-cozy min-h-11"
               />
             </div>
 

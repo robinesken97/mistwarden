@@ -174,7 +174,7 @@ export default function AssetLibraryPage() {
 
             {/* Upload button — hidden when viewing Global as non-manager */}
             {showUploadButton ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0 whitespace-nowrap">
                 <Button
                   onClick={() => setIsZipImportOpen(true)}
                   variant="secondary"
