@@ -1456,6 +1456,9 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   );
   const exploredScratchRef = useRef<HTMLCanvasElement | null>(null);
   const lastExploredReportRef = useRef(0);
+  // What the last report was read from: the mist redraws the overlay ten times
+  // a second, and nothing new is seen unless the sight or the memory changed.
+  const lastExploredSourceRef = useRef<{ composite: unknown; explored: unknown }>({ composite: null, explored: null });
   // The remembered cells as a raster, one pixel per grid square, rebuilt only
   // when the set changes; the lighting layer scales it to the map.
   const exploredWidth = currentMap?.width;
@@ -2097,8 +2100,11 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
           // nothing.
           const now = Date.now();
           if (exploringAs !== null && explorationEnabled && exploredCells !== null && lightCoverageOffscreenRef.current
-            && now - lastExploredReportRef.current >= 300) {
+            && now - lastExploredReportRef.current >= 300
+            && (lastExploredSourceRef.current.composite !== lightingCompositeRef.current
+              || lastExploredSourceRef.current.explored !== exploredCells)) {
             lastExploredReportRef.current = now;
+            lastExploredSourceRef.current = { composite: lightingCompositeRef.current, explored: exploredCells };
             const seen = exploredCellsFromCoverage(lightCoverageOffscreenRef.current, currentMap.width, currentMap.height, exploredScratchRef);
             const fresh = seen ? diffNew(exploredCells, seen) : [];
             if (fresh.length > 0) {
