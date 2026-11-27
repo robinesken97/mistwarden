@@ -25,7 +25,7 @@ Mistwarden is a self-hosted, community-maintained project run **by you** on **yo
 - Keep the instance updated as security patches land — watch this repo
 - Set a strong `SESSION_SECRET` (32+ char random) and your own `DATABASE_PASSWORD` — the production build refuses to start while either is still the placeholder, or while `SESSION_SECRET` is shorter than 32 characters
 - Use the built-in MFA: every administrator account must turn it on within 7 days, and it is worth having on every account
-- Configure regular database backups (`backend/scripts/backup.sh` + cron — see [DEPLOYMENT.md](docs/DEPLOYMENT.md))
+- Configure regular backups of database and uploads (`backend/scripts/backup.sh` + cron — see [DEPLOYMENT.md](docs/DEPLOYMENT.md))
 - Review the **Hardening Checklist** in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) before flipping public
 
 If those words mean nothing to you, run Mistwarden **only on your local network** (e.g. via a Tailscale node, ZeroTier, or just LAN-accessible) until you've leveled up your sysadmin chops. That's a perfectly valid way to play — your campaigns aren't worse for being LAN-only, and you skip the whole attack-surface conversation.

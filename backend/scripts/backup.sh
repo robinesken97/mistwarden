@@ -1,5 +1,5 @@
 #!/bin/bash
-# CozyVTT Database Backup Script
+# Mistwarden Backup Script (database + uploaded files)
 #
 # Usage (Docker):
 #   ./backend/scripts/backup.sh
@@ -8,7 +8,12 @@
 #   DATABASE_URL="postgresql://user:pass@host:5432/dbname" ./backend/scripts/backup.sh
 #
 # The backup file is written to ./backups/ (created if it doesn't exist).
-# Filename format: cozyvtt_YYYYMMDD_HHMMSS.sql.gz
+# Filename format: cozyvtt_YYYYMMDD_HHMMSS.sql.gz (database)
+#                  cozyvtt_YYYYMMDD_HHMMSS.uploads.tar.gz (uploaded files, same timestamp)
+#
+# Uploads (maps, tokens, pictures, audio, documents) live in ./backend/uploads
+# (bind-mounted at /app/uploads). Set BACKUP_UPLOADS=no to skip them (huge
+# libraries), UPLOADS_DIR to change the host folder (non-Docker installs).
 
 set -euo pipefail
 
@@ -19,6 +24,8 @@ umask 077
 BACKUP_DIR="${BACKUP_DIR:-./backups}"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILE="$BACKUP_DIR/cozyvtt_${TIMESTAMP}.sql.gz"
+UPLOADS_FILE="$BACKUP_DIR/cozyvtt_${TIMESTAMP}.uploads.tar.gz"
+UPLOADS_DIR="${UPLOADS_DIR:-./backend/uploads}"
 
 # umask covers only what this creates. A folder that already exists, and the
 # dumps an older version of this script wrote into it, kept whatever mode
@@ -29,9 +36,46 @@ mkdir -p "$BACKUP_DIR"
 if ! chmod 700 "$BACKUP_DIR" 2>/dev/null; then
   echo "⚠️  Could not make $BACKUP_DIR readable by $(id -un) alone; check who owns it."
 fi
-if ! find "$BACKUP_DIR" -maxdepth 1 -type f -name 'cozyvtt_*.sql.gz' -exec chmod 600 {} + 2>/dev/null; then
+if ! find "$BACKUP_DIR" -maxdepth 1 -type f \( -name 'cozyvtt_*.sql.gz' -o -name 'cozyvtt_*.uploads.tar.gz' \) -exec chmod 600 {} + 2>/dev/null; then
   echo "⚠️  Could not make every backup in $BACKUP_DIR readable by $(id -un) alone; check who owns them."
 fi
+
+# Archive the uploads under the same timestamp as the dump. Docker: tar runs in
+# the backend container (it owns the files, the host user may not be able to
+# read them). Otherwise, or if the backend is not running, the host folder.
+backup_uploads() {
+  if [[ "${BACKUP_UPLOADS:-yes}" == "no" ]]; then
+    echo "⏭️  Uploads skipped (BACKUP_UPLOADS=no)"
+    return 0
+  fi
+  local ok=0
+  if [[ -z "${DATABASE_URL:-}" ]] && command -v docker >/dev/null 2>&1 \
+      && docker compose ps --status running --services 2>/dev/null | grep -qx "${BACKEND_SERVICE:-backend}"; then
+    echo "  Uploads: docker compose service '${BACKEND_SERVICE:-backend}' /app/uploads -> $UPLOADS_FILE"
+    docker compose exec -T "${BACKEND_SERVICE:-backend}" tar -czf - -C /app uploads > "$UPLOADS_FILE" && ok=1
+  elif [[ -d "$UPLOADS_DIR" ]]; then
+    echo "  Uploads: $UPLOADS_DIR -> $UPLOADS_FILE"
+    tar -czf "$UPLOADS_FILE" -C "$(dirname "$UPLOADS_DIR")" "$(basename "$UPLOADS_DIR")" && ok=1
+  else
+    echo "⚠️  No uploads folder at $UPLOADS_DIR; uploads not backed up (set UPLOADS_DIR)."
+    return 0
+  fi
+  if [[ $ok -eq 1 ]] && gzip -t "$UPLOADS_FILE" 2>/dev/null; then
+    echo "✅ Uploads backup complete: $UPLOADS_FILE ($(du -sh "$UPLOADS_FILE" | cut -f1))"
+  else
+    echo "❌ Uploads backup failed (the database dump $BACKUP_FILE was written)"
+    rm -f "$UPLOADS_FILE"
+    exit 1
+  fi
+}
+
+prune_backups() {
+  local days="${BACKUP_RETAIN_DAYS:-30}" pruned
+  pruned=$(find "$BACKUP_DIR" \( -name "cozyvtt_*.sql.gz" -o -name "cozyvtt_*.uploads.tar.gz" \) -mtime +"$days" -print -delete | wc -l)
+  if [[ $pruned -gt 0 ]]; then
+    echo "🗑️  Pruned $pruned backup file(s) older than ${days} days"
+  fi
+}
 
 # ------------------------------------------------------------------
 # Docker deployments: run pg_dump inside the database container.
@@ -53,7 +97,7 @@ if [[ -z "${DATABASE_URL:-}" ]] && command -v docker >/dev/null 2>&1; then
     DB_NAME="${DATABASE_NAME:-cozyvtt}"
 
     echo "================================================"
-    echo "CozyVTT Database Backup"
+    echo "Mistwarden Backup"
     echo "================================================"
     echo "  Source: docker compose service '$DB_SERVICE'"
     echo "  DB:     $DB_NAME"
@@ -73,11 +117,8 @@ if [[ -z "${DATABASE_URL:-}" ]] && command -v docker >/dev/null 2>&1; then
       exit 1
     fi
 
-    RETAIN_DAYS="${BACKUP_RETAIN_DAYS:-30}"
-    PRUNED=$(find "$BACKUP_DIR" -name "cozyvtt_*.sql.gz" -mtime +"$RETAIN_DAYS" -print -delete | wc -l)
-    if [[ $PRUNED -gt 0 ]]; then
-      echo "🗑️  Pruned $PRUNED backup(s) older than ${RETAIN_DAYS} days"
-    fi
+    backup_uploads
+    prune_backups
     exit 0
   fi
 fi
@@ -136,7 +177,7 @@ else
 fi
 
 echo "================================================"
-echo "CozyVTT Database Backup"
+echo "Mistwarden Backup"
 echo "================================================"
 echo "  Host:   $DB_HOST:$DB_PORT"
 echo "  DB:     $DB_NAME"
@@ -166,9 +207,7 @@ else
   exit 1
 fi
 
-# Optional: purge backups older than BACKUP_RETAIN_DAYS (default: 30)
-RETAIN_DAYS="${BACKUP_RETAIN_DAYS:-30}"
-PRUNED=$(find "$BACKUP_DIR" -name "cozyvtt_*.sql.gz" -mtime +"$RETAIN_DAYS" -print -delete | wc -l)
-if [[ $PRUNED -gt 0 ]]; then
-  echo "🗑️  Pruned $PRUNED backup(s) older than ${RETAIN_DAYS} days"
-fi
+backup_uploads
+
+# Purge backups older than BACKUP_RETAIN_DAYS (default: 30)
+prune_backups
