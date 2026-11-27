@@ -259,6 +259,7 @@ model Campaign {
   personalNotes      PersonalNote[]
   diceMacros         DiceMacro[]
   documentLinks      CampaignDocument[]
+  galleryPictures    GalleryPicture[]
 
   @@index([ownerId])
   @@index([status])
@@ -397,6 +398,38 @@ model CampaignDocument {
   createdAt DateTime @default(now())
 
   /// A document is shared with a campaign once or not at all.
+  @@unique([campaignId, assetId])
+  @@index([campaignId])
+  @@index([assetId])
+}
+
+/// Mistwarden, 2026-11-27: a picture in a campaign's gallery, sorted into a
+/// folder by name, which the GM shows to every player or to chosen ones.
+/// The picture is a MAP asset of the campaign: the map-picture rule keeps
+/// such a picture from players until something shows it, and this row is
+/// one such thing (services/permissions.ts, picturesShownInGallery).
+model GalleryPicture {
+  id String @id @default(uuid())
+
+  campaignId String
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  assetId String
+  asset   Asset  @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  /// What the GM calls it; players see this name.
+  name String
+  /// The folder it is filed in, by name; "" is the top level. Players never see it.
+  folder String @default("")
+
+  /// Shown to every member of the campaign.
+  shownToAll Boolean @default(false)
+  /// Or to these users only. Ids of members; a user who leaves sees nothing.
+  shownTo String[] @default([])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   @@unique([campaignId, assetId])
   @@index([campaignId])
   @@index([assetId])
@@ -644,6 +677,9 @@ model Asset {
   /// DOCUMENT assets; the link is what grants a campaign's members the right
   /// to read a document that is otherwise private to its uploader.
   campaignLinks CampaignDocument[]
+
+  /// The campaign galleries showing this picture (Mistwarden).
+  galleryPictures GalleryPicture[]
 
   /// When a document's text was last read for the assets it names
   /// (DocumentPicture). Null on every other asset, and on a document stored

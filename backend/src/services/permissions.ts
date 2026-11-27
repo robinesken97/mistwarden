@@ -475,6 +475,34 @@ async function mapsNamingOtherFiles(campaignIds: string[]): Promise<Array<MapPic
 }
 
 /**
+ * Mistwarden, 2026-11-27: of these pictures, the ones each campaign's gallery
+ * shows this user, by campaign. They open for the user as a picture in a
+ * shared document does (prisma/schema.prisma, GalleryPicture).
+ */
+async function picturesShownInGallery(
+  campaignIds: string[],
+  assetIds: ReadonlySet<string>,
+  userId: string
+): Promise<Map<string, Set<string>>> {
+  const shown = new Map<string, Set<string>>();
+  if (campaignIds.length === 0 || assetIds.size === 0) return shown;
+  const rows = await prisma.galleryPicture.findMany({
+    where: {
+      campaignId: { in: campaignIds },
+      assetId: { in: [...assetIds] },
+      OR: [{ shownToAll: true }, { shownTo: { has: userId } }],
+    },
+    select: { campaignId: true, assetId: true },
+  });
+  for (const row of rows) shown.set(row.campaignId, (shown.get(row.campaignId) ?? new Set<string>()).add(row.assetId));
+  return shown;
+}
+
+function unite(a: ReadonlySet<string> | undefined, b: ReadonlySet<string> | undefined): Set<string> {
+  return new Set([...(a ?? []), ...(b ?? [])]);
+}
+
+/**
  * The campaign assets the map-picture rule keeps from this user in the given
  * campaigns, all of them ones where the user is a member who is not the GM.
  * Returns asset ids, for a listing to leave out. In a fixed number of
@@ -496,13 +524,15 @@ export async function mapPictureAssetIdsHiddenFrom(userId: string, campaignIds: 
     select: { id: true, type: true, uploadedById: true, campaignId: true },
   });
   // The shared documents are asked about the candidates alone.
-  const [atOtherTables, documents] = await Promise.all([
+  const candidateIds = new Set(candidates.map((a) => a.id));
+  const [atOtherTables, documents, gallery] = await Promise.all([
     picturesAtTables(tables),
-    picturesInSharedDocuments(ids, new Set(candidates.map((a) => a.id))),
+    picturesInSharedDocuments(ids, candidateIds),
+    picturesShownInGallery(ids, candidateIds, userId),
   ]);
   const picturesIn = new Map([...own].map(([campaignId, pictures]): [string, CampaignMapPictures] => [campaignId, {
     ...pictures,
-    inSharedDocuments: documents.get(campaignId) ?? new Set(),
+    inSharedDocuments: unite(documents.get(campaignId), gallery.get(campaignId)),
     atOtherTables,
   }]));
   return candidates
@@ -548,11 +578,16 @@ async function mapPictureHiddenInCampaign(
   }
   const own = campaignMapPictures(maps, currentMapId, seesSpiritPlane);
   if (!mapPictureHidden(asset, userId, { ...own, inSharedDocuments: new Set(), atOtherTables: new Map() })) return false;
-  const [documents, atOtherTables] = await Promise.all([
+  const [documents, atOtherTables, gallery] = await Promise.all([
     picturesInSharedDocuments([campaignId], new Set([asset.id])),
     tablesOf(userId, asset.id).then(picturesAtTables),
+    picturesShownInGallery([campaignId], new Set([asset.id]), userId),
   ]);
-  return mapPictureHidden(asset, userId, { ...own, inSharedDocuments: documents.get(campaignId) ?? new Set(), atOtherTables });
+  return mapPictureHidden(asset, userId, {
+    ...own,
+    inSharedDocuments: unite(documents.get(campaignId), gallery.get(campaignId)),
+    atOtherTables,
+  });
 }
 
 /**

@@ -1401,6 +1401,8 @@ _Sent to: map readers are every member while the map is the one the campaign is 
 | `exploration:state` | Map readers; members the handler picks; the sender | `exploration.ts` |
 | `fog:cells` | Members the handler picks; the sender | `fog.ts` |
 | `fog:updated` | Members the handler picks; the sender | `fog.ts` |
+| `gallery.changed` | The campaign | `campaignGallery.ts` |
+| `gallery.shown` | One user's sockets | `campaignGallery.ts` |
 | `initiative.state` | Members the handler picks | `initiative.ts` |
 | `invitation.received` | One user's sockets | `campaigns.ts` |
 | `light:added` | Map readers, as their role sees it | `lights.ts` |
