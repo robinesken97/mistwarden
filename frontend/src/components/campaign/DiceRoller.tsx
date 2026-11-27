@@ -647,7 +647,7 @@ export default function DiceRoller() {
       value={expression}
       onChange={(e) => setExpression(e.target.value)}
       onKeyDown={handleKeyDown}
-      placeholder="e.g., 2d6+3, 1d20+5, 4d6kh3"
+      placeholder="2d6+3"
       aria-label="Dice expression"
       // Read-only while a roll is on its way: disabled, it threw keyboard
       // focus to the page after every roll.
