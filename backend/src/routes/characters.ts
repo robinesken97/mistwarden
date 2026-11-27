@@ -27,7 +27,7 @@ import {
 import { resendInitiative } from '../websocket/handlers/initiative';
 import logger from '../utils/logger';
 import { cutText } from '../utils/cutText';
-import { readTokens, toJson, readJsonObject } from '../utils/prisma-json';
+import { readTokens, toJson, readJsonObject, sheetPortrait } from '../utils/prisma-json';
 import { extractCharacterHp, sameCharacterHp } from '../utils/characterHp';
 import { migrateLegacySheetFields } from '../utils/sheetFieldMigrations';
 import { withMapsLocked } from '../utils/mapTokens';
@@ -263,6 +263,14 @@ router.post('/', authenticated, async (req: AuthenticatedRequest, res: Response)
     }
     // And only a token picture, which is what the sheet editors upload (isTokenPicture).
     if (!(await isTokenPicture(normalizedTokenImageUrl))) {
+      return res.status(400).json({ error: 'Validation Error', message: TOKEN_IMAGE_NOT_A_TOKEN_PICTURE_MESSAGE });
+    }
+    // The sheet's portrait is checked the same way.
+    const portrait = sheetPortrait(sheetData);
+    if (!(await canReferenceAsset(portrait, req.session.userId!))) {
+      return res.status(403).json({ error: 'Forbidden', message: 'You do not have access to that image' });
+    }
+    if (!(await isTokenPicture(portrait))) {
       return res.status(400).json({ error: 'Validation Error', message: TOKEN_IMAGE_NOT_A_TOKEN_PICTURE_MESSAGE });
     }
 
@@ -720,6 +728,17 @@ router.put('/:id', authenticated, async (req: AuthenticatedRequest, res: Respons
         return res.status(400).json({ error: 'Validation Error', message: TOKEN_IMAGE_NOT_A_TOKEN_PICTURE_MESSAGE });
       }
       updateData.tokenImageUrl = normalizedTokenImageUrl;
+    }
+    if (data !== undefined) {
+      // The sheet's portrait, as the token picture above; the stored one may be sent back.
+      const portrait = sheetPortrait(sheetData);
+      const storedPortrait = sheetPortrait(character.data);
+      if (!(await canReferenceAsset(portrait, req.session.userId!, storedPortrait))) {
+        return res.status(403).json({ error: 'Forbidden', message: 'You do not have access to that image' });
+      }
+      if (!(await isTokenPicture(portrait, storedPortrait))) {
+        return res.status(400).json({ error: 'Validation Error', message: TOKEN_IMAGE_NOT_A_TOKEN_PICTURE_MESSAGE });
+      }
     }
 
     const withCampaign = { campaign: { select: { id: true, name: true } } } as const;

@@ -38,7 +38,7 @@ describe('on a 5E sheet', () => {
     const onRoll = vi.fn();
     render(<FifthEditionCharacterView character={fifthEditionCharacter()} onRoll={onRoll} />);
 
-    fireEvent.contextMenu(screen.getByText('dexterity'), at(40, 40));
+    fireEvent.contextMenu(screen.getByText('Dex'), at(40, 40));
 
     expect(screen.getByRole('menu', { name: 'Dexterity Save' })).toBeInTheDocument();
     expect(items()).toEqual(['Normal', 'Advantage', 'Disadvantage']);
@@ -93,7 +93,7 @@ describe('closing it', () => {
   it('closes on a press anywhere else, by finger, pen or mouse', () => {
     render(<FifthEditionCharacterView character={fifthEditionCharacter()} onRoll={vi.fn()} />);
 
-    fireEvent.contextMenu(screen.getByText('dexterity'), at(40, 40));
+    fireEvent.contextMenu(screen.getByText('Dex'), at(40, 40));
     expect(menu()).toBeInTheDocument();
     fireEvent.pointerDown(screen.getByText('Saving Throws'), { pointerType: 'touch' });
 
@@ -103,7 +103,7 @@ describe('closing it', () => {
   it('stays open on a mousedown with no press, as iOS sends when a long-press lifts', () => {
     render(<FifthEditionCharacterView character={fifthEditionCharacter()} onRoll={vi.fn()} />);
 
-    fireEvent.contextMenu(screen.getByText('dexterity'), at(40, 40));
+    fireEvent.contextMenu(screen.getByText('Dex'), at(40, 40));
     fireEvent.mouseDown(screen.getByText('Saving Throws'));
 
     expect(menu()).toBeInTheDocument();
@@ -112,7 +112,7 @@ describe('closing it', () => {
   it('stays open on a press inside it', () => {
     render(<FifthEditionCharacterView character={fifthEditionCharacter()} onRoll={vi.fn()} />);
 
-    fireEvent.contextMenu(screen.getByText('dexterity'), at(40, 40));
+    fireEvent.contextMenu(screen.getByText('Dex'), at(40, 40));
     fireEvent.pointerDown(screen.getByRole('menuitem', { name: 'Normal' }));
 
     expect(menu()).toBeInTheDocument();
@@ -124,7 +124,7 @@ describe('closing it', () => {
     const onClose = vi.fn();
     render(<CharacterSheetViewerModal character={character} campaignId="camp-1" membership={membership} onClose={onClose} />);
 
-    fireEvent.contextMenu(screen.getByText('dexterity'), at(40, 40));
+    fireEvent.contextMenu(screen.getByText('Dex'), at(40, 40));
     await waitFor(() => expect(screen.getByRole('menuitem', { name: 'Normal' })).toHaveFocus());
     fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
 
@@ -138,7 +138,7 @@ describe('from the keyboard', () => {
   it('takes the focus on its first item, and the arrows, Home and End move through the items', async () => {
     render(<FifthEditionCharacterView character={fifthEditionCharacter()} onRoll={vi.fn()} />);
 
-    fireEvent.contextMenu(screen.getByText('dexterity'), at(40, 40));
+    fireEvent.contextMenu(screen.getByText('Dex'), at(40, 40));
     const [normal, advantage, disadvantage] = screen.getAllByRole('menuitem');
     await waitFor(() => expect(normal).toHaveFocus());
     const press = (key: string) => fireEvent.keyDown(document.activeElement ?? document.body, { key });
@@ -180,7 +180,7 @@ describe('where it opens', () => {
     );
     render(<FifthEditionCharacterView character={fifthEditionCharacter()} onRoll={vi.fn()} />);
 
-    fireEvent.contextMenu(screen.getByText('dexterity'), at(300, 600));
+    fireEvent.contextMenu(screen.getByText('Dex'), at(300, 600));
 
     expect(screen.getByRole('menu')).toHaveStyle({ left: '120px', top: '450px' });
   });
@@ -188,7 +188,7 @@ describe('where it opens', () => {
   it('has items a finger can hit on a touch screen', () => {
     render(<FifthEditionCharacterView character={fifthEditionCharacter()} onRoll={vi.fn()} />);
 
-    fireEvent.contextMenu(screen.getByText('dexterity'), at(40, 40));
+    fireEvent.contextMenu(screen.getByText('Dex'), at(40, 40));
 
     for (const item of screen.getAllByRole('menuitem')) expect(item.className.split(/\s+/)).toContain('pointer-coarse:min-h-11');
   });

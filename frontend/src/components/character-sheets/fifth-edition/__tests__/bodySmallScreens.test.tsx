@@ -217,11 +217,21 @@ describe('the 5E editor on a phone', () => {
 });
 
 describe('the 5E sheet on a phone', () => {
-  it('lists the saving throws in one column, two from sm up and three from md up', async () => {
+  it('puts the overview in one column, two from 760 px up', async () => {
     await viewOn();
-    const grid = above(screen.getByText('strength'), ['grid']);
-    expect(classes(grid)).toEqual(expect.arrayContaining(['grid-cols-1', 'sm:grid-cols-2', 'md:grid-cols-3']));
+    const grid = above(screen.getByRole('heading', { name: 'Saves & Senses' }), ['grid']);
+    expect(classes(grid)).toContain('min-[760px]:grid-cols-2');
     expect(classes(grid)).not.toContain('grid-cols-2');
+  });
+
+  it('wraps the saving throws as a line of text', async () => {
+    await viewOn();
+    expect(screen.getByText('Saving Throws').parentElement?.tagName).toBe('P');
+  });
+
+  it('shows the ability scores three to a row, six from sm up', async () => {
+    await viewOn();
+    expect(classes(above(screen.getByText('STR'), ['grid']))).toEqual(expect.arrayContaining(['grid-cols-3', 'sm:grid-cols-6']));
   });
 
   it('stacks the spellcasting ability, save DC and attack, side by side from sm up', async () => {

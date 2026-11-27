@@ -29,8 +29,20 @@ const header = (container: HTMLElement) => {
 const textColour = (element: HTMLElement) =>
   element.className.split(/\s+/).find((name) => name === 'text-white' || name === 'text-black');
 
+// The 5E header is a box on the page, not a fill of the colour: its name,
+// labels and Edit are drawn in the colour made readable on the page
+// (themeColor.test.ts, sheetAccent), so there is no text colour to pick.
+describe('the 5E read-only header', () => {
+  it('draws its name and Edit in the sheet accent, never white or black on a fill', () => {
+    const { container } = render(<FifthEditionCharacterView character={fifthEditionCharacter({ themeColor: '#ffffff' })} onEdit={vi.fn()} />);
+    const top = header(container);
+    expect(top.querySelector('h2')).toHaveClass('text-(--sheet-accent)');
+    expect(screen.getByRole('button', { name: /Edit/ })).toHaveClass('text-(--sheet-accent)', 'border-(--sheet-accent)');
+    expect(textColour(top)).toBeUndefined();
+  });
+});
+
 describe.each([
-  ['5E', (themeColor: string) => <FifthEditionCharacterView character={fifthEditionCharacter({ themeColor })} onEdit={vi.fn()} />],
   ['Fantasy d20', (themeColor: string) => <FantasyD20CharacterView character={fantasyD20Character({ themeColor })} onEdit={vi.fn()} />],
   ['Horror d100', (themeColor: string) => <HorrorD100CharacterView character={horrorD100Character({ themeColor })} onEdit={vi.fn()} />],
 ])('the %s read-only header', (_system, sheet) => {

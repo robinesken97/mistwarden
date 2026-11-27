@@ -92,6 +92,8 @@ const WIDER = new Set(['sm', 'md', 'lg', 'xl', '2xl']);
 const KEEP_ON_A_PHONE: Record<string, string> = {
   '/src/components/character-sheets/fifth-edition/FifthEditionCharacterEditor.tsx grid-cols-[minmax(0,1fr)_3.5rem_0.75rem_3.5rem_2.75rem]':
     "The 5E editor's hit dice rows (HIT_DICE_COLUMNS). The class takes a line of its own (col-span-5); the die, left, slash, at full and remove share the next, in about 200 px of fixed columns and gaps, which leaves the die box at least about 60 px on a 360 px phone.",
+  '/src/components/character-sheets/fifth-edition/FifthEditionCharacterView.tsx grid-cols-6':
+    "The 5E header's core numbers. Six tracks so that five numbers can be three and two wide ones; each number spans two (or three), so a phone shows three to a row.",
 };
 
 /**

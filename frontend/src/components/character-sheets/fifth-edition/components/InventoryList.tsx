@@ -10,6 +10,7 @@ import { Package, Coins, Star } from 'lucide-react';
 
 import type { FifthEditionInventoryItem as InventoryItem, FifthEditionCurrency as Currency } from '@/types/game-systems';
 import { carryingCapacity } from '@/utils/rules/fifthEdition';
+import { SHEET_BOX, SHEET_BOX_HEADING, SHEET_BOX_TITLE } from '../sheetStyle';
 
 interface InventoryListProps {
   inventory?: InventoryItem[];
@@ -31,11 +32,10 @@ const CurrencyDisplay: React.FC<{ currency: Currency }> = ({ currency }) => {
   ];
 
   return (
-    <div className="p-4 bg-ink/10 border-2 border-ink/20 rounded-lg">
-      <div className="flex items-center space-x-2 mb-3">
-        <Coins className="w-5 h-5 text-ink-secondary" />
-        <h4 className="font-semibold text-ink">Currency</h4>
-      </div>
+    <div className={SHEET_BOX}>
+      <h4 className={SHEET_BOX_HEADING}>
+        <span className="flex items-center gap-2"><Coins className="w-5 h-5" aria-hidden="true" />Currency</span>
+      </h4>
       <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
         {coins.map(({ label, value }) => (
           <div key={label} className="text-center">
@@ -121,12 +121,12 @@ export const InventoryList: React.FC<InventoryListProps> = ({ inventory, currenc
 
       {/* Attunement Slots Tracker */}
       {inventory && inventory.some(item => item.requiresAttunement || item.attuned) && (
-        <div className="p-4 bg-spirit/10 border-2 border-spirit/30 rounded-lg">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center space-x-2">
-              <Star className="w-5 h-5 text-spirit-ink" />
-              <h4 className="font-semibold text-ink">Attunement Slots</h4>
-            </div>
+        <div className={SHEET_BOX}>
+          <div className={SHEET_BOX_HEADING}>
+            <h4 className="flex items-center gap-2">
+              <Star className="w-5 h-5" aria-hidden="true" />
+              Attunement Slots
+            </h4>
             <span className={`text-lg font-bold ${attunedCount >= maxAttunement ? 'text-danger-ink' : 'text-spirit-ink'}`}>
               {attunedCount} / {maxAttunement}
             </span>
@@ -153,11 +153,11 @@ export const InventoryList: React.FC<InventoryListProps> = ({ inventory, currenc
       )}
 
       {/* Inventory Items */}
-      <div className="bg-ink/5 border border-ink/10 rounded-lg overflow-hidden">
-        <div className="p-3 bg-ink/10 border-b border-ink/10">
+      <div className={SHEET_BOX}>
+        <div className="mb-2.5 border-b-2 border-(--sheet-accent) pb-1">
           <div className="flex flex-wrap items-center justify-between gap-x-4 sm:flex-nowrap">
-            <h4 className="font-semibold text-ink">Equipment & Items</h4>
-            <span className="text-sm text-ink-secondary">
+            <h4 className={SHEET_BOX_TITLE}>Equipment & Items</h4>
+            <span className="font-body text-sm text-ink-secondary">
               Total Weight: <span className="font-semibold">{totalWeight.toFixed(1)} lb</span>
             </span>
           </div>

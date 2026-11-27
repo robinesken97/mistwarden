@@ -8,7 +8,7 @@
  */
 
 import { isHexColor } from './styleAllowlists';
-import { parseRgb, readableTextOn, relativeLuminance, toChannels } from './color';
+import { AA_TEXT, ensureReadable, parseRgb, readableTextOn, relativeLuminance, toChannels } from './color';
 
 /** What the editors say when the hex box holds something that is not a colour. */
 export const HEX_COLOUR_HINT = 'Enter a colour as #rgb or #rrggbb';
@@ -53,3 +53,35 @@ export function headerInk(hexColor: string) {
     border: white ? 'border-white/20' : 'border-black/20',
   };
 }
+
+/** The colours a 5E sheet draws its boxes in, as CSS colours. */
+export interface SheetAccent {
+  /** Borders, headings and labels: readable as text on the page. */
+  accent: string;
+  /** The open tab's fill. */
+  fill: string;
+  /** Text on that fill. */
+  onFill: string;
+}
+
+/** A sheet with no colour of its own takes the theme's accent. */
+export const THEME_SHEET_ACCENT: SheetAccent = {
+  accent: 'rgb(var(--rgb-accent-ink))',
+  fill: 'rgb(var(--rgb-accent))',
+  onFill: 'rgb(var(--rgb-accent-text))',
+};
+
+/**
+ * The accent of a sheet whose colour is this `#rrggbb` (a preset's or a custom
+ * one), on a page of `pageChannels` ("R G B"): the colour moved, keeping its
+ * hue, until it reads as text there, so a dark preset is lightened on a dark
+ * theme and left as it is on a light one. Without a colour, the theme's accent.
+ */
+export function sheetAccent(hexColor: string | null | undefined, pageChannels: string): SheetAccent {
+  const hex = hexColor ? toStoredHexColor(hexColor) : null;
+  if (!hex) return THEME_SHEET_ACCENT;
+  const colour = parseRgb([1, 3, 5].map((at) => parseInt(hex.slice(at, at + 2), 16)).join(' '));
+  const readable = toChannels(ensureReadable(colour, parseRgb(pageChannels), AA_TEXT));
+  return { accent: `rgb(${readable})`, fill: `rgb(${readable})`, onFill: `rgb(${readableTextOn(readable)})` };
+}
+

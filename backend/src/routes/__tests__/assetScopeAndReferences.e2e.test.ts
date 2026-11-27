@@ -35,6 +35,8 @@ import {
   TEST_PASSWORD,
 } from '../../__tests__/helpers/db';
 import { canPlaceAssetAtScope } from '../../services/permissions';
+import { getBlankCharacterTemplate } from '../../validators/game-systems';
+import { GameSystem as AppGameSystem } from '../../game-systems';
 
 const app = createTestApp();
 
@@ -216,6 +218,46 @@ describe("a character's token image", () => {
     const created = await player.post('/api/characters').send({ name: 'Pictured', tokenImageUrl: `/api/assets/tokens/${mine}` });
     expect(created.status).toBe(201);
     expect(created.body.character.tokenImageUrl).toBe(`/api/assets/tokens/${mine}`);
+  });
+});
+
+describe("a 5E sheet's portrait", () => {
+  const sheet = (portraitUrl?: string) => ({
+    ...(getBlankCharacterTemplate(AppGameSystem.FIFTH_EDITION) as Record<string, unknown>),
+    characterName: 'Portrait Hero',
+    ...(portraitUrl === undefined ? {} : { portraitUrl }),
+  });
+  const create = (portraitUrl?: string) =>
+    player.post('/api/characters').send({ name: 'Portrait Hero', gameSystem: 'FIFTH_EDITION', data: sheet(portraitUrl) });
+
+  it('refuses an address that is not a picture uploaded here', async () => {
+    expect((await create('https://example.com/portrait.png')).status).toBe(400);
+    expect((await create('/api/assets/tokens/not-an-id')).status).toBe(400);
+  });
+
+  it("cannot point at a fellow member's private asset, on creation or on update", async () => {
+    const url = `/api/assets/tokens/${await makeAsset('TOKEN', 'USER', gmId, 'dm-private-portrait')}`;
+    expect((await create(url)).status).toBe(403);
+    const own = await create();
+    expect(own.status).toBe(201);
+    expect((await player.put(`/api/characters/${own.body.character.id}`).send({ data: sheet(url) })).status).toBe(403);
+    expect((await player.get(url)).status).toBe(404);
+  });
+
+  it('takes only a token picture', async () => {
+    const map = await makeAsset('MAP', 'USER', playerId, 'my-map-portrait');
+    expect((await create(`/api/assets/maps/${map}`)).status).toBe(400);
+  });
+
+  it("is readable by the campaign's members once the sheet holds it", async () => {
+    const url = `/api/assets/tokens/${await makeAsset('TOKEN', 'USER', playerId, 'my-portrait')}`;
+    expect((await spectator.get(url)).status).toBe(404);
+    const created = await create(url);
+    expect(created.status).toBe(201);
+    expect(created.body.character.data.portraitUrl).toBe(url);
+    // Brought into the campaign (a flexible one here, so not through the route).
+    await prisma.character.update({ where: { id: created.body.character.id }, data: { campaignId } });
+    expect((await spectator.get(url)).status).toBe(200);
   });
 });
 

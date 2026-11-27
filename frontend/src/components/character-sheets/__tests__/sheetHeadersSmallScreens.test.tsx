@@ -47,8 +47,23 @@ const stacksOnAPhone = (row: Element) => {
   expect(classes(row)).toEqual(expect.arrayContaining(['flex', 'flex-col', 'sm:flex-row']));
 };
 
+describe('the 5E read-only header', () => {
+  it('puts Edit in the flow on a phone and in the corner from sm up, the name clear of it', () => {
+    render(<FifthEditionCharacterView character={fifthEditionCharacter()} onEdit={vi.fn()} />);
+    const edit = classes(screen.getByRole('button', { name: /Edit/ }));
+    expect(edit).not.toContain('absolute');
+    expect(edit).toEqual(expect.arrayContaining(['sm:absolute', 'ml-auto', 'w-fit', 'min-h-11']));
+    expect(classes(screen.getByRole('heading', { level: 2 }))).toContain('sm:pr-28');
+  });
+
+  it('centres a portrait against the name and numbers', () => {
+    render(<FifthEditionCharacterView character={fifthEditionCharacter({ portraitUrl: '/api/assets/tokens/p' })} />);
+    const row = around(screen.getByRole('img'), screen.getByRole('heading', { level: 2 }));
+    expect(classes(row)).toEqual(expect.arrayContaining(['flex', 'items-center']));
+  });
+});
+
 describe.each([
-  ['5E', () => render(<FifthEditionCharacterView character={fifthEditionCharacter()} onEdit={vi.fn()} />), 'Experience'],
   ['Fantasy d20', () => render(<FantasyD20CharacterView character={fantasyD20Character()} onEdit={vi.fn()} />), 'Experience Points'],
   ['Horror d100', () => render(<HorrorD100CharacterView character={horrorD100Character({ playerName: 'Mara' })} onEdit={vi.fn()} />), 'Player'],
 ])('the %s read-only header', (_system, show, aside) => {
@@ -71,7 +86,7 @@ describe.each([
 describe('the read-only headers\' lines of details', () => {
   it('wrap on the 5E sheet', () => {
     render(<FifthEditionCharacterView character={fifthEditionCharacter({ alignment: 'Lawful Good', background: 'Acolyte' })} />);
-    expect(classes(screen.getByText('• Acolyte').parentElement)).toContain('flex-wrap');
+    expect(classes(screen.getByText('Acolyte').parentElement?.parentElement ?? null)).toContain('flex-wrap');
   });
 
   it('wrap on the Horror d100 sheet', () => {

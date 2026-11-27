@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { headerInk, shouldUseWhiteText, toStoredHexColor } from '../themeColor';
-import { AA_TEXT, contrastRatio } from '../color';
+import { headerInk, sheetAccent, shouldUseWhiteText, THEME_SHEET_ACCENT, toStoredHexColor } from '../themeColor';
+import { AA_TEXT, contrastRatio, parseRgb } from '../color';
+import { PRESET_THEMES as THEMES } from '@/themes';
 import { THEME_COLOR_PATTERN } from '../styleAllowlists';
 import { COLOR_PRESETS as FIFTH_EDITION } from '@/components/character-sheets/fifth-edition/colorPresets';
 import { COLOR_PRESETS as FANTASY_D20 } from '@/components/character-sheets/fantasy-d20/colorPresets';
@@ -81,5 +82,36 @@ describe.each([
 
   it('each carry a #rrggbb colour', () => {
     for (const preset of presets) expect(toStoredHexColor(preset.hex)).toBe(preset.hex);
+  });
+});
+
+describe('sheetAccent', () => {
+  const channels = (css: string) => parseRgb(/^rgb\((.*)\)$/.exec(css)![1]);
+
+  it("is the theme's accent when the sheet has no colour of its own", () => {
+    expect(sheetAccent(undefined, '23 22 28')).toBe(THEME_SHEET_ACCENT);
+    expect(sheetAccent('', '23 22 28')).toBe(THEME_SHEET_ACCENT);
+    expect(sheetAccent('not a colour', '23 22 28')).toBe(THEME_SHEET_ACCENT);
+  });
+
+  it.each(THEMES.map((theme) => [theme.name, theme.colors.bgBase] as const))(
+    'makes every 5E preset readable as text, and its fill as a label, in %s',
+    (_name, page) => {
+      for (const preset of FIFTH_EDITION) {
+        const accent = sheetAccent(preset.hex, page);
+        expect(contrastRatio(channels(accent.accent), parseRgb(page))).toBeGreaterThanOrEqual(AA_TEXT - 0.01);
+        expect(contrastRatio(channels(accent.onFill), channels(accent.fill))).toBeGreaterThanOrEqual(AA_TEXT - 0.01);
+      }
+    }
+  );
+
+  it('leaves a colour that already reads on the page as it is', () => {
+    expect(sheetAccent('#a99be0', '23 22 28').accent).toBe('rgb(169 155 224)');
+    expect(sheetAccent('#1d4ed8', '255 255 255').accent).toBe('rgb(29 78 216)');
+  });
+
+  it('lightens a dark preset on a dark page', () => {
+    const [r, g, b] = channels(sheetAccent('#334155', '23 22 28').accent);
+    expect(r + g + b).toBeGreaterThan(0x33 + 0x41 + 0x55);
   });
 });

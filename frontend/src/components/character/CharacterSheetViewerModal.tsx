@@ -200,6 +200,8 @@ export default function CharacterSheetViewerModal({
     ? (index: number) => socket.emitHitDiceSpend({ characterId: character.id, index })
     : undefined;
 
+  const sheetNamesItself = character.gameSystem === 'FIFTH_EDITION';
+
   // Render appropriate character sheet view based on game system
   const renderCharacterSheet = () => {
     // A system CozyVTT no longer supports: its data, read-only.
@@ -241,7 +243,10 @@ export default function CharacterSheetViewerModal({
             order they are seen. */}
         <div data-sheet-shell="header" className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 gap-y-3 p-3 sm:p-6 short:p-3 border-b border-moss-green/20 bg-parchment/30">
           <div className={`min-w-0 ${offersRollMode ? 'sm:row-span-2' : ''}`}>
-            <div className="flex items-center gap-3 mb-2">
+            {/* The 5E sheet's own header names the character, the player and
+                the level, so the line here is for a screen reader alone,
+                naming the dialog. */}
+            <div className={sheetNamesItself ? 'sr-only' : 'flex items-center gap-3 mb-2'}>
               <div className="p-2 rounded-full bg-moss-green/10">
                 <UserIcon className="w-5 h-5 text-brand-ink" />
               </div>

@@ -206,7 +206,10 @@ function validateSheet(
   const result = validateCharacterData(gameSystem, migrateLegacySheetFields(gameSystem, sent));
   if (result.success) {
     const sheet = sheetWithoutConversionRecord(gameSystem, result.data);
-    return { ok: true, data: sheetWithoutPlayerName(gameSystem, sheetWithoutGmNotes(gameSystem, sheet)) };
+    // Every user may read a template, and a sheet portrait is a picture only
+    // its campaign may: a template keeps none. Its picture is tokenImageUrl.
+    const { portraitUrl: _portrait, ...withoutPortrait } = sheet as Record<string, unknown>;
+    return { ok: true, data: sheetWithoutPlayerName(gameSystem, sheetWithoutGmNotes(gameSystem, withoutPortrait)) };
   }
 
   return {

@@ -65,7 +65,7 @@ describe('Roll mode on a 5E sheet', () => {
     open(mine(fifthEditionCharacter({ attacks: [spear] })));
 
     choose('Advantage');
-    fireEvent.click(screen.getByText('dexterity'));
+    fireEvent.click(screen.getByText('Dex'));
     fireEvent.click(screen.getByText('Stealth'));
     fireEvent.click(screen.getByText('STR'));
     fireEvent.click(screen.getByRole('tab', { name: 'Combat' }));
@@ -83,10 +83,10 @@ describe('Roll mode on a 5E sheet', () => {
     open(mine(fifthEditionCharacter()));
 
     choose('Disadvantage');
-    fireEvent.click(screen.getByText('dexterity'));
-    fireEvent.click(screen.getByText('dexterity'));
+    fireEvent.click(screen.getByText('Dex'));
+    fireEvent.click(screen.getByText('Dex'));
     choose('Normal');
-    fireEvent.click(screen.getByText('dexterity'));
+    fireEvent.click(screen.getByText('Dex'));
 
     expect(rolled()).toEqual([
       ['2d20kl1+0', 'Dexterity Save (Disadvantage)'],
@@ -125,7 +125,7 @@ describe('Roll mode on a 5E sheet', () => {
     open(mine(fifthEditionCharacter()));
 
     choose('Advantage');
-    fireEvent.contextMenu(screen.getByText('dexterity'), { clientX: 40, clientY: 40 });
+    fireEvent.contextMenu(screen.getByText('Dex'), { clientX: 40, clientY: 40 });
     fireEvent.click(screen.getByRole('menuitem', { name: 'Normal' }));
 
     expect(rolled()).toEqual([['1d20+0', 'Dexterity Save']]);

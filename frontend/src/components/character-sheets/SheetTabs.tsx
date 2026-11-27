@@ -29,7 +29,13 @@ interface SheetTabsProps<Id extends string> {
   active: Id;
   onSelect: (id: Id) => void;
   /** The header colour, a CSS colour, drawn as the open tab's underline. */
-  underline: string;
+  underline?: string;
+  /**
+   * `boxed`: the 5E sheet's bar, a box of equal tabs in the sheet's accent
+   * (the `--sheet-*` variables, fifth-edition/sheetStyle.ts), three to a row
+   * below 760 px and one row above, the open tab filled.
+   */
+  variant?: 'underline' | 'boxed';
 }
 
 const tabId = (id: string, tab: string) => `${id}-tab-${tab}`;
@@ -40,7 +46,8 @@ export function sheetTabPanel(id: string, active: string) {
   return { role: 'tabpanel', id: panelId(id), 'aria-labelledby': tabId(id, active) } as const;
 }
 
-export function SheetTabs<Id extends string>({ id, tabs, active, onSelect, underline }: SheetTabsProps<Id>) {
+export function SheetTabs<Id extends string>({ id, tabs, active, onSelect, underline, variant = 'underline' }: SheetTabsProps<Id>) {
+  const boxed = variant === 'boxed';
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const onKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
     const target = tabKeyTarget(event.key, index, tabs.length);
@@ -51,7 +58,14 @@ export function SheetTabs<Id extends string>({ id, tabs, active, onSelect, under
   };
 
   return (
-    <div data-sheet-tabs role="tablist" aria-label="Sheet sections" className="flex flex-wrap gap-1 border-b-2 border-ink/10 bg-ink/5 px-4">
+    <div
+      data-sheet-tabs
+      role="tablist"
+      aria-label="Sheet sections"
+      className={boxed
+        ? 'grid grid-cols-3 gap-1.5 rounded-[15px] border-4 border-(--sheet-accent) bg-(--sheet-accent-bg) p-1.5 min-[760px]:grid-flow-col min-[760px]:auto-cols-fr min-[760px]:grid-cols-none'
+        : 'flex flex-wrap gap-1 border-b-2 border-ink/10 bg-ink/5 px-4'}
+    >
       {tabs.map(({ id: tab, label, icon: Icon }, index) => {
         const isActive = tab === active;
         return (
@@ -66,12 +80,16 @@ export function SheetTabs<Id extends string>({ id, tabs, active, onSelect, under
             tabIndex={isActive ? 0 : -1}
             onClick={() => onSelect(tab)}
             onKeyDown={(event) => onKeyDown(event, index)}
-            className={`flex items-center gap-2 px-4 py-3 font-medium transition-colors ${
-              isActive ? 'text-ink border-b-2 -mb-0.5 bg-paper' : 'text-ink-secondary hover:text-ink hover:bg-ink/10'
-            }`}
-            style={isActive ? { borderBottomColor: underline } : undefined}
+            className={boxed
+              ? `flex min-h-11 min-w-0 items-center justify-center gap-2 rounded-[10px] px-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--sheet-accent) ${
+                isActive ? 'bg-(--sheet-fill) text-(--sheet-on-fill)' : 'text-ink hover:bg-ink/10'
+              }`
+              : `flex items-center gap-2 px-4 py-3 font-medium transition-colors ${
+                isActive ? 'text-ink border-b-2 -mb-0.5 bg-paper' : 'text-ink-secondary hover:text-ink hover:bg-ink/10'
+              }`}
+            style={isActive && !boxed ? { borderBottomColor: underline } : undefined}
           >
-            <Icon className="w-4 h-4" aria-hidden="true" />
+            <Icon className={`w-4 h-4 shrink-0 ${boxed && !isActive ? 'text-(--sheet-accent)' : ''}`} aria-hidden="true" />
             <span>{label}</span>
           </button>
         );

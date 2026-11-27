@@ -25,7 +25,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../config/database';
 import { extractAssetId } from '../utils/asset-urls';
-import { readJsonObject, readTokens } from '../utils/prisma-json';
+import { readJsonObject, readTokens, sheetPortrait } from '../utils/prisma-json';
 import { vibePeriodAudioAssetId } from '../utils/vibeAudio';
 import { readSomeUnreadDocuments } from './sharedDocumentPictures';
 import { canReadAsset } from './permissions';
@@ -107,9 +107,10 @@ export async function findUses(assetId: string, db: Prisma.TransactionClient = p
         },
       }),
       mapsWithTokensMentioning(assetId, db),
+      // A character's token picture, and its sheet's portrait (a 5E sheet's portraitUrl).
       db.character.findMany({
-        where: { tokenImageUrl: mentions },
-        select: { name: true, userId: true, campaignId: true, tokenImageUrl: true, campaign: { select: { name: true } } },
+        where: { OR: [{ tokenImageUrl: mentions }, { data: { path: ['portraitUrl'], string_contains: assetId } }] },
+        select: { name: true, userId: true, campaignId: true, tokenImageUrl: true, data: true, campaign: { select: { name: true } } },
       }),
       db.characterTemplate.findMany({
         where: { tokenImageUrl: mentions },
@@ -157,7 +158,7 @@ export async function findUses(assetId: string, db: Prisma.TransactionClient = p
   }
 
   for (const c of characters) {
-    if (names(c.tokenImageUrl)) {
+    if (names(c.tokenImageUrl) || names(sheetPortrait(c.data))) {
       found({
         kind: 'character', name: c.name, campaignId: c.campaignId, campaignName: c.campaign?.name ?? null,
         ownerId: c.userId,

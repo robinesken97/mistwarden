@@ -192,6 +192,15 @@ describe('Character template routes', () => {
       expect(stored.data).toMatchObject({ characterName: 'Template Hero', class: 'Fighter' });
     });
 
+    it("leaves out a 5E sheet's portrait, which only its campaign may read", async () => {
+      const res = await createTemplate(authorAgent, {
+        data: { ...fifthEditionSheet, portraitUrl: `/api/assets/tokens/${globalAssetId}` },
+      });
+      expect(res.status).toBe(201);
+      const stored = await prisma.characterTemplate.findUniqueOrThrow({ where: { id: res.body.id } });
+      expect(stored.data).not.toHaveProperty('portraitUrl');
+    });
+
     it('drops a key the schema does not declare when a template is saved', async () => {
       const created = await createTemplate(authorAgent);
       expect(created.status).toBe(201);

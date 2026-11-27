@@ -195,6 +195,7 @@
   "initiativeAdvantage": false,
   "speed": 76,
   "darkvisionFeet": 90,
+  "portraitUrl": "/api/assets/tokens/5b0f6f3e-2c1a-4d8e-9f00-1a2b3c4d5e6f",
   "hp": {
     "maximum": 78,
     "current": 78,

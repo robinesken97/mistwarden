@@ -6,7 +6,8 @@
  * `border-${accent}`. Tailwind generates only class names written out in
  * full, so for most colours they drew nothing. The tab's underline is now the
  * colour itself and its label the theme's text colour, readable on a dark
- * theme's sheet; the Horror d100 header's classes are written out.
+ * theme's sheet; the Horror d100 header's classes are written out. The 5E
+ * sheet and its editor fill the open tab in the sheet's accent instead.
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -20,16 +21,44 @@ import { COLOR_PRESETS as HORROR_D100_PRESETS } from '../horror-d100/colorPreset
 import { HorrorD100CharacterView } from '../horror-d100/HorrorD100CharacterView';
 import { HorrorD100CharacterEditor } from '../horror-d100/HorrorD100CharacterEditor';
 import { blankSkills, horrorD100Character } from '../horror-d100/__tests__/sheetFixture';
+import { sheetAccent } from '@/utils/themeColor';
+import { PRESET_THEMES } from '@/themes';
 
 vi.mock('@/hooks/queries', () => ({ useServerConfigQuery: () => ({ data: undefined }) }));
 
 const activeTab = () => screen.getByRole('tab', { name: /Stats & Skills/ });
 const noop = () => Promise.resolve();
 
+describe("the 5E sheet's open tab", () => {
+  const accentOf = (hex: string) => sheetAccent(hex, PRESET_THEMES[0].colors.bgBase);
+  const rootOf = (tab: HTMLElement) => tab.closest('[style*="--sheet-fill"]') as HTMLElement;
+
+  it.each([
+    ['the 5E sheet', (themeColor: string) => render(<FifthEditionCharacterView character={fifthEditionCharacter({ themeColor })} />), /^Overview$/],
+    ['the 5E editor', (themeColor: string) => render(<FifthEditionCharacterEditor character={fifthEditionCharacter({ themeColor })} onSave={noop} onCancel={vi.fn()} />), /Stats & Skills/],
+  ])('on %s is filled in the header colour, made readable on the page', (_name, show, name) => {
+    show('Royal Blue');
+    const tab = screen.getByRole('tab', { name });
+    expect(tab).toHaveClass('bg-(--sheet-fill)', 'text-(--sheet-on-fill)');
+    expect(rootOf(tab).style.getPropertyValue('--sheet-fill')).toBe(accentOf('#1d4ed8').fill);
+    expect(rootOf(tab).style.getPropertyValue('--sheet-on-fill')).toBe(accentOf('#1d4ed8').onFill);
+  });
+
+  it('takes a custom colour', () => {
+    render(<FifthEditionCharacterView character={fifthEditionCharacter({ themeColor: '#123456' })} />);
+    const tab = screen.getByRole('tab', { name: /^Overview$/ });
+    expect(rootOf(tab).style.getPropertyValue('--sheet-accent')).toBe(accentOf('#123456').accent);
+  });
+
+  it("takes the theme's accent without a colour of its own", () => {
+    render(<FifthEditionCharacterView character={fifthEditionCharacter({ themeColor: undefined })} />);
+    const tab = screen.getByRole('tab', { name: /^Overview$/ });
+    expect(rootOf(tab).style.getPropertyValue('--sheet-fill')).toBe('rgb(var(--rgb-accent))');
+  });
+});
+
 describe('the active tab', () => {
   it.each([
-    ['the 5E sheet', () => render(<FifthEditionCharacterView character={fifthEditionCharacter({ themeColor: 'Royal Blue' })} />)],
-    ['the 5E editor', () => render(<FifthEditionCharacterEditor character={fifthEditionCharacter({ themeColor: 'Royal Blue' })} onSave={noop} onCancel={vi.fn()} />)],
     ['the Fantasy d20 editor', () => render(<FantasyD20CharacterEditor character={fantasyD20Character({ themeColor: 'Royal Blue' })} onSave={noop} onCancel={vi.fn()} />)],
   ])('on %s is underlined in the header colour', (_name, show) => {
     show();
@@ -37,10 +66,6 @@ describe('the active tab', () => {
     expect(activeTab()).toHaveClass('text-ink');
   });
 
-  it('is underlined in a custom colour', () => {
-    render(<FifthEditionCharacterView character={fifthEditionCharacter({ themeColor: '#123456' })} />);
-    expect(activeTab()).toHaveStyle({ borderBottomColor: '#123456' });
-  });
 });
 
 // jsdom keeps any class name, generated or not, so the presets are checked
