@@ -1,5 +1,5 @@
 {
-  "_comment": "Shared vision scenarios. Tokens are in grid units (x from the left, y from the bottom row); walls, lights and samples are map pixels (y from the top). Both packages run every scenario; the backend checks which tokens are sent, the frontend checks the tier at each sample and that a token is seen exactly when it is sent. Keep both copies identical.",
+  "_comment": "Shared vision scenarios. Tokens are in grid units (x from the left, y from the bottom row); walls, lights and samples are map pixels (y from the top). Both packages run every scenario; the backend checks which tokens are sent, the frontend checks the tier at each sample and that a token is seen exactly when it is sent. A token's `light` is the torch it carries, lit at its centre; `visible: false` is a hidden token, which no player is sent. Keep both copies identical.",
   "map": {
     "width": 20,
     "height": 20,
@@ -564,6 +564,242 @@
         {
           "x": 650,
           "y": 1750,
+          "tier": "dark"
+        }
+      ]
+    },
+    {
+      "name": "a token you control carries a torch (bright 2, dim 4): bright, then dim, around it, dark beyond",
+      "globalIllumination": false,
+      "walls": [],
+      "lights": [],
+      "tokens": [
+        {
+          "id": "me",
+          "x": 5,
+          "y": 7,
+          "controlledBy": "p1",
+          "light": {
+            "brightRadius": 2,
+            "dimRadius": 4,
+            "color": "#ffcc66",
+            "enabled": true
+          }
+        },
+        {
+          "id": "inDim",
+          "x": 8,
+          "y": 7
+        },
+        {
+          "id": "far",
+          "x": 12,
+          "y": 7
+        }
+      ],
+      "expectVisible": [
+        "me",
+        "inDim"
+      ],
+      "samples": [
+        {
+          "x": 700,
+          "y": 1250,
+          "tier": "bright"
+        },
+        {
+          "x": 850,
+          "y": 1250,
+          "tier": "dim"
+        },
+        {
+          "x": 550,
+          "y": 1750,
+          "tier": "dark"
+        }
+      ]
+    },
+    {
+      "name": "another player's bearer in line of sight is seen by its own torch and lights what stands near it",
+      "globalIllumination": false,
+      "walls": [],
+      "lights": [],
+      "tokens": [
+        {
+          "id": "me",
+          "x": 2,
+          "y": 7,
+          "controlledBy": "p1"
+        },
+        {
+          "id": "bearer",
+          "x": 10,
+          "y": 7,
+          "controlledBy": "p2",
+          "light": {
+            "brightRadius": 2,
+            "dimRadius": 4,
+            "color": "#ffcc66",
+            "enabled": true
+          }
+        },
+        {
+          "id": "nearBearer",
+          "x": 12,
+          "y": 7
+        },
+        {
+          "id": "far",
+          "x": 16,
+          "y": 7
+        }
+      ],
+      "expectVisible": [
+        "me",
+        "bearer",
+        "nearBearer"
+      ],
+      "samples": [
+        {
+          "x": 1400,
+          "y": 1250,
+          "tier": "dim"
+        },
+        {
+          "x": 1050,
+          "y": 750,
+          "tier": "dark"
+        }
+      ]
+    },
+    {
+      "name": "a bearer round a corner: its torch does not count, even where it reaches into your sight",
+      "globalIllumination": false,
+      "walls": [
+        {
+          "id": "corner",
+          "x1": 1000,
+          "y1": 0,
+          "x2": 1000,
+          "y2": 1100,
+          "type": "wall"
+        }
+      ],
+      "lights": [],
+      "tokens": [
+        {
+          "id": "me",
+          "x": 2,
+          "y": 7,
+          "controlledBy": "p1"
+        },
+        {
+          "id": "bearer",
+          "x": 12,
+          "y": 10,
+          "controlledBy": "p2",
+          "light": {
+            "brightRadius": 2,
+            "dimRadius": 4,
+            "color": "#ffcc66",
+            "enabled": true
+          }
+        },
+        {
+          "id": "litByBearer",
+          "x": 11,
+          "y": 7
+        }
+      ],
+      "expectVisible": [
+        "me"
+      ],
+      "samples": [
+        {
+          "x": 1150,
+          "y": 1250,
+          "tier": "dark"
+        }
+      ]
+    },
+    {
+      "name": "a hidden bearer's torch lights nothing",
+      "globalIllumination": false,
+      "walls": [],
+      "lights": [],
+      "tokens": [
+        {
+          "id": "me",
+          "x": 2,
+          "y": 7,
+          "controlledBy": "p1"
+        },
+        {
+          "id": "bearer",
+          "x": 10,
+          "y": 7,
+          "visible": false,
+          "light": {
+            "brightRadius": 2,
+            "dimRadius": 4,
+            "color": "#ffcc66",
+            "enabled": true
+          }
+        },
+        {
+          "id": "nearBearer",
+          "x": 12,
+          "y": 7
+        }
+      ],
+      "expectVisible": [
+        "me"
+      ],
+      "samples": [
+        {
+          "x": 1250,
+          "y": 1250,
+          "tier": "dark"
+        }
+      ]
+    },
+    {
+      "name": "a carried torch that is out lights nothing, and its bearer stands in the dark",
+      "globalIllumination": false,
+      "walls": [],
+      "lights": [],
+      "tokens": [
+        {
+          "id": "me",
+          "x": 2,
+          "y": 7,
+          "controlledBy": "p1"
+        },
+        {
+          "id": "bearer",
+          "x": 10,
+          "y": 7,
+          "controlledBy": "p2",
+          "light": {
+            "brightRadius": 2,
+            "dimRadius": 4,
+            "color": "#ffcc66",
+            "enabled": false
+          }
+        },
+        {
+          "id": "nearBearer",
+          "x": 12,
+          "y": 7
+        }
+      ],
+      "expectVisible": [
+        "me"
+      ],
+      "samples": [
+        {
+          "x": 1050,
+          "y": 1250,
           "tier": "dark"
         }
       ]

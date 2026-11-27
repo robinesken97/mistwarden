@@ -311,3 +311,81 @@ describe("a player's explored ground on the largest map", () => {
     expect(named).toEqual(Array.from({ length: CELLS }, (_, i) => i));
   });
 });
+
+// ── A carried light drawn where its token is held ───────────────────────────
+
+describe('a carried light following a drag', () => {
+  recordDrawing();
+  const torch = { brightRadius: 4, dimRadius: 8, color: '#ffcc66', enabled: true };
+  // How many squares the coverage mask shows as seen, from the first.
+  let seenSquares = 0;
+
+  beforeEach(() => {
+    window.localStorage.clear();
+    const recording = HTMLCanvasElement.prototype.getContext;
+    Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
+      configurable: true,
+      writable: true,
+      value(this: HTMLCanvasElement) {
+        const ctx = recording.call(this, '2d');
+        if (!ctx) return ctx;
+        return new Proxy(ctx, {
+          get(target, prop) {
+            if (prop === 'getImageData') {
+              return (_x: number, _y: number, w: number, hgt: number) => {
+                const data = new Uint8ClampedArray(w * hgt * 4);
+                data.fill(255, 0, seenSquares * 4);
+                return { width: w, height: hgt, data };
+              };
+            }
+            return Reflect.get(target, prop);
+          },
+        });
+      },
+    });
+  });
+
+  it('reports no explored ground from the preview, only once the token is put down', async () => {
+    let now = 1_000_000;
+    const clock = vi.spyOn(Date, 'now').mockImplementation(() => now);
+    try {
+      h.set({
+        userRole: 'PLAYER',
+        currentMap: largestMap({ fogEnabled: false, lightingEnabled: true, explorationEnabled: true }),
+      });
+      render(<MapCanvas />);
+      act(() => {
+        useGameStore.getState().setTokens([
+          { id: 'tok-me', name: 'Me', imageUrl: '', position: { x: 250, y: 250 }, size: { width: 1, height: 1 },
+            layer: 'token', visible: true, type: 'player', conditions: [], controlledBy: 'me' },
+          { id: 'bearer', name: 'Bearer', imageUrl: '', position: { x: 255, y: 250 }, size: { width: 1, height: 1 },
+            layer: 'token', visible: true, type: 'player', conditions: [], controlledBy: 'someone', light: torch },
+        ] as unknown as Token[]);
+      });
+      seenSquares = 100;
+      fire('exploration:state', { mapId: MAP_ID, userId: 'me', cells: [] });
+      pictures.find((p) => p.src === '/api/assets/maps/x')!.load();
+      await nextFrame();
+      expect(sentOf('exploration:reveal').length).toBeGreaterThan(0);
+
+      // Someone carries the bearer; this screen draws its light where it is held.
+      h.sent.length = 0;
+      seenSquares = 200;
+      now += 1000;
+      act(() => { useGameStore.getState().receiveTokenMove('bearer', { x: 262, y: 250 }, true); });
+      await nextFrame();
+      await nextFrame();
+      expect(sentOf('exploration:reveal')).toEqual([]);
+
+      // Put down: the stored state is drawn and its ground reported.
+      now += 1000;
+      act(() => { useGameStore.getState().receiveTokenMove('bearer', { x: 262, y: 250 }, false); });
+      await nextFrame();
+      await nextFrame();
+      const reported = (sentOf('exploration:reveal') as Array<{ cells: number[] }>).flatMap((r) => r.cells);
+      expect(reported).toEqual(Array.from({ length: 100 }, (_, i) => 100 + i));
+    } finally {
+      clock.mockRestore();
+    }
+  });
+});

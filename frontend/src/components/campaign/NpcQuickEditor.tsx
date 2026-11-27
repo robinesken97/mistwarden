@@ -39,6 +39,7 @@ import Button from '@/components/ui/Button';
 import SlideOver, { SlideOverClose, SlideOverTitle } from '@/components/ui/SlideOver';
 import AssetGrid from '@/components/assets/AssetGrid';
 import TokenVisionField, { useSheetDarkvisionFeet } from './TokenVisionField';
+import TokenLightField from './TokenLightField';
 import TokenRotationField from './TokenRotationField';
 import RemoveTokenDialog from './RemoveTokenDialog';
 import { assetNameFrom } from '@/utils/assetName';
@@ -1061,6 +1062,12 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
             />
           </section>
         )}
+
+        {/* ── Carried light (a torch or lantern; objects too) ── */}
+        <section>
+          <h3 className="text-xs font-semibold text-stone-gray uppercase tracking-wide mb-2">Light</h3>
+          <TokenLightField value={current.light} onChange={(light) => { void saveUpdate({ light }); }} />
+        </section>
 
         {/* ── Facing ── */}
         <section>

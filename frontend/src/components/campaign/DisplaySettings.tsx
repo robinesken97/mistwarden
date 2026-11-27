@@ -1,6 +1,7 @@
 // Added for Mistwarden on 2026-11-27.
 /**
- * How this device draws the table: the fog's mist and the dice animation.
+ * How this device draws the table: the fog's mist, the dice animation, and
+ * whether carried lights follow a token while it is dragged.
  * Each choice stays on the device that made it (localStorage), so a slow
  * tablet can go flat while the laptop keeps the mist. The desk layout opens
  * it from the header (DisplaySettingsButton), the compact one from More.
@@ -13,6 +14,7 @@ import Tooltip from '@/components/ui/Tooltip';
 import { DICE_MODES, type DiceMode } from '@/dice/mode';
 import { optionalStorage } from '@/utils/optionalStorage';
 import { DICE_MODE_KEY, diceMode, FOG_MIST_EVENT, FOG_MIST_KEY, FOG_MIST_MODES, fogMistMode, type FogMistMode } from './DiceOverlay';
+import { lightsFollowDrag, setLightsFollowDrag } from './map/lightsFollow';
 
 export const DISPLAY_SETTINGS_LABEL = 'Display on this device';
 
@@ -22,10 +24,11 @@ const MIST_LABELS: Record<FogMistMode, string> = { mist: 'Mist', still: 'Still m
 // A height, not a min-height: WebKit ignores min-height on a styled select.
 const SELECT = 'w-full px-2 py-1 pointer-coarse:h-11 text-sm border border-warm-amber/30 rounded-cozy bg-parchment/60';
 
-/** The two choices, each with a line saying what it does. */
+/** The choices, each with a line saying what it does. */
 export function DisplaySettings() {
   const fogId = useId();
   const diceId = useId();
+  const lightsId = useId();
   return (
     <div className="space-y-3">
       <div>
@@ -53,6 +56,19 @@ export function DisplaySettings() {
           {DICE_MODES.map((mode) => <option key={mode} value={mode}>{DICE_LABELS[mode]}</option>)}
         </select>
         <p id={`${diceId}-help`} className="mt-1 text-xs text-ink-muted">How rolls tumble across the screen. The result in the log is the same either way.</p>
+      </div>
+      <div>
+        <label className="flex items-center gap-2 pointer-coarse:min-h-11 text-sm font-semibold text-ink cursor-pointer">
+          <input
+            type="checkbox"
+            aria-describedby={`${lightsId}-help`}
+            defaultChecked={lightsFollowDrag()}
+            onChange={(e) => setLightsFollowDrag(e.target.checked)}
+            className="rounded-sm"
+          />
+          Lights follow while dragging
+        </label>
+        <p id={`${lightsId}-help`} className="mt-1 text-xs text-ink-muted">A torch a token carries moves with it as it is dragged. Off, the light moves when the token is put down.</p>
       </div>
     </div>
   );

@@ -7,7 +7,7 @@
 // and the Token shape. Behaviour is unchanged — this is a verbatim lift.
 // ============================================
 
-import type { FogState, FogOperation } from '../types/walls';
+import type { FogState, FogOperation, CarriedLight } from '../types/walls';
 import type { Server } from 'socket.io';
 import type { AuthenticatedSocket } from './auth';
 import type { SocketAck } from './ack';
@@ -58,6 +58,8 @@ export interface Token {
   creatureTemplateId?: string | null;
   /** Identity hidden from players who do not control it; see utils/tokenMask.ts. GM-only on write. */
   obscured?: boolean;
+  /** A torch or lantern the token carries, lit at its centre; see playerSightOnLitMap. GM-only on write. */
+  light?: CarriedLight | null;
 }
 
 /** One window of a flood ceiling: at most `limit` events in any `windowMs`. */

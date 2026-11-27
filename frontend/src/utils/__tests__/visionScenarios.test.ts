@@ -9,16 +9,18 @@
 import { describe, it, expect } from 'vitest';
 import fixture from '../__fixtures__/vision-scenarios.json';
 import { computeVisibility, isPointVisible } from '../raycasting';
-import { tierAt, isSeen, type Viewer, type Lit, type InsideFn } from '../visibilityRule';
+import { tierAt, isSeen, carriedLightCounts, type Viewer, type Lit, type InsideFn } from '../visibilityRule';
 import { tokenCentre } from '../tokenCentre';
-import type { WallSegment } from '@/types/walls';
+import type { CarriedLight, WallSegment } from '@/types/walls';
 
 const { width, height, gridSize } = fixture.map;
 const mapW = width * gridSize;
 const mapH = height * gridSize;
 const inside: InsideFn = (p, poly) => poly.points.length >= 3 && isPointVisible(p, poly);
 
-type ScenarioToken = (typeof fixture.scenarios)[number]['tokens'][number] & { controlledBy?: string; sightRadius?: number; size?: { width: number; height: number } };
+type ScenarioToken = (typeof fixture.scenarios)[number]['tokens'][number] & {
+  controlledBy?: string; sightRadius?: number; size?: { width: number; height: number }; visible?: boolean; light?: CarriedLight;
+};
 
 // Token grid coordinates count y from the bottom row; pixels count from the top.
 // The centre is the server's, from the file both packages share.
@@ -31,7 +33,9 @@ const centre = (t: ScenarioToken) => {
 describe('vision scenarios (client: tiers and what is seen)', () => {
   it.each(fixture.scenarios.map((s) => [s.name, s] as const))('%s', (_name, s) => {
     const walls = s.walls as WallSegment[];
-    const mine = (s.tokens as ScenarioToken[]).filter((t) => t.controlledBy === fixture.viewer);
+    // What the browser holds: the server never sends a player a hidden token.
+    const held = (s.tokens as ScenarioToken[]).filter((t) => t.visible !== false);
+    const mine = held.filter((t) => t.controlledBy === fixture.viewer);
     const viewers: Viewer[] = mine.map((t) => {
       const c = centre(t);
       return {
@@ -47,6 +51,18 @@ describe('vision scenarios (client: tiers and what is seen)', () => {
       brightPx: l.brightRadius * gridSize,
       dimPx: l.dimRadius * gridSize,
     }));
+    // The lights the held tokens carry, as MapCanvas counts them.
+    for (const t of held) {
+      if (t.light?.enabled !== true) continue;
+      const c = centre(t);
+      if (!carriedLightCounts(t.controlledBy === fixture.viewer, c, viewers, inside)) continue;
+      lits.push({
+        cx: c.x, cy: c.y,
+        reach: computeVisibility({ x: c.x, y: c.y }, walls, mapW, mapH, t.light.dimRadius * gridSize),
+        brightPx: t.light.brightRadius * gridSize,
+        dimPx: t.light.dimRadius * gridSize,
+      });
+    }
 
     for (const sample of s.samples) {
       expect({ ...sample, got: tierAt({ x: sample.x, y: sample.y }, viewers, lits, s.globalIllumination, inside) })
@@ -54,7 +70,7 @@ describe('vision scenarios (client: tiers and what is seen)', () => {
     }
     for (const t of s.tokens as ScenarioToken[]) {
       const c = centre(t);
-      const seen = t.controlledBy === fixture.viewer || isSeen({ x: c.x, y: c.y }, viewers, lits, s.globalIllumination, inside);
+      const seen = t.visible !== false && (t.controlledBy === fixture.viewer || isSeen({ x: c.x, y: c.y }, viewers, lits, s.globalIllumination, inside));
       expect({ token: t.id, seen }).toEqual({ token: t.id, seen: s.expectVisible.includes(t.id) });
     }
   });

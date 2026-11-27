@@ -15,6 +15,7 @@
 import { z } from 'zod';
 import { NpcStatBlockSchema } from './statBlock';
 import { TOKEN_LIMITS } from './tokenLimits';
+import { CarriedLightSchema } from './walls';
 import { MAX_TEMPORARY_HIT_POINTS } from '../utils/rules/hitPoints';
 
 /** How many squares a token occupies. */
@@ -105,7 +106,7 @@ const IdSchema = z.uuid();
  *
  * Each field is optional, so a partial update is checked only on what it
  * actually carries. `null` is accepted where a token records having none:
- * `hp`, `statBlock`, `sightRadius`, `notes`, `imageUrl`, `initiative`, and
+ * `hp`, `statBlock`, `sightRadius`, `light`, `notes`, `imageUrl`, `initiative`, and
  * the three ids.
  *
  * Returns the parsed values rather than the raw ones, so callers store what the
@@ -123,6 +124,7 @@ export type TokenShapes = {
   metadata?: Record<string, unknown>;
   statBlock?: unknown;
   sightRadius?: number | null;
+  light?: z.infer<typeof CarriedLightSchema> | null;
   obscured?: boolean;
   position?: z.infer<typeof TokenPositionSchema>;
   rotation?: number;
@@ -184,6 +186,10 @@ export function validateTokenShapes(
   const sightRadius = check('sightRadius', TokenSightRadiusSchema, true);
   if ('failed' in sightRadius) return { ok: false, message: sightRadius.failed };
   value.sightRadius = sightRadius.parsed;
+
+  const light = check('light', CarriedLightSchema, true);
+  if ('failed' in light) return { ok: false, message: light.failed };
+  value.light = light.parsed;
 
   const obscured = check('obscured', z.boolean());
   if ('failed' in obscured) return { ok: false, message: obscured.failed };

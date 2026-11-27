@@ -372,6 +372,7 @@ The Token Manager opens on the form for a new token. Fill in what applies, then 
 - **GM Notes** (never shown to players) and **Hidden from players on placement** — for creatures and objects
 - **Size (grid cells)** — Small/Med, Large or Huge
 - **Darkvision** — How far the token sees with no light, in grid squares (0 = none; at the usual 5 ft a square, 12 = 60 ft, and the hint works it out for the map's own scale); not offered for Objects
+- **Carries a light** — A torch or lantern the token carries (see [Carried Lights](#carried-lights))
 - **Controlled by** — Which player may move it
 
 *Screenshot pending — Token creation form.*
@@ -1623,6 +1624,12 @@ Players see the result straight away: a creature a new light shows appears on th
 Switch to **Select** mode to click on a light. You can then drag it to reposition, adjust its radii and color, untick **Enabled** to put it out (an extinguished torch), or click **Delete Light**. Press **Esc** to put the light tool away.
 
 > **Tip:** The GM always sees light icons on the map. Toggle **Preview Player View** to see how the bright/dim zones actually look to players; the icons are hidden there, as they are for players.
+
+#### Carried Lights
+
+A token can carry its own light, a torch or a lantern that moves with it. Open the token in the Quick Editor (or set it when placing it in the Token Manager), tick **Carries a light**, and pick a preset, radii and a colour as for a map light. Only you can give a token a light or change it; players cannot. The light is lit at the token's centre. While the token is dragged, the light follows it on every screen that sees the drag; untick **Lights follow while dragging** in **Display on this device** to have it move only when the token is put down, as its sight does.
+
+A carried light lights things for a player only while they can see the token carrying it: their own token's light always, another's only while one of their characters has it in line of sight. Light from a torchbearer round a corner, out of their sight, lights nothing on their screen, even where it would spill into what they can see, so a light never gives away where an unseen creature is. A hidden token's light lights nothing for any player.
 
 ### Previewing the Player View
 

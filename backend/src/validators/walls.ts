@@ -58,6 +58,11 @@ const LightSourceBaseShape = z.object({
   enabled: z.boolean(),
 });
 
+/** A light a token carries (types/walls.ts CarriedLight): a light source's limits, without a place. */
+export const CarriedLightSchema = LightSourceBaseShape
+  .pick({ brightRadius: true, dimRadius: true, color: true, enabled: true })
+  .refine((obj) => obj.dimRadius >= obj.brightRadius, { message: 'dimRadius must be >= brightRadius' });
+
 export const LightSourceSchema = LightSourceBaseShape.refine(
   (obj) => obj.dimRadius >= obj.brightRadius,
   { message: 'dimRadius must be >= brightRadius' }

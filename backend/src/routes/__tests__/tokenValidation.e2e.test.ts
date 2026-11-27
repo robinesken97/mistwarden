@@ -154,6 +154,48 @@ describe('map token validation', () => {
     });
   });
 
+  /**
+   * A carried light: a torch or lantern lit at the token's centre. It
+   * decides what the server sends players, so only the GM sets it.
+   */
+  describe('carried light', () => {
+    const torch = { brightRadius: 4, dimRadius: 8, color: '#ffcc66', enabled: true };
+
+    it('stores the light the GM gives a new token, and none when omitted', async () => {
+      const lit = await place({ light: torch });
+      expect(lit.status).toBe(201);
+      expect(lit.body.token.light).toEqual(torch);
+      const plain = await place({});
+      expect(plain.body.token.light).toBeNull();
+    });
+
+    it.each([
+      ['dim inside bright', { ...torch, brightRadius: 9 }],
+      ['no dim reach', { ...torch, brightRadius: 0, dimRadius: 0 }],
+      ['not a colour', { ...torch, color: 'orange' }],
+      ['no on or off', { brightRadius: 4, dimRadius: 8, color: '#ffcc66' }],
+    ])('rejects a light with %s', async (_label, light) => {
+      const res = await place({ light });
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/light/);
+    });
+
+    it('lets the GM change and remove it, and refuses a player', async () => {
+      const created = await place({ controlledBy: playerId });
+      const tokenId = created.body.token.id;
+      const url = `/api/campaigns/${campaignId}/maps/${mapId}/tokens/${tokenId}`;
+
+      const byPlayer = await player.put(url).send({ light: torch });
+      expect(byPlayer.status).toBe(403);
+
+      const byGm = await gm.put(url).send({ light: torch });
+      expect(byGm.status).toBe(200);
+      expect(byGm.body.token.light).toEqual(torch);
+      const out = await gm.put(url).send({ light: null });
+      expect(out.body.token.light).toBeNull();
+    });
+  });
+
   describe('hit points', () => {
     it('accepts the token HP shape', async () => {
       const res = await place({ hp: { current: 7, max: 7, temp: 0 } });
