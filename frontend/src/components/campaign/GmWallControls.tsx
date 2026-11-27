@@ -147,14 +147,14 @@ export default function GmWallControls({
         type="button"
         aria-expanded={!collapsed}
         aria-controls={bodyId}
-        className="touch-target w-full flex items-center justify-between px-2 py-1.5 cursor-pointer hover:bg-stone-700/50 select-none"
+        className="touch-target w-full flex items-center justify-between px-3 py-3 cursor-pointer hover:bg-stone-700/50 select-none"
         onClick={() => {
           const next = !collapsed;
           setCollapsed(next);
           if (next) onCollapse?.();
         }}
       >
-        <span className="text-xs text-amber-300 font-medium uppercase tracking-wide">
+        <span className="text-xs text-amber-300 font-semibold uppercase tracking-wider">
           Walls
           {wallCount > 0 && (
             <>{' '}<span className="text-stone-400 normal-case">({wallCount})</span></>
