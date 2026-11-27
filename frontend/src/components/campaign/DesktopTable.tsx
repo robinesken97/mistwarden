@@ -70,10 +70,13 @@ export default function DesktopTable({
 
   // Resizable panel layout — persisted to localStorage so each user's
   // column sizes survive reloads.
-  const { defaultLayout, onLayoutChanged } = useDefaultLayout({
+  const { defaultLayout: savedLayout, onLayoutChanged } = useDefaultLayout({
     id: 'cozyvtt-session-layout',
     storage: optionalStorage,
   });
+  // No saved layout and a tablet-width window: start with the left column
+  // folded so the map has the room. A saved layout, collapsed or not, wins.
+  const defaultLayout = savedLayout ?? (window.innerWidth <= 1024 ? { party: 0, map: 75, rail: 25 } : undefined);
   const leftPanelRef = usePanelRef();
   const rightPanelRef = usePanelRef();
   const [leftCollapsed, setLeftCollapsed] = useState(false);
