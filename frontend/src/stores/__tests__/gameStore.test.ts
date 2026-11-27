@@ -99,6 +99,21 @@ describe('gameStore actions', () => {
     expect(useGameStore.getState().tokenOrder).toEqual(['a', 'new']);
   });
 
+  it('draws a rider above its mount when the two arrive one at a time, rider first', () => {
+    // A player sent a token as it comes into sight: the dropped rider's event comes before its horse's.
+    useGameStore.getState().setTokens([makeToken('wolf')]);
+    useGameStore.getState().revealToken(makeToken('rider', { mountedOn: 'horse' }));
+    useGameStore.getState().revealToken(makeToken('horse'));
+    const { result } = renderHook(() => useTokenList());
+    expect(result.current.map((t) => t.id)).toEqual(['wolf', 'horse', 'rider']);
+  });
+
+  it('revealToken takes the mount the event names for a token it holds', () => {
+    useGameStore.getState().setTokens([makeToken('rider')]);
+    useGameStore.getState().revealToken(makeToken('rider', { mountedOn: 'horse' }));
+    expect(useGameStore.getState().tokens['rider'].mountedOn).toBe('horse');
+  });
+
   it('removeToken / patchToken / replaceToken behave and no-op on unknown ids', () => {
     useGameStore.getState().setTokens([makeToken('a'), makeToken('b')]);
 

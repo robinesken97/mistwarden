@@ -64,7 +64,7 @@ import {
 } from './map/layers';
 import { createVisionCache } from './map/vision';
 import { pickTokenAt, pickMovableTokenAt, blockingTokensAt, visibleTokenHp, isTokenVisibleTo, tokenCoversCell } from './map/tokenHitTest';
-import { mountCandidates } from './map/mounts';
+import { mountCandidates, keepCoupledOnMap } from './map/mounts';
 import { cachedTokenImage } from './map/layers/drawTokens';
 import { revealedSetFromFogState } from './map/fogSelection';
 import { exploredCellsFromCoverage, diffNew } from './map/exploration';
@@ -3563,7 +3563,8 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
     const held = draggedToken?.id === token.id;
     const sent = arrowSentRef.current.get(token.id) ?? [];
     const from = sent[sent.length - 1] ?? token.position;
-    const square = squareFromArrow(from, token.size, key, squares, currentMap);
+    // A rider and its mount stop together at the edge, as the server will put them.
+    const square = keepCoupledOnMap(tokens, token, squareFromArrow(from, token.size, key, squares, currentMap), currentMap);
     if (!held && square.x === from.x && square.y === from.y) return;
     if (!putDown(token, square, { start: !held })) return;
     arrowSentRef.current.set(token.id, [...sent, square]);

@@ -41,6 +41,7 @@ import type { Drawing } from '@/types/drawings';
 import { drawingOrder } from '@/components/campaign/map/drawingGeometry';
 import { isSessionTab, type SessionTab } from '@/components/campaign/sessionTabs';
 import { optionalStorage } from '@/utils/optionalStorage';
+import { ridersAfterMounts } from '@/components/campaign/map/mounts';
 
 /** Combat is inactive until the GM starts it; matches the server's default. */
 /** The same record without `key`, or the same record when it has none. */
@@ -312,8 +313,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     const existing = get().tokens[token.id];
     if (existing) {
       // Keep locally-known fields (e.g. visibility toggled this session);
-      // the appear event is authoritative only for position.
+      // the appear event is authoritative only for position, and for the
+      // mount, which is named only while this screen is sent it too.
       get().applyTokenMove(token.id, token.position);
+      if ((existing.mountedOn ?? null) !== (token.mountedOn ?? null)) get().patchToken(token.id, { mountedOn: token.mountedOn ?? null });
     } else {
       get().addToken(token);
     }
@@ -411,7 +414,8 @@ export const useGameStore = create<GameState>((set, get) => ({
 // Selector hooks
 // ============================================
 
-const selectTokenList = (s: GameState): Token[] => s.tokenOrder.map((id) => s.tokens[id]);
+// Riders after their mounts, whatever order they reached this screen in.
+const selectTokenList = (s: GameState): Token[] => ridersAfterMounts(s.tokenOrder.map((id) => s.tokens[id]));
 
 /** Shallow array equality: same length and same element references. */
 function tokenArrayEqual(a: Token[], b: Token[]): boolean {
