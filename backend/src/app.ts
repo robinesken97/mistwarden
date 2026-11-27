@@ -28,6 +28,7 @@ import campaignRoutes from './routes/campaigns';
 import campaignMacroRoutes from './routes/campaignMacros';
 import campaignDocumentRoutes from './routes/campaignDocuments';
 import campaignGalleryRoutes from './routes/campaignGallery';
+import campaignAiRoutes from './routes/campaignAi';
 import userRoutes from './routes/users';
 import characterRoutes from './routes/characters';
 import characterTemplateRoutes from './routes/characterTemplates';
@@ -237,6 +238,7 @@ export function createApp(options: AppOptions): express.Express {
   app.use('/api/campaigns', campaignMacroRoutes);
   app.use('/api/campaigns', campaignDocumentRoutes);
   app.use('/api/campaigns', campaignGalleryRoutes);
+  app.use('/api/campaigns', campaignAiRoutes);
 
   // Characters
   app.use('/api/characters', characterRoutes);

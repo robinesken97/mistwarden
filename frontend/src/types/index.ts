@@ -471,6 +471,8 @@ export interface ServerConfig {
    * offering something that would silently do nothing.
    */
   smtp?: { configured: boolean };
+  /** Mistwarden: whether a GM's writing help is set up on this server. */
+  ai?: { enabled: boolean };
 }
 
 // ============================================

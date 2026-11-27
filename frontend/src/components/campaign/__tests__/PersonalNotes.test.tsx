@@ -20,9 +20,15 @@ import { LayoutProvider } from '@/contexts/LayoutContext';
 import type { PersonalNote, PersonalNoteSummary } from '@/types';
 
 const campaign = { id: 'camp-1' };
+// Mistwarden: the GM's writing help shows for a GM on a server with AI set up.
+const seat = { role: 'PLAYER' as 'GM' | 'PLAYER', ai: false };
 
 vi.mock('@/contexts/CampaignContext', () => ({
-  useCampaign: () => ({ campaign }),
+  useCampaign: () => ({ campaign, userRole: seat.role }),
+}));
+
+vi.mock('@/hooks/queries', () => ({
+  useServerConfigQuery: () => ({ data: { ai: { enabled: seat.ai } } }),
 }));
 
 vi.mock('@/services/api', () => {
@@ -32,6 +38,7 @@ vi.mock('@/services/api', () => {
     createNote: vi.fn(),
     updateNote: vi.fn(),
     deleteNote: vi.fn(),
+    writeWithAi: vi.fn(),
   };
   return { api: client, default: client };
 });
@@ -281,5 +288,42 @@ describe('in the compact layout', () => {
     render(<PersonalNotes />);
     const desktopButton = await screen.findByRole('button', { name: 'New note' });
     expect(desktopButton.className.split(/\s+/)).not.toContain('touch-target');
+  });
+});
+
+// Mistwarden, 2026-11-27: a GM's writing help.
+describe('Write with AI', () => {
+  afterEach(() => { seat.role = 'PLAYER'; seat.ai = false; });
+
+  it('is offered to the GM only, and only when the server has AI set up', async () => {
+    listNotes.mockResolvedValue({ notes: [] });
+    const { unmount } = render(<LayoutProvider compact={false}><PersonalNotes /></LayoutProvider>);
+    await waitFor(() => expect(listNotes).toHaveBeenCalled());
+    expect(screen.queryByRole('button', { name: 'Write with AI' })).toBeNull();
+    unmount();
+
+    seat.ai = true;
+    const player = render(<LayoutProvider compact={false}><PersonalNotes /></LayoutProvider>);
+    expect(screen.queryByRole('button', { name: 'Write with AI' })).toBeNull();
+    player.unmount();
+
+    seat.role = 'GM';
+    render(<LayoutProvider compact={false}><PersonalNotes /></LayoutProvider>);
+    expect(await screen.findByRole('button', { name: 'Write with AI' })).toBeInTheDocument();
+  });
+
+  it("keeps the AI's text as a new private note", async () => {
+    seat.role = 'GM';
+    seat.ai = true;
+    listNotes.mockResolvedValue({ notes: [] });
+    const createNote = api.createNote as ReturnType<typeof vi.fn>;
+    createNote.mockResolvedValue({ note: { id: 'n-ai', title: 'NPC: A tired nobleman', content: 'Ismark looks tired.' } });
+    (api.writeWithAi as ReturnType<typeof vi.fn>).mockResolvedValue({ text: 'Ismark looks tired.' });
+    render(<LayoutProvider compact={false}><PersonalNotes /></LayoutProvider>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Write with AI' }));
+    fireEvent.change(screen.getByRole('textbox', { name: 'What the text is about' }), { target: { value: 'A tired nobleman' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Write' }));
+    await waitFor(() => expect(api.writeWithAi).toHaveBeenCalledWith('camp-1', 'npc', 'A tired nobleman'));
+    await waitFor(() => expect(createNote).toHaveBeenCalledWith('camp-1', 'NPC: A tired nobleman', 'Ismark looks tired.'));
   });
 });

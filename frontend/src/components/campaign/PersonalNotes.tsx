@@ -19,12 +19,14 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Markdown from '@/components/common/Markdown';
-import { NotebookPen, Plus, Trash2, Eye, Pencil, Loader2 } from 'lucide-react';
+import { NotebookPen, Plus, Trash2, Eye, Pencil, Loader2, Sparkles } from 'lucide-react';
 import { useCampaign } from '@/contexts/CampaignContext';
 import { useCompactLayout } from '@/contexts/LayoutContext';
 import api from '@/services/api';
 import { apiErrorMessage } from '@/utils/errors';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
+import AiWriteDialog from './AiWriteDialog';
+import { useServerConfigQuery } from '@/hooks/queries';
 import type { PersonalNoteSummary } from '@/types';
 import '@/styles/note-markdown.css';
 
@@ -54,8 +56,12 @@ function isUnsaved(draft: NoteSnapshot | null, saved: NoteSnapshot | null): bool
 export default function PersonalNotes() {
   // In the compact layout's Notes sheet the icon buttons take a finger.
   const fingerSized = useCompactLayout() ? ' touch-target inline-flex items-center justify-center' : '';
-  const { campaign } = useCampaign();
+  const { campaign, userRole } = useCampaign();
   const campaignId = campaign?.id;
+  // Mistwarden: a GM's writing help, when the server has an AI set up.
+  const { data: serverConfig } = useServerConfigQuery();
+  const aiAvailable = userRole === 'GM' && serverConfig?.ai?.enabled === true;
+  const [aiOpen, setAiOpen] = useState(false);
 
   const [notes, setNotes] = useState<PersonalNoteSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -219,6 +225,20 @@ export default function PersonalNotes() {
     return () => window.removeEventListener('beforeunload', warnIfUnsaved);
   }, []);
 
+  /** Keep what the AI wrote as a new note and open it. */
+  const keepWritten = async (noteTitle: string, text: string) => {
+    if (!campaignId) return;
+    flush();
+    const { note } = await api.createNote(campaignId, noteTitle.slice(0, 120), text);
+    await loadList();
+    setSelectedId(note.id);
+    setTitle(note.title);
+    setContent(text);
+    draftRef.current = { noteId: note.id, title: note.title, content: text };
+    setSavedSnapshot({ noteId: note.id, title: note.title, content: text });
+    setEditing(false);
+  };
+
   const handleCreate = async () => {
     if (!campaignId) return;
     // Same reason as openNote: this replaces the draft.
@@ -292,6 +312,10 @@ export default function PersonalNotes() {
         onCancel={() => setConfirmDelete(false)}
       />
 
+      {aiAvailable && campaignId && (
+        <AiWriteDialog open={aiOpen} campaignId={campaignId} onClose={() => setAiOpen(false)} onWritten={keepWritten} />
+      )}
+
       <div className="h-full flex flex-col gap-2">
         {/* Picker */}
         <div className="flex items-center gap-2">
@@ -319,6 +343,16 @@ export default function PersonalNotes() {
           >
             <Plus className="w-4 h-4" />
           </button>
+          {aiAvailable && (
+            <button
+              onClick={() => setAiOpen(true)}
+              title="Write with AI"
+              aria-label="Write with AI"
+              className={`p-1.5 rounded-cozy border border-warm-amber/40 bg-warm-amber/10 text-accent-ink hover:bg-warm-amber/15 shrink-0${fingerSized}`}
+            >
+              <Sparkles className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {error && <p className="text-xs text-danger-ink">{error}</p>}

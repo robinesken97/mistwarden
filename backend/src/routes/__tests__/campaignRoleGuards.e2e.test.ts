@@ -43,6 +43,7 @@ const GM_ONLY = [
   'POST /api/campaigns/:campaignId/gallery',
   'PATCH /api/campaigns/:campaignId/gallery/:pictureId',
   'DELETE /api/campaigns/:campaignId/gallery/:pictureId',
+  'POST /api/campaigns/:campaignId/ai/write',
   'GET /api/campaigns/:campaignId/creatures',
   'GET /api/campaigns/:campaignId/creatures/:creatureId',
   'POST /api/campaigns/:campaignId/creatures',

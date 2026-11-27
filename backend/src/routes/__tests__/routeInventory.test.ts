@@ -95,6 +95,7 @@ const TESTED: Record<string, string> = {
   'POST /api/campaigns/:campaignId/gallery': 'routes/__tests__/campaignGallery.e2e.test.ts',
   'PATCH /api/campaigns/:campaignId/gallery/:pictureId': 'routes/__tests__/campaignGallery.e2e.test.ts',
   'DELETE /api/campaigns/:campaignId/gallery/:pictureId': 'routes/__tests__/campaignGallery.e2e.test.ts',
+  'POST /api/campaigns/:campaignId/ai/write': 'routes/__tests__/campaignAi.e2e.test.ts',
   'GET /api/campaigns/:campaignId/creatures/seed/status': 'routes/__tests__/creatureCampaignScope.e2e.test.ts',
   'GET /api/campaigns/:campaignId/creatures': 'routes/__tests__/creatures.e2e.test.ts',
   'GET /api/campaigns/:campaignId/creatures/:creatureId': 'routes/__tests__/creatures.e2e.test.ts',

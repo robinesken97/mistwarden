@@ -110,6 +110,11 @@ Copy `backend/.env.example` to `backend/.env` and fill in the values.
 | `SMTP_SECURE` | No | `false` | Use TLS (`true`) or STARTTLS (`false`) |
 | `APP_URL` | No | `http://localhost:3000` | Public URL used in email links |
 | `FRONTEND_URL` | No | — | An older name for `APP_URL`, read only when `APP_URL` is not set |
+| `AI_PROVIDER` | No | — | Mistwarden: `anthropic` or `openai` (an OpenAI-compatible server) for a GM's writing help; off when not set |
+| `AI_API_KEY` | For `anthropic` | — | The provider's key; stays on the server |
+| `AI_MODEL` | For `openai` | `claude-opus-5-5` | The model to ask |
+| `AI_BASE_URL` | For `openai` | — | The OpenAI-compatible server's address ending in `/v1`; for `anthropic`, an optional proxy |
+| `AI_RATE_LIMIT` | No | `10` | Writing-help requests a minute per GM |
 | `INSTANCE_NAME` | No | — | The name emails use while the name in Admin > Settings is empty or still CozyVTT |
 | `SETUP_TOKEN` | No | — | The token the setup wizard asks for; unset, the backend makes one and prints it in its log until setup has run |
 | `UPLOAD_DIR` | No | `uploads` | Where uploaded files are stored, relative to the backend folder |

@@ -807,6 +807,12 @@ class ApiClient {
     return response.data;
   }
 
+  // Mistwarden, 2026-11-27: a GM's writing help.
+  async writeWithAi(campaignId: string, kind: 'npc' | 'read-aloud' | 'note', prompt: string): Promise<{ text: string }> {
+    const response = await this.client.post(`/api/campaigns/${campaignId}/ai/write`, { kind, prompt }, { timeout: 70_000 });
+    return response.data;
+  }
+
   /** One note, with its Markdown source. */
   async getNote(campaignId: string, noteId: string): Promise<{ note: PersonalNote }> {
     const response = await this.client.get(`/api/campaigns/${campaignId}/notes/${noteId}`);
