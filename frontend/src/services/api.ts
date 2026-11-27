@@ -30,6 +30,7 @@ import type {
   UpdateCharacterRequest,
   Asset,
   AssetListResponse,
+  AssetZipImportJob,
   CampaignMap,
   CreateMapRequest,
   UpdateMapRequest,
@@ -1013,6 +1014,30 @@ class ApiClient {
       // hour, so those are the limits.
       timeout: 0,
     });
+    return response.data;
+  }
+
+  /**
+   * Start a ZIP import of pictures into the asset library. Answers once the
+   * archive has arrived; `onProgress` is told the share sent, 0 to 100. No
+   * limit of the page's own, as for an upload: the archive may be 500 MB.
+   */
+  async importAssetZip(formData: FormData, onProgress?: (percent: number) => void): Promise<{ job: AssetZipImportJob }> {
+    const response = await this.client.post('/api/assets/import-zip', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: onProgress
+        ? (event) => {
+            if (event.total) onProgress(Math.round((event.loaded / event.total) * 100));
+          }
+        : undefined,
+      timeout: 0,
+    });
+    return response.data;
+  }
+
+  /** A ZIP import's progress, to the user who started it. */
+  async getAssetZipImport(jobId: string): Promise<{ job: AssetZipImportJob }> {
+    const response = await this.client.get<{ job: AssetZipImportJob }>(`/api/assets/import-zip/${jobId}`);
     return response.data;
   }
 

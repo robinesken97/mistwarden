@@ -61,6 +61,22 @@ import {
 } from '../validators/assets';
 import { escapeLikePattern } from '../utils/likePattern';
 import { writeAdminLog } from '../services/systemLog';
+import multer from 'multer';
+import { randomUUID } from 'crypto';
+import { MULTIPART_FIELD_LIMITS, MULTIPART_NAME_CHARSET } from '../utils/multipartLimits';
+import { getTempDirectory } from '../utils/fileUtils';
+import { megabytes } from '../utils/campaignArchiveSize';
+import { openArchiveFile, ArchiveRefusedError } from '../utils/archive';
+import {
+  ASSET_ZIP_LIMITS,
+  ZIP_ASSET_TYPES,
+  type ZipAssetType,
+  planZipImport,
+  startZipImport,
+  hasRunningZipImport,
+  zipImportJobFor,
+  describeZipImportJob,
+} from '../services/assetZipImport';
 
 const router = Router();
 
@@ -629,6 +645,169 @@ router.post(
     }
   }
 );
+
+// ── ZIP import ──────────────────────────────────────────────────────────────
+// A ZIP of pictures becomes one asset each (services/assetZipImport.ts). The
+// archive is written to disk, never held in memory, and removed once its job
+// ends or the request is refused.
+const ZIP_IMPORT_DIR = path.join(getTempDirectory(), 'asset-zip-imports');
+/** An archive older than this was left by a backend that stopped mid-import. */
+const STALE_ZIP_MS = 24 * 60 * 60 * 1000;
+
+/** Remove archives a stopped backend left behind. Best effort. */
+async function removeStaleZips(): Promise<void> {
+  const now = Date.now();
+  for (const name of await fs.promises.readdir(ZIP_IMPORT_DIR).catch(() => [] as string[])) {
+    const file = path.join(ZIP_IMPORT_DIR, name);
+    const stats = await fs.promises.stat(file).catch(() => null);
+    if (stats && now - stats.mtimeMs > STALE_ZIP_MS) await fs.promises.rm(file, { force: true }).catch(() => undefined);
+  }
+}
+
+/**
+ * Per-user limit on ZIP imports: each can add thousands of assets, so they
+ * are counted apart from single uploads, per hour.
+ */
+export const assetZipImportLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: positiveIntegerFromEnv('ASSET_ZIP_IMPORT_RATE_LIMIT', 10),
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    const session = (req as AuthenticatedRequest).session;
+    return session?.userId ?? (req.ip ? ipKeyGenerator(req.ip) : 'anonymous');
+  },
+  message: {
+    error: 'Too Many Requests',
+    message: 'ZIP import limit reached. Please try again in an hour.',
+  },
+});
+
+const zipUpload = multer({
+  ...MULTIPART_NAME_CHARSET,
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => {
+      fs.promises
+        .mkdir(ZIP_IMPORT_DIR, { recursive: true })
+        .then(() => {
+          void removeStaleZips();
+          cb(null, ZIP_IMPORT_DIR);
+        })
+        .catch((err: Error) => cb(err, ZIP_IMPORT_DIR));
+    },
+    // Never the name the client sent.
+    filename: (_req, _file, cb) => cb(null, `${randomUUID()}.zip`),
+  }),
+  limits: { fileSize: ASSET_ZIP_LIMITS.maxArchiveBytes, files: 1, ...MULTIPART_FIELD_LIMITS },
+});
+
+function takeZipUpload(req: AuthenticatedRequest, res: Response, next: NextFunction): void {
+  zipUpload.single('file')(req, res, (err: unknown) => {
+    if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+      res.status(413).json({
+        error: 'File Too Large',
+        message: `The archive is larger than ${megabytes(ASSET_ZIP_LIMITS.maxArchiveBytes)}, the most a ZIP import may be.`,
+      });
+      return;
+    }
+    if (err) {
+      res.status(400).json({ error: 'Upload Error', message: err instanceof Error ? err.message : 'File upload failed' });
+      return;
+    }
+    next();
+  });
+}
+
+/**
+ * POST /api/assets/import-zip
+ * Import a ZIP of pictures, one asset each, named after the file and tagged
+ * with its folders. Answers 202 with the job, whose progress
+ * GET /api/assets/import-zip/:jobId reports.
+ * Body (multipart/form-data): file; type (TOKEN or MAP); scope (USER,
+ * CAMPAIGN or GLOBAL; USER if left out); campaignId for CAMPAIGN, which
+ * only that campaign's GM may import into; tags, comma-separated, for every
+ * picture; dropTopFolder ('false' keeps a folder every picture shares as a
+ * tag); allowDuplicates ('true' imports a picture whose name and tags the
+ * library already has).
+ */
+router.post(
+  '/import-zip',
+  authenticated,
+  assetZipImportLimiter,
+  takeZipUpload,
+  refuseNulCharacters,
+  async (req: AuthenticatedRequest, res: Response) => {
+    const archive = req.file?.path;
+    let started = false;
+    const refuse = (status: number, error: string, message: string) => res.status(status).json({ error, message });
+    try {
+      if (!archive) return refuse(400, 'Validation Error', 'No file uploaded.');
+      const userId = req.session.userId!;
+      const { type, campaignId } = req.body;
+      const scope = (req.body.scope || 'USER') as AssetScope;
+      if (!(ZIP_ASSET_TYPES as readonly string[]).includes(type)) {
+        return refuse(400, 'Validation Error', 'Invalid asset type. Must be TOKEN or MAP');
+      }
+      if (!['GLOBAL', 'USER', 'CAMPAIGN'].includes(scope)) {
+        return refuse(400, 'Validation Error', 'Invalid scope. Must be GLOBAL, USER, or CAMPAIGN');
+      }
+      const decision = await canPlaceAssetAtScope(userId, type as AssetType, scope, campaignId);
+      if (!decision.allowed) {
+        return refuse(decision.status, decision.status === 400 ? 'Validation Error' : 'Forbidden', decision.message);
+      }
+      // A player may upload their own token art to a campaign, one picture at
+      // a time; filling its library by the hundred is the GM's.
+      if (scope === 'CAMPAIGN') {
+        const membership = await prisma.campaignMembership.findUnique({
+          where: { userId_campaignId: { userId, campaignId: decision.campaignId! } },
+          select: { role: true },
+        });
+        if (membership?.role !== 'GM') return refuse(403, 'Forbidden', "Only the GM can import into a campaign's library");
+      }
+      const metadata = parseUploadMetadata({ tags: req.body.tags });
+      if (!metadata.ok) return refuse(400, 'Validation Error', metadata.message);
+      let directory;
+      try {
+        directory = await openArchiveFile(archive, ASSET_ZIP_LIMITS.maxEntries);
+      } catch (error) {
+        if (error instanceof ArchiveRefusedError) return refuse(400, 'Validation Error', error.message);
+        throw error;
+      }
+      const options = {
+        userId,
+        type: type as ZipAssetType,
+        scope,
+        campaignId: decision.campaignId,
+        extraTags: metadata.value.tags,
+        dropTopFolder: req.body.dropTopFolder !== 'false',
+        allowDuplicates: req.body.allowDuplicates === 'true',
+      };
+      // Checked after the last await, so two requests at once cannot both start.
+      if (hasRunningZipImport(userId)) {
+        return refuse(409, 'Conflict', 'An import of yours is still running. Wait for it to finish.');
+      }
+      const job = startZipImport(archive, planZipImport(directory, options), options);
+      started = true;
+      return res.status(202).json({ job: describeZipImportJob(job) });
+    } catch (error) {
+      logger.error('Error starting an asset ZIP import', { err: error });
+      return refuse(500, 'Internal Server Error', 'Failed to import the archive');
+    } finally {
+      if (!started && archive) await fs.promises.rm(archive, { force: true }).catch(() => undefined);
+    }
+  }
+);
+
+/**
+ * GET /api/assets/import-zip/:jobId
+ * A ZIP import's progress and outcome, to the user who started it; 404 to
+ * anyone else, and an hour after it finished.
+ */
+router.get('/import-zip/:jobId', authenticated, (req: AuthenticatedRequest, res: Response) => {
+  const job = zipImportJobFor(String(req.params.jobId), req.session.userId!);
+  if (!job) return res.status(404).json({ error: 'Not Found', message: 'No such import' });
+  return res.json({ job: describeZipImportJob(job) });
+});
 
 /**
  * GET /api/assets/:id

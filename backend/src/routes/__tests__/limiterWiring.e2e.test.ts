@@ -46,7 +46,7 @@ import {
   mfaLoginLimiter,
 } from '../auth';
 import { passwordCheckLimiter, accountLoginLimiter, mfaAccountLimiter } from '../../middleware/authLimiters';
-import { uploadLimiter } from '../assets';
+import { uploadLimiter, assetZipImportLimiter } from '../assets';
 import {
   campaignPreviewLimiter,
   campaignImportLimiter,
@@ -68,6 +68,7 @@ const LIMITERS = new Map<RequestHandler, string>([
   [mfaLoginLimiter, 'mfaLoginLimiter'],
   [mfaAccountLimiter, 'mfaAccountLimiter'],
   [uploadLimiter, 'uploadLimiter'],
+  [assetZipImportLimiter, 'assetZipImportLimiter'],
   [campaignPreviewLimiter, 'campaignPreviewLimiter'],
   [campaignImportLimiter, 'campaignImportLimiter'],
   [campaignExportLimiter, 'campaignExportLimiter'],
@@ -123,6 +124,7 @@ const ROWS: Row[] = [
   // changing one's own email first (emailChangeCap.e2e.test.ts).
   { route: 'PUT /api/users/:id', limiter: 'passwordCheckLimiter', limit: 10, testedIn: 'routes/__tests__/passwordCheckLimiter.e2e.test.ts' },
   { route: 'POST /api/assets/upload', limiter: 'uploadLimiter', limit: 30, send: (c) => c.agent.post('/api/assets/upload') },
+  { route: 'POST /api/assets/import-zip', limiter: 'assetZipImportLimiter', limit: 10, send: (c) => c.agent.post('/api/assets/import-zip') },
   { route: 'POST /api/assets/documents', limiter: 'uploadLimiter', limit: 30, send: (c) => c.agent.post('/api/assets/documents').send({}) },
   { route: 'PUT /api/assets/:id/picture', limiter: 'uploadLimiter', limit: 30, send: (c) => c.agent.put(`/api/assets/${c.campaignId}/picture`) },
   { route: 'POST /api/campaigns/:campaignId/maps/import-uvtt', limiter: 'uploadLimiter', limit: 30, send: (c) => c.agent.post(`/api/campaigns/${c.campaignId}/maps/import-uvtt`) },

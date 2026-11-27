@@ -382,7 +382,7 @@ async function checkArchiveSize(archivePath: string, maxSize: number): Promise<v
  * an MP3 the detector does not know is accepted on its header when its name
  * says it is one.
  */
-async function identifyAsset(
+export async function identifyAsset(
   filePath: string,
   type: ImportableAssetType,
   originalName: string
@@ -403,7 +403,7 @@ async function identifyAsset(
  * bytes call for replaces it. A picture named `rules.exe` downloads as
  * `rules.png`.
  */
-function displayName(originalName: string, type: ImportableAssetType, ext: string): string {
+export function displayName(originalName: string, type: ImportableAssetType, ext: string): string {
   // Cut to what an upload keeps, extension kept: the archive allows longer.
   if (isAllowedExtension(type, path.extname(originalName))) return shortenFileName(originalName, MAX_ORIGINAL_NAME_LENGTH);
   const base = originalName.replace(/\.[^.]*$/, '') || 'asset';

@@ -1045,6 +1045,25 @@
       ]
     },
     {
+      "method": "POST",
+      "path": "/api/assets/import-zip",
+      "handlers": [
+        "requireAuth",
+        "<anonymous>",
+        "takeZipUpload",
+        "refuseNulCharacters",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/assets/import-zip/:jobId",
+      "handlers": [
+        "requireAuth",
+        "<anonymous>"
+      ]
+    },
+    {
       "method": "GET",
       "path": "/api/assets/:id",
       "handlers": [

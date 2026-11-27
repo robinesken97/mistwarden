@@ -563,6 +563,17 @@ Click **Upload Asset** to add a new asset. You'll choose:
 
 *GIF pending — Uploading a new map asset.*
 
+### Importing a ZIP of pictures
+
+Click **Import ZIP** beside **Upload Asset** to add a whole collection at once, such as a folder of token pictures downloaded as a ZIP. Every picture becomes an asset of its own, named after its file (underscores read as spaces) and tagged with the folders it sits in: `Beasts/Horses/brown_horse.png` becomes "brown horse", tagged **Beasts** and **Horses**, so searching for *Horses* finds it here and in the token picker. You choose:
+- **Tokens** or **Maps**
+- Where they go: **Personal**, **Campaign** (a campaign you run as its GM) or **Global** (Admin/Global Asset Manager only)
+- **Extra tags** given to every picture
+- **Leave out the shared top folder** (on at first): when every picture sits in one folder, usually the downloaded folder's own name, that folder does not become a tag
+- **Import duplicates too** (off at first): a picture whose name and tags an asset of that kind already has in that library is skipped otherwise
+
+Each picture is held to the same limits as an upload of its kind and stored written afresh, without anything else the file carried. Files that are not pictures, links, and entries whose path would leave the archive are skipped and listed with the reason; hidden files and macOS's `__MACOSX` folder are passed over. A ZIP may be up to 500 MB and 5,000 entries on a standard install (your admin can change this). The bar shows the upload and then the import; once it is done you see how many pictures were imported, which were already there and which were skipped. You can import one ZIP at a time.
+
 ### Finding Assets
 
 Use the **search bar** to find assets across your whole library, by part of a name or by a whole tag. Filter by scope (Global, Personal, Campaign), type (Maps, Tokens, Audio, Avatars), and sort by date, name or size; the sort covers the whole library too. The library shows 24 assets at a time; once there are more, **Previous** and **Next** under the grid move between pages. The tag chips under the toolbar are the tags on the page on screen: click one to show only the assets on that page with that tag.

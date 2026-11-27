@@ -203,6 +203,8 @@ export interface ArchiveEntry {
   flags: number;
   compressionMethod: number;
   offsetToLocalFileHeader: number;
+  /** The Unix mode in its external attributes marks it a symbolic link. */
+  symlink: boolean;
 }
 
 /** An archive's directory: every entry it lists, in order. */
@@ -293,6 +295,7 @@ function entryOf(record: DirectoryRecord, fileSize: number): ArchiveEntry {
     flags: record.generalPurposeBitFlag,
     compressionMethod: record.compressionMethod,
     offsetToLocalFileHeader: record.relativeOffsetOfLocalHeader,
+    symlink: ((record.externalFileAttributes >>> 16) & 0o170000) === 0o120000,
   };
 }
 
