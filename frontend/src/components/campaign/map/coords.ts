@@ -22,7 +22,7 @@
 // ============================================
 
 import type { FogState } from '@/types/walls';
-import { isHexGrid, squareOrigin, tokenCentre, type GridFrame } from '@/utils/tokenCentre';
+import { cellAt, isHexGrid, squareOrigin, tokenCentre, type GridFrame } from '@/utils/tokenCentre';
 
 /**
  * Convert a Y between bottom-left and top-left row indexing.
@@ -59,14 +59,37 @@ export function gridYToCentrePx(
   return (mapHeight - gridY - heightInCells / 2) * gridSize;
 }
 
+/**
+ * The cell along one axis holding the centre of a box from `start` that is
+ * `cells` long, a centre on a grid line counting to the lower cell. For a
+ * whole-square start that is the middle cell, or the lower of the two middle
+ * ones, as the token layer has always taken it; between squares, the cell
+ * the centre lies in.
+ */
+function centreCell(start: number, cells: number): number {
+  return Math.ceil(start + cells / 2) - 1;
+}
+
 /** Fog row containing the centre of a token's box. */
 export function gridYToFogRow(gridY: number, heightInCells: number, mapHeight: number): number {
-  return flipGridY(Math.floor(gridY + (heightInCells - 1) / 2), mapHeight);
+  return flipGridY(centreCell(gridY, heightInCells), mapHeight);
 }
 
 /** Fog column containing the centre of a token's box. X needs no flip. */
 export function gridXToFogCol(gridX: number, widthInCells: number): number {
-  return Math.floor(gridX + (widthInCells - 1) / 2);
+  return centreCell(gridX, widthInCells);
+}
+
+/**
+ * A map-pixel point in grid squares, bottom-left origin, not snapped: x and y
+ * between n and n + 1 lie in square n. A token's box is tested against it,
+ * so a token between squares is taken anywhere on it. On a hex map, where a
+ * token stands on one hex, the hex under the point.
+ */
+export function mapPxToGridPoint(px: { x: number; y: number }, frame: GridFrame): { x: number; y: number } {
+  if (isHexGrid(frame)) return cellAt(px, frame);
+  const o = squareOrigin(frame);
+  return { x: (px.x - o.x) / frame.gridSize, y: frame.height - (px.y - o.y) / frame.gridSize };
 }
 
 /** Row-major index of a fog cell. */

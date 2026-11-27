@@ -73,6 +73,7 @@ export default function CreateMapModal({
   const [feetPreset, setFeetPreset] = useState<'5' | '10' | 'custom'>('5');
   const [feetCustom, setFeetCustom] = useState(5);
   const [diagonalRule, setDiagonalRule] = useState<'flat' | 'alternating'>('flat');
+  const [snapTokens, setSnapTokens] = useState(true);
 
   // Preview zoom (1 = fit-to-preview, higher zooms in)
   const [previewZoom, setPreviewZoom] = useState(1);
@@ -82,6 +83,8 @@ export default function CreateMapModal({
   const [isDetecting, setIsDetecting] = useState(false);
 
   const feetPerSquare = feetPreset === 'custom' ? feetCustom : parseInt(feetPreset);
+  // A drawn map has squares.
+  const squareGrid = drawing || gridType === 'square';
 
   // Submit state
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -105,6 +108,7 @@ export default function CreateMapModal({
       setFeetPreset('5');
       setFeetCustom(5);
       setDiagonalRule('flat');
+      setSnapTokens(true);
       setPreviewZoom(1);
       setDetectedGrid(null);
       setIsDetecting(false);
@@ -189,6 +193,7 @@ export default function CreateMapModal({
         gridSize: drawnSize.pixelsPerSquare,
         feetPerSquare,
         diagonalRule,
+        snapTokens,
         drawnBackground: background,
       });
       onCreated(map, uploaded);
@@ -228,6 +233,8 @@ export default function CreateMapModal({
         gridOffsetY,
         feetPerSquare,
         diagonalRule,
+        // A hex map always snaps; the server keeps it so whatever is sent.
+        snapTokens: gridType === 'square' ? snapTokens : true,
         ...(spiritAssetId ? { spiritLayerUrl: spiritAssetId } : {}),
       };
       const map = await mapService.createMap(campaignId, data);
@@ -548,6 +555,30 @@ export default function CreateMapModal({
                       </div>
                     </div>
                     )}
+
+                    {/* Tokens snap to grid: a hex map always snaps */}
+                    <div>
+                      <label className={`flex items-start gap-3 group ${squareGrid ? 'cursor-pointer' : 'opacity-50'}`}>
+                        <input
+                          type="checkbox"
+                          checked={!squareGrid || snapTokens}
+                          disabled={!squareGrid}
+                          onChange={(e) => setSnapTokens(e.target.checked)}
+                          className="mt-0.5 w-4 h-4 accent-moss-green"
+                          aria-describedby="snap-tokens-note-create"
+                        />
+                        <div>
+                          <span className="text-sm text-stone-gray group-hover:text-brand-ink transition-colors">
+                            Tokens snap to grid
+                          </span>
+                          <p id="snap-tokens-note-create" className="text-xs text-stone-gray/50">
+                            {!squareGrid
+                              ? 'A hex map always snaps: every token stands on one hex.'
+                              : 'Off, anyone can stop a token between squares. On, tokens stand on whole squares; the GM can still place one freely by holding Alt.'}
+                          </p>
+                        </div>
+                      </label>
+                    </div>
                   </div>
                 </div>
 

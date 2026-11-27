@@ -42,6 +42,34 @@ describe('where a held token is drawn', () => {
 
 // The readout in the map's lower left while a token is held: from the square
 // it was picked up from to the square it would be put down on.
+describe('a held token placed freely', () => {
+  const map = { width: 10, height: 8 };
+  const big = { position: { x: 3, y: 4 }, size: { width: 2, height: 2 } };
+
+  it('keeps the point it was taken by under the pointer, to hundredths', () => {
+    const free = { point: { x: 6.123, y: 2.5 }, offset: { x: 1.5, y: 0.25 } };
+    expect(carriedSquare({ square: { x: 6, y: 2 }, offset: { x: 1, y: 0 }, free }, big.size, map)).toEqual({ x: 4.62, y: 2.25 });
+  });
+
+  it('stops at the map\'s edges', () => {
+    const free = { point: { x: 9.9, y: 0.1 }, offset: { x: 0.2, y: 0.5 } };
+    expect(carriedSquare({ square: { x: 9, y: 0 }, offset: { x: 0, y: 0 }, free }, big.size, map)).toEqual({ x: 8, y: 0 });
+  });
+
+  it('snaps on a hex map whatever it is asked', () => {
+    const hex = { ...map, gridSize: 50, gridType: 'hexPointy' };
+    const at = carriedSquare({ square: { x: 4, y: 3 }, offset: { x: 0, y: 0 }, free: { point: { x: 4.4, y: 3.3 }, offset: { x: 0, y: 0 } } }, big.size, hex);
+    expect(Number.isInteger(at.x) && Number.isInteger(at.y)).toBe(true);
+  });
+
+  it('counts its distance in whole squares', () => {
+    const held = { position: { x: 1, y: 1 }, size: { width: 1, height: 1 } };
+    const carrier = { square: { x: 3, y: 1 }, offset: { x: 0, y: 0 }, free: { point: { x: 3.7, y: 1.2 }, offset: { x: 0, y: 0 } } };
+    const measure = carriedDistance(held, carrier, { ...map, feetPerSquare: 5, diagonalRule: 'flat' });
+    expect(measure).toMatchObject({ squares: 3, feet: 15 });
+  });
+});
+
 describe('how far a held token has come', () => {
   const map = { width: 10, height: 8, feetPerSquare: 5, diagonalRule: 'flat' as const };
   const one = { position: { x: 3, y: 4 }, size: { width: 1, height: 1 } };

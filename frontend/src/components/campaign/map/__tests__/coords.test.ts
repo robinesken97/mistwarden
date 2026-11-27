@@ -17,8 +17,11 @@ import {
   gridXToFogCol,
   fogCellIndex,
   mapPxToFogCell,
+  fogOrigin,
+  tokenFogCell,
 } from '../coords';
 import type { FogState } from '@/types/walls';
+import { tokenCentre, type GridFrame } from '@/utils/tokenCentre';
 
 /** 20 cols × 15 rows at 50px, a common map's shape. */
 const fog: FogState = {
@@ -91,6 +94,49 @@ describe('fog cell lookup', () => {
     expect(gridXToFogCol(19, 1)).toBe(19);
     // A 2-wide token at col 4 covers 4 and 5; its centre resolves to 4.
     expect(gridXToFogCol(4, 2)).toBe(4);
+  });
+
+  it('gives every whole-square position of sizes 1 to 4 the cell the token layer always took', () => {
+    // The formula before positions could lie between squares.
+    const before = (x: number, size: number) => Math.floor(x + (size - 1) / 2);
+    for (let size = 1; size <= 4; size++) {
+      for (let x = 0; x + size <= 20; x++) {
+        expect(gridXToFogCol(x, size)).toBe(before(x, size));
+        expect(gridYToFogRow(x, size, MAP_HEIGHT)).toBe(MAP_HEIGHT - 1 - before(x, size));
+      }
+    }
+  });
+
+  it('takes a token between squares by the cell its centre lies in', () => {
+    // A 1-wide token at 3.6 has its centre at 4.1: in column 4, not 3.
+    expect(gridXToFogCol(3.6, 1)).toBe(4);
+    expect(gridXToFogCol(3.4, 1)).toBe(3);
+    // A 2-wide token at 3.3 has its centre at 4.3; at 3.0 it sits on the line and counts to 3.
+    expect(gridXToFogCol(3.3, 2)).toBe(4);
+    for (const x of [0.01, 2.49, 3.33, 7.99]) {
+      for (let size = 1; size <= 4; size++) {
+        expect(gridXToFogCol(x, size)).toBe(Math.floor(x + size / 2));
+      }
+    }
+    // And the row agrees with the fog cell under the centre's pixel.
+    const centrePx = gridYToCentrePx(2.7, 1, MAP_HEIGHT, GRID);
+    expect(mapPxToFogCell(25, centrePx, fog)?.row).toBe(gridYToFogRow(2.7, 1, MAP_HEIGHT));
+  });
+
+  it('takes a token between squares by the fog cell under its centre (utils/tokenCentre.ts, shared with the server), with the grid moved too', () => {
+    for (const [ox, oy] of [[0, 0], [12.5, -20]]) {
+      const frame: GridFrame = { width: 20, height: 15, gridSize: GRID, gridType: 'square', gridOffsetX: ox, gridOffsetY: oy };
+      const cells = { ...fog, ...fogOrigin(frame) };
+      for (let size = 1; size <= 4; size++) {
+        for (const x of [0.13, 3.37, 7.71, 20 - size - 0.29]) {
+          for (const y of [0.21, 5.63, 9.07, 15 - size - 0.42]) {
+            const token = { position: { x, y }, size: { width: size, height: size } };
+            const c = tokenCentre(token, frame);
+            expect(tokenFogCell(token, frame)).toBe(mapPxToFogCell(c.x, c.y, cells)?.index);
+          }
+        }
+      }
+    }
   });
 
   it('fogCellIndex is row-major', () => {

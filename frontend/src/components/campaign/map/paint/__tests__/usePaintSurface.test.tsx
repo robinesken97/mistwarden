@@ -134,7 +134,7 @@ describe('a stroke, a shape or a room while it is dragged', () => {
     shiftKey: false, ctrlKey: false, altKey: false, metaKey: false, preventDefault: () => undefined,
   };
   const at = (x: number, y: number): PointerAt => ({
-    e: pointer, via: 'mouse', screenX: x, screenY: y, mapPx: { x, y }, gridCoords: { x: Math.floor(x / 50), y: 19 - Math.floor(y / 50) },
+    e: pointer, via: 'mouse', screenX: x, screenY: y, mapPx: { x, y }, gridCoords: { x: Math.floor(x / 50), y: 19 - Math.floor(y / 50) }, gridPoint: { x: x / 50, y: 20 - y / 50 },
   });
 
   /** Drag `tool` across the map in `texture`, and draw what is under way as the overlay does. */

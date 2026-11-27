@@ -803,7 +803,7 @@ export function lightRemovalSentTo(
  * Sent to everyone, as stored: what every member needs to draw the map.
  */
 export const MAP_FIELDS_SENT_TO_EVERYONE = [
-  'id', 'campaignId', 'name', 'imageUrl', 'baseLayerUrl', 'width', 'height', 'gridSize', 'gridType', 'gridOffsetX', 'gridOffsetY', 'feetPerSquare', 'diagonalRule',
+  'id', 'campaignId', 'name', 'imageUrl', 'baseLayerUrl', 'width', 'height', 'gridSize', 'gridType', 'gridOffsetX', 'gridOffsetY', 'feetPerSquare', 'diagonalRule', 'snapTokens',
   'drawnBackground', 'lightingEnabled', 'fogEnabled', 'globalIllumination', 'explorationEnabled', 'createdAt', 'updatedAt',
 ] as const satisfies readonly (keyof MapRow)[];
 

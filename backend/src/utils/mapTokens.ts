@@ -81,6 +81,52 @@ export function clampTokenPosition(
   };
 }
 
+/**
+ * A position to hundredths of a square, as the client sends one and the
+ * server stores it, so the two compare equal. A whole square stays whole.
+ */
+export function roundTokenPosition(position: { x: number; y: number }): { x: number; y: number } {
+  // `+ 0` turns -0 into 0, so a rounded position prints and compares as one.
+  return { x: Math.round(position.x * 100) / 100 + 0, y: Math.round(position.y * 100) / 100 + 0 };
+}
+
+/** Whether a map's tokens snap: a hex map's always do, whatever its column says. */
+export function tokensSnap(map: Pick<GridFrame, 'gridType'> & { snapTokens: boolean }): boolean {
+  return map.snapTokens || isHexGrid(map);
+}
+
+/**
+ * Whether `role` may stop a token between squares on `map`: anyone on a
+ * square map whose tokens do not snap, the GM alone on one whose do, nobody
+ * on a hex map. Decided from the map as stored, never from the client.
+ */
+export function mayPlaceFreely(role: string | null | undefined, map: Pick<GridFrame, 'gridType'> & { snapTokens: boolean }): boolean {
+  return !isHexGrid(map) && (!map.snapTokens || role === 'GM');
+}
+
+/** Whether a position names a whole cell. */
+export function isWholeCell(position: { x: number; y: number }): boolean {
+  return Number.isInteger(position.x) && Number.isInteger(position.y);
+}
+
+/**
+ * The tokens as a map whose tokens snap keeps them: each on the whole square
+ * nearest it, its footprint on the map, a rider on its mount's square. What
+ * turning snapping on, or a change to a hex grid, does to a list.
+ */
+export function snapTokenPositions<T extends PlacedToken>(tokens: readonly T[], map: GridFrame): T[] {
+  const placed = new Map(tokens.map((t) => [t.id, clampTokenPosition(
+    { x: Math.round(t.position.x), y: Math.round(t.position.y) },
+    { width: t.size?.width ?? 1, height: t.size?.height ?? 1 },
+    map,
+  )]));
+  return tokens.map((t) => {
+    const own = placed.get(t.id) as { x: number; y: number };
+    const mount = t.mountedOn ? placed.get(t.mountedOn) : undefined;
+    return { ...t, position: { ...(mount ?? own) } };
+  });
+}
+
 /** The fields a grid change reads of a token. */
 interface PlacedToken {
   id: string;
@@ -123,12 +169,14 @@ function nearestHexTo(point: { x: number; y: number }, frame: GridFrame): { x: n
  * on a hex grid the hex on the map whose centre is nearest, whatever the
  * token's size. A
  * rider lands on its mount's new cell, as it was put there (utils/mounts.ts).
+ * With `snap` false (a square map whose tokens do not snap) the footprint
+ * keeps its centre to hundredths of a square instead of the nearest whole one.
  *
  * Nearest is not always the same cell back: a point can lie up to
  * gridSize/√3 from the nearest hex centre, so a square → hex → square round
  * trip may end one row off.
  */
-export function regridTokens<T extends PlacedToken>(tokens: readonly T[], from: GridFrame, to: GridFrame): T[] {
+export function regridTokens<T extends PlacedToken>(tokens: readonly T[], from: GridFrame, to: GridFrame, snap = true): T[] {
   const kx = (to.width * to.gridSize) / (from.width * from.gridSize);
   const ky = (to.height * to.gridSize) / (from.height * from.gridSize);
   const placed = new Map<string, { x: number; y: number }>();
@@ -141,13 +189,15 @@ export function regridTokens<T extends PlacedToken>(tokens: readonly T[], from: 
     }
     // The box's corner, rounded: an even-sized box has its centre on a grid
     // line, where taking the cell under the centre would flip with the floats.
+    // A map whose tokens do not snap keeps it to hundredths instead.
     const o = squareOrigin(to);
     const width = t.size?.width ?? 1;
     const height = t.size?.height ?? 1;
-    const corner = {
-      x: Math.round((point.x - o.x) / to.gridSize - width / 2),
-      y: Math.round(to.height - (point.y - o.y) / to.gridSize - height / 2),
+    const exact = {
+      x: (point.x - o.x) / to.gridSize - width / 2,
+      y: to.height - (point.y - o.y) / to.gridSize - height / 2,
     };
+    const corner = snap ? { x: Math.round(exact.x), y: Math.round(exact.y) } : roundTokenPosition(exact);
     placed.set(t.id, clampTokenPosition(corner, { width, height }, to));
   }
   return tokens.map((t) => {

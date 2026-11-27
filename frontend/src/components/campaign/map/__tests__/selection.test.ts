@@ -257,3 +257,15 @@ describe("what the page does with the server's word on a token it moved by arrow
     expect(settleArrowEcho([], { x: 1, y: 4, movedBy: 'me' }, 'me')).toEqual({ draw: true, sent: [] });
   });
 });
+
+describe('an arrow key and a token between squares', () => {
+  const one = { width: 1, height: 1 };
+  it('steps from the nearest whole square on a map whose tokens snap', () => {
+    expect(squareFromArrow({ x: 2.4, y: 3.6 }, one, 'ArrowRight', 1, { width: 10, height: 10 })).toEqual({ x: 3, y: 4 });
+  });
+
+  it('keeps the fraction on a map whose tokens do not snap', () => {
+    expect(squareFromArrow({ x: 2.4, y: 3.6 }, one, 'ArrowRight', 1, { width: 10, height: 10, snapTokens: false })).toEqual({ x: 3.4, y: 3.6 });
+    expect(squareFromArrow({ x: 0.3, y: 3.6 }, one, 'ArrowLeft', 1, { width: 10, height: 10, snapTokens: false })).toEqual({ x: 0, y: 3.6 });
+  });
+});

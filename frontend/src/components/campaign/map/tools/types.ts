@@ -32,6 +32,12 @@ export interface PointerAt {
   mapPx: { x: number; y: number };
   /** Grid squares, bottom-left origin, as `screenToGrid` gives them. */
   gridCoords: { x: number; y: number };
+  /**
+   * The same point in grid squares, not snapped (on a hex map, its hex):
+   * what a token is hit-tested against, so one between squares is taken
+   * anywhere on it (map/coords.ts mapPxToGridPoint).
+   */
+  gridPoint: { x: number; y: number };
 }
 
 /**

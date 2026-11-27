@@ -29,8 +29,8 @@ import {
 import { MAP_LIMITS, GEOMETRY_MARGIN_SQUARES, wallWithinMap, lightWithinMap } from '../validators/maps';
 import { WallSegmentSchema, LightSourceSchema, MAX_WALL_SEGMENTS, MAX_LIGHT_SOURCES } from '../validators/walls';
 import { NewDrawingSchema, drawingOutsideMap, markupLimitReached, archiveShare, DRAWING_LIMITS, MARKUP_SHARES, type MarkupShare } from '../validators/drawings';
-import { clampTokenPosition } from '../utils/mapTokens';
-import type { GridFrame } from '../utils/tokenCentre';
+import { clampTokenPosition, roundTokenPosition } from '../utils/mapTokens';
+import { isHexGrid, type GridFrame } from '../utils/tokenCentre';
 import { cutText } from '../utils/cutText';
 import { RETIRED_GAME_SYSTEM } from '../legacy/retiredGameSystem';
 
@@ -202,7 +202,9 @@ export function prepareMap(raw: unknown, ctx: MapContext): PreparedMap | null {
     width: map.width, height: map.height, gridSize: map.gridSize,
     gridType: map.gridType ?? 'square', gridOffsetX: map.gridOffsetX ?? 0, gridOffsetY: map.gridOffsetY ?? 0,
   };
-  const tokens = ctx.importTokens ? prepareTokens(map.tokens, grid, name, ctx) : [];
+  // Absent in archives from before snapping could be turned off: snapped, as those maps were.
+  const snapTokens = map.snapTokens !== false || isHexGrid(grid);
+  const tokens = ctx.importTokens ? prepareTokens(map.tokens, grid, snapTokens, name, ctx) : [];
   const wallSegments = prepareWalls(map.wallSegments, map, say);
   const lights = prepareLights(map.lights, map, say);
 
@@ -247,6 +249,7 @@ export function prepareMap(raw: unknown, ctx: MapContext): PreparedMap | null {
       gridOffsetY: grid.gridOffsetY,
       feetPerSquare: map.feetPerSquare,
       diagonalRule: map.diagonalRule ?? 'flat',
+      snapTokens,
       drawnBackground: map.drawnBackground ?? null,
       tokens: tokens as unknown as Prisma.InputJsonValue,
       // Unused: a map's drawings are rows of MapDrawing.
@@ -268,6 +271,7 @@ export function prepareMap(raw: unknown, ctx: MapContext): PreparedMap | null {
 function prepareTokens(
   raw: unknown,
   map: GridFrame,
+  snap: boolean,
   mapName: string,
   ctx: MapContext
 ): PlacedToken[] {
@@ -310,9 +314,9 @@ function prepareTokens(
     if (cutFields.has('statBlock')) tally.statBlocks++;
 
     const token = fitted.value;
-    // Whole squares, as the client places tokens, with the whole footprint
-    // on the map, as the token routes keep it.
-    const square = { x: Math.round(token.position.x), y: Math.round(token.position.y) };
+    // Whole squares where the map's tokens snap, hundredths where they do
+    // not, as the token routes store them, with the whole footprint on the map.
+    const square = snap ? { x: Math.round(token.position.x), y: Math.round(token.position.y) } : roundTokenPosition(token.position);
     const position = clampTokenPosition(square, token.size, map);
     if (position.x !== token.position.x || position.y !== token.position.y) tally.moved++;
 

@@ -10,7 +10,7 @@ const VIEW: MapControlsView = {
 function actions(): MapControlsActions {
   return {
     fit: vi.fn(), toggleGrid: vi.fn(), nextGridColor: vi.fn(), toggleRuler: vi.fn(), nextRulerColor: vi.fn(),
-    toggleAoE: vi.fn(), toggleSpiritTokens: vi.fn(), toggleTools: vi.fn(), togglePaint: vi.fn(),
+    toggleAoE: vi.fn(), toggleSpiritTokens: vi.fn(), toggleTools: vi.fn(), togglePaint: vi.fn(), togglePlaceFreely: vi.fn(),
   };
 }
 
@@ -42,6 +42,17 @@ describe('the Map controls rows', () => {
     expect(run.togglePaint).toHaveBeenCalledTimes(1);
     expect(mapControlsTitle(mapControlItems({ ...VIEW, isGM: true, paint: 'offered' }, actions())))
       .toBe('Map controls: fit, grid, ruler, AoE shape, Mapmaker, tools and spirit tokens');
+  });
+
+  it('offers the GM free placement on a map whose tokens snap, and says what pressing it does', () => {
+    const run = actions();
+    const off = mapControlItems({ ...VIEW, isGM: true, placeFreely: false }, run);
+    expect(row(off, 'place-freely').label).toBe('Place tokens freely');
+    row(off, 'place-freely').run();
+    expect(run.togglePlaceFreely).toHaveBeenCalledTimes(1);
+    expect(row(mapControlItems({ ...VIEW, isGM: true, placeFreely: true }, run), 'place-freely').label).toBe('Snap tokens to the grid');
+    expect(labels(mapControlItems({ ...VIEW, isGM: true, placeFreely: null }, run))).not.toContain('Place tokens freely');
+    expect(labels(mapControlItems({ ...VIEW, placeFreely: false }, run))).not.toContain('Place tokens freely');
   });
 
   it('says what each row does now', () => {

@@ -7,6 +7,7 @@
 import type { Position, Token } from '@/types';
 import { isHexGrid, nearestHexOnMap, shiftCell, type GridFrame } from '@/utils/tokenCentre';
 import { gridFrame, type MapGrid } from './layers/types';
+import { roundTokenPosition } from '@/utils/tokenCopy';
 
 /**
  * The ids that move with `tokenId`, itself included: a mount and all its
@@ -70,7 +71,8 @@ export function keepCoupledOnMap(
   const bottom = Math.max(...group.map((t) => at(t).y + t.size.height));
   const x = Math.max(0, Math.min(left, map.width - (right - left)));
   const y = Math.max(0, Math.min(top, map.height - (bottom - top)));
-  return { x: square.x + x - left, y: square.y + y - top };
+  // To hundredths, as the server rounds the group's positions.
+  return roundTokenPosition({ x: square.x + x - left, y: square.y + y - top });
 }
 
 /**
@@ -116,7 +118,7 @@ export function shiftFollowers(
     const t = tokens.find((f) => f.id === id);
     if (!t) continue;
     const from = heldAt[id] ?? t.position;
-    const at = hex ? nearestHexOnMap(shiftCell(from, hex.from, hex.to, hex.grid), hex.grid) : { x: from.x + dx, y: from.y + dy };
+    const at = hex ? nearestHexOnMap(shiftCell(from, hex.from, hex.to, hex.grid), hex.grid) : roundTokenPosition({ x: from.x + dx, y: from.y + dy });
     if (at.x === t.position.x && at.y === t.position.y) delete next[id];
     else next[id] = at;
   }

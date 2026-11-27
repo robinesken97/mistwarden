@@ -124,6 +124,10 @@ Two frames, as in Mistwarden itself:
   square counted from the top, which is how one reads a picture; `get_map`
   gives each token's `topRow` as well. `gridOffsetX`/`gridOffsetY` move the
   squares, and the fog squares with them, from the map's corner.
+- **Maps whose tokens do not snap** (`snapTokens` false, in `list_maps` and
+  `get_map`, set with `update_map_settings`): a token's x and y may lie
+  between squares, kept to hundredths. Where tokens snap, the token tools
+  refuse a position between squares.
 - **Hex maps** (`gridType` `hexPointy` or `hexFlat`, in `list_maps` and
   `get_map`): a token's cell is a hex, x counted from the first column and y
   from the bottom row of hexes whose centres lie in the frame. `origin:

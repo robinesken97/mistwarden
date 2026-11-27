@@ -2511,6 +2511,7 @@ paths:
                                 gridOffsetY: { type: number }
                                 feetPerSquare: { type: integer }
                                 diagonalRule: { type: string, enum: [flat, alternating] }
+                                snapTokens: { type: boolean }
                                 drawnBackground: { type: string, nullable: true }
                                 baseLayerUrl: { type: string }
                                 spiritLayerUrl: { type: string, nullable: true }
@@ -7719,6 +7720,7 @@ paths:
                         gridOffsetY: { type: number }
                         feetPerSquare: { type: integer }
                         diagonalRule: { type: string, enum: [flat, alternating] }
+                        snapTokens: { type: boolean }
                         drawnBackground: { type: string, nullable: true }
                         lightingEnabled: { type: boolean }
                         fogEnabled: { type: boolean }
@@ -7841,6 +7843,10 @@ paths:
                   enum: [flat, alternating]
                   default: flat
                   description: Falls back to flat when omitted or not one of these two values.
+                snapTokens:
+                  type: boolean
+                  default: true
+                  description: Tokens stand on whole squares. False lets anyone stop a token between squares (kept to hundredths). A hex map always snaps, whatever is sent. Not a boolean answers 400.
                 drawnBackground:
                   type: string
                   example: '#e8dcc4'
@@ -7930,8 +7936,9 @@ paths:
         nothing is replaced with a default. `width` and `height` must be
         whole numbers from 1 to 500, `gridSize` a number from 10 to 500,
         `feetPerSquare` from 1 to 100, `diagonalRule` `flat` or
-        `alternating`, `gridType` `square`, `hexPointy` or `hexFlat`, and
-        `gridOffsetX` and `gridOffsetY` numbers from -500 to 500. A `width`, `height`, `gridSize` or `feetPerSquare`
+        `alternating`, `gridType` `square`, `hexPointy` or `hexFlat`,
+        `gridOffsetX` and `gridOffsetY` numbers from -500 to 500, and
+        `snapTokens` a boolean. A `width`, `height`, `gridSize` or `feetPerSquare`
         equal to the stored value is accepted as it is, so a map stored
         larger than these limits, before they existed, still saves an edit
         that sends its size back unchanged. `name` is trimmed, must not be
@@ -7951,7 +7958,7 @@ paths:
         those two decide which tokens a player is sent, or anything the map is
         drawn from (`name`, `imageUrl`, `baseLayerUrl`, `width`, `height`,
         `gridSize`, `gridType`, `gridOffsetX`, `gridOffsetY`, `feetPerSquare`,
-        `diagonalRule`, `spiritLayerUrl`), and
+        `diagonalRule`, `spiritLayerUrl`, `snapTokens`), and
         the map is the one the campaign is showing, every member is also sent
         the map as they can now see it (`map.changed`); editing another map in
         the library sends no `map.changed`.
@@ -8068,6 +8075,16 @@ paths:
                 diagonalRule:
                   type: string
                   enum: [flat, alternating]
+                snapTokens:
+                  type: boolean
+                  description: >
+                    Tokens stand on whole squares. Turning it on moves every
+                    token, under the map's lock, to its nearest whole square
+                    with its footprint on the map, a rider onto its mount's.
+                    Off leaves positions as they are. A hex map always snaps:
+                    false is stored as true there, and a change to a hex grid
+                    turns it on. A grid change on a map whose tokens do not
+                    snap keeps positions to hundredths.
                 imageUrl:
                   type: string
                 spiritLayerUrl:
@@ -8379,12 +8396,19 @@ paths:
                 position:
                   type: object
                   required: [x, y]
-                  description: Grid square, in whole squares, within the map (400 otherwise). Only x and y are stored.
+                  description: >
+                    Grid square, within the map (400 otherwise), in whole
+                    squares where the map's tokens snap. Between squares is
+                    taken from anyone on a map whose `snapTokens` is false,
+                    from the GM alone on one whose is true, and from nobody on
+                    a hex map; otherwise 400 `Invalid token position: must be
+                    a whole number of squares`. Stored to hundredths. Only x
+                    and y are stored.
                   properties:
                     x:
-                      type: integer
+                      type: number
                     y:
-                      type: integer
+                      type: number
                 size:
                   type: object
                   required: [width, height]
@@ -10804,7 +10828,8 @@ paths:
         with none.`; for any other, that it is not one this server knows. A data file nested more than 32 levels deep leaves out its map,
         or its creatures or templates, and refuses the import when it is the
         manifest, campaign settings or asset manifest. Tokens are moved to
-        whole squares with their
+        whole squares (to hundredths on a map whose `snapTokens` is false;
+        an archive without it imports snapped) with their
         footprint on the map. Walls and lights get new ids. Each item the app
         cannot store is left out on its own: a token is listed in `skipped`,
         and walls, doors and lights are counted in `warnings`, as are those
@@ -14082,6 +14107,10 @@ components:
           type: string
           enum: [flat, alternating]
           default: flat
+        snapTokens:
+          type: boolean
+          default: true
+          description: Tokens stand on whole squares; sent to every member. False on a square map lets token positions lie between squares, to hundredths. Always true on a hex map.
         drawnBackground:
           type: string
           nullable: true
@@ -14390,10 +14419,10 @@ components:
           required:
             - x
             - y
-          description: Grid square, within the map, in whole squares. Only x and y are stored, moved back from the far edge until the token's footprint fits.
+          description: Grid square, within the map. Whole squares where the map's tokens snap; to hundredths where `snapTokens` is false, or where the GM placed it freely. Only x and y are stored, moved back from the far edge until the token's footprint fits.
           properties:
             x:
-              type: integer
+              type: number
             y:
               type: integer
         size:

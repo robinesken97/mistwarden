@@ -46,6 +46,7 @@ interface OpenedValues {
   gridOffsetY: number;
   feetPerSquare: number;
   diagonalRule: 'flat' | 'alternating';
+  snapTokens: boolean;
   lightingEnabled: boolean;
   fogEnabled: boolean;
   globalIllumination: boolean;
@@ -65,6 +66,7 @@ function openedValues(map: CampaignMap): OpenedValues {
     gridOffsetY: map.gridOffsetY ?? 0,
     feetPerSquare: map.feetPerSquare ?? 5,
     diagonalRule: (map.diagonalRule as 'flat' | 'alternating') ?? 'flat',
+    snapTokens: map.snapTokens ?? true,
     lightingEnabled: map.lightingEnabled ?? false,
     fogEnabled: map.fogEnabled ?? true,
     globalIllumination: map.globalIllumination ?? true,
@@ -100,6 +102,7 @@ export default function EditMapModal({
   const [feetPreset, setFeetPreset] = useState<'5' | '10' | 'custom'>('5');
   const [feetCustom, setFeetCustom] = useState(5);
   const [diagonalRule, setDiagonalRule] = useState<'flat' | 'alternating'>('flat');
+  const [snapTokens, setSnapTokens] = useState(true);
   const [lightingEnabled, setLightingEnabled] = useState(false);
   const [fogEnabled, setFogEnabled] = useState(true);
   const [globalIllumination, setGlobalIllumination] = useState(true);
@@ -142,6 +145,7 @@ export default function EditMapModal({
       else if (fps === 10) setFeetPreset('10');
       else { setFeetPreset('custom'); setFeetCustom(fps); }
       setDiagonalRule((map.diagonalRule as 'flat' | 'alternating') ?? 'flat');
+      setSnapTokens(map.snapTokens ?? true);
       setLightingEnabled(map.lightingEnabled ?? false);
       setFogEnabled(map.fogEnabled ?? true);
       setGlobalIllumination(map.globalIllumination ?? true);
@@ -218,6 +222,7 @@ export default function EditMapModal({
         gridOffsetY,
         feetPerSquare,
         diagonalRule,
+        snapTokens,
         lightingEnabled,
         fogEnabled,
         globalIllumination,
@@ -450,6 +455,30 @@ export default function EditMapModal({
                       </div>
                     </div>
                     )}
+
+                    {/* Tokens snap to grid: a hex map always snaps */}
+                    <div>
+                      <label className={`flex items-start gap-3 group ${gridType === 'square' ? 'cursor-pointer' : 'opacity-50'}`}>
+                        <input
+                          type="checkbox"
+                          checked={gridType !== 'square' || snapTokens}
+                          disabled={gridType !== 'square'}
+                          onChange={(e) => setSnapTokens(e.target.checked)}
+                          className="mt-0.5 w-4 h-4 accent-moss-green"
+                          aria-describedby="snap-tokens-note-edit"
+                        />
+                        <div>
+                          <span className="text-sm text-stone-gray group-hover:text-brand-ink transition-colors">
+                            Tokens snap to grid
+                          </span>
+                          <p id="snap-tokens-note-edit" className="text-xs text-stone-gray/50">
+                            {gridType !== 'square'
+                              ? 'A hex map always snaps: every token stands on one hex.'
+                              : 'Off, anyone can stop a token between squares. On, tokens stand on whole squares; the GM can still place one freely by holding Alt.'}
+                          </p>
+                        </div>
+                      </label>
+                    </div>
                   </div>
                 </div>
 

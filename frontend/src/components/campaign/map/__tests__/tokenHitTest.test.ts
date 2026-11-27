@@ -63,6 +63,22 @@ describe('tokenCoversCell', () => {
   });
 });
 
+describe('a token between squares', () => {
+  // At 2.3 its box runs from 2.3 to 3.3: the pointer's point, not the square under it, decides.
+  const loose = makeToken('l', { position: { x: 2.3, y: 4 } });
+
+  it('is taken anywhere on its box, its left edge too', () => {
+    expect(tokenCoversCell(loose, 2.35, 4.5)).toBe(true);
+    expect(pickTokenAt([loose], 2.35, 4.5)?.id).toBe('l');
+    expect(pickMovableTokenAt([loose], 3.29, 4.99, () => true)?.id).toBe('l');
+  });
+
+  it('is not taken just off its box', () => {
+    expect(pickTokenAt([loose], 2.25, 4.5)).toBeNull();
+    expect(pickTokenAt([loose], 3.31, 4.5)).toBeNull();
+  });
+});
+
 describe('effectiveTokenHp', () => {
   it('follows the character sheet for a bound token', () => {
     const token = makeToken('a', { characterId: 'char-1', hp: { current: 1, max: 7, temp: 0 } });

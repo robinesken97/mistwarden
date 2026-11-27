@@ -141,7 +141,8 @@ export const CampaignSettingsSchema = z.object({
 // one the app cannot store costs only itself. Text over its limit is cut to
 // it by the importer and the import says so; that is why name and notes
 // have a limit here and no fallback. The importer gives every token a new
-// id, rounds its position to whole squares and keeps it on the map.
+// id, rounds its position to whole squares (to hundredths on a map whose
+// tokens do not snap) and keeps it on the map.
 export const ImportTokenSchema = z.object({
   // The token routes refuse a blank name; Duplicate and Edit Token send
   // an imported token through them.
@@ -221,6 +222,8 @@ export const ImportMapSchema = z.object({
   gridOffsetY: GridOffsetSchema.optional().catch(undefined),
   feetPerSquare: FeetPerSquareSchema,
   diagonalRule: z.enum(['flat', 'alternating']).optional().catch(undefined),
+  // Absent in archives from before snapping could be turned off: snapped.
+  snapTokens: z.boolean().optional().catch(undefined),
   // Absent in archives from before 1.6.0, and from a map made from a picture.
   drawnBackground: DrawnBackgroundSchema.nullable().optional().catch(null),
   tokens: z.unknown().optional(),

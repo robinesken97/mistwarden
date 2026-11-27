@@ -278,11 +278,11 @@ describe('Map controls', () => {
   it('says in its tooltip what it holds for the viewer', () => {
     const noop = () => undefined;
     const run: MapControlsActions = {
-      fit: noop, toggleGrid: noop, nextGridColor: noop, toggleRuler: noop, nextRulerColor: noop, toggleAoE: noop, toggleSpiritTokens: noop, toggleTools: noop, togglePaint: noop,
+      fit: noop, toggleGrid: noop, nextGridColor: noop, toggleRuler: noop, nextRulerColor: noop, toggleAoE: noop, toggleSpiritTokens: noop, toggleTools: noop, togglePaint: noop, togglePlaceFreely: noop,
     };
     const view: MapControlsView = {
       isGM: true, hasMap: true, showGrid: true, gridColor: 'black', showRuler: false, rulerColor: 'amber', showAoE: false,
-      spiritTokensShown: true, toolsShown: false, paint: null,
+      spiritTokensShown: true, toolsShown: false, paint: null, placeFreely: false,
     };
     const titleFor = (extra: Partial<MapControlsView>) => mapControlsTitle(mapControlItems({ ...view, ...extra }, run));
 
@@ -317,7 +317,7 @@ describe('Map controls', () => {
     render(<MapCanvas />);
     fireEvent.click(mapControlsButton());
     expect(sheetRows()).toEqual([
-      'Fit to Screen', 'Hide grid', 'Grid Color: Black', '---', 'Ruler', 'AoE Shape', '---', 'Show tools', 'Hide spirit tokens',
+      'Fit to Screen', 'Hide grid', 'Grid Color: Black', '---', 'Ruler', 'AoE Shape', '---', 'Show tools', 'Place tokens freely', 'Hide spirit tokens',
     ]);
   });
 

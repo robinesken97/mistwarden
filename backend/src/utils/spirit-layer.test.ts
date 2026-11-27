@@ -525,6 +525,7 @@ describe('filterMapData on a whole map', () => {
     gridOffsetY: 0,
     feetPerSquare: 5,
     diagonalRule: 'alternating',
+    snapTokens: true,
     drawnBackground: null,
     spiritLayerUrl: '/api/assets/maps/crypt-spirit',
     tokens: [fighter, goblin, assassin, ogre, ghost, wisp, wraith],

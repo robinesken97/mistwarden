@@ -33,12 +33,14 @@ describe('validateTokenShapes', () => {
       [[1, 2]],
       ['1,2'],
       [null],
-      // Whole squares only: the client always sends them, and other clients
-      // draw a fractional one misaligned.
-      [{ x: 5.5, y: 3 }],
-      [{ x: 1, y: 0.25 }],
     ])('refuses %j', (position) => {
       expect(refused({ position })).toMatch(/position/);
+    });
+
+    // Whether one may lie between squares is the route's call, from the map
+    // and the mover's role (tokenFootprint.e2e.test.ts); the shape takes it.
+    it('takes a position between squares', () => {
+      expect(ok({ position: { x: 5.5, y: 0.25 } }).position).toEqual({ x: 5.5, y: 0.25 });
     });
   });
 

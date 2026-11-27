@@ -108,3 +108,14 @@ describe('a square map 10x10 at 50 px', () => {
     expectNearest(everySquare(square), square, { ...square, gridOffsetX: 20, gridOffsetY: -30 });
   });
 });
+
+describe('a map whose tokens do not snap', () => {
+  it('keeps each centre where it stood on the picture, to hundredths, the footprint on the map', () => {
+    const from = frame('square');
+    const to = frame('square', 10, 10, 50, 10, 0);
+    const [moved, edge] = regridTokens([token('a', 2.3, 4.7, 2), token('b', 0.1, 0)], from, to, false);
+    // The grid moved a fifth of a square right, so the token is a fifth further left on it.
+    expect(moved.position).toEqual({ x: 2.1, y: 4.7 });
+    expect(edge.position).toEqual({ x: 0, y: 0 });
+  });
+});
