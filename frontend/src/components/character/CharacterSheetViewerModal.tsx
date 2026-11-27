@@ -249,7 +249,7 @@ export default function CharacterSheetViewerModal({
         <button
           onClick={onClose}
           aria-label="Close dialog"
-          className="touch-target absolute top-1 right-1 z-10 inline-flex size-11 items-center justify-center rounded-lg hover:bg-stone-gray/10 transition-colors"
+          className="touch-target absolute top-1 right-1 z-10 inline-flex size-11 items-center justify-center rounded-full bg-soft-cream hover:bg-stone-gray/10 transition-colors"
         >
           <X className="w-5 h-5 text-stone-gray" />
         </button>
