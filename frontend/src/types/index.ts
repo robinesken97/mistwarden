@@ -1370,6 +1370,8 @@ export interface CreateTokenRequest {
   creatureTemplateId?: string | null;
   /** GM only: hide what the token is from players who do not control it. */
   obscured?: boolean;
+  icon?: TokenIcon | null;
+  nameHidden?: boolean;
   /** GM only: the light the token carries; null for none. */
   light?: import('./walls').CarriedLight | null;
 }

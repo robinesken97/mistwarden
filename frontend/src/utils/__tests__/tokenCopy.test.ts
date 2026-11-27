@@ -36,6 +36,8 @@ const full: Token = {
   creatureTemplateId: 'creature-3',
   obscured: true,
   mountedOn: 'tok-horse',
+  icon: 'ranger',
+  nameHidden: true,
 };
 
 describe('tokenCopyRequest', () => {
