@@ -214,6 +214,10 @@ const moved = await gm.ok('update_token', { campaignId, mapId, tokenId: token.id
 assert.deepEqual([moved.x, moved.y, moved.size, moved.visible], [3, 2, 2, true]);
 assert.equal((await gm.ok('update_light', { campaignId, mapId, lightId: light.id, dimRadius: 6, enabled: false })).dimRadius, 6);
 const extra = await gm.ok('add_token', { campaignId, mapId, name: 'Mistvale rat', x: 10, y: 10 });
+// A rider on a mount: put on its square, then off again.
+const rider = await gm.ok('update_token', { campaignId, mapId, tokenId: extra.id, mountedOn: token.id });
+assert.deepEqual([rider.mountedOn, rider.x, rider.y], [token.id, moved.x, moved.y]);
+assert.equal((await gm.ok('update_token', { campaignId, mapId, tokenId: extra.id, mountedOn: null })).mountedOn, null);
 await gm.ok('delete_token', { campaignId, mapId, tokenId: extra.id });
 const spare = await gm.ok('add_light', { campaignId, mapId, x: 900, y: 900, brightRadius: 1, dimRadius: 2 });
 await gm.ok('delete_light', { campaignId, mapId, lightId: spare.id });

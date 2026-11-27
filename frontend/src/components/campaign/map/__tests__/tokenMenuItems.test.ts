@@ -25,7 +25,7 @@ function actions(): Record<keyof TokenMenuActions, Mock<(...args: unknown[]) => 
   return {
     viewSheet: spy(), rollCharacter: spy(), grantTemporaryHp: spy(), rotate: spy(), rollCreature: spy(), edit: spy(),
     addToInitiative: spy(), duplicate: spy(), saveAsTemplate: spy(), setVisible: spy(), setObscured: spy(),
-    setLayer: spy(), moveToMap: spy(), remove: spy(),
+    setLayer: spy(), moveToMap: spy(), mountOn: spy(), dismount: spy(), remove: spy(),
   };
 }
 
@@ -293,5 +293,30 @@ describe('whether there is a menu', () => {
     const { actions: _actions, ...view } = context({ role: CampaignRole.PLAYER, mayRotate: false });
     expect(tokenMenuHasItems(token(), view)).toBe(false);
     expect(tokenMenuHasItems(token({ characterId: 'char-1' }), { ...view, mayViewSheet: true })).toBe(true);
+  });
+});
+
+describe('riding', () => {
+  it('offers a player Mount on… with the mounts they may use, and runs the one picked', () => {
+    const ctx = context({ role: CampaignRole.PLAYER, mounts: [{ id: 'pony', name: 'Pony' }] });
+    const items = tokenMenuItems(token(), ctx);
+    expect(labels(items)).toEqual(['Rotate Left', 'Rotate Right', 'Mount on…']);
+    const mountOn = commandOf(items, 'mount-on');
+    expect(mountOn.children?.map((c) => c.label)).toEqual(['Pony']);
+    mountOn.children?.[0].run();
+    expect(ctx.actions.mountOn).toHaveBeenCalledWith(expect.objectContaining({ id: 'tok-1' }), 'pony');
+  });
+
+  it('offers Dismount instead on a rider the viewer may take off', () => {
+    const ctx = context({ role: CampaignRole.PLAYER, mayDismount: true, mounts: [{ id: 'pony', name: 'Pony' }] });
+    const items = tokenMenuItems(token({ mountedOn: 'horse' }), ctx);
+    expect(ids(items)).toContain('dismount');
+    expect(ids(items)).not.toContain('mount-on');
+    commandOf(items, 'dismount').run?.();
+    expect(ctx.actions.dismount).toHaveBeenCalledWith(expect.objectContaining({ id: 'tok-1' }));
+  });
+
+  it('offers neither with nothing to mount', () => {
+    expect(labels(tokenMenuItems(token(), context({ role: CampaignRole.PLAYER })))).toEqual(['Rotate Left', 'Rotate Right']);
   });
 });

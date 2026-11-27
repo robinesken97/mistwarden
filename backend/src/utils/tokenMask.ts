@@ -23,7 +23,7 @@
 // because the campaign roster maps a user id to a name. The plain creature
 // kind, because a player-type token is somebody's character. No facing, no
 // initiative, the plain display mode. The light it carries is kept: every
-// browser it is sent to counts that light, as the server does.
+// browser it is sent to counts that light, as the server does. No mount.
 // ============================================
 
 /** The fields the rule and the mask read; any token shape with them will do. */
@@ -52,6 +52,7 @@ export interface MaskableToken {
   statBlock?: unknown;
   sightRadius?: unknown;
   light?: unknown;
+  mountedOn?: string | null;
 }
 
 /** Every field a masked token has, so a test can pin the exact set. */
@@ -145,6 +146,7 @@ export const PLAYER_TOKEN_FIELDS = [
   'creatureTemplateId',
   'obscured',
   'light',
+  'mountedOn',
 ] as const satisfies readonly (keyof MaskableToken)[];
 
 /**
@@ -154,11 +156,17 @@ export const PLAYER_TOKEN_FIELDS = [
  * the creature template link only for their own, and an obscured token they
  * do not control through the mask above. The server applies this before
  * sending; the GM's Player Preview applies it to show the same thing.
+ *
+ * The mount a rider is on is named only when `mountSent`, that is when the
+ * recipient is sent the mount too: the id of a hidden mount would tell them
+ * something is there. A hidden mount's rider is still sent, as any visible
+ * token is; it just arrives riding nothing.
  */
-export function tokenSentTo<T extends MaskableToken>(token: T, own: boolean): T {
+export function tokenSentTo<T extends MaskableToken>(token: T, own: boolean, mountSent = false): T {
   const listed = PLAYER_TOKEN_FIELDS.filter((field) => field in token).map((field) => [field, token[field]]);
   // Whatever fields T has beyond the list are exactly what this leaves out.
   const sent = Object.fromEntries(listed) as T;
+  if (!mountSent) delete sent.mountedOn;
   if (!(own || token.showHpBar === true)) delete sent.hp;
   if (!own) {
     delete sent.sightRadius;

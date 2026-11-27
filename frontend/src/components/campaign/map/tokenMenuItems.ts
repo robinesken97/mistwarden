@@ -32,6 +32,10 @@ export interface TokenMenuActions {
   setObscured: (token: Token, obscured: boolean) => void;
   setLayer: (token: Token, layer: TokenLayer) => void;
   moveToMap: (token: Token, mapId: string) => void;
+  /** Puts the token on `mountId`, to move with it as one. */
+  mountOn: (token: Token, mountId: string) => void;
+  /** Takes the token off its mount. */
+  dismount: (token: Token) => void;
   /** Asks first, through the same dialog as the Token Roster. */
   remove: (token: Token) => void;
 }
@@ -64,6 +68,14 @@ export interface TokenMenuView {
   maps: ReadonlyArray<{ id: string; name: string }>;
   /** A crossing between the planes, or a move to another map, is on its way. */
   busy: { crossing: boolean; moving: boolean };
+  /**
+   * What the token may get on (map/mounts.ts mountCandidates): for the GM
+   * any token on its plane, for a player only their own, and only while the
+   * viewer may move the token itself. None by default.
+   */
+  mounts?: ReadonlyArray<{ id: string; name: string }>;
+  /** The token rides a mount this viewer may take it off: the GM, or a player who moves it. */
+  mayDismount?: boolean;
 }
 
 /** What the token menu is built from: the view, and what its items do. */
@@ -103,6 +115,19 @@ export function tokenMenuItems(token: Token, ctx: TokenMenuContext): MenuItem[] 
         title: `Turn ${ROTATION_STEP} degrees clockwise`, keepsOpen: true,
       }),
     );
+  }
+
+  // Riding, for anyone who may move the token: off its mount, or on one.
+  if (token.mountedOn && ctx.mayDismount) {
+    items.push(command('dismount', 'Dismount', () => act.dismount(token)));
+  } else if (ctx.mounts && ctx.mounts.length > 0) {
+    items.push({
+      kind: 'command',
+      id: 'mount-on',
+      label: 'Mount on…',
+      tone: 'accent',
+      children: ctx.mounts.map((m) => ({ id: `mount:${m.id}`, label: m.name, run: () => act.mountOn(token, m.id) })),
+    });
   }
 
   if (ctx.role !== CampaignRole.GM) return items;
@@ -176,7 +201,7 @@ const NO_ACTIONS: TokenMenuActions = {
   viewSheet: () => undefined, rollCharacter: () => undefined, grantTemporaryHp: () => undefined, rotate: () => undefined, rollCreature: () => undefined,
   edit: () => undefined, addToInitiative: () => undefined, duplicate: () => undefined, saveAsTemplate: () => undefined,
   setVisible: () => undefined, setObscured: () => undefined, setLayer: () => undefined, moveToMap: () => undefined,
-  remove: () => undefined,
+  mountOn: () => undefined, dismount: () => undefined, remove: () => undefined,
 };
 
 /**

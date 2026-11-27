@@ -64,6 +64,7 @@ import {
 } from './map/layers';
 import { createVisionCache } from './map/vision';
 import { pickTokenAt, pickMovableTokenAt, blockingTokensAt, visibleTokenHp, isTokenVisibleTo, tokenCoversCell } from './map/tokenHitTest';
+import { mountCandidates, keepCoupledOnMap } from './map/mounts';
 import { cachedTokenImage } from './map/layers/drawTokens';
 import { revealedSetFromFogState } from './map/fogSelection';
 import { exploredCellsFromCoverage, diffNew } from './map/exploration';
@@ -3472,6 +3473,11 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
     mapId: currentMap?.id ?? null,
     maps: campaign?.maps ?? [],
     busy: { crossing: isMovingTokenLayer, moving: isMoveToMapLoading },
+    // By the server's rule: the GM couples any two tokens, a player only two they control.
+    mounts: canMoveToken(token)
+      ? mountCandidates(tokens, token, (t) => isGM || isOwnToken(t)).map((t) => ({ id: t.id, name: tokenDisplayName(t) }))
+      : [],
+    mayDismount: isGM || isOwnToken(token),
   });
 
   /**
@@ -3557,7 +3563,8 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
     const held = draggedToken?.id === token.id;
     const sent = arrowSentRef.current.get(token.id) ?? [];
     const from = sent[sent.length - 1] ?? token.position;
-    const square = squareFromArrow(from, token.size, key, squares, currentMap);
+    // A rider and its mount stop together at the edge, as the server will put them.
+    const square = keepCoupledOnMap(tokens, token, squareFromArrow(from, token.size, key, squares, currentMap), currentMap);
     if (!held && square.x === from.x && square.y === from.y) return;
     if (!putDown(token, square, { start: !held })) return;
     arrowSentRef.current.set(token.id, [...sent, square]);
@@ -3781,6 +3788,26 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
         showToast(apiErrorMessage(err) || 'Failed to move the token to that map', 'error');
       } finally {
         setIsMoveToMapLoading(false);
+      }
+    },
+    mountOn: async (token, mountId) => {
+      if (!campaign?.id || !currentMap?.id) return;
+      try {
+        await api.updateToken(campaign.id, currentMap.id, token.id, { mountedOn: mountId });
+        // The server puts the rider on the mount's square; the map it sends next draws it above.
+        const mountToken = useGameStore.getState().tokens[mountId];
+        useGameStore.getState().patchToken(token.id, { mountedOn: mountId, ...(mountToken && { position: mountToken.position }) }, currentMap.id);
+      } catch (err) {
+        showToast(apiErrorMessage(err) || 'Could not mount the token', 'error');
+      }
+    },
+    dismount: async (token) => {
+      if (!campaign?.id || !currentMap?.id) return;
+      try {
+        await api.updateToken(campaign.id, currentMap.id, token.id, { mountedOn: null });
+        useGameStore.getState().patchToken(token.id, { mountedOn: null }, currentMap.id);
+      } catch (err) {
+        showToast(apiErrorMessage(err) || 'Could not dismount the token', 'error');
       }
     },
     remove: (token) => setRemovingToken(token),

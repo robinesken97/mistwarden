@@ -60,6 +60,8 @@ export interface Token {
   obscured?: boolean;
   /** A torch or lantern the token carries, lit at its centre; see playerSightOnLitMap. GM-only on write. */
   light?: CarriedLight | null;
+  /** The token this one rides; the two move as one. See utils/mounts.ts. */
+  mountedOn?: string | null;
 }
 
 /** One window of a flood ceiling: at most `limit` events in any `windowMs`. */

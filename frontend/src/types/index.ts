@@ -940,6 +940,11 @@ export interface Token {
    * their line of sight (visibilityRule.ts carriedLightCounts). GM only.
    */
   light?: import('./walls').CarriedLight | null;
+  /**
+   * The token this one rides; the two move as one whichever is moved. Sent
+   * to a player only with the mount itself (utils/tokenMask.ts).
+   */
+  mountedOn?: string | null;
 }
 
 export interface Position {
@@ -1357,6 +1362,8 @@ export interface UpdateTokenRequest {
   obscured?: boolean;
   /** GM only: the light the token carries; null for none. */
   light?: import('./walls').CarriedLight | null;
+  /** Ride this token (null gets off): the GM any two, a player two they control. */
+  mountedOn?: string | null;
 }
 
 // ============================================

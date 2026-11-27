@@ -126,17 +126,24 @@ describe('tokenSentTo', () => {
     const everything = {
       ...token, characterId: 'char-1', type: 'npc' as const, disposition: 'hostile' as const, initiative: 12,
       displayMode: 'pog' as const, creatureTemplateId: 'tmpl-1', showHpBar: true,
-      light: { brightRadius: 4, dimRadius: 8, color: '#ffcc66', enabled: true },
+      light: { brightRadius: 4, dimRadius: 8, color: '#ffcc66', enabled: true }, mountedOn: 'horse',
       // A field tokens do not have today, standing in for a GM-only one added later.
       trapTrigger: 'the third flagstone',
     };
     for (const own of [true, false]) {
       expect(tokenSentTo(everything, own)).not.toHaveProperty('trapTrigger');
     }
-    expect(Object.keys(tokenSentTo(everything, true)).sort()).toEqual([...PLAYER_TOKEN_FIELDS].sort());
-    expect(Object.keys(tokenSentTo(everything, false)).sort()).toEqual(
+    expect(Object.keys(tokenSentTo(everything, true, true)).sort()).toEqual([...PLAYER_TOKEN_FIELDS].sort());
+    expect(Object.keys(tokenSentTo(everything, false, true)).sort()).toEqual(
       PLAYER_TOKEN_FIELDS.filter((f) => f !== 'sightRadius' && f !== 'creatureTemplateId').sort()
     );
+  });
+
+  it('names a rider\'s mount only when the recipient is sent the mount too', () => {
+    const rider = { ...token, mountedOn: 'horse' };
+    expect(tokenSentTo(rider, true, true).mountedOn).toBe('horse');
+    expect(tokenSentTo(rider, true)).not.toHaveProperty('mountedOn');
+    expect(tokenSentTo({ ...rider, obscured: true }, false, true)).not.toHaveProperty('mountedOn');
   });
 
   it('leaves out a field the token does not have', () => {

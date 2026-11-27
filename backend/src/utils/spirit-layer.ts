@@ -242,8 +242,8 @@ export async function getSpiritVisibilityAcrossCampaigns(
  * uses. A caller that passes no `userId` is treated as controlling nothing,
  * so forgetting it can only hide too much.
  */
-export function tokenForRecipient(token: Token, userId: string | undefined): Token {
-  return tokenSentTo(token, userId !== undefined && token.controlledBy === userId);
+export function tokenForRecipient(token: Token, userId: string | undefined, mountSent = false): Token {
+  return tokenSentTo(token, userId !== undefined && token.controlledBy === userId, mountSent);
 }
 
 /**
@@ -306,7 +306,9 @@ export function filterTokensByRole(
   // Then only the fields this recipient may see of each; a spectator is
   // nobody's controller, whatever the tokens say.
   const viewer = viewerIdFor(userRole, userId);
-  return visibleTokens.map((token) => tokenForRecipient(token, viewer));
+  // A rider names its mount only to those sent the mount as well.
+  const sent = new Set(visibleTokens.map((token) => token.id));
+  return visibleTokens.map((token) => tokenForRecipient(token, viewer, !!token.mountedOn && sent.has(token.mountedOn)));
 }
 
 /**
@@ -344,7 +346,14 @@ export function filterTokensByLighting(
 ): Token[] {
   if (!lightingEnabled) return tokens;
   const sight = playerSightOnLitMap(tokens, playerUserId, walls, mapWidth, mapHeight, gridSize, lights, globalIllumination);
-  return tokens.filter((t) => sight.seesToken(t));
+  const seen = tokens.filter((t) => sight.seesToken(t));
+  // A rider in sight whose mount is not names no mount, as in filterTokensByRole.
+  const seenIds = new Set(seen.map((t) => t.id));
+  return seen.map((t) => {
+    if (!t.mountedOn || seenIds.has(t.mountedOn)) return t;
+    const { mountedOn: _unseen, ...rest } = t;
+    return rest;
+  });
 }
 
 /**
