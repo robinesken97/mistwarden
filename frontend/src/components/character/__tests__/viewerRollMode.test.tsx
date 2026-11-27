@@ -164,14 +164,16 @@ describe('where Roll mode sits in the header', () => {
 
   // The 5E sheet names itself, so its dialog has no title bar: the close
   // button is in the dialog's corner and the bar holds Roll mode alone, clear of it.
-  it('on a 5E sheet sits in a bar of its own, after the corner close button', () => {
+  it('on a 5E sheet shares the strip above the sheet with the close button, before it', () => {
     open(mine(fifthEditionCharacter()));
 
     const close = screen.getByRole('button', { name: 'Close dialog' });
     const group = rollMode()!;
-    expect(close.compareDocumentPosition(group) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(close.className.split(/\s+/)).toEqual(expect.arrayContaining(['absolute', 'top-1', 'right-1', 'touch-target']));
-    expect(group.closest('[data-sheet-shell="header"]')!.className.split(/\s+/)).toContain('pr-14');
+    const strip = close.closest('[data-sheet-shell="header"]')!;
+    // In the strip, not laid over the scrolling sheet.
+    expect(strip).toContainElement(group);
+    expect(close.className.split(/\s+/)).not.toContain('absolute');
+    expect(group.compareDocumentPosition(close) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Close' })).toBeNull();
   });
 });

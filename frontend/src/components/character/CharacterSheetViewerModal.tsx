@@ -234,27 +234,22 @@ export default function CharacterSheetViewerModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="character-sheet-viewer-title"
-        className={sheetNamesItself ? `${SHEET_SHELL_DIALOG.replace('max-w-6xl', 'max-w-[1040px]')} relative` : SHEET_SHELL_DIALOG}
+        className={sheetNamesItself ? `${SHEET_SHELL_DIALOG.replace('max-w-6xl', 'max-w-[1040px]')}` : SHEET_SHELL_DIALOG}
       >
         {sheetNamesItself ? (
           <>
         {/* The 5E sheet names itself in its own header, so its dialog has no
             title bar: the title is for a screen reader alone, the close button
-            sits in the corner over the sheet's top margin, and a bar is drawn
-            only for the GM's banner or Roll mode. Escape and the button close it. */}
+            sits in a slim strip above the sheet, with the GM's banner or Roll
+            mode beside it when there is one. Escape and the button close it. */}
         <div className="sr-only">
           <h2 id="character-sheet-viewer-title">{character.name}</h2>
           <p><span>Player: {ownerName}</span> • <span>{gameSystemName(character.gameSystem)}</span></p>
         </div>
-        <button
-          onClick={onClose}
-          aria-label="Close dialog"
-          className="touch-target absolute top-1 right-1 z-10 inline-flex size-11 items-center justify-center rounded-full bg-soft-cream hover:bg-stone-gray/10 transition-colors"
-        >
-          <X className="w-5 h-5 text-stone-gray" />
-        </button>
-        {(isGMEditingOtherCharacter || offersRollMode) && (
-          <div data-sheet-shell="header" className="flex flex-wrap items-center justify-between gap-3 p-3 pr-14 border-b border-moss-green/20 bg-parchment/30">
+        {/* A strip of its own above the scrolling sheet, so the close button
+            never lies over the sheet's boxes or the scrollbar. No rule or tint:
+            it reads as the dialog's top margin. */}
+        <div data-sheet-shell="header" className="flex flex-wrap items-center justify-end gap-3 px-3 pt-2 sm:px-6 short:px-3">
             {/* GM Edit Banner */}
             {isGMEditingOtherCharacter && (
               <div className="flex items-center gap-2 px-3 py-2 bg-moss-green/10 border border-moss-green/30 rounded-lg">
@@ -269,11 +264,17 @@ export default function CharacterSheetViewerModal({
                 mode={rollMode}
                 onChange={setRollMode}
                 gameSystem={character.gameSystem}
-                className="ml-auto"
+                className="mr-auto"
               />
             )}
-          </div>
-        )}
+            <button
+              onClick={onClose}
+              aria-label="Close dialog"
+              className="touch-target inline-flex size-11 items-center justify-center rounded-lg hover:bg-stone-gray/10 transition-colors"
+            >
+              <X className="w-5 h-5 text-stone-gray" />
+            </button>
+        </div>
           </>
         ) : (
           <>
@@ -341,7 +342,7 @@ export default function CharacterSheetViewerModal({
             inside the dialog, and not across the whole page; a new version of
             the character tries it again. Keyed on the character alone, so a
             sheet that is drawn keeps its open tab through every update. */}
-        <div data-sheet-shell="content" className={`flex-1 overflow-y-auto p-3 sm:p-6 short:p-3 ${sheetNamesItself && !isGMEditingOtherCharacter && !offersRollMode ? 'pt-12 sm:pt-12 short:pt-12' : ''}`} onClickCapture={rollFeedback.onClickCapture}>
+        <div data-sheet-shell="content" className={`flex-1 overflow-y-auto p-3 sm:p-6 short:p-3 ${sheetNamesItself ? 'pt-1 sm:pt-1 short:pt-1' : ''}`} onClickCapture={rollFeedback.onClickCapture}>
           <CharacterSheetErrorBoundary key={character.id} resetKey={character.updatedAt}>
             {renderCharacterSheet()}
           </CharacterSheetErrorBoundary>
