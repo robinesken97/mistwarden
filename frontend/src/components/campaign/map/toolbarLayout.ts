@@ -42,9 +42,12 @@ export function measureTopBand(band: HTMLElement, toolbar: HTMLElement, containe
     ...groups.slice(1),
     ...Array.from(band.children).filter((el) => el !== toolbar).map((el) => el.getBoundingClientRect()),
   ];
+  // Mistwarden, 2026-11-27: the toolbar is two rows now, so the label counts
+  // too: whatever in the band reaches furthest right decides the stack.
+  const labels = Array.from(band.children).filter((el) => el !== toolbar).map((el) => el.getBoundingClientRect());
   return {
     bottom: Math.round(outer.bottom - map.top),
-    buttonsRight: Math.round(Math.max(...groups.map((r) => r.right)) - map.left),
+    buttonsRight: Math.round(Math.max(...groups.map((r) => r.right), ...labels.map((r) => r.right)) - map.left),
     width: Math.round(map.width),
     wrapped: rest.some((r) => r.top >= firstRowBottom),
   };
@@ -69,13 +72,15 @@ export function underBand(band: TopBand | null, coarse: boolean): number | null 
 /**
  * The top of the GM's tool stack in its corner, `stackWidth` wide and
  * `rightGap` in from the map's right edge: null keeps its place beside the
- * toolbar; it starts under the band when the band wraps, or when the
- * toolbar's buttons reach under its corner.
+ * toolbar; it starts under the band when the toolbar's buttons or the
+ * label reach under its corner.
  */
 export function stackCornerTop(band: TopBand | null, stackWidth: number, rightGap: number): number | null {
   if (!band) return null;
   const left = band.width - rightGap - stackWidth;
-  return band.wrapped || band.buttonsRight > left ? band.bottom + BAND_GAP : null;
+  // Mistwarden, 2026-11-27: only what reaches under the corner moves it; the
+  // toolbar's second row is its tools, at the left, not a wrap across the map.
+  return band.buttonsRight > left ? band.bottom + BAND_GAP : null;
 }
 
 /**

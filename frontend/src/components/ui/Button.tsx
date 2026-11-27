@@ -90,9 +90,11 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
       {...rest}
     >
       {loading ? (
-        <Loader2 className={cn('w-4 h-4 animate-spin inline-block', !iconOnly && 'mr-2')} aria-hidden="true" />
+        <Loader2 className={cn('w-4 h-4 animate-spin', iconOnly ? 'block mx-auto' : 'inline-block mr-2')} aria-hidden="true" />
       ) : Icon ? (
-        <Icon className={cn('w-4 h-4 inline-block', !iconOnly && 'mr-2')} aria-hidden="true" />
+        // Mistwarden, 2026-11-27: alone, a block, which the button centres both ways;
+        // inline it sat on the text baseline, 2 px under the middle of a 44 px box.
+        <Icon className={cn('w-4 h-4', iconOnly ? 'block mx-auto' : 'inline-block mr-2')} aria-hidden="true" />
       ) : null}
       {children}
     </button>

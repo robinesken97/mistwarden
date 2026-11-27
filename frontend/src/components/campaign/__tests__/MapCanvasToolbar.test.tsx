@@ -323,19 +323,25 @@ describe('the menus on a touch screen', () => {
 describe('the toolbar on a narrow map', () => {
   // On a map too narrow for one row it was cut off at the map's edge, Ping
   // with it. It wraps now, between groups that stay together.
-  it('wraps between groups, keeping the zoom buttons with their readout and the measuring tools with Ping', () => {
+  // Mistwarden, 2026-11-27: two groups, the view and the tools, that wrap only
+  // between them, so the buttons stand in columns when they do.
+  it('groups the view and the tools, wrapping only between the two', () => {
     render(<MapCanvas />);
 
-    const zoom = screen.getByRole('button', { name: 'Zoom Out' }).parentElement!;
-    const measuring = screen.getByRole('button', { name: 'Ping' }).parentElement!;
-    expect(screen.getByRole('button', { name: 'Zoom In' }).parentElement).toBe(zoom);
-    expect(screen.getByText(/^\d+%$/).parentElement).toBe(zoom);
-    expect(screen.getByRole('button', { name: 'AoE Shape — area of effect overlay' }).parentElement).toBe(measuring);
-    expect(screen.getByRole('button', { name: 'Ruler — measure distance' }).parentElement).toBe(measuring);
-    expect(measuring).not.toBe(zoom);
-    const toolbar = zoom.parentElement!;
-    expect(measuring.parentElement).toBe(toolbar);
-    expect(classesOf(toolbar)).toContain('flex-wrap');
+    const view = screen.getByRole('button', { name: 'Zoom Out' }).parentElement!;
+    const tools = screen.getByRole('button', { name: 'Ping' }).parentElement!;
+    for (const name of ['Zoom In', 'Fit to Screen', 'Toggle Grid']) {
+      expect(screen.getByRole('button', { name }).parentElement).toBe(view);
+    }
+    // The readout is two button cells wide, in the view's row.
+    expect(screen.getByText(/^\d+%$/).parentElement!.parentElement).toBe(view);
+    expect(classesOf(screen.getByText(/^\d+%$/).parentElement!)).toEqual(expect.arrayContaining(['w-[76px]', 'pointer-coarse:w-[96px]']));
+    for (const name of ['Ruler — measure distance', 'AoE Shape — area of effect overlay']) {
+      expect(screen.getByRole('button', { name }).parentElement).toBe(tools);
+    }
+    const toolbar = view.parentElement!;
+    expect(tools.parentElement).toBe(toolbar);
+    expect(classesOf(toolbar)).toEqual(expect.arrayContaining(['flex-wrap', 'gap-x-4']));
   });
 
   // At 44 pixels a button, a GM's toolbar was 3 pixels too wide for one row
@@ -451,7 +457,7 @@ describe('what sits under the toolbar', () => {
   it('starts the AoE panel under one row of a mouse’s buttons, and keeps the tool stack beside them', () => {
     render(<MapCanvas />);
     openAoE();
-    layOut(754, [[25, 25, 148, 34], [181, 25, 127, 34], [316, 25, 169, 34], [493, 25, 43, 34]]);
+    layOut(754, [[25, 25, 302, 34], [343, 25, 202, 34]]);
 
     // The band's foot is at 68, the buttons' 59 and its padding.
     expect(aoePanel().style.top).toBe('76px');
@@ -462,7 +468,7 @@ describe('what sits under the toolbar', () => {
   it('keeps Put back in its place under one row of a mouse’s buttons', () => {
     render(<MapCanvas />);
     holdByTap();
-    layOut(754, [[25, 25, 148, 34], [181, 25, 127, 34], [316, 25, 169, 34], [493, 25, 43, 34]]);
+    layOut(754, [[25, 25, 302, 34], [343, 25, 202, 34]]);
 
     expect(putBackBar().style.top).toBe('');
   });
@@ -473,7 +479,7 @@ describe('what sits under the toolbar', () => {
   it('starts them under the toolbar when it wraps onto a second row', () => {
     render(<MapCanvas />);
     openAoE();
-    layOut(420, [[25, 25, 148, 34], [181, 25, 127, 34], [25, 67, 169, 34], [202, 67, 43, 34]]);
+    layOut(420, [[25, 25, 302, 34], [25, 67, 220, 34]]);
 
     expect(aoePanel().style.top).toBe('118px');
     expect(toolStack().style.top).toBe('118px');
@@ -485,7 +491,7 @@ describe('what sits under the toolbar', () => {
     render(<MapCanvas />);
     holdByTap();
     openAoE();
-    layOut(420, [[25, 25, 148, 34], [181, 25, 127, 34], [25, 67, 169, 34], [202, 67, 43, 34]], 62);
+    layOut(420, [[25, 25, 302, 34], [25, 67, 220, 34]], 62);
 
     expect(putBackBar().style.top).toBe('118px');
     expect(aoePanel().style.top).toBe('188px');
@@ -499,13 +505,13 @@ describe('what sits under the toolbar', () => {
   it('keeps a moved AoE panel within the map, scrolling inside', () => {
     render(<MapCanvas />);
     openAoE();
-    layOut(420, [[25, 25, 148, 34], [181, 25, 127, 34], [25, 67, 169, 34], [202, 67, 43, 34]]);
+    layOut(420, [[25, 25, 302, 34], [25, 67, 220, 34]]);
 
     expect(aoePanel().style.maxHeight).toContain('118px');
     expect(aoePanel().style.overflowY).toBe('auto');
   });
 
-  // A touch screen's 44-pixel buttons in one row on a map 590 wide, as an
+  // A touch screen's 44-pixel buttons, two rows, on a map 590 wide, as an
   // iPad Pro 11's in landscape with both side panels at their minimums: the
   // toolbar is taller, and its buttons reach under the tool stack's corner.
   it('starts them under the toolbar on a touch screen, and the stack too where the buttons reach its corner', () => {
@@ -513,17 +519,17 @@ describe('what sits under the toolbar', () => {
     render(<MapCanvas />);
     holdByTap();
     openAoE();
-    layOut(590, [[25, 25, 152, 44], [185, 25, 157, 44], [350, 25, 157, 44], [515, 25, 53, 44]], 62);
+    layOut(590, [[25, 25, 543, 44], [25, 77, 300, 44]], 62);
 
-    expect(putBackBar().style.top).toBe('86px');
-    expect(aoePanel().style.top).toBe('156px');
-    expect(toolStack().style.top).toBe('86px');
+    expect(putBackBar().style.top).toBe('138px');
+    expect(aoePanel().style.top).toBe('208px');
+    expect(toolStack().style.top).toBe('138px');
   });
 
   it('leaves the stack in its corner on a touch screen where the buttons end before it', () => {
     coarsePointer();
     render(<MapCanvas />);
-    layOut(1200, [[25, 25, 152, 44], [185, 25, 157, 44], [350, 25, 157, 44], [515, 25, 53, 44]]);
+    layOut(1200, [[25, 25, 543, 44], [25, 77, 300, 44]]);
 
     expect(toolStack().style.top).toBe('3.5rem');
   });

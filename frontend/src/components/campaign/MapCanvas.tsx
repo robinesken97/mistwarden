@@ -4522,16 +4522,16 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
           </div>
         ) : (
         /* Toolbar - Glassmorphism */
-        <div ref={toolbarRef} className="glass-panel p-2 flex flex-wrap items-center gap-2 bg-parchment/90 backdrop-blur-xs pointer-events-auto">
+        // Mistwarden, 2026-11-27: two groups, the view and the tools, in one row where they
+        // fit; where not, the tools wrap under the view, both starting at the left, so the
+        // buttons stand in columns. The wider gap between the groups replaces the dividers,
+        // which could start a wrapped row and put it out of step.
+        <div ref={toolbarRef} className="glass-panel p-2 flex flex-wrap items-center gap-x-4 gap-y-2 bg-parchment/90 backdrop-blur-xs pointer-events-auto">
           <div className="flex items-center gap-2">
             {zoomOutButton}
-            {zoomReadout}
+            {/* Two button cells wide (34 or 44 px each and the 8 px gap), so the buttons stand in columns. */}
+            <div className="shrink-0 w-[76px] pointer-coarse:w-[96px] flex justify-center">{zoomReadout}</div>
             {zoomInButton}
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* Divider */}
-            <div className="w-px h-6 bg-moss-green/20" />
 
             {/* Reset View — fit and center the map in the canvas */}
             <Button
@@ -4566,10 +4566,12 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
             )}
           </div>
 
+          {/* The tools: the map's, then the GM's spirit tokens */}
+          {(currentMap || userRole === 'GM') && (
+          <div className="flex items-center gap-2">
           {/* Toggle Ruler */}
           {currentMap && (
-            <div className="flex items-center gap-2">
-              <div className="w-px h-6 bg-moss-green/20" />
+            <>
               {/* While Paint is on, its button alone: it takes the map. */}
               {!paint.on && (<>
               <Button
@@ -4605,13 +4607,11 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
               {drawButton}
               </>)}
               {paintButton}
-            </div>
+            </>
           )}
 
           {/* GM-only: toggle spirit layer token visibility */}
           {userRole === 'GM' && (
-            <div className="flex items-center gap-2">
-              <div className="w-px h-6 bg-moss-green/20" />
               <Button
                 onClick={mapControlActions.toggleSpiritTokens}
                 variant="secondary" iconOnly className={gmShowSpiritTokens ? 'bg-spirit-purple/15' : undefined}
@@ -4620,7 +4620,8 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
               >
                 <Ghost className={`w-4 h-4 ${gmShowSpiritTokens ? 'text-spirit-ink' : 'text-stone-gray/40'}`} />
               </Button>
-            </div>
+          )}
+          </div>
           )}
         </div>
         )}
