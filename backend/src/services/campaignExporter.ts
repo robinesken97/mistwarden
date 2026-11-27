@@ -220,6 +220,7 @@ export async function prepareCampaignExport(
       gridOffsetY: map.gridOffsetY,
       feetPerSquare: map.feetPerSquare,
       diagonalRule: map.diagonalRule,
+      snapTokens: map.snapTokens,
       drawnBackground: map.drawnBackground,
       tokens,
       // Empty: releases up to 1.5.4 store an archive's annotations and send
