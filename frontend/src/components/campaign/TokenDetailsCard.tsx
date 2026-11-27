@@ -15,7 +15,9 @@ import type { ReactNode } from 'react';
 import { X } from 'lucide-react';
 import type { Position, Token } from '@/types';
 import type { CharacterHpInfo } from '@/utils/characterHp';
-import { useTokenInitiative } from '@/stores/gameStore';
+import { useTokenInitiative, useCharacterIcons } from '@/stores/gameStore';
+import TokenSymbol from './TokenSymbol';
+import { tokenIcon } from './map/tokenSymbols';
 import { tokenDisplayName } from '@/utils/tokenDisplayName';
 import { placeholderColor } from './map/layers/drawTokens';
 
@@ -73,6 +75,7 @@ export default function TokenDetailsCard({ token, square, hp, imageSrc, mayMove,
   // `undefined` means "not in the turn order": the row is left out rather
   // than shown blank. `null` means it is, but nothing has rolled.
   const initiative = useTokenInitiative(token.id);
+  const classIcons = useCharacterIcons();
   const inTurnOrder = initiative !== undefined;
   const conditions = token.conditions ?? [];
 
@@ -91,6 +94,9 @@ export default function TokenDetailsCard({ token, square, hp, imageSrc, mayMove,
               alt=""
               className="w-18 h-18 rounded-cozy object-cover border-2 border-warm-amber/50 shrink-0"
             />
+          ) : !(token.obscured && !token.name) ? (
+            // Mistwarden, 2026-11-27: the symbol the map draws; a masked token keeps its question mark.
+            <TokenSymbol icon={tokenIcon(token, classIcons)} type={token.type} disposition={token.disposition} className="w-18 h-18" />
           ) : (
             <div
               className="w-18 h-18 rounded-cozy border-2 border-warm-amber/50 shrink-0 flex items-center justify-center text-2xl font-semibold text-white"
