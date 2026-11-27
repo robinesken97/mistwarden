@@ -17,12 +17,14 @@ import {
   AlertCircle,
   X,
   Tag,
+  FileArchive,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useAssetsQuery, type AssetListParams } from '@/hooks/queries';
 import { Asset, AssetType, AssetScope, PlatformRole } from '../types';
 import AssetCard from '../components/assets/AssetCard';
 import AssetUploadModal from '../components/assets/AssetUploadModal';
+import AssetZipImportModal from '../components/assets/AssetZipImportModal';
 import AssetDetailPanel from '../components/assets/AssetDetailPanel';
 import Toast from '../components/Toast';
 import AssetCardSkeleton from '../components/skeletons/AssetCardSkeleton';
@@ -49,6 +51,7 @@ export default function AssetLibraryPage() {
   const [sortBy, setSortBy] = useState<'name' | 'date' | 'size'>('date');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isZipImportOpen, setIsZipImportOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -171,13 +174,23 @@ export default function AssetLibraryPage() {
 
             {/* Upload button — hidden when viewing Global as non-manager */}
             {showUploadButton ? (
-              <Button
-                onClick={() => setIsUploadModalOpen(true)}
-                className="flex items-center gap-2"
-              >
-                <Upload className="w-5 h-5" />
-                <span className="max-sm:sr-only">Upload Asset</span>
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => setIsZipImportOpen(true)}
+                  variant="secondary"
+                  className="flex items-center gap-2"
+                >
+                  <FileArchive className="w-5 h-5" aria-hidden="true" />
+                  <span className="max-sm:sr-only">Import ZIP</span>
+                </Button>
+                <Button
+                  onClick={() => setIsUploadModalOpen(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Upload className="w-5 h-5" />
+                  <span className="max-sm:sr-only">Upload Asset</span>
+                </Button>
+              </div>
             ) : (
               <div className="px-4 py-2 text-sm text-stone-gray/60 italic hidden sm:block">
                 Managed by administrators
@@ -412,6 +425,12 @@ export default function AssetLibraryPage() {
           </>
         )}
       </main>
+
+      <AssetZipImportModal
+        isOpen={isZipImportOpen}
+        onClose={() => setIsZipImportOpen(false)}
+        onImported={() => queryClient.invalidateQueries({ queryKey: ['assets'] })}
+      />
 
       {/* Upload Modal */}
       <AssetUploadModal
