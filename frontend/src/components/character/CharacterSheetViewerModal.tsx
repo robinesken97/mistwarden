@@ -234,8 +234,49 @@ export default function CharacterSheetViewerModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="character-sheet-viewer-title"
-        className={SHEET_SHELL_DIALOG}
+        className={sheetNamesItself ? `${SHEET_SHELL_DIALOG.replace('max-w-6xl', 'max-w-[1040px]')} relative` : SHEET_SHELL_DIALOG}
       >
+        {sheetNamesItself ? (
+          <>
+        {/* The 5E sheet names itself in its own header, so its dialog has no
+            title bar: the title is for a screen reader alone, the close button
+            sits in the corner over the sheet's top margin, and a bar is drawn
+            only for the GM's banner or Roll mode. Escape and the button close it. */}
+        <div className="sr-only">
+          <h2 id="character-sheet-viewer-title">{character.name}</h2>
+          <p><span>Player: {ownerName}</span> • <span>{gameSystemName(character.gameSystem)}</span></p>
+        </div>
+        <button
+          onClick={onClose}
+          aria-label="Close dialog"
+          className="touch-target absolute top-1 right-1 z-10 inline-flex size-11 items-center justify-center rounded-lg hover:bg-stone-gray/10 transition-colors"
+        >
+          <X className="w-5 h-5 text-stone-gray" />
+        </button>
+        {(isGMEditingOtherCharacter || offersRollMode) && (
+          <div data-sheet-shell="header" className="flex flex-wrap items-center justify-between gap-3 p-3 pr-14 border-b border-moss-green/20 bg-parchment/30">
+            {/* GM Edit Banner */}
+            {isGMEditingOtherCharacter && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-moss-green/10 border border-moss-green/30 rounded-lg">
+                <Shield className="w-4 h-4 text-brand-ink" />
+                <p className="text-sm text-brand-ink">
+                  You are viewing <strong>{ownerName}'s</strong> character as GM
+                </p>
+              </div>
+            )}
+            {offersRollMode && (
+              <RollModeControl
+                mode={rollMode}
+                onChange={setRollMode}
+                gameSystem={character.gameSystem}
+                className="ml-auto"
+              />
+            )}
+          </div>
+        )}
+          </>
+        ) : (
+          <>
         {/* Header. Below sm, Roll mode takes a line of its own under the name
             and the close button; from sm up it sits in the right column under
             the close button. Either way it is drawn after the close button,
@@ -243,10 +284,7 @@ export default function CharacterSheetViewerModal({
             order they are seen. */}
         <div data-sheet-shell="header" className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 gap-y-3 p-3 sm:p-6 short:p-3 border-b border-moss-green/20 bg-parchment/30">
           <div className={`min-w-0 ${offersRollMode ? 'sm:row-span-2' : ''}`}>
-            {/* The 5E sheet's own header names the character, the player and
-                the level, so the line here is for a screen reader alone,
-                naming the dialog. */}
-            <div className={sheetNamesItself ? 'sr-only' : 'flex items-center gap-3 mb-2'}>
+            <div className="flex items-center gap-3 mb-2">
               <div className="p-2 rounded-full bg-moss-green/10">
                 <UserIcon className="w-5 h-5 text-brand-ink" />
               </div>
@@ -296,17 +334,21 @@ export default function CharacterSheetViewerModal({
           )}
         </div>
 
+          </>
+        )}
+
         {/* Character Sheet Content. A sheet that cannot be drawn fails here,
             inside the dialog, and not across the whole page; a new version of
             the character tries it again. Keyed on the character alone, so a
             sheet that is drawn keeps its open tab through every update. */}
-        <div data-sheet-shell="content" className="flex-1 overflow-y-auto p-3 sm:p-6 short:p-3" onClickCapture={rollFeedback.onClickCapture}>
+        <div data-sheet-shell="content" className={`flex-1 overflow-y-auto p-3 sm:p-6 short:p-3 ${sheetNamesItself && !isGMEditingOtherCharacter && !offersRollMode ? 'pt-12 sm:pt-12 short:pt-12' : ''}`} onClickCapture={rollFeedback.onClickCapture}>
           <CharacterSheetErrorBoundary key={character.id} resetKey={character.updatedAt}>
             {renderCharacterSheet()}
           </CharacterSheetErrorBoundary>
         </div>
 
-        {/* Footer */}
+        {/* Footer. The 5E dialog closes from its corner and with Escape. */}
+        {!sheetNamesItself && (
         <div data-sheet-shell="footer" className="flex items-center justify-end gap-3 p-2 sm:p-4 short:p-2 border-t border-moss-green/20 bg-parchment/30">
           <button
             onClick={onClose}
@@ -315,6 +357,7 @@ export default function CharacterSheetViewerModal({
             Close
           </button>
         </div>
+        )}
       </div>
     </div>,
     document.body

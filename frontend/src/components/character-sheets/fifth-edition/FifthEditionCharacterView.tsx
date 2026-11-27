@@ -243,7 +243,10 @@ export const FifthEditionCharacterView: React.FC<FifthEditionCharacterViewProps>
               {data.savingThrows && (
                 <p>
                   <strong className={SHEET_LABEL}>Saving Throws</strong>{' '}
-                  {(Object.entries(data.savingThrows) as [string, FifthEditionSavingThrow][]).map(([key, save], index) => {
+                  {/* In the order of the abilities, whatever order the sheet stores them in. */}
+                  {ABILITIES.filter(([, , key]) => data.savingThrows?.[key])
+                    .map(([, , key]) => [key, data.savingThrows![key]] as [string, FifthEditionSavingThrow])
+                    .map(([key, save], index) => {
                     // Worked out from the scores plus the other bonus, as the
                     // dice roll it, so a stored total gone stale is not shown.
                     const bonus = fifthEditionSaveBonus(data, key);

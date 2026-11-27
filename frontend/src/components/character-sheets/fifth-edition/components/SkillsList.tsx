@@ -132,8 +132,10 @@ export const SkillsList: React.FC<SkillsListProps> = ({ skills, customSkills, on
   return (
     <div className="text-sm">
       <div className="columns-1 gap-x-5 min-[760px]:columns-2">
-        {Object.entries(skills).map(([key, skill]) => (
-          <SkillRow key={key} name={SKILL_NAMES[key]} skill={skill} onRoll={onRoll} />
+        {/* Alphabetical, whatever order the sheet stores them in, down the
+            first column and then the second. */}
+        {Object.keys(SKILL_NAMES).filter((key) => skills[key as keyof typeof skills]).map((key) => (
+          <SkillRow key={key} name={SKILL_NAMES[key]} skill={skills[key as keyof typeof skills]} onRoll={onRoll} />
         ))}
       </div>
 

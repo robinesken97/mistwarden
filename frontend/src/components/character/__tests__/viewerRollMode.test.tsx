@@ -149,7 +149,7 @@ describe('where Roll mode sits in the header', () => {
   // column under the close button. Either way it is drawn after the close
   // button, so Tab reaches it after the close button too.
   it('comes after the close button, as it is drawn', () => {
-    open(mine(fifthEditionCharacter()));
+    open(mine(fantasyD20Character()));
 
     const close = screen.getByRole('button', { name: 'Close dialog' });
     const group = rollMode()!;
@@ -160,6 +160,19 @@ describe('where Roll mode sits in the header', () => {
     // The right column is as wide as Roll mode, so the close button keeps to
     // its end, in the header's corner, and not at its start.
     expect(close.parentElement!.className.split(/\s+/)).toContain('justify-self-end');
+  });
+
+  // The 5E sheet names itself, so its dialog has no title bar: the close
+  // button is in the dialog's corner and the bar holds Roll mode alone, clear of it.
+  it('on a 5E sheet sits in a bar of its own, after the corner close button', () => {
+    open(mine(fifthEditionCharacter()));
+
+    const close = screen.getByRole('button', { name: 'Close dialog' });
+    const group = rollMode()!;
+    expect(close.compareDocumentPosition(group) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(close.className.split(/\s+/)).toEqual(expect.arrayContaining(['absolute', 'top-1', 'right-1', 'touch-target']));
+    expect(group.closest('[data-sheet-shell="header"]')!.className.split(/\s+/)).toContain('pr-14');
+    expect(screen.queryByRole('button', { name: 'Close' })).toBeNull();
   });
 });
 
