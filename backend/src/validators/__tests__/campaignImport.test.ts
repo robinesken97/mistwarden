@@ -141,6 +141,10 @@ describe('imported token allowlists and limits', () => {
     expect(importedTokens(map({ light: { ...torch, dimRadius: 1 } }))[0].light).toBeNull();
   });
 
+  it('drops the mount a rider names: every imported token gets a new id, so it would name nothing', () => {
+    expect(importedTokens(map({ mountedOn: 'horse' }))[0]).not.toHaveProperty('mountedOn');
+  });
+
   it('holds conditions and hit points to the live limits, one condition at a time', () => {
     const t = importedTokens(map({ conditions: ['Prone', 'x'.repeat(100)], hp: { current: 1, max: 999999, temp: 0 } }))[0];
     expect(t.conditions).toEqual(['Prone']);

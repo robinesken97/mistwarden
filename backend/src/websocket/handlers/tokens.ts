@@ -16,7 +16,8 @@ import type { WallSegment } from '../../types/walls';
 import logger from '../../utils/logger';
 import { Token, tokenMoveLimiter, limiterKey, withinCeiling, resendSightAfterChange } from '../shared';
 import { readTokens, toJson } from '../../utils/prisma-json';
-import { withMapsLocked, clampTokenPosition } from '../../utils/mapTokens';
+import { withMapsLocked } from '../../utils/mapTokens';
+import { moveCoupled } from '../../utils/mounts';
 import { canControlToken, canMoveTokensNow, canReadMap, PAUSED_MOVE_REFUSAL } from '../../services/permissions';
 import { bestEffort, campaignSockets, stillInCampaign } from '../utils';
 import { inBackground } from '../../utils/backgroundWork';
@@ -632,10 +633,10 @@ export function registerTokenHandlers(io: Server, socket: AuthenticatedSocket): 
         const tokens = readTokens(fresh.tokens);
         const index = tokens.findIndex((t) => t.id === tokenId);
         if (index === -1) return { refused: 'Token not found' };
-        const position = clampTokenPosition({ x: dropX, y: dropY }, tokens[index].size ?? { width: 1, height: 1 }, fresh);
-        tokens[index] = { ...tokens[index], position };
-        await tx.map.update({ where: { id: mapId }, data: { tokens: toJson(tokens) } });
-        return { written: tokens[index], stored: { ...fresh, tokens } };
+        // Its mount and riders move with it, the group kept on the map as one.
+        const { tokens: next, moved } = moveCoupled(tokens, tokenId, { x: dropX, y: dropY }, fresh);
+        await tx.map.update({ where: { id: mapId }, data: { tokens: toJson(next) } });
+        return { written: moved[0], moved, stored: { ...fresh, tokens: next } };
       });
       if ('refused' in dropped) {
         // TODO(play): a drop refused here for its bounds (the GM shrank the map during the drag) is put back
@@ -644,10 +645,10 @@ export function registerTokenHandlers(io: Server, socket: AuthenticatedSocket): 
         socket.emit('error', { message: dropped.refused });
         return;
       }
-      const { written, stored } = dropped;
+      const { written, moved, stored } = dropped;
       const updatedTokens = stored.tokens;
       const currentMapId = stored.campaign.currentMapId;
-      const { x, y } = written.position;
+      const movedIds = new Set(moved.map((t) => t.id));
 
       if (stored.lightingEnabled) {
         // Dynamic lighting: per-player visibility filtering. The plane and
@@ -664,7 +665,7 @@ export function registerTokenHandlers(io: Server, socket: AuthenticatedSocket): 
         for (const s of stillInCampaign(members, socket.campaignId)) {
           const authedSocket = s as unknown as AuthenticatedSocket;
           if (authedSocket.role === 'GM') {
-            s.emit('token.moved', { tokenId, mapId, x, y, movedBy: socket.userId });
+            for (const t of moved) s.emit('token.moved', { tokenId: t.id, mapId, x: t.position.x, y: t.position.y, movedBy: socket.userId });
             continue;
           }
           if (!authedSocket.userId) continue;
@@ -694,21 +695,26 @@ export function registerTokenHandlers(io: Server, socket: AuthenticatedSocket): 
           // token:disappeared carries their ids.
           const mayHave = new Set(forRole.map((t) => t.id));
 
-          const moved = visibleById.get(tokenId);
-          if (moved) {
-            // Visible: position update AND the full token (frontend deduplicates),
-            // in case this player did not have it yet.
-            s.emit('token.moved', { tokenId, mapId, x, y, movedBy: moverShownTo(written, authedSocket) });
-            s.emit('token:appeared', { token: moved, mapId });
-          } else if (mayHave.has(tokenId)) {
-            s.emit('token:disappeared', { tokenId, mapId });
+          // The dropped token and every token coupled with it, each as this
+          // player may have it.
+          for (const t of moved) {
+            const shown = visibleById.get(t.id);
+            if (shown) {
+              // Visible: position update AND the full token (frontend deduplicates),
+              // in case this player did not have it yet.
+              s.emit('token.moved', { tokenId: t.id, mapId, x: t.position.x, y: t.position.y, movedBy: moverShownTo(t, authedSocket) });
+              s.emit('token:appeared', { token: shown, mapId });
+            } else if (mayHave.has(t.id)) {
+              s.emit('token:disappeared', { tokenId: t.id, mapId });
+            }
           }
 
-          // If a player moved their OWN token, their view changed: re-sync all
-          // OTHER tokens so those that left or entered view go at once.
-          if (viewer && written.controlledBy === viewer) {
+          // If one of this player's OWN tokens moved (a horse the GM moved
+          // carries their rider), their view changed: re-sync all OTHER
+          // tokens so those that left or entered view go at once.
+          if (viewer && moved.some((t) => t.controlledBy === viewer)) {
             for (const otherToken of forRole) {
-              if (otherToken.id === tokenId) continue; // already handled above
+              if (movedIds.has(otherToken.id)) continue; // already handled above
               // Skip own tokens — always included by filterTokensByLighting
               if ((otherToken as Token).controlledBy === viewer) continue;
               const other = visibleById.get(otherToken.id);
@@ -723,17 +729,19 @@ export function registerTokenHandlers(io: Server, socket: AuthenticatedSocket): 
         // A light the token carries moved with it, which changes what every
         // player sees, not just its controller. A hidden bearer's light counts
         // for no player, and re-sending them the map would tell them it moved.
-        if (written.light?.enabled === true && written.visible !== false) {
+        if (moved.some((t) => t.light?.enabled === true && t.visible !== false)) {
           resendSightAfterChange(io, socket.campaignId!, mapId);
         }
       } else {
         // The sender included, as confirmation that the write went through.
-        await emitMoveToVisibleSockets(
-          'token.moved', written, mapId, currentMapId, { tokenId, mapId, x, y }, true
-        );
+        for (const t of moved) {
+          await emitMoveToVisibleSockets(
+            'token.moved', t, mapId, currentMapId, { tokenId: t.id, mapId, x: t.position.x, y: t.position.y }, true
+          );
+        }
       }
 
-      logger.debug('token.move.end', { tokenId, x, y, userId: socket.userId });
+      logger.debug('token.move.end', { tokenId, x: written.position.x, y: written.position.y, userId: socket.userId });
     } catch (error) {
       logger.error('token.move.end failed', { err: error });
       socket.emit('error', { message: 'Failed to finalize token movement' });

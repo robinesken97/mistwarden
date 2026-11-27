@@ -203,6 +203,8 @@ export async function prepareCampaignExport(
       // Strip server-specific fields
       delete token.characterId;
       delete token.controlledBy;
+      // The importer gives every token a new id, so a rider would name nothing.
+      delete token.mountedOn;
     }
     totalTokenCount += tokens.length;
 

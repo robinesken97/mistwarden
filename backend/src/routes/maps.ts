@@ -23,6 +23,7 @@ import { canReadAssetById, canReferenceAsset, isMapPicture, isTokenPicture, canC
 import { WallSegmentSchema, WallSegmentsArraySchema, FogOperationSchema, LightSourceSchema, LightSourcesArraySchema, LightSourceUpdateSchema, DUPLICATE_WALL_ID_MESSAGE, DUPLICATE_LIGHT_ID_MESSAGE, MAX_WALL_SEGMENTS, MAX_LIGHT_SOURCES, TOO_MANY_WALLS_MESSAGE, TOO_MANY_LIGHTS_MESSAGE } from '../validators/walls';
 import { validateTokenShapes, TokenMetadataSchema, MoveTokensSchema, TOKEN_TYPES, TOKEN_DISPOSITIONS, TOKEN_DISPLAY_MODES, TOKEN_IMAGE_NOT_A_TOKEN_PICTURE_MESSAGE } from '../validators/tokens';
 import { withMapsLocked, clampTokenPosition } from '../utils/mapTokens';
+import { moveCoupled, untangleMounts, uncouple, mountRefusal, mount } from '../utils/mounts';
 import type { WallSegment, FogState, LightSource, SkippedWall, WallsAdded } from '../types/walls';
 import { parseUVTT } from '../services/uvttParser';
 import { buildUVTT } from '../services/uvttExporter';
@@ -1720,7 +1721,8 @@ router.put('/:id/tokens/:tokenId', campaignMember, async (req: AuthenticatedRequ
     // And the same session rule the socket move events apply: a player's
     // move, or turn, waits while the session is paused or ended. The GM sets
     // the scene whenever they like. Conditions stay open to a player.
-    if ((updates.position !== undefined || updates.rotation !== undefined) && !canMoveTokensNow(membership.role, map.campaign.status)) {
+    // Getting on a mount moves the rider onto it, so it waits too; getting off moves nothing.
+    if ((updates.position !== undefined || updates.rotation !== undefined || updates.mountedOn) && !canMoveTokensNow(membership.role, map.campaign.status)) {
       return res.status(403).json({ error: 'Forbidden', message: PAUSED_MOVE_REFUSAL });
     }
 
@@ -1850,10 +1852,6 @@ router.put('/:id/tokens/:tokenId', campaignMember, async (req: AuthenticatedRequ
           message: `Position must be within map bounds (0-${fresh.width-1}, 0-${fresh.height-1})`,
         };
       }
-      // The whole footprint on the map, at the size the token will have.
-      const position = requested
-        ? clampTokenPosition(requested, shapes.value.size ?? current.size ?? { width: 1, height: 1 }, fresh)
-        : undefined;
 
       // Metadata is merged into what the token already holds, so the size
       // limit has to be checked against the result. Checking only the
@@ -1868,9 +1866,41 @@ router.put('/:id/tokens/:tokenId', campaignMember, async (req: AuthenticatedRequ
         }
       }
 
-      const token: Token = { ...current, ...changes, ...(position && { position }), ...(metadata && { metadata }) };
-      tokens[index] = token;
-      const map = await tx.map.update({ where: { id: mapId }, data: { tokens: toJson(tokens) } });
+      tokens[index] = { ...current, ...changes, ...(metadata && { metadata }) };
+      let next = tokens;
+
+      // Coupling, judged on the list as it is here. The rider is this token,
+      // whose control was checked above. A player may put it only on a token
+      // they control too, so a coupling never hands them a token they do not
+      // move; anything else they name, a hidden token included, gets the same
+      // answer. A rider may always get off.
+      const mountId = shapes.value.mountedOn;
+      if (mountId) {
+        const mountToken = next.find((t) => t.id === mountId);
+        if (!isGM && (!mountToken || !canControlToken(membership.role, mountToken.controlledBy, userId))) {
+          return { status: 403, error: 'Forbidden', message: 'You can only mount a token on one you control' };
+        }
+        const refusal = mountRefusal(next, next[index], mountToken);
+        if (refusal) return { status: 400, error: 'Validation Error', message: refusal };
+        next = mount(next, tokenId, mountId);
+      } else if (mountId === null) {
+        next = next.map((t) => (t.id === tokenId ? { ...t, mountedOn: null } : t));
+      }
+      // A new controller ends the token's couplings: one a player made would
+      // otherwise go on moving a token that is no longer theirs.
+      if (changes.controlledBy !== undefined && changes.controlledBy !== (current.controlledBy ?? null)) {
+        next = uncouple(next, tokenId);
+      }
+      // A crossing to the other plane lets go of a mount or riders left behind.
+      next = untangleMounts(next);
+
+      // A move takes the token's mount and riders with it, the whole group
+      // kept on the map at the size the token will have. Getting on a mount
+      // puts the rider on its square, whatever position came with it.
+      if (requested && !mountId) next = moveCoupled(next, tokenId, requested, fresh).tokens;
+
+      const token = next.find((t) => t.id === tokenId)!;
+      const map = await tx.map.update({ where: { id: mapId }, data: { tokens: toJson(next) } });
       return { done: { token, map } };
     });
     if (!('done' in written)) return sendRefusal(res, written);
@@ -1896,7 +1926,8 @@ router.put('/:id/tokens/:tokenId', campaignMember, async (req: AuthenticatedRequ
     const spiritVisible = await getSpiritVisibility(campaignId, userId);
     return res.status(200).json({
       message: 'Token updated successfully',
-      token: isGM ? updatedToken : (filterTokensByRole([updatedToken], membership.role, spiritVisible, userId)[0] ?? null),
+      // Picked from the whole list, so a rider keeps its mount where the mount is sent too.
+      token: isGM ? updatedToken : (filterTokensByRole(updatedMap.tokens, membership.role, spiritVisible, userId).find((t) => t.id === tokenId) ?? null),
       map: filterMapData(updatedMap, membership.role, spiritVisible, userId),
     });
   } catch (error) {
@@ -1948,19 +1979,20 @@ router.post('/:id/tokens/move', campaignGM, async (req: AuthenticatedRequest, re
       const moved = sourceTokens
         .filter((t) => wanted.has(t.id))
         .map((t) => ({ ...t, position: clampTokenPosition(t.position, t.size, target) }));
-      const targetTokens = [...readTokens(target.tokens).filter((t) => !wanted.has(t.id)), ...moved];
+      // A rider or a mount that travels without the other lets go of it, on both maps.
+      const targetTokens = untangleMounts([...readTokens(target.tokens).filter((t) => !wanted.has(t.id)), ...moved]);
       if (targetTokens.length > MAP_LIMITS.maxTokens) {
         return { full: targetTokens.length };
       }
       const updatedSource = await tx.map.update({
         where: { id: sourceId },
-        data: { tokens: toJson(sourceTokens.filter((t) => !wanted.has(t.id))) },
+        data: { tokens: toJson(untangleMounts(sourceTokens.filter((t) => !wanted.has(t.id)))) },
       });
       const updatedTarget = await tx.map.update({
         where: { id: targetMapId },
         data: { tokens: toJson(targetTokens) },
       });
-      return { moved, updatedSource, updatedTarget };
+      return { moved: targetTokens.filter((t) => wanted.has(t.id)), updatedSource, updatedTarget };
     });
     if ('refused' in outcome) {
       return res.status(404).json({ error: 'Not Found', message: outcome.refused });
@@ -2049,7 +2081,8 @@ router.delete('/:id/tokens/:tokenId', campaignGM, async (req: AuthenticatedReque
     // at once used to leave only whichever wrote last.
     await withMapsLocked([mapId], async (tx) => {
       const fresh = await tx.map.findUniqueOrThrow({ where: { id: mapId }, select: { tokens: true } });
-      return tx.map.update({ where: { id: mapId }, data: { tokens: toJson(readTokens(fresh.tokens).filter((t) => t.id !== tokenId)) } });
+      // Its riders get off in the same write.
+      return tx.map.update({ where: { id: mapId }, data: { tokens: toJson(untangleMounts(readTokens(fresh.tokens).filter((t) => t.id !== tokenId))) } });
     });
     resendSoonIfCurrent(campaignId, mapId);
 

@@ -106,8 +106,8 @@ const IdSchema = z.uuid();
  *
  * Each field is optional, so a partial update is checked only on what it
  * actually carries. `null` is accepted where a token records having none:
- * `hp`, `statBlock`, `sightRadius`, `light`, `notes`, `imageUrl`, `initiative`, and
- * the three ids.
+ * `hp`, `statBlock`, `sightRadius`, `light`, `notes`, `imageUrl`, `initiative`,
+ * `mountedOn`, and the three ids.
  *
  * Returns the parsed values rather than the raw ones, so callers store what the
  * schema produced — a trimmed condition list, a position that is only its
@@ -134,6 +134,7 @@ export type TokenShapes = {
   controlledBy?: string | null;
   characterId?: string | null;
   creatureTemplateId?: string | null;
+  mountedOn?: string | null;
   name?: string;
   notes?: string | null;
   imageUrl?: string | null;
@@ -220,6 +221,12 @@ export function validateTokenShapes(
     if ('failed' in id) return { ok: false, message: id.failed };
     if (id.parsed !== undefined) value[field] = id.parsed;
   }
+
+  // A token id as the map stores it, which on older maps is not a UUID (see
+  // MoveTokensSchema); whether it names a mount is decided on the map.
+  const mountedOn = check('mountedOn', z.string().min(1).max(100), true);
+  if ('failed' in mountedOn) return { ok: false, message: mountedOn.failed };
+  if (mountedOn.parsed !== undefined) value.mountedOn = mountedOn.parsed;
 
   const name = check('name', TokenNameSchema);
   if ('failed' in name) return { ok: false, message: name.failed };
