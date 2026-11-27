@@ -74,6 +74,7 @@ import {
   FIFTH_EDITION_CUSTOM_SKILL_NAME_MAX,
   FIFTH_EDITION_DAMAGE_ROLL_TEXT_MAX,
   FIFTH_EDITION_DAMAGE_TYPE_MAX,
+  FIFTH_EDITION_DARKVISION_FEET_MAX,
   FIFTH_EDITION_HIT_DIE_MAX,
   FIFTH_EDITION_PROFICIENCY_BOX_MAX,
   FIFTH_EDITION_WEAPON_PROPERTIES_MAX,
@@ -1946,6 +1947,25 @@ export const FifthEditionCharacterEditor: React.FC<FifthEditionCharacterEditorPr
             Initiative rolls two d20s and keeps the higher. A level of exhaustion
             or the Poisoned condition cancels it, and one d20 is rolled.
           </p>
+        </div>
+      </div>
+
+      {/* In feet, as the rules give it. The GM's save puts it on the tokens
+          bound to this character, converted to the map's squares; a player's
+          save stores it for the GM to apply, since a token's sight decides
+          what the server sends its player. */}
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <label htmlFor="fifth-edition-darkvision" className="block text-sm font-semibold text-ink-secondary mb-1">Darkvision (ft)</label>
+          <NumberField
+            id="fifth-edition-darkvision"
+            min={0}
+            max={FIFTH_EDITION_DARKVISION_FEET_MAX}
+            value={formData.darkvisionFeet ?? 0}
+            onChange={(v: number) => updateField('darkvisionFeet', v)}
+            className="w-full px-3 py-2 border border-ink/20 rounded-lg text-center text-lg font-bold focus:outline-hidden focus:ring-2 focus:ring-brand"
+            fallback={0}
+          />
         </div>
       </div>
 

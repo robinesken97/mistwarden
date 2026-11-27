@@ -194,6 +194,7 @@
   "initiativeBonus": -2,
   "initiativeAdvantage": false,
   "speed": 76,
+  "darkvisionFeet": 90,
   "hp": {
     "maximum": 78,
     "current": 78,

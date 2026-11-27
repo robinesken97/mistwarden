@@ -53,4 +53,29 @@ describe('TokenVisionField', () => {
     expect(onCommit.mock.calls.map((c) => c[0])).toEqual([0]);
     expect(input.value).toBe('0');
   });
+
+  // The sheet's darkvision is in feet, the field in squares; the hint shows
+  // only while they disagree, and applying it reports it as typed or committed.
+  it('offers the sheet\'s darkvision in this map\'s squares, until the field holds it', () => {
+    const onChange = vi.fn();
+    const onCommit = vi.fn();
+    const { rerender } = render(<TokenVisionField value={3} onChange={onChange} onCommit={onCommit} feetPerSquare={10} sheetFeet={60} />);
+    expect(screen.getByText('Sheet: 60 ft')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: "Apply the sheet's darkvision, 60 ft" }));
+    expect(onChange).toHaveBeenCalledWith(6);
+    expect(onCommit).toHaveBeenCalledWith(6);
+
+    rerender(<TokenVisionField value={6} onChange={onChange} feetPerSquare={10} sheetFeet={60} />);
+    expect(screen.queryByText('Sheet: 60 ft')).toBeNull();
+    rerender(<TokenVisionField value={6} onChange={onChange} feetPerSquare={10} />);
+    expect(screen.queryByRole('button', { name: /Apply/ })).toBeNull();
+  });
+
+  it('leaves a sight the sheet set alone when the box is left untouched', () => {
+    const onCommit = vi.fn();
+    render(<TokenVisionField value={7.5} onCommit={onCommit} feetPerSquare={8} sheetFeet={60} />);
+    fireEvent.blur(screen.getByLabelText('Darkvision in grid squares'));
+    expect(onCommit).not.toHaveBeenCalled();
+    expect(screen.queryByText('Sheet: 60 ft')).toBeNull();
+  });
 });

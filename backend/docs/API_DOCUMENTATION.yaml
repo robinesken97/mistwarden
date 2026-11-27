@@ -5544,6 +5544,15 @@ paths:
           campaigns the caller is GM of are changed. The token's name is not
           touched. Each campaign whose tokens changed has its initiative
           state resent. A failure here is logged and does not fail the save.
+        - When a 5E sheet's `darkvisionFeet` (0 or absent is none) differs
+          from the stored one, each token bound to the character on a map of
+          a campaign the caller is GM of has its `sightRadius` set to the feet
+          over that map's `feetPerSquare` (not rounded, at most 200). A
+          player's save stores the value and writes no token. Each map
+          changed is re-sent to the table as `map.changed`, per member, when
+          it is the campaign's current map; it counts as a token change for
+          the initiative resend and `tokensChanged` below. A failure here is
+          logged and does not fail the save.
         - If the character is in a campaign and its owner is still a member,
           the update broadcasts `character.updated` to that campaign with
           `characterId`, `character`, `userId` and `tokensChanged`, and also

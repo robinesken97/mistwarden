@@ -28,7 +28,7 @@ import { apiErrorMessage } from '@/utils/errors';
 import Button from '@/components/ui/Button';
 import SlideOver, { SlideOverClose, SlideOverTitle } from '@/components/ui/SlideOver';
 import AssetGrid from '@/components/assets/AssetGrid';
-import TokenVisionField from './TokenVisionField';
+import TokenVisionField, { squaresForFeet, useSheetDarkvisionFeet } from './TokenVisionField';
 import RemoveTokenDialog from './RemoveTokenDialog';
 import { setTokenFlag } from '@/utils/tokenFlags';
 import { tokenControllerStanding } from '@/utils/tokenCopy';
@@ -128,10 +128,19 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
     const previous = characters.find((c) => c.id === characterId);
     const next = characters.find((c) => c.id === id);
     setCharacterId(id);
+    // The last character's darkvision, if the field still holds it, is not this one's.
+    if (pickedDarkvision !== undefined && sightRadius === squaresForFeet(pickedDarkvision, feetPerSquare)) setSightRadius(0);
     if (!next) return;
     if (!tokenName.trim() || tokenName === previous?.name) setTokenName(next.name);
     setAssignTo(players.some((m) => m.userId === next.userId) ? next.userId : 'none');
   };
+  // A 5E sheet's darkvision becomes the token's sight once the sheet has
+  // loaded; the campaign's character list carries no sheets.
+  const pickedDarkvision = useSheetDarkvisionFeet(pickedCharacter?.id);
+  const feetPerSquare = viewedMap?.feetPerSquare ?? 5;
+  useEffect(() => {
+    if (pickedDarkvision !== undefined) setSightRadius(squaresForFeet(pickedDarkvision, feetPerSquare));
+  }, [pickedDarkvision, feetPerSquare]);
   const otherMaps = (campaign?.maps ?? []).filter((m) => m.id !== viewedMap?.id);
   const canAdd = !!tokenName.trim() && !!viewedMap;
 
@@ -734,7 +743,7 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
 
           {/* Darkvision (NPC and Player only; objects do not see) */}
           {tokenType !== TokenType.OBJECT && (
-            <TokenVisionField value={sightRadius} onChange={setSightRadius} feetPerSquare={viewedMap?.feetPerSquare ?? 5} />
+            <TokenVisionField value={sightRadius} onChange={setSightRadius} feetPerSquare={feetPerSquare} sheetFeet={pickedDarkvision} />
           )}
 
           {/* Assign to player (NPC and Player only) */}
