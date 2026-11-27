@@ -184,11 +184,11 @@ export default function GmFogControls({
               type="button"
               aria-pressed={fogShape === shape}
               onClick={() => onFogShapeChange(shape)}
-              className={`touch-target flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded text-[11px] font-medium border transition-colors ${
+              className={`touch-target flex-1 basis-0 min-w-0 flex items-center justify-center gap-1 px-0.5 py-1.5 rounded text-xs font-medium border transition-colors ${
                 fogShape === shape ? 'bg-stone-600/60 text-stone-100 border-stone-400/60' : 'bg-stone-800/40 text-stone-400 border-stone-700/50 hover:bg-stone-700/60'
               }`}
             >
-              <Icon className="w-3.5 h-3.5" />
+              <Icon className="w-3.5 h-3.5 shrink-0" />
               {label}
             </button>
           ))}
