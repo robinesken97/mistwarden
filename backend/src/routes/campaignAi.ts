@@ -18,7 +18,7 @@ import logger from '../utils/logger';
 const router = Router();
 
 /** Each request costs the instance's owner money or their GPU's time. */
-const aiLimiter = rateLimit({
+export const aiLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: positiveIntegerFromEnv('AI_RATE_LIMIT', 10),
   standardHeaders: true,
