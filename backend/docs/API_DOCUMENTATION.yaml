@@ -8057,7 +8057,7 @@ paths:
         once in that time for each map (as for adding a token). The GM may update any token and any field. A player may
         update only a token that names them in `controlledBy`, and only its
         `position`, `rotation` and `conditions`; every other field of the body
-        below, `size` and `sightRadius` included, answers 403 for a player
+        below, `size`, `sightRadius` and `light` included, answers 403 for a player
         (`Only the GM can update token field: <field>`, or `Only the GM can
         change token layer`). A spectator may not
         update a token at all, even one that still names them from before they
@@ -8204,6 +8204,11 @@ paths:
                   minimum: 0
                   maximum: 200
                   description: Darkvision in grid squares (0 = none). GM only; it decides what the server sends this token's player.
+                light:
+                  allOf:
+                    - $ref: '#/components/schemas/CarriedLight'
+                  nullable: true
+                  description: GM only; null removes it. It decides what the server sends players.
                 obscured:
                   type: boolean
                   description: Hide what the token is from players who do not control it. GM only; this route is the only way to change it after creation.
@@ -13838,7 +13843,7 @@ components:
         `metadata` is sent to every player who may see the token (only the GM
         can write it), so it is no place for secrets. A token whose `obscured` is true reaches anyone but its
         controller as a shape with no identity, built from a fixed list: `id`,
-        `position`, `size`, `layer`, `visible` and `obscured: true` are kept,
+        `position`, `size`, `layer`, `visible`, `light` and `obscured: true` are kept,
         and every other field is neutral (`name` and `imageUrl` empty,
         `conditions` and `metadata` empty, `characterId`, `controlledBy`,
         `creatureTemplateId`, `disposition`, `hp` and `initiative` null, `type`
@@ -13949,6 +13954,40 @@ components:
           type: boolean
           default: false
           description: The GM has hidden what this token is. GM only on write; players who do not control it receive it masked (see the schema description).
+        light:
+          allOf:
+            - $ref: '#/components/schemas/CarriedLight'
+          nullable: true
+          description: The light the token carries; null for none.
+
+    CarriedLight:
+      type: object
+      description: |
+        A torch or lantern a token carries, lit at the token's centre and moving
+        with it; the same limits as a map light. On a lit map a player's sight
+        counts it only while the token is theirs or in their line of sight
+        (walls alone decide that), so a carried light never lights anything
+        for a player who is not sent its bearer, and a hidden bearer's light
+        lights nothing for any player. Dropping a token whose light is on sends
+        every player `map.changed` with their sight. GM only on write.
+      required: [brightRadius, dimRadius, color, enabled]
+      properties:
+        brightRadius:
+          type: number
+          minimum: 0
+          maximum: 100
+          description: Bright-light radius in grid squares
+        dimRadius:
+          type: number
+          minimum: 0.5
+          maximum: 100
+          description: Dim-light radius in grid squares; at least brightRadius
+        color:
+          type: string
+          pattern: '^#[0-9a-fA-F]{6}$'
+        enabled:
+          type: boolean
+          description: False for a light that is out; it lights nothing
 
     TokenInput:
       type: object
@@ -13968,6 +14007,11 @@ components:
           minimum: 0
           maximum: 200
           description: Darkvision in grid squares (0 = none); stored as 0 when omitted
+        light:
+          allOf:
+            - $ref: '#/components/schemas/CarriedLight'
+          nullable: true
+          description: The light the token carries; stored as null when omitted
         characterId:
           type: string
           format: uuid
