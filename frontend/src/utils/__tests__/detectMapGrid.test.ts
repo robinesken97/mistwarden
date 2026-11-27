@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { analyseGrid } from '../detectMapGrid';
+import { analyseGrid, type GridDetectionResult } from '../detectMapGrid';
 
 // All images are synthetic grayscale buffers built here; no real maps.
 
@@ -79,13 +79,22 @@ function phaseError(a: number, b: number, p: number) {
   return Math.min(d, p - d);
 }
 
+/**
+ * Period within `tol` px; offsets within 1.5 px of the expected line centres
+ * (a 1 px line drawn at x has its centre at x + 0.5).
+ */
+function expectGrid(r: GridDetectionResult | null, period: number, tol: number, offX: number, offY: number) {
+  expect(r).not.toBeNull();
+  expect(Math.abs(r!.period - period)).toBeLessThan(tol);
+  expect(phaseError(r!.offsetX, offX, period)).toBeLessThanOrEqual(1.5);
+  expect(phaseError(r!.offsetY, offY, period)).toBeLessThanOrEqual(1.5);
+}
+
 describe('analyseGrid', () => {
   it('finds a plain grid', () => {
     const r = new Gray(1000, 800).grid(50, { thick: 2 }).analyse();
-    expect(r).toMatchObject({ gridSize: 50, width: 20, height: 16 });
-    expect(r!.period).toBeCloseTo(50, 1);
-    expect(phaseError(r!.offsetX, 0.5, 50)).toBeLessThanOrEqual(1);
-    expect(phaseError(r!.offsetY, 0.5, 50)).toBeLessThanOrEqual(1);
+    expectGrid(r, 50, 0.05, 1, 1);
+    expect(r).toMatchObject({ gridSize: 50, width: 20, height: 16, offsetX: 0, offsetY: 0 });
     expect(r!.confidence).toBeGreaterThan(0.8);
   });
 
@@ -94,25 +103,25 @@ describe('analyseGrid', () => {
     // Parchment-coloured map area with a 37 px / 23 px border around it
     g.add((x, y) => (x >= 37 && y >= 23 && x < 1063 && y < 883 ? 110 : 0));
     const r = g.grid(60, { ox: 37, oy: 23, x1: 1063, y1: 883, thick: 2 }).analyse();
-    expect(r).not.toBeNull();
-    expect(r!.period).toBeCloseTo(60, 0);
-    expect(r!.width).toBe(18);
-    expect(r!.height).toBe(15);
-    expect(phaseError(r!.offsetX, 37.5, 60)).toBeLessThanOrEqual(1);
-    expect(phaseError(r!.offsetY, 23.5, 60)).toBeLessThanOrEqual(1);
+    expectGrid(r, 60, 0.05, 38, 24);
+    expect(r).toMatchObject({ width: 18, height: 15 });
+  });
+
+  it('finds the offset of a coarse grid with few lines', () => {
+    const r = new Gray(1500, 1500).add(pixelNoise(10, 17)).grid(100, { ox: 30, oy: 65, thick: 3 }).analyse();
+    expectGrid(r, 100, 0.05, 31.5, 66.5);
   });
 
   it('finds faint 1 px lines on noise', () => {
     const r = new Gray(1200, 900, 128).add(pixelNoise(40, 1)).grid(45, { delta: -12 }).analyse();
-    expect(r).not.toBeNull();
-    expect(r!.period).toBeCloseTo(45, 0);
+    expectGrid(r, 45, 0.05, 0.5, 0.5);
   });
 
   it('finds dashed and dotted lines', () => {
     const dashed = new Gray(1000, 1000).add(pixelNoise(10, 2)).grid(50, { on: (a) => a % 12 < 6, delta: -60 }).analyse();
-    expect(dashed?.gridSize).toBe(50);
+    expectGrid(dashed, 50, 0.05, 0.5, 0.5);
     const dotted = new Gray(1000, 1000).add(pixelNoise(10, 3)).grid(50, { on: (a) => a % 6 < 2, delta: -60 }).analyse();
-    expect(dotted?.gridSize).toBe(50);
+    expectGrid(dotted, 50, 0.05, 0.5, 0.5);
   });
 
   it('ignores strong texture, including one-axis plank stripes', () => {
@@ -123,40 +132,32 @@ describe('analyseGrid', () => {
       .add((x) => (x % 17 === 0 ? -50 : 0))
       .grid(64, { delta: -30 });
     const r = g.analyse();
-    expect(r).not.toBeNull();
-    expect(r!.period).toBeCloseTo(64, 0);
-    expect(r!.width).toBe(20);
-    expect(r!.height).toBe(16);
+    expectGrid(r, 64, 0.05, 0.5, 0.5);
+    expect(r).toMatchObject({ width: 20, height: 16 });
   });
 
   it('finds a grid covering only part of a rectangular image', () => {
     const g = new Gray(1600, 900, 150).add(valueNoise(31, 50, 6)).add(pixelNoise(15, 7));
     const r = g.grid(50, { x1: 1000, delta: -50 }).analyse();
-    expect(r).not.toBeNull();
-    expect(r!.period).toBeCloseTo(50, 0);
-    expect(r!.width).toBe(32);
-    expect(r!.height).toBe(18);
+    expectGrid(r, 50, 0.05, 0.5, 0.5);
+    expect(r).toMatchObject({ width: 32, height: 18 });
   });
 
   it('measures a non-integer period to sub-pixel precision', () => {
     const r = new Gray(1408, 1056).add(pixelNoise(10, 8)).grid(70.4, { delta: -60 }).analyse();
-    expect(r).not.toBeNull();
-    expect(Math.abs(r!.period - 70.4)).toBeLessThan(0.2);
-    expect(r!.gridSize).toBe(70);
-    expect(r!.width).toBe(20);
-    expect(r!.height).toBe(15);
+    expectGrid(r, 70.4, 0.05, 0.5, 0.5);
+    expect(r).toMatchObject({ gridSize: 70, width: 20, height: 15 });
   });
 
-  it('keeps sub-pixel precision after downsampling', () => {
-    // A 2048 px map with 1 px lines every 70.4 px, box-downsampled to 1024 px
-    const big = new Gray(2048, 2048).add(pixelNoise(10, 9)).grid(70.4, { delta: -80 });
+  it('keeps sub-pixel precision and the offset after downsampling', () => {
+    // A 2048 px map with 1 px lines every 70.4 px from (40, 12), box-downsampled to 1024 px
+    const big = new Gray(2048, 2048).add(pixelNoise(10, 9)).grid(70.4, { ox: 40, oy: 12, delta: -80 });
     const small = new Gray(1024, 1024, 0).add((x, y) => {
       const i = 2 * y * 2048 + 2 * x;
       return (big.v[i] + big.v[i + 1] + big.v[i + 2048] + big.v[i + 2049]) / 4;
     });
     const r = analyseGrid(small.rgba(), 1024, 1024, 2048, 2048);
-    expect(r).not.toBeNull();
-    expect(Math.abs(r!.period - 70.4)).toBeLessThan(0.3);
+    expectGrid(r, 70.4, 0.05, 40.5, 12.5);
     expect(r!.width).toBe(29);
   });
 
@@ -189,13 +190,13 @@ describe('analyseGrid', () => {
       .add(pixelNoise(10, 15))
       .grid(40, { thick: 2, delta: -100, weight: (k) => (k % 2 === 0 ? 1 : 0.25) })
       .analyse();
-    expect(r).not.toBeNull();
-    expect(r!.period).toBeCloseTo(40, 0);
+    expectGrid(r, 40, 0.05, 1, 1);
     expect(r!.width).toBe(30);
   });
 
   it('does not pick half the period of a plain grid', () => {
     const r = new Gray(1200, 960).add(pixelNoise(10, 16)).grid(80, { thick: 3, delta: -90 }).analyse();
-    expect(r!.period).toBeCloseTo(80, 0);
+    expectGrid(r, 80, 0.05, 1.5, 1.5);
   });
 });
+

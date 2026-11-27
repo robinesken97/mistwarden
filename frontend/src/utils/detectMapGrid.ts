@@ -17,9 +17,9 @@
 //      only (wood planks) cannot win.
 //   5. Harmonic check: if the positions halfway (or a third) between the
 //      chosen lines also hold lines, the real grid is finer.
-//   6. Refine the period to sub-pixel precision with the Fourier magnitude
-//      at 1/period and a parabola, and read the phase (offset of the first
-//      grid line) from the Fourier phase.
+//   6. Locate the centre of every grid line near its predicted position and
+//      fit position = phase + k·period by least squares: sub-pixel period,
+//      and the phase gives the offset of the first grid line on each axis.
 //
 // Returns null when no confident grid is found: a wrong guess is worse than
 // no guess, because the GM still confirms the suggestion.
@@ -69,15 +69,30 @@ export async function detectMapGrid(imageUrl: string): Promise<GridDetectionResu
   const w = Math.max(1, Math.round(img.width * scale));
   const h = Math.max(1, Math.round(img.height * scale));
 
-  const canvas = document.createElement('canvas');
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return null;
-  ctx.drawImage(img, 0, 0, w, h);
-
-  const { data } = ctx.getImageData(0, 0, w, h);
-  return analyseGrid(data, w, h, img.width, img.height);
+  // Halve step by step: one big drawImage step samples without prefiltering
+  // (seen in Chromium), so 1 px grid lines vanish depending on their phase.
+  let source: HTMLImageElement | HTMLCanvasElement = img;
+  let sw = img.width;
+  let sh = img.height;
+  for (;;) {
+    const tw = sw > 2 * w ? Math.ceil(sw / 2) : w;
+    const th = sh > 2 * h ? Math.ceil(sh / 2) : h;
+    const canvas = document.createElement('canvas');
+    canvas.width = tw;
+    canvas.height = th;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.drawImage(source, 0, 0, tw, th);
+    if (source instanceof HTMLCanvasElement) source.width = 0; // free the step's memory now
+    source = canvas;
+    sw = tw;
+    sh = th;
+    if (tw === w && th === h) {
+      const { data } = ctx.getImageData(0, 0, w, h);
+      canvas.width = 0;
+      return analyseGrid(data, w, h, img.width, img.height);
+    }
+  }
 }
 
 /**
@@ -103,12 +118,10 @@ export function analyseGrid(
 
   // Coarse search: steps small enough that the comb drifts at most 0.5 px over the profile
   const step = 1 + 1 / Math.max(w, h);
-  let best: { p: number; score: number; fx: Fold; fy: Fold } | null = null;
+  let best: { p: number; score: number } | null = null;
   for (let p = minP; p <= maxP; p *= step) {
-    const fx = fold(x, p);
-    const fy = fold(y, p);
-    const score = joint(fx.z, fy.z);
-    if (!best || score > best.score) best = { p, score, fx, fy };
+    const score = joint(fold(x, p).z, fold(y, p).z);
+    if (!best || score > best.score) best = { p, score };
   }
   if (!best || best.score < MIN_SCORE) return null;
 
@@ -128,22 +141,17 @@ export function analyseGrid(
     }
   }
 
-  // Sub-pixel refinement of the period
-  const n = Math.max(w, h);
-  const samples: number[] = [];
-  const ts: number[] = [];
-  for (let t = -2; t <= 2.0001; t += 0.1) {
-    const pt = p * (1 + t / n);
-    ts.push(pt);
-    samples.push(fourier(x, pt).mag + fourier(y, pt).mag);
-  }
-  let iMax = 0;
-  for (let i = 1; i < samples.length; i++) if (samples[i] > samples[iMax]) iMax = i;
-  let period = ts[iMax];
-  if (iMax > 0 && iMax < samples.length - 1) {
-    const [a, b, c] = [samples[iMax - 1], samples[iMax], samples[iMax + 1]];
-    const denom = a - 2 * b + c;
-    if (denom < 0) period += (0.5 * (a - c) / denom) * (ts[iMax + 1] - ts[iMax]);
+  // Sub-pixel period and phase: locate every grid line, then fit x_k = phase + k·period.
+  // The second pass re-centres the search windows on the first fit.
+  let period = p;
+  let phases = [x, y].map((prof) => {
+    const f = fold(prof, p);
+    return ((f.peak + 0.5) * p) / f.bins.length;
+  });
+  for (let pass = 0; pass < 2; pass++) {
+    const fit = fitLines([teeth(x, period, phases[0]), teeth(y, period, phases[1])]);
+    if (!fit || Math.abs(fit.period - p) > 0.05 * p) break;
+    ({ period, phases } = fit);
   }
 
   const finalScore = joint(fold(x, period).z, fold(y, period).z);
@@ -164,8 +172,8 @@ export function analyseGrid(
     period: periodPx,
     width,
     height,
-    offsetX: phaseToOffset(fourier(x, period).phase, periodPx),
-    offsetY: phaseToOffset(fourier(y, period).phase, periodPx),
+    offsetX: toOffset(phases[0] / scale, periodPx),
+    offsetY: toOffset(phases[1] / scale, periodPx),
     confidence: Math.min(1, 0.5 + 0.5 * (finalScore - MIN_SCORE) / (FULL_SCORE - MIN_SCORE)),
   };
 }
@@ -267,24 +275,72 @@ function hasLinesBetween(f: Fold, d: number) {
   return true;
 }
 
-/** Fourier component of the profile at frequency 1/p */
-function fourier(prof: Profile, p: number) {
-  let re = 0;
-  let im = 0;
-  const w = (2 * Math.PI) / p;
-  const { v, mean } = prof;
-  for (let i = 0; i < v.length; i++) {
-    const a = v[i] - mean;
-    re += a * Math.cos(w * i);
-    im += a * Math.sin(w * i);
-  }
-  return { mag: Math.hypot(re, im) / v.length, phase: Math.atan2(im, re) };
+interface Tooth {
+  k: number;       // line number
+  pos: number;     // measured line centre in profile px
+  height: number;  // response above the mean, used as weight
 }
 
-/** Line centre from the Fourier phase, in original px within [0, period); within 2 px of the edge counts as 0 */
-function phaseToOffset(phase: number, periodPx: number) {
-  const off = (((phase / (2 * Math.PI)) * periodPx) % periodPx + periodPx) % periodPx;
-  const rounded = Math.round(off);
+/**
+ * Centre of each grid line near phase + k·p: the centroid of the response
+ * above half its local maximum (both edges of a thick line count equally).
+ * Lines much weaker than the typical one (missing, outside a partial grid) are dropped.
+ */
+function teeth(prof: Profile, p: number, phase: number): Tooth[] {
+  const { v, mean } = prof;
+  const half = Math.max(1, Math.floor(p / 4));
+  const found: Tooth[] = [];
+  for (let k = 0; phase + k * p + half < v.length; k++) {
+    const c = Math.round(phase + k * p);
+    if (c - half < 0) continue;
+    let top = -Infinity;
+    for (let i = c - half; i <= c + half; i++) top = Math.max(top, v[i]);
+    const cut = (top + mean) / 2;
+    let sw = 0;
+    let sx = 0;
+    for (let i = c - half; i <= c + half; i++) {
+      if (v[i] > cut) {
+        sw += v[i] - cut;
+        sx += (v[i] - cut) * i;
+      }
+    }
+    if (sw > 0) found.push({ k, pos: sx / sw, height: top - mean });
+  }
+  const heights = found.map((t) => t.height).sort((a, b) => a - b);
+  const typical = heights[heights.length >> 1] ?? 0;
+  return found.filter((t) => t.height > 0 && t.height > 0.5 * typical);
+}
+
+/** Weighted least squares with one shared period and a phase per axis */
+function fitLines(axes: Tooth[][]): { period: number; phases: number[] } | null {
+  if (axes.some((ts) => ts.length < 2)) return null;
+  const centres = axes.map((ts) => {
+    let sw = 0;
+    let sk = 0;
+    let sx = 0;
+    for (const t of ts) {
+      sw += t.height;
+      sk += t.height * t.k;
+      sx += t.height * t.pos;
+    }
+    return { k: sk / sw, x: sx / sw };
+  });
+  let num = 0;
+  let den = 0;
+  axes.forEach((ts, a) => {
+    for (const t of ts) {
+      num += t.height * (t.k - centres[a].k) * (t.pos - centres[a].x);
+      den += t.height * (t.k - centres[a].k) ** 2;
+    }
+  });
+  if (!(den > 0)) return null;
+  const period = num / den;
+  return { period, phases: centres.map((c) => c.x - period * c.k) };
+}
+
+/** Phase in original px reduced to [0, period); within 2 px of a line at 0 counts as 0 */
+function toOffset(phase: number, periodPx: number) {
+  const rounded = Math.round(((phase % periodPx) + periodPx) % periodPx);
   return rounded <= 2 || rounded >= periodPx - 2 ? 0 : rounded;
 }
 
