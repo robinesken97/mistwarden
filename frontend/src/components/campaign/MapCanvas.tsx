@@ -4522,9 +4522,11 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
           </div>
         ) : (
         /* Toolbar - Glassmorphism */
-        // Mistwarden, 2026-11-27: two fixed rows, the view above and the tools below, every
-        // button on one grid. Wrapping groups with dividers left the rows out of step.
-        <div ref={toolbarRef} className="glass-panel p-2 flex flex-col items-start gap-2 bg-parchment/90 backdrop-blur-xs pointer-events-auto">
+        // Mistwarden, 2026-11-27: two groups, the view and the tools, in one row where they
+        // fit; where not, the tools wrap under the view, both starting at the left, so the
+        // buttons stand in columns. The wider gap between the groups replaces the dividers,
+        // which could start a wrapped row and put it out of step.
+        <div ref={toolbarRef} className="glass-panel p-2 flex flex-wrap items-center gap-x-4 gap-y-2 bg-parchment/90 backdrop-blur-xs pointer-events-auto">
           <div className="flex items-center gap-2">
             {zoomOutButton}
             {/* Two button cells wide (34 or 44 px each and the 8 px gap), so the buttons stand in columns. */}

@@ -323,9 +323,9 @@ describe('the menus on a touch screen', () => {
 describe('the toolbar on a narrow map', () => {
   // On a map too narrow for one row it was cut off at the map's edge, Ping
   // with it. It wraps now, between groups that stay together.
-  // Mistwarden, 2026-11-27: two fixed rows, the view above and the tools below,
-  // so the buttons stand in columns however wide the map is.
-  it('puts the view in one row and the tools in a second, under it', () => {
+  // Mistwarden, 2026-11-27: two groups, the view and the tools, that wrap only
+  // between them, so the buttons stand in columns when they do.
+  it('groups the view and the tools, wrapping only between the two', () => {
     render(<MapCanvas />);
 
     const view = screen.getByRole('button', { name: 'Zoom Out' }).parentElement!;
@@ -341,7 +341,7 @@ describe('the toolbar on a narrow map', () => {
     }
     const toolbar = view.parentElement!;
     expect(tools.parentElement).toBe(toolbar);
-    expect(classesOf(toolbar)).toContain('flex-col');
+    expect(classesOf(toolbar)).toEqual(expect.arrayContaining(['flex-wrap', 'gap-x-4']));
   });
 
   // At 44 pixels a button, a GM's toolbar was 3 pixels too wide for one row
@@ -457,21 +457,20 @@ describe('what sits under the toolbar', () => {
   it('starts the AoE panel under one row of a mouse’s buttons, and keeps the tool stack beside them', () => {
     render(<MapCanvas />);
     openAoE();
-    layOut(754, [[25, 25, 302, 34], [25, 67, 220, 34]]);
+    layOut(754, [[25, 25, 302, 34], [343, 25, 202, 34]]);
 
-    // The band's foot is at 110, the second row's 101 and its padding.
-    expect(aoePanel().style.top).toBe('118px');
+    // The band's foot is at 68, the buttons' 59 and its padding.
+    expect(aoePanel().style.top).toBe('76px');
     expect(toolStack().style.top).toBe('3.5rem');
   });
 
-  // Mistwarden, 2026-11-27: the toolbar's second row is always there, so Put
-  // back starts under it on a wide map too.
-  it('starts Put back under the toolbar’s second row', () => {
+  // A pen's hold on such a screen shows Put back at its own place.
+  it('keeps Put back in its place under one row of a mouse’s buttons', () => {
     render(<MapCanvas />);
     holdByTap();
-    layOut(754, [[25, 25, 302, 34], [25, 67, 220, 34]]);
+    layOut(754, [[25, 25, 302, 34], [343, 25, 202, 34]]);
 
-    expect(putBackBar().style.top).toBe('118px');
+    expect(putBackBar().style.top).toBe('');
   });
 
   // A map 420 wide, as a Galaxy Tab S9's in landscape between the side
