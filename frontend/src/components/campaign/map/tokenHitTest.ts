@@ -7,11 +7,21 @@
 import type { Token } from '@/types';
 import { TokenLayer } from '@/types';
 import type { CharacterHpInfo } from '@/utils/characterHp';
-import { gridYToFogRow, gridXToFogCol, fogCellIndex } from './coords';
+import { tokenFogCell } from './coords';
+import { gridFrame } from './layers/types';
+import { hexDistance, isHexGrid, shiftCell, type GridFrame } from '@/utils/tokenCentre';
 import { coupledIds } from './mounts';
 
-/** Whether a grid cell falls inside a token's footprint. */
-export function tokenCoversCell(token: Token, gridX: number, gridY: number): boolean {
+/**
+ * Whether a grid cell falls inside a token's footprint. On a hex map a token
+ * stands on one hex and is drawn `size` hexes across around it, so it covers
+ * the hexes within half that of its own.
+ */
+export function tokenCoversCell(token: Token, gridX: number, gridY: number, grid?: GridFrame): boolean {
+  if (grid && isHexGrid(grid)) {
+    const reach = Math.floor((Math.max(token.size.width, token.size.height) - 1) / 2);
+    return hexDistance(token.position, { x: gridX, y: gridY }, grid) <= reach;
+  }
   return (
     gridX >= token.position.x &&
     gridX < token.position.x + token.size.width &&
@@ -66,6 +76,8 @@ export interface TokenVisibility {
   gmShowSpiritTokens: boolean;
   mapWidth: number;
   mapHeight: number;
+  /** The map's grid; absent means squares from the corner. */
+  grid?: GridFrame;
 }
 
 /**
@@ -92,9 +104,8 @@ export function isTokenVisibleTo(token: Token, view: TokenVisibility): boolean {
 
   if (view.revealedCells && !view.isOwnToken(token)) {
     // Token grid Y is bottom-left origin; fog rows are top-left. See coords.ts.
-    const fogRow = gridYToFogRow(token.position.y, token.size.height, view.mapHeight);
-    const fogCol = gridXToFogCol(token.position.x, token.size.width);
-    if (!view.revealedCells.has(fogCellIndex(fogCol, fogRow, { fogCols: view.mapWidth }))) {
+    const grid = view.grid ?? gridFrame({ width: view.mapWidth, height: view.mapHeight });
+    if (!view.revealedCells.has(tokenFogCell(token, grid))) {
       return false;
     }
   }
@@ -143,7 +154,7 @@ export function pickTokenAt(
   for (let i = tokens.length - 1; i >= 0; i--) {
     const token = tokens[i];
     if (view ? !isTokenVisibleTo(token, view) : !token.visible) continue;
-    if (tokenCoversCell(token, gridX, gridY)) return token;
+    if (tokenCoversCell(token, gridX, gridY, view?.grid)) return token;
   }
   return null;
 }
@@ -168,7 +179,7 @@ export function pickMovableTokenAt(
   for (let i = tokens.length - 1; i >= 0; i--) {
     const token = tokens[i];
     if (view ? !isTokenVisibleTo(token, view) : !token.visible) continue;
-    if (tokenCoversCell(token, gridX, gridY) && canMove(token)) return token;
+    if (tokenCoversCell(token, gridX, gridY, view?.grid) && canMove(token)) return token;
   }
   return null;
 }
@@ -206,11 +217,23 @@ export function blockingTokensAt(
   tokens: readonly Token[],
   moving: Token,
   target: { x: number; y: number },
-  characterHpCache: Record<string, CharacterHpInfo>
+  characterHpCache: Record<string, CharacterHpInfo>,
+  grid?: GridFrame
 ): Token[] {
   // A rider and its mount move as one: neither blocks the other, and each
   // must find room where the move puts it.
   const group = new Set(coupledIds(tokens, moving.id));
+  if (grid && isHexGrid(grid)) {
+    // A hex holds one creature: each of the group lands on the hex the
+    // move's step on the lattice takes it to.
+    const landing = [moving, ...tokens.filter((t) => group.has(t.id) && t.id !== moving.id)]
+      .map((t) => shiftCell(t.position, moving.position, target, grid));
+    return tokens.filter((token) => {
+      if (token.id === moving.id || group.has(token.id)) return false;
+      if (!token.visible || token.layer !== moving.layer || isTokenDowned(token, characterHpCache)) return false;
+      return landing.some((at) => tokenCoversCell(token, at.x, at.y, grid));
+    });
+  }
   const dx = target.x - moving.position.x;
   const dy = target.y - moving.position.y;
   const footprints = [moving, ...tokens.filter((t) => group.has(t.id) && t.id !== moving.id)].map((t) => ({

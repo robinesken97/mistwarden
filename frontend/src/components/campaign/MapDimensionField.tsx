@@ -13,15 +13,19 @@ export default function MapDimensionField({
   onChange,
   min,
   max,
+  decimals = false,
 }: {
   label: string;
   value: number;
   onChange: (v: number) => void;
   min: number;
   max: number;
+  /** Takes hundredths of a unit typed in the box, as a grid size between whole pixels. */
+  decimals?: boolean;
 }) {
   const boxId = useId();
   const clamp = (v: number) => Math.max(min, Math.min(max, v));
+  const read = (raw: string) => (decimals ? Math.round(parseFloat(raw) * 100) / 100 : parseInt(raw));
   return (
     <div>
       <label htmlFor={boxId} className="block text-xs text-stone-gray/70 mb-1">{label}</label>
@@ -29,9 +33,10 @@ export default function MapDimensionField({
         id={boxId}
         type="number"
         value={value}
-        onChange={(e) => onChange(clamp(parseInt(e.target.value) || min))}
+        onChange={(e) => onChange(clamp(read(e.target.value) || min))}
         min={min}
         max={max}
+        step={decimals ? 'any' : undefined}
         className="input-cozy"
       />
       <input

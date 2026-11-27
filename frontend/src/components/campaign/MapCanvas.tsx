@@ -61,6 +61,9 @@ import {
   type AoEShape,
   type LightingComposite,
   type Viewport,
+  gridFrame,
+  viewportGrid,
+  viewportFrame,
 } from './map/layers';
 import { createVisionCache } from './map/vision';
 import { pickTokenAt, pickMovableTokenAt, blockingTokensAt, visibleTokenHp, isTokenVisibleTo, tokenCoversCell } from './map/tokenHitTest';
@@ -98,14 +101,14 @@ import { useWallLightRequest } from './map/useWallLightRequest';
 import { useMapDrawings } from './map/useMapDrawings';
 import { labelFontSize } from './map/drawingGeometry';
 import { DRAWING_LIMITS } from '@/constants/drawingLimits';
-import { releaseHeldToken, carriedSquare, carriedDistance, heldDrawnAt } from './map/tokenHold';
+import { releaseHeldToken, carriedSquare, carriedDistance, heldDrawnAt, carryOffset } from './map/tokenHold';
 import { gridDistanceLabel } from '@/utils/geometry';
 import type { DoorViewer } from './map/doorAccess';
-import { fogCellIndex, gridXToFogCol, gridYToFogRow } from './map/coords';
+import { fogOrigin, tokenFogCell } from './map/coords';
 import { isTypingInto } from './map/typingTarget';
 import { keyBelongsToMap, mapKeyAction, createRepeatPacer, ARROW_REPEAT_MS, MAP_KEYS_HINT } from './map/keyboard';
 import { selectableTokens, nextSelectedId, squareFromArrow, panToKeepInView, keepInViewMargin, settleArrowEcho, type ArrowKey, type StepDirection } from './map/selection';
-import { tokenCentre } from '@/utils/tokenCentre';
+import { tokenCentre, type GridFrame } from '@/utils/tokenCentre';
 import { createOwnEdits } from './map/ownEdits';
 import mapService from '@/services/map.service';
 import { isHexColor, isSafeVibeFilter, parseSpiritStyle } from '@/utils/styleAllowlists';
@@ -607,9 +610,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
     if (!currentMap || !viewerRevealed) return cells;
     for (const t of tokens) {
       if (!viewerOwn(t)) continue;
-      const fogRow = gridYToFogRow(t.position.y, t.size.height, currentMap.height);
-      const fogCol = gridXToFogCol(t.position.x, t.size.width);
-      cells.add(fogCellIndex(fogCol, fogRow, { fogCols: currentMap.width }));
+      cells.add(tokenFogCell(t, gridFrame(currentMap)));
     }
     return cells;
   }, [currentMap, viewerRevealed, tokens, viewerOwn]);
@@ -675,11 +676,18 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   // running under reduced motion: the rings hold still but still need to fade.
   useCanvasTicker(pings.length > 0, () => markDirty('overlay'));
 
+  // The map's grid for socket handlers set up once, which cannot read this render's map.
+  const gridRef = useRef<GridFrame | null>(null);
+  gridRef.current = currentMap ? gridFrame(currentMap) : null;
+
   // Map controls (only initialize if we have a map)
   const mapControls = useMapControls({
     gridSize: currentMap?.gridSize || 50,
     mapWidth: currentMap?.width || 20,
     mapHeight: currentMap?.height || 20,
+    gridType: currentMap?.gridType,
+    gridOffsetX: currentMap?.gridOffsetX,
+    gridOffsetY: currentMap?.gridOffsetY,
     minZoom: 0.1, // Allow large maps to fully fit
     maxZoom: 3,
   });
@@ -705,9 +713,14 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
     return () => window.clearInterval(timer);
   }, [mistOnScreen, markDirty]);
 
+  // The fog grid with where its cells start: the grid's offset (map/coords.ts fogOrigin).
+  const fogGrid = useMemo(
+    () => (fogState && currentMap ? { ...fogState, ...fogOrigin(gridFrame(currentMap)) } : fogState),
+    [fogState, currentMap]
+  );
   const { tool: fogTool, fogDragAnchorRef, fogDragCurrent, cancelFogDrag, lassoPoints: fogLasso } = useFogTool({
     isGM, mapId: currentMap?.id, fogMode, fogShape, brushRadius: fogBrushSquares * (currentMap?.gridSize ?? 50),
-    fogState, setFogState, socket, mapControls, rightPanActiveRef, markDirty,
+    fogState: fogGrid, setFogState, socket, mapControls, rightPanActiveRef, markDirty,
   });
 
   // The map's drawings and the strokes on their way (map/useMapDrawings.ts),
@@ -1253,7 +1266,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
       // macro-task (e.g. token:appeared for NPCs) see the correct state. A
       // drag frame only moves where the token is drawn; sight, lighting and
       // explored memory follow it when it is put down.
-      store.receiveTokenMove(event.tokenId, { x: event.x, y: event.y }, event.dragging === true);
+      store.receiveTokenMove(event.tokenId, { x: event.x, y: event.y }, event.dragging === true, gridRef.current);
     };
 
     // Listen for token moved events.
@@ -1813,9 +1826,10 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   // the token this screen carries, beside it.
   const drawnHeldAt = useMemo(
     () => (heldHere
-      ? shiftFollowers(tokens, heldAt, heldHere.token.id, heldHere.at.x - heldHere.token.position.x, heldHere.at.y - heldHere.token.position.y)
+      ? shiftFollowers(tokens, heldAt, heldHere.token.id, heldHere.at.x - heldHere.token.position.x, heldHere.at.y - heldHere.token.position.y,
+        { grid: currentMap ? gridFrame(currentMap) : null, from: heldHere.token.position })
       : heldAt),
-    [heldHere, heldAt, tokens]
+    [heldHere, heldAt, tokens, currentMap]
   );
 
   // Where held tokens' lights are drawn while lights follow a drag, or null
@@ -1847,7 +1861,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
     // their plane).
     const pool = isGM ? tokensShownInPreview(tokens, () => true, null, viewport, previewedPlane) : tokens;
     const bearers = pool.flatMap((t) => (t.light?.enabled === true
-      ? [{ id: t.id, light: { ...t.light, id: `carried:${t.id}`, ...tokenCentre({ size: t.size, position: held?.get(t.id) ?? t.position }, viewport.gridSize, viewport.mapHeight) } }]
+      ? [{ id: t.id, light: { ...t.light, id: `carried:${t.id}`, ...tokenCentre({ size: t.size, position: held?.get(t.id) ?? t.position }, viewportFrame(viewport)) } }]
       : []));
     const carried: LightSource[] = bearers.map((b) => b.light);
     const mapLights = lightSources.filter((l) => l.enabled);
@@ -1895,7 +1909,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
     // Manual fog as this player has it: the squares their screen shows.
     const fog = currentMap && !isGM && effectiveRevealedCells
       ? {
-          grid: { fogCols: currentMap.width, fogRows: currentMap.height, cellPx: currentMap.gridSize },
+          grid: { fogCols: currentMap.width, fogRows: currentMap.height, cellPx: currentMap.gridSize, ...fogOrigin(gridFrame(currentMap)) },
           isRevealed: (cell: number) => effectiveRevealedCells.has(cell),
         }
       : null;
@@ -1906,6 +1920,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
       gridSize: currentMap.gridSize,
       mapWidth: currentMap.width,
       mapHeight: currentMap.height,
+      ...viewportGrid(currentMap),
     };
     return { role: userRole, lightingEnabled, canSee: ruleFor(tokens.filter(viewerOwn), viewport).canSee, fog };
   }, [currentMap, isGM, userRole, mapControls.zoom, mapControls.panOffset, ruleFor, tokens, viewerOwn, effectiveRevealedCells]);
@@ -1951,6 +1966,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
       gridSize: currentMap.gridSize,
       mapWidth: currentMap.width,
       mapHeight: currentMap.height,
+      ...viewportGrid(currentMap),
     };
 
     drawSaved(ctx, () => {
@@ -1990,7 +2006,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
 
       // 2. Grid overlay
       if (showGrid) {
-        drawGrid(ctx, { gridColor }, viewport);
+        drawGrid(ctx, { gridColor, visible }, viewport);
       }
 
       // 3. The GM's translucent fog, under the spirit layer and tokens so they
@@ -2038,6 +2054,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
       gridSize: currentMap.gridSize,
       mapWidth: currentMap.width,
       mapHeight: currentMap.height,
+      ...viewportGrid(currentMap),
     };
 
     drawSaved(ctx, () => {
@@ -2108,6 +2125,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
       gridSize: currentMap.gridSize,
       mapWidth: currentMap.width,
       mapHeight: currentMap.height,
+      ...viewportGrid(currentMap),
     };
 
     drawSaved(ctx, () => {
@@ -2165,7 +2183,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
               || lastExploredSourceRef.current.explored !== exploredCells)) {
             lastExploredReportRef.current = now;
             lastExploredSourceRef.current = { composite: lightingCompositeRef.current, explored: exploredCells };
-            const seen = exploredCellsFromCoverage(lightCoverageOffscreenRef.current, currentMap.width, currentMap.height, exploredScratchRef);
+            const seen = exploredCellsFromCoverage(lightCoverageOffscreenRef.current, currentMap.width, currentMap.height, exploredScratchRef, undefined, fogOrigin(gridFrame(currentMap)), currentMap.gridSize);
             const fresh = seen ? diffNew(exploredCells, seen) : [];
             if (fresh.length > 0) {
               addExplored(fresh);
@@ -2277,10 +2295,10 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
 
         // 11. Fog selection box — world space, so the snapped rectangle stays
         //     locked to the grid through pan and zoom.
-        if (fogMode && isGM && fogState) {
+        if (fogMode && isGM && fogGrid) {
           drawFogSelection(ctx, {
             mode: fogMode,
-            fog: fogState,
+            fog: fogGrid,
             anchor: fogDragAnchorRef.current,
             cursor: fogDragCurrent,
             shape: fogShape,
@@ -2366,7 +2384,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
         drawPings(ctx, { pings, now: Date.now(), reducedMotion: prefersReducedMotion }, viewport);
       }
     });
-  }, [mist, mistOnScreen, currentMap, mapShown, mapControls.zoom, mapControls.panOffset, dpr, campaign?.gameSystem, tokens, lightSources, selectedLightId, lightMode, wallSegments, wallColor, hoveredWallId, selectedWallIds, hoveredDoorId, wallMode, selectedEndpoint, wallInProgress, wallType, brushSize, splitHoverPoint, polygonPoints, showRuler, rulerColor, effectiveRulerOrigin, rulerEnd, rulerStartByTouch, showAoE, aoeConfig, aoeAnchor, aoeSnap, hoverCoords, fogMode, isGM, fogState, viewerRevealed, viewerOwn, previewing, ruleFor, ownTokenCells, explorationEnabled, exploringAs, exploredCells, exploredRaster, heldLights, socket, fogDragCurrent, fogShape, fogBrushSquares, fogLasso, wallMarquee, pings, prefersReducedMotion, POLYGON_CLOSE_RADIUS, WALL_ERASE_RADIUS, addExplored, aoeAimRef, aoeAltHeldRef, findWallAtPoint, fogDragAnchorRef, revealOpacityRef, snapPoint, wallBrushPointsRef, wallDragEndpointRef, wallErasedIdsRef, mapDrawings.previews, mapDrawings.drawings, drawingCache, canvasSize.width, canvasSize.height, drawTool, paintStrokes]);
+  }, [mist, mistOnScreen, currentMap, mapShown, mapControls.zoom, mapControls.panOffset, dpr, campaign?.gameSystem, tokens, lightSources, selectedLightId, lightMode, wallSegments, wallColor, hoveredWallId, selectedWallIds, hoveredDoorId, wallMode, selectedEndpoint, wallInProgress, wallType, brushSize, splitHoverPoint, polygonPoints, showRuler, rulerColor, effectiveRulerOrigin, rulerEnd, rulerStartByTouch, showAoE, aoeConfig, aoeAnchor, aoeSnap, hoverCoords, fogMode, isGM, fogGrid, viewerRevealed, viewerOwn, previewing, ruleFor, ownTokenCells, explorationEnabled, exploringAs, exploredCells, exploredRaster, heldLights, socket, fogDragCurrent, fogShape, fogBrushSquares, fogLasso, wallMarquee, pings, prefersReducedMotion, POLYGON_CLOSE_RADIUS, WALL_ERASE_RADIUS, addExplored, aoeAimRef, aoeAltHeldRef, findWallAtPoint, fogDragAnchorRef, revealOpacityRef, snapPoint, wallBrushPointsRef, wallDragEndpointRef, wallErasedIdsRef, mapDrawings.previews, mapDrawings.drawings, drawingCache, canvasSize.width, canvasSize.height, drawTool, paintStrokes]);
 
   // ── Layer draw dispatch + dirty-flag scheduling ──────────
   // A single rAF coalesces every repaint request; only the dirty layers
@@ -2448,8 +2466,9 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
       gmShowSpiritTokens,
       mapWidth: currentMap?.width ?? 0,
       mapHeight: currentMap?.height ?? 0,
+      grid: currentMap ? gridFrame(currentMap) : undefined,
     }),
-    [userRole, effectiveRevealedCells, isOwnToken, gmShowSpiritTokens, currentMap?.width, currentMap?.height]
+    [userRole, effectiveRevealedCells, isOwnToken, gmShowSpiritTokens, currentMap]
   );
 
   /**
@@ -2467,6 +2486,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
       gridSize: currentMap.gridSize,
       mapWidth: currentMap.width,
       mapHeight: currentMap.height,
+      ...viewportGrid(currentMap),
     };
     const rule = (currentMap.lightingEnabled ?? false) ? ruleFor(tokens.filter(viewerOwn), viewport) : null;
     const shown = previewTokens(tokens, viewerOwn, previewControls, rule?.canSee ?? null, viewport, previewedPlane);
@@ -2477,6 +2497,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
       gmShowSpiritTokens,
       mapWidth: currentMap.width,
       mapHeight: currentMap.height,
+      grid: gridFrame(currentMap),
     }));
   }, [currentMap, previewing, tokens, tokenView, mapControls.zoom, mapControls.panOffset, ruleFor, viewerOwn, previewControls, previewedPlane, viewerRevealed, gmShowSpiritTokens]);
   const drawnIds = useMemo(() => new Set(drawnTokens.map((t) => t.id)), [drawnTokens]);
@@ -2500,6 +2521,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
         gridSize: currentMap.gridSize,
         mapWidth: currentMap.width,
         mapHeight: currentMap.height,
+        ...viewportGrid(currentMap),
       };
       const rule = (currentMap.lightingEnabled ?? false) ? ruleFor(tokens.filter(viewerOwn), viewport) : null;
       const shown = previewTokens(tokens, viewerOwn, previewControls, rule?.canSee ?? null, viewport, previewedPlane);
@@ -2510,6 +2532,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
         gmShowSpiritTokens,
         mapWidth: currentMap.width,
         mapHeight: currentMap.height,
+        grid: gridFrame(currentMap),
       });
     },
     [tokens, currentMap, tokenView, previewing, previewedPlane, mapControls.zoom, mapControls.panOffset, ruleFor, viewerOwn, viewerRevealed, gmShowSpiritTokens, previewControls]
@@ -2624,7 +2647,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
     // `blockingTokensAt`, which explains why enforcing this server-side would
     // turn a refused move into a way to find hidden creatures.
     if (userRole !== 'GM') {
-      const blockedBy = blockingTokensAt(tokens, token, square, characterHpCache);
+      const blockedBy = blockingTokensAt(tokens, token, square, characterHpCache, gridFrame(currentMap));
       if (blockedBy.length > 0) {
         // A creature under the player's fog still holds its square, but the
         // note names only one this screen draws, so it gives none away.
@@ -2656,7 +2679,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
 
     // Update local token position; the token put down stays selected. Its
     // mount or riders stay drawn beside it until the server moves them too.
-    useGameStore.getState().holdFollowers(token.id, square);
+    useGameStore.getState().holdFollowers(token.id, square, gridFrame(currentMap));
     useGameStore.getState().applyTokenMove(token.id, square);
     useGameStore.getState().selectToken(token.id);
 
@@ -2681,9 +2704,9 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
         if (draggedToken && dragOffset && heldIdRef.current === draggedToken.id) {
           if (via === 'drag') {
             const own = useGameStore.getState().tokens[draggedToken.id] ?? draggedToken;
-            if (tokenCoversCell(own, gridCoords.x, gridCoords.y)) {
+            if (tokenCoversCell(own, gridCoords.x, gridCoords.y, gridFrame(currentMap))) {
               // Taken again by whichever of its squares the finger landed on.
-              const offset = { x: gridCoords.x - own.position.x, y: gridCoords.y - own.position.y };
+              const offset = carryOffset(gridCoords, own.position, gridFrame(currentMap));
               carryRef.current = { tokenId: own.id, offset };
               setFingerCarrying(true);
               setDragOffset(offset);
@@ -2711,7 +2734,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
           console.log('👆 Picking up token:', token.name);
           heldOnMapRef.current = currentMap.id;
           heldIdRef.current = token.id;
-          const offset = { x: gridCoords.x - token.position.x, y: gridCoords.y - token.position.y };
+          const offset = carryOffset(gridCoords, token.position, gridFrame(currentMap));
           setDraggedToken(token);
           setDragOffset(offset);
           setCarrierSquare(null);
@@ -3537,7 +3560,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
    */
   const keepInView = (token: Token, area: { width: number; height: number } = canvasSize): { dx: number; dy: number } => {
     if (!currentMap) return { dx: 0, dy: 0 };
-    const centre = tokenCentre(token, currentMap.gridSize, currentMap.height);
+    const centre = tokenCentre(token, gridFrame(currentMap));
     const onScreen = {
       x: centre.x * mapControls.zoom + mapControls.panOffset.x,
       y: centre.y * mapControls.zoom + mapControls.panOffset.y,
@@ -3616,7 +3639,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
     if (!canvasRef.current || !currentMap) return;
     const { dx, dy } = keepInView(token);
     const rect = canvasRef.current.getBoundingClientRect();
-    const centre = tokenCentre(token, currentMap.gridSize, currentMap.height);
+    const centre = tokenCentre(token, gridFrame(currentMap));
     focusMenuOnOpenRef.current = true;
     setDoorContextMenu(null);
     setTokenMenuSubmenu(null);

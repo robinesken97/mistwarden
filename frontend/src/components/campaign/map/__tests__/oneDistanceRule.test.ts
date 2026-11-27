@@ -26,7 +26,7 @@ it.each(['flat', 'alternating'] as const)('measures the ruler and a carried toke
   vi.mocked(gridMeasure).mockClear();
 
   drawRuler(ctx, { origin: from, target: to, color: 'amber', feetPerSquare: 10, diagonalRule }, viewport);
-  expect(gridMeasure).toHaveBeenCalledExactlyOnceWith(from, to, 10, diagonalRule);
+  expect(gridMeasure).toHaveBeenCalledExactlyOnceWith(from, to, 10, diagonalRule, expect.objectContaining({ gridType: 'square' }));
   const rulerSays = calls.find((c) => c.method === 'fillText')?.args[0];
 
   vi.mocked(gridMeasure).mockClear();
@@ -35,6 +35,30 @@ it.each(['flat', 'alternating'] as const)('measures the ruler and a carried toke
     { square: to, offset: { x: 0, y: 0 } },
     { width: 10, height: 8, feetPerSquare: 10, diagonalRule },
   );
-  expect(gridMeasure).toHaveBeenCalledExactlyOnceWith(from, to, 10, diagonalRule);
+  expect(gridMeasure).toHaveBeenCalledExactlyOnceWith(from, to, 10, diagonalRule, expect.objectContaining({ gridType: 'square' }));
   expect(gridDistanceLabel(carried)).toBe(rulerSays);
+});
+
+// On a hex map both count hexes, each step to a neighbour one, whatever the
+// diagonal rule says: there are no diagonals.
+it.each(['hexPointy', 'hexFlat'] as const)('measures hexes on a %s map, the same for the ruler and a carried token', (gridType) => {
+  const hexes: Viewport = { ...viewport, gridType };
+  const { ctx, calls } = recordingContext(document.createElement('canvas'));
+  const cases: Array<[{ x: number; y: number }, { x: number; y: number }, string]> = [
+    [{ x: 0, y: 0 }, { x: 4, y: 0 }, '40 ft  (4 hex)'],
+    [{ x: 0, y: 0 }, { x: 0, y: 4 }, '40 ft  (4 hex)'],
+    // Pointy: the row above shifts half a hex, so x 2 to 3 is two steps; flat: one.
+    [{ x: 2, y: 2 }, { x: 3, y: 3 }, gridType === 'hexPointy' ? '20 ft  (2 hex)' : '10 ft  (1 hex)'],
+  ];
+  for (const [from, to, words] of cases) {
+    calls.length = 0;
+    drawRuler(ctx, { origin: from, target: to, color: 'amber', feetPerSquare: 10, diagonalRule: 'alternating' }, hexes);
+    expect(calls.find((c) => c.method === 'fillText')?.args[0]).toBe(words);
+    const carried = carriedDistance(
+      { position: from, size: { width: 1, height: 1 } },
+      { square: to, offset: { x: 0, y: 0 } },
+      { width: 10, height: 8, gridSize: 50, gridType, feetPerSquare: 10, diagonalRule: 'alternating' },
+    );
+    expect(gridDistanceLabel(carried)).toBe(words);
+  }
 });

@@ -14,6 +14,7 @@ import type { CampaignMembership, Token } from '@/types';
 import { TokenLayer, TokenType } from '@/types';
 import { controlsToken } from '@/utils/tokenOwnership';
 import { tokenCentre } from '@/utils/tokenCentre';
+import { viewportFrame, type ViewportGrid } from './layers/types';
 import { tokenSentTo } from '@/utils/tokenMask';
 
 /** The plane a previewed viewer is on: what they are sent, and see through. */
@@ -176,13 +177,13 @@ export function tokensShownInPreview(
   tokens: ReadonlyArray<Token>,
   viewerOwn: (t: Token) => boolean,
   canSee: ((cx: number, cy: number) => boolean) | null,
-  viewport: { gridSize: number; mapHeight: number },
+  viewport: ViewportGrid,
   plane: PreviewPlane
 ): Token[] {
   return tokens.filter((t) => {
     if (!onViewersPlane(t, plane)) return false;
     if (viewerOwn(t) || !canSee) return true;
-    const centre = tokenCentre(t, viewport.gridSize, viewport.mapHeight);
+    const centre = tokenCentre(t, viewportFrame(viewport));
     return canSee(centre.x, centre.y);
   });
 }
@@ -201,7 +202,7 @@ export function previewTokens(
   viewerOwn: (t: Token) => boolean,
   viewerControls: (t: Token) => boolean,
   canSee: ((cx: number, cy: number) => boolean) | null,
-  viewport: { gridSize: number; mapHeight: number },
+  viewport: ViewportGrid,
   plane: PreviewPlane
 ): Token[] {
   const shown = tokensShownInPreview(tokens, viewerOwn, canSee, viewport, plane);

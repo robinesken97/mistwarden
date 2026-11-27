@@ -8,6 +8,8 @@
 // ============================================
 
 import type { CombatState, Position, Token } from '@/types';
+import { isHexGrid, nearestHexOnMap } from '@/utils/tokenCentre';
+import { gridFrame, type MapGrid } from './layers/types';
 
 /** Forward (`.`) or back (`,`) through the list. */
 export type StepDirection = 1 | -1;
@@ -69,16 +71,25 @@ const clamp = (value: number, min: number, max: number) => Math.max(min, Math.mi
  * The square `squares` steps away from `position` in the arrow's direction,
  * with the token's whole footprint kept on the map: the rule the server
  * clamps a drop by, so the mover's screen shows where the token will be.
+ *
+ * On a hex map the same step in stored positions is a step to a neighbour
+ * whichever way: Left and Right go along a row of pointy hexes or across
+ * the columns of flat ones, and Up and Down to the hex above or below,
+ * which on pointy hexes falls half a hex left and right by turns, so a run
+ * of presses keeps to its column. A step off the map lands on the nearest
+ * hex on it.
  */
 export function squareFromArrow(
   position: Position,
   size: { width: number; height: number },
   key: ArrowKey,
   squares: number,
-  map: { width: number; height: number }
+  map: MapGrid
 ): Position {
   const dx = key === 'ArrowLeft' ? -squares : key === 'ArrowRight' ? squares : 0;
   const dy = key === 'ArrowDown' ? -squares : key === 'ArrowUp' ? squares : 0;
+  const frame = gridFrame(map);
+  if (isHexGrid(frame)) return nearestHexOnMap({ x: position.x + dx, y: position.y + dy }, frame);
   return {
     x: clamp(position.x + dx, 0, Math.max(0, map.width - size.width)),
     y: clamp(position.y + dy, 0, Math.max(0, map.height - size.height)),

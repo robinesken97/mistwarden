@@ -22,6 +22,7 @@
 // ============================================
 
 import type { FogState } from '@/types/walls';
+import { isHexGrid, squareOrigin, tokenCentre, type GridFrame } from '@/utils/tokenCentre';
 
 /**
  * Convert a Y between bottom-left and top-left row indexing.
@@ -74,6 +75,48 @@ export function fogCellIndex(col: number, row: number, fog: Pick<FogState, 'fogC
 }
 
 /**
+ * Where fog cell (0, 0) starts, in map pixels: the grid's offset within half
+ * a square of the corner (squareOrigin), so on a square map fog cells lie on
+ * the drawn squares. The cells along the frame's edges reach to the edge, so
+ * every point of the frame is in one (fogColAt, fogRowAt).
+ */
+export interface FogOrigin { originX?: number; originY?: number }
+
+export function fogOrigin(frame: Pick<GridFrame, 'gridSize' | 'gridOffsetX' | 'gridOffsetY'>): Required<FogOrigin> {
+  const o = squareOrigin(frame);
+  return { originX: o.x, originY: o.y };
+}
+
+/** The fog column a map-pixel x inside the frame falls in, the edge columns reaching to the edges. */
+export function fogColAt(x: number, fog: Pick<FogState, 'fogCols' | 'cellPx'> & FogOrigin): number {
+  return Math.min(Math.max(Math.floor((x - (fog.originX ?? 0)) / fog.cellPx), 0), fog.fogCols - 1);
+}
+
+/** The fog row a map-pixel y inside the frame falls in, the edge rows reaching to the edges. */
+export function fogRowAt(y: number, fog: Pick<FogState, 'fogRows' | 'cellPx'> & FogOrigin): number {
+  return Math.min(Math.max(Math.floor((y - (fog.originY ?? 0)) / fog.cellPx), 0), fog.fogRows - 1);
+}
+
+/**
+ * The pixel box of a fog cell: its square from the origin, the cells along
+ * the frame's edges stretched or cut to the edge, so the cells cover the
+ * frame exactly, with no strip left uncovered.
+ */
+export function fogCellBox(
+  col: number,
+  row: number,
+  fog: Pick<FogState, 'fogCols' | 'fogRows' | 'cellPx'> & FogOrigin
+): { x: number; y: number; w: number; h: number } {
+  const ox = fog.originX ?? 0;
+  const oy = fog.originY ?? 0;
+  const x0 = col === 0 ? 0 : ox + col * fog.cellPx;
+  const y0 = row === 0 ? 0 : oy + row * fog.cellPx;
+  const x1 = col === fog.fogCols - 1 ? fog.fogCols * fog.cellPx : ox + (col + 1) * fog.cellPx;
+  const y1 = row === fog.fogRows - 1 ? fog.fogRows * fog.cellPx : oy + (row + 1) * fog.cellPx;
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}
+
+/**
  * Which fog cell a map-pixel point falls in. Map pixels are already top-left
  * origin, so this needs no flip — that is exactly why the fog selection tool
  * works in pixels rather than grid coords.
@@ -84,10 +127,27 @@ export function fogCellIndex(col: number, row: number, fog: Pick<FogState, 'fogC
 export function mapPxToFogCell(
   x: number,
   y: number,
-  fog: FogState
+  fog: FogState & FogOrigin
 ): { col: number; row: number; index: number } | null {
-  const col = Math.floor(x / fog.cellPx);
-  const row = Math.floor(y / fog.cellPx);
-  if (col < 0 || col >= fog.fogCols || row < 0 || row >= fog.fogRows) return null;
+  if (x < 0 || y < 0 || x >= fog.fogCols * fog.cellPx || y >= fog.fogRows * fog.cellPx) return null;
+  const col = fogColAt(x, fog);
+  const row = fogRowAt(y, fog);
   return { col, row, index: fogCellIndex(col, row, fog) };
+}
+
+/**
+ * The fog cell a token stands in. On a square map the token's own square,
+ * whose index the fog shares (both start at squareOrigin); on a hex map the
+ * fog square under its hex's centre.
+ */
+export function tokenFogCell(
+  token: { position: { x: number; y: number }; size: { width: number; height: number } },
+  frame: GridFrame
+): number {
+  if (!isHexGrid(frame)) {
+    return fogCellIndex(gridXToFogCol(token.position.x, token.size.width), gridYToFogRow(token.position.y, token.size.height, frame.height), { fogCols: frame.width });
+  }
+  const c = tokenCentre(token, frame);
+  const fog = { fogCols: frame.width, fogRows: frame.height, cellPx: frame.gridSize, ...fogOrigin(frame) };
+  return fogCellIndex(fogColAt(c.x, fog), fogRowAt(c.y, fog), fog);
 }

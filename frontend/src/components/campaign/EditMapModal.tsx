@@ -13,7 +13,9 @@ import { GAME_SYSTEM_SHORT_LABELS } from '@/constants/game-systems';
 import AssetPicker from '@/components/assets/AssetPicker';
 import { detectMapGrid, type GridDetectionResult } from '@/utils/detectMapGrid';
 import { MAP_LIMITS } from '@/constants/mapLimits';
-import { withinMapLimits, feetPerSquareWithinLimits } from '@/utils/mapSize';
+import { detectedGridForMap, feetPerSquareWithinLimits } from '@/utils/mapSize';
+import MapGridShapeFields from './MapGridShapeFields';
+import type { GridType } from '@/utils/tokenCentre';
 import { diagonalStepCosts } from '@/utils/geometry';
 import { Button, Modal } from '@/components/ui';
 import { extractAssetId } from '@/utils/assetUrl';
@@ -39,6 +41,9 @@ interface OpenedValues {
   width: number;
   height: number;
   gridSize: number;
+  gridType: GridType;
+  gridOffsetX: number;
+  gridOffsetY: number;
   feetPerSquare: number;
   diagonalRule: 'flat' | 'alternating';
   lightingEnabled: boolean;
@@ -55,6 +60,9 @@ function openedValues(map: CampaignMap): OpenedValues {
     width: map.width,
     height: map.height,
     gridSize: map.gridSize,
+    gridType: map.gridType ?? 'square',
+    gridOffsetX: map.gridOffsetX ?? 0,
+    gridOffsetY: map.gridOffsetY ?? 0,
     feetPerSquare: map.feetPerSquare ?? 5,
     diagonalRule: (map.diagonalRule as 'flat' | 'alternating') ?? 'flat',
     lightingEnabled: map.lightingEnabled ?? false,
@@ -86,6 +94,9 @@ export default function EditMapModal({
   const [width, setWidth] = useState(20);
   const [height, setHeight] = useState(20);
   const [gridSize, setGridSize] = useState(50);
+  const [gridType, setGridType] = useState<GridType>('square');
+  const [gridOffsetX, setGridOffsetX] = useState(0);
+  const [gridOffsetY, setGridOffsetY] = useState(0);
   const [feetPreset, setFeetPreset] = useState<'5' | '10' | 'custom'>('5');
   const [feetCustom, setFeetCustom] = useState(5);
   const [diagonalRule, setDiagonalRule] = useState<'flat' | 'alternating'>('flat');
@@ -121,6 +132,9 @@ export default function EditMapModal({
       setWidth(map.width);
       setHeight(map.height);
       setGridSize(map.gridSize);
+      setGridType(map.gridType ?? 'square');
+      setGridOffsetX(map.gridOffsetX ?? 0);
+      setGridOffsetY(map.gridOffsetY ?? 0);
       setMapAssetId(extractAssetId(map.imageUrl));
       setSpiritAssetId(extractAssetId(map.spiritLayerUrl));
       const fps = map.feetPerSquare ?? 5;
@@ -169,10 +183,12 @@ export default function EditMapModal({
 
   const applyDetectedGrid = () => {
     if (!detectedGrid) return;
-    const fitted = withinMapLimits(detectedGrid);
+    const fitted = detectedGridForMap(detectedGrid);
     setWidth(fitted.width);
     setHeight(fitted.height);
     setGridSize(fitted.gridSize);
+    setGridOffsetX(fitted.gridOffsetX);
+    setGridOffsetY(fitted.gridOffsetY);
     setDetectedGrid(null);
   };
 
@@ -197,6 +213,9 @@ export default function EditMapModal({
         width,
         height,
         gridSize,
+        gridType,
+        gridOffsetX,
+        gridOffsetY,
         feetPerSquare,
         diagonalRule,
         lightingEnabled,
@@ -325,16 +344,26 @@ export default function EditMapModal({
                         onChange={setGridSize}
                         min={MAP_LIMITS.minGridSize}
                         max={MAP_LIMITS.maxGridSize}
+                        decimals
                       />
                     </div>
                     <p className="text-xs text-stone-gray/50 mt-2">
-                      Canvas will be {width * gridSize}×{height * gridSize}px
+                      Canvas will be {Math.round(width * gridSize)}×{Math.round(height * gridSize)}px
                     </p>
                   </div>
 
                   {/* Grid Settings */}
                   <div className="border border-moss-green/20 rounded-lg p-4 space-y-4 bg-moss-green/5">
                     <h3 className="text-sm font-medium text-brand-ink">Grid Settings</h3>
+
+                    <MapGridShapeFields
+                      gridType={gridType}
+                      onGridType={setGridType}
+                      offsetX={gridOffsetX}
+                      offsetY={gridOffsetY}
+                      onOffsetX={setGridOffsetX}
+                      onOffsetY={setGridOffsetY}
+                    />
 
                     {/* Grid Scale */}
                     <div>
@@ -380,7 +409,8 @@ export default function EditMapModal({
                       <p className="text-xs text-stone-gray/50 mt-1">How many feet each grid square represents.</p>
                     </div>
 
-                    {/* Diagonal Movement */}
+                    {/* Diagonal Movement: hexes have no diagonals */}
+                    {gridType === 'square' && (
                     <div>
                       <label className="block text-xs font-medium text-stone-gray mb-2">Diagonal Movement</label>
                       <div className="space-y-2">
@@ -419,6 +449,7 @@ export default function EditMapModal({
                         </label>
                       </div>
                     </div>
+                    )}
                   </div>
                 </div>
 
@@ -443,6 +474,9 @@ export default function EditMapModal({
                     height={height}
                     gridSize={gridSize}
                     zoom={previewZoom}
+                    gridType={gridType}
+                    gridOffsetX={gridOffsetX}
+                    gridOffsetY={gridOffsetY}
                   />
 
                   {/* Zoom control */}
@@ -462,7 +496,7 @@ export default function EditMapModal({
                   </div>
 
                   {/* Auto-detect suggestion banner — only shown when image is changed */}
-                  {detectedGrid && (
+                  {detectedGrid && gridType === 'square' && (
                     <div className="flex items-start gap-2 p-2.5 bg-warning/10 border border-warning/30 rounded-lg">
                       <Sparkles className="w-4 h-4 text-warning-ink shrink-0 mt-0.5" />
                       <div className="flex-1 min-w-0">

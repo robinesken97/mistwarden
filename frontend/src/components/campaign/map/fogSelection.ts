@@ -10,7 +10,7 @@
 // ============================================
 
 import type { FogState } from '@/types/walls';
-import { fogCellIndex } from './coords';
+import { fogCellBox, fogCellIndex, type FogOrigin } from './coords';
 
 export interface FogRect {
   colMin: number;
@@ -36,13 +36,15 @@ function clamp(value: number, lo: number, hi: number): number {
  * starts outside and ends inside is clamped rather than rejected.
  */
 export function fogRectFromDrag(
-  fog: FogState,
+  fog: FogState & FogOrigin,
   ax: number,
   ay: number,
   bx: number,
   by: number
 ): FogRect | null {
   const { fogCols, fogRows, cellPx } = fog;
+  const ox = fog.originX ?? 0;
+  const oy = fog.originY ?? 0;
 
   const minX = Math.min(ax, bx);
   const maxX = Math.max(ax, bx);
@@ -55,15 +57,15 @@ export function fogRectFromDrag(
   }
 
   return {
-    colMin: clamp(Math.floor(minX / cellPx), 0, fogCols - 1),
-    colMax: clamp(Math.floor(maxX / cellPx), 0, fogCols - 1),
-    rowMin: clamp(Math.floor(minY / cellPx), 0, fogRows - 1),
-    rowMax: clamp(Math.floor(maxY / cellPx), 0, fogRows - 1),
+    colMin: clamp(Math.floor((minX - ox) / cellPx), 0, fogCols - 1),
+    colMax: clamp(Math.floor((maxX - ox) / cellPx), 0, fogCols - 1),
+    rowMin: clamp(Math.floor((minY - oy) / cellPx), 0, fogRows - 1),
+    rowMax: clamp(Math.floor((maxY - oy) / cellPx), 0, fogRows - 1),
   };
 }
 
 /** Every fog cell index inside a rectangle, row-major. */
-export function fogCellsInRect(fog: FogState, rect: FogRect): number[] {
+export function fogCellsInRect(fog: FogState & FogOrigin, rect: FogRect): number[] {
   const cells: number[] = [];
   for (let row = rect.rowMin; row <= rect.rowMax; row++) {
     for (let col = rect.colMin; col <= rect.colMax; col++) {
@@ -83,16 +85,13 @@ export function fogRectSize(rect: FogRect): { cols: number; rows: number } {
 
 /** Pixel bounds of a snapped rectangle, for drawing the preview. */
 export function fogRectToPx(
-  fog: FogState,
+  fog: FogState & FogOrigin,
   rect: FogRect
 ): { x: number; y: number; w: number; h: number } {
-  const { cellPx } = fog;
-  return {
-    x: rect.colMin * cellPx,
-    y: rect.rowMin * cellPx,
-    w: (rect.colMax - rect.colMin + 1) * cellPx,
-    h: (rect.rowMax - rect.rowMin + 1) * cellPx,
-  };
+  // The cells' own boxes, the edge cells reaching the frame's edges.
+  const first = fogCellBox(rect.colMin, rect.rowMin, fog);
+  const last = fogCellBox(rect.colMax, rect.rowMax, fog);
+  return { x: first.x, y: first.y, w: last.x + last.w - first.x, h: last.y + last.h - first.y };
 }
 
 /**
@@ -117,20 +116,22 @@ export function revealedSetFromFogState(fog: FogState | null): Set<number> {
 type Pt = { x: number; y: number };
 
 /** Cells whose middle lies within `radius` of the segment from `a` to `b` (a dab when they are the same). */
-export function fogCellsAlongStroke(fog: FogState, a: Pt, b: Pt, radius: number): number[] {
+export function fogCellsAlongStroke(fog: FogState & FogOrigin, a: Pt, b: Pt, radius: number): number[] {
   const { fogCols, fogRows, cellPx } = fog;
-  const colMin = clamp(Math.floor((Math.min(a.x, b.x) - radius) / cellPx), 0, fogCols - 1);
-  const colMax = clamp(Math.floor((Math.max(a.x, b.x) + radius) / cellPx), 0, fogCols - 1);
-  const rowMin = clamp(Math.floor((Math.min(a.y, b.y) - radius) / cellPx), 0, fogRows - 1);
-  const rowMax = clamp(Math.floor((Math.max(a.y, b.y) + radius) / cellPx), 0, fogRows - 1);
+  const ox = fog.originX ?? 0;
+  const oy = fog.originY ?? 0;
+  const colMin = clamp(Math.floor((Math.min(a.x, b.x) - radius - ox) / cellPx), 0, fogCols - 1);
+  const colMax = clamp(Math.floor((Math.max(a.x, b.x) + radius - ox) / cellPx), 0, fogCols - 1);
+  const rowMin = clamp(Math.floor((Math.min(a.y, b.y) - radius - oy) / cellPx), 0, fogRows - 1);
+  const rowMax = clamp(Math.floor((Math.max(a.y, b.y) + radius - oy) / cellPx), 0, fogRows - 1);
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   const lengthSq = dx * dx + dy * dy;
   const cells: number[] = [];
   for (let row = rowMin; row <= rowMax; row++) {
     for (let col = colMin; col <= colMax; col++) {
-      const cx = (col + 0.5) * cellPx;
-      const cy = (row + 0.5) * cellPx;
+      const cx = ox + (col + 0.5) * cellPx;
+      const cy = oy + (row + 0.5) * cellPx;
       const t = lengthSq === 0 ? 0 : clamp(((cx - a.x) * dx + (cy - a.y) * dy) / lengthSq, 0, 1);
       const px = a.x + t * dx - cx;
       const py = a.y + t * dy - cy;
@@ -141,20 +142,22 @@ export function fogCellsAlongStroke(fog: FogState, a: Pt, b: Pt, radius: number)
 }
 
 /** Cells whose middle lies inside the polygon `points` (even-odd rule); none for fewer than three points. */
-export function fogCellsInPolygon(fog: FogState, points: readonly Pt[]): number[] {
+export function fogCellsInPolygon(fog: FogState & FogOrigin, points: readonly Pt[]): number[] {
   if (points.length < 3) return [];
   const { fogCols, fogRows, cellPx } = fog;
+  const ox = fog.originX ?? 0;
+  const oy = fog.originY ?? 0;
   const xs = points.map((p) => p.x);
   const ys = points.map((p) => p.y);
-  const colMin = clamp(Math.floor(Math.min(...xs) / cellPx), 0, fogCols - 1);
-  const colMax = clamp(Math.floor(Math.max(...xs) / cellPx), 0, fogCols - 1);
-  const rowMin = clamp(Math.floor(Math.min(...ys) / cellPx), 0, fogRows - 1);
-  const rowMax = clamp(Math.floor(Math.max(...ys) / cellPx), 0, fogRows - 1);
+  const colMin = clamp(Math.floor((Math.min(...xs) - ox) / cellPx), 0, fogCols - 1);
+  const colMax = clamp(Math.floor((Math.max(...xs) - ox) / cellPx), 0, fogCols - 1);
+  const rowMin = clamp(Math.floor((Math.min(...ys) - oy) / cellPx), 0, fogRows - 1);
+  const rowMax = clamp(Math.floor((Math.max(...ys) - oy) / cellPx), 0, fogRows - 1);
   const cells: number[] = [];
   for (let row = rowMin; row <= rowMax; row++) {
-    const cy = (row + 0.5) * cellPx;
+    const cy = oy + (row + 0.5) * cellPx;
     for (let col = colMin; col <= colMax; col++) {
-      const cx = (col + 0.5) * cellPx;
+      const cx = ox + (col + 0.5) * cellPx;
       let inside = false;
       for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
         const pi = points[i];

@@ -94,7 +94,8 @@ describe('analyseGrid', () => {
   it('finds a plain grid', () => {
     const r = new Gray(1000, 800).grid(50, { thick: 2 }).analyse();
     expectGrid(r, 50, 0.05, 1, 1);
-    expect(r).toMatchObject({ gridSize: 50, width: 20, height: 16, offsetX: 0, offsetY: 0 });
+    expect(r).toMatchObject({ width: 20, height: 16, offsetX: 0, offsetY: 0, imageWidth: 1000, imageHeight: 800 });
+    expect(r!.gridSize).toBeCloseTo(50, 1);
     expect(r!.confidence).toBeGreaterThan(0.8);
   });
 
@@ -146,7 +147,9 @@ describe('analyseGrid', () => {
   it('measures a non-integer period to sub-pixel precision', () => {
     const r = new Gray(1408, 1056).add(pixelNoise(10, 8)).grid(70.4, { delta: -60 }).analyse();
     expectGrid(r, 70.4, 0.05, 0.5, 0.5);
-    expect(r).toMatchObject({ gridSize: 70, width: 20, height: 15 });
+    // Kept between whole pixels, no longer rounded to 70.
+    expect(r).toMatchObject({ width: 20, height: 15 });
+    expect(r!.gridSize).toBeCloseTo(70.4, 1);
   });
 
   it('keeps sub-pixel precision and the offset after downsampling', () => {

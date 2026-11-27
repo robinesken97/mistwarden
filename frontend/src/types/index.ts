@@ -2,6 +2,7 @@
 // See GAME_CONTENT_NOTICES.md for the notice and credits.
 
 import type { CharacterHpInfo } from '@/utils/characterHp';
+import type { GridType } from '@/utils/tokenCentre';
 // ============================================
 // CozyVTT Frontend Type Definitions
 // Mirrors backend API models (Prisma schema)
@@ -875,7 +876,13 @@ export interface CampaignMap {
   spiritLayerUrl: string | null;
   width: number;
   height: number;
+  /** Pixels between neighbouring cell centres, squares and hexes alike; not necessarily whole. */
   gridSize: number;
+  /** Squares, or hexes with a point or a flat side at the top (utils/tokenCentre.ts). Absent on older payloads means squares. */
+  gridType?: GridType;
+  /** Where the grid starts, in map pixels from the frame's top-left corner. Absent means 0. */
+  gridOffsetX?: number;
+  gridOffsetY?: number;
   feetPerSquare: number;
   diagonalRule: 'flat' | 'alternating';
   /** The colour a map drawn in CozyVTT was made in, as #rrggbb; null for one made from a picture. */
@@ -1279,6 +1286,9 @@ export interface CreateMapRequest {
   width: number;
   height: number;
   gridSize?: number;
+  gridType?: GridType;
+  gridOffsetX?: number;
+  gridOffsetY?: number;
   feetPerSquare?: number;
   diagonalRule?: 'flat' | 'alternating';
   /** For a map drawn in CozyVTT: the colour it is made in, as #rrggbb. */
@@ -1291,6 +1301,9 @@ export interface UpdateMapRequest {
   width?: number;
   height?: number;
   gridSize?: number;
+  gridType?: GridType;
+  gridOffsetX?: number;
+  gridOffsetY?: number;
   feetPerSquare?: number;
   diagonalRule?: 'flat' | 'alternating';
   imageUrl?: string;

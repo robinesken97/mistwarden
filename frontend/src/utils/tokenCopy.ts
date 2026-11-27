@@ -1,5 +1,7 @@
 import { CampaignRole, type CampaignMembership, type CreateTokenRequest, type Position, type Size, type Token } from '@/types';
 import { extractAssetId } from './assetUrl';
+import { isHexGrid, nearestHexOnMap } from './tokenCentre';
+import { gridFrame, type MapGrid } from '@/components/campaign/map/layers/types';
 
 /**
  * The request that puts an existing token somewhere else.
@@ -76,8 +78,11 @@ export function tokenControllerStanding(
 export function clampTokenPosition(
   position: Position,
   size: Size,
-  map: { width: number; height: number }
+  map: MapGrid
 ): Position {
+  // On a hex map a token of any size stands on one hex, as the server keeps it.
+  const frame = gridFrame(map);
+  if (isHexGrid(frame)) return nearestHexOnMap(position, frame);
   return {
     x: Math.max(0, Math.min(position.x, map.width - size.width)),
     y: Math.max(0, Math.min(position.y, map.height - size.height)),

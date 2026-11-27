@@ -11,9 +11,9 @@
 
 import type { Token } from '@/types';
 import type { LightSource } from '@/types/walls';
-import { gridYToCentrePx } from '../coords';
 import type { LightToolMode } from '@/components/campaign/GmLightControls';
-import { mapSizePx, type Viewport } from './types';
+import { mapSizePx, viewportFrame, type Viewport } from './types';
+import { GRID_TYPES, tokenCentre, type GridType } from '@/utils/tokenCentre';
 import type { VisionSource } from '../vision';
 import { applyViewport, withinBackingLimit } from '../layerCanvas';
 import { BRIGHT, DIM } from '@/utils/visibilityRule';
@@ -89,7 +89,7 @@ export interface LightingComposite {
   globalIllumination: boolean;
   /** The explored raster, by identity: it is made again when the cells change. */
   explored: HTMLCanvasElement | null;
-  /** The map's width and height in squares, and its grid size. */
+  /** The map's width and height in squares, its grid size, and its grid type (0 square, 1 pointy, 2 flat) and offset. */
   map: readonly number[];
 }
 
@@ -132,7 +132,7 @@ function compositeOf(state: LightingDrawState, viewport: Viewport, canvases: rea
     viewers,
     globalIllumination: state.globalIllumination,
     explored: state.explored,
-    map: [viewport.mapWidth, viewport.mapHeight, viewport.gridSize],
+    map: [viewport.mapWidth, viewport.mapHeight, viewport.gridSize, GRID_TYPES.indexOf(viewportFrame(viewport).gridType as GridType), viewport.gridOffsetX ?? 0, viewport.gridOffsetY ?? 0],
   };
 }
 
@@ -268,8 +268,7 @@ export function drawDynamicLighting(
   // Cozy torch-glow: warm radial gradient around each controlled token
   ctx.save();
   for (const token of state.myTokens) {
-    const cx = (token.position.x + token.size.width / 2) * viewport.gridSize;
-    const cy = gridYToCentrePx(token.position.y, token.size.height, viewport.mapHeight, viewport.gridSize);
+    const { x: cx, y: cy } = tokenCentre(token, viewportFrame(viewport));
     const glowR = Math.max(
       viewport.gridSize * 2,
       (token.sightRadius ?? 3) * viewport.gridSize * 0.25
@@ -478,8 +477,7 @@ function drawComposite(
     // ...and a token always knows where it stands: its own square is dim
     // even with no darkvision and no light, so it can see and drag itself.
     for (const token of state.myTokens) {
-      const cx = (token.position.x + token.size.width / 2) * viewport.gridSize;
-      const cy = gridYToCentrePx(token.position.y, token.size.height, viewport.mapHeight, viewport.gridSize);
+      const { x: cx, y: cy } = tokenCentre(token, viewportFrame(viewport));
       const selfPx = (Math.max(token.size.width, token.size.height) / 2) * viewport.gridSize;
       covCtx.beginPath();
       covCtx.arc(cx, cy, selfPx, 0, Math.PI * 2);

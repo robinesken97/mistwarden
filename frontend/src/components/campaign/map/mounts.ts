@@ -5,6 +5,8 @@
 // ============================================
 
 import type { Position, Token } from '@/types';
+import { isHexGrid, nearestHexOnMap, shiftCell, type GridFrame } from '@/utils/tokenCentre';
+import { gridFrame, type MapGrid } from './layers/types';
 
 /**
  * The ids that move with `tokenId`, itself included: a mount and all its
@@ -53,9 +55,12 @@ export function keepCoupledOnMap(
   tokens: readonly Token[],
   token: Token,
   square: { x: number; y: number },
-  map: { width: number; height: number }
+  map: MapGrid
 ): { x: number; y: number } {
   const ids = new Set(coupledIds(tokens, token.id));
+  // On a hex map the server keeps the moved token on its hex and brings each
+  // follower to the nearest hex on the map on its own.
+  if (isHexGrid(gridFrame(map))) return nearestHexOnMap(square, gridFrame(map));
   if (ids.size < 2) return square;
   const group = tokens.filter((t) => ids.has(t.id));
   const at = (t: Token) => ({ x: square.x + t.position.x - token.position.x, y: square.y + t.position.y - token.position.y });
@@ -87,9 +92,23 @@ export function shiftFollowers(
   tokenId: string,
   dx: number,
   dy: number,
-  { onlyHeld = false }: { onlyHeld?: boolean } = {}
+  {
+    onlyHeld = false,
+    grid,
+    from: draggedFrom,
+  }: {
+    onlyHeld?: boolean;
+    /**
+     * The map's grid, and where the step starts. On a hex map stored
+     * positions shift every other row, so the step is taken on the lattice
+     * (shiftCell) and each follower kept on the nearest hex on the map.
+     */
+    grid?: GridFrame | null;
+    from?: Position;
+  } = {}
 ): Record<string, Position> {
   if (dx === 0 && dy === 0) return heldAt;
+  const hex = grid && draggedFrom && isHexGrid(grid) ? { grid, from: draggedFrom, to: { x: draggedFrom.x + dx, y: draggedFrom.y + dy } } : null;
   const followers = coupledIds(tokens, tokenId).filter((id) => id !== tokenId && (!onlyHeld || id in heldAt));
   if (followers.length === 0) return heldAt;
   const next = { ...heldAt };
@@ -97,7 +116,7 @@ export function shiftFollowers(
     const t = tokens.find((f) => f.id === id);
     if (!t) continue;
     const from = heldAt[id] ?? t.position;
-    const at = { x: from.x + dx, y: from.y + dy };
+    const at = hex ? nearestHexOnMap(shiftCell(from, hex.from, hex.to, hex.grid), hex.grid) : { x: from.x + dx, y: from.y + dy };
     if (at.x === t.position.x && at.y === t.position.y) delete next[id];
     else next[id] = at;
   }
