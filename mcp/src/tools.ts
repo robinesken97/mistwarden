@@ -359,6 +359,8 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
   }, async (a) => {
     const { campaign, manifest } = await campaignAsGm(ctx, a.campaignId);
     assertEditable(manifest, 'token', inMap(a.mapId, a.tokenId), ctx.settings.allowAnyEdit);
+    // A rider moves its mount, so the mount must be this server's to change too.
+    if (a.mountedOn) assertEditable(manifest, 'token', inMap(a.mapId, a.mountedOn), ctx.settings.allowAnyEdit);
     assertNotLive(ctx, campaign, a.mapId);
     const map = await getMap(ctx, a.campaignId, a.mapId);
     const current = (map.tokens ?? []).find((t) => t.id === a.tokenId);
