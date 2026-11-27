@@ -613,8 +613,8 @@ socket.on('token.move.start', (data) => {
 {
   tokenId: string;
   mapId: string;
-  x: number;        // Grid column, in squares (the web client sends whole numbers)
-  y: number;        // Grid row, in squares (the web client sends whole numbers)
+  x: number;        // Grid column, in squares (whole ones where the map's tokens snap)
+  y: number;        // Grid row, in squares (whole ones where the map's tokens snap)
 }
 ```
 
@@ -631,7 +631,9 @@ a second and one error per frame would be its own problem. `token.move.end`
 answers properly.
 
 **Validation:**
-- Coordinates must be numbers, counted in grid squares
+- Coordinates must be finite numbers, counted in grid squares; a frame
+  between squares is dropped where the drop would be refused (below), and
+  relayed to hundredths otherwise
 - X must be >= 0 and < map.width (the map's width in squares)
 - Y must be >= 0 and < map.height (the map's height in squares)
 - A position off the map is answered with `error` "Token position out of bounds" on every frame, and this check comes before the permission check, so a sender who may not move the token gets it too. Other invalid data (a missing id, a coordinate that is not a number, a map the sender may not read) is ignored without an answer
@@ -718,8 +720,8 @@ socket.on('token.moved', (data) => {
 {
   tokenId: string;
   mapId: string;
-  x: number;        // Final grid column, a whole number of squares
-  y: number;        // Final grid row, a whole number of squares
+  x: number;        // Final grid column, in squares
+  y: number;        // Final grid row, in squares
 }
 ```
 
@@ -729,7 +731,8 @@ socket.on('token.moved', (data) => {
 - Player can only move assigned tokens
 
 **Validation:**
-- `tokenId` and `mapId` must be non-empty strings, and the coordinates whole numbers of grid squares (`error` "Invalid token move data" otherwise)
+- `tokenId` and `mapId` must be non-empty strings, and the coordinates finite numbers (`error` "Invalid token move data" otherwise)
+- Whole squares, unless the map lets the mover place freely, judged from the map under its lock: anyone on a square map whose `snapTokens` is false, the GM alone on one whose is true, nobody on a hex map. Otherwise `error` "Invalid token move data", and the token is put back with `token.moved` as for the refusals below. A position between squares is stored to hundredths
 - Position must be within map bounds
 - Token must exist
 - User must have permission
@@ -761,7 +764,7 @@ Provides confirmation that database update succeeded. Client can use this to:
 ```javascript
 // Client finishes drag
 function onMouseUp(event) {
-  const { x: finalX, y: finalY } = toSquare(event);  // whole squares, as above
+  const { x: finalX, y: finalY } = toSquare(event);  // whole squares where the map's tokens snap
 
   socket.emit('token.move.end', {
     tokenId: currentToken.id,

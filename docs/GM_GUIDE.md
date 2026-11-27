@@ -203,6 +203,17 @@ Under **Grid Settings** in Create Map and Edit Map, **Grid Type** picks **Square
 
 **Grid Offset (px)**, on square and hex maps alike, moves the whole grid by that many map pixels from the picture's top-left corner, to line it up with a grid printed on the picture that starts inside a border. On a square map, fog squares move with the grid. Applying a **Grid detected** suggestion now sets the offset it found as well as the size, and keeps a size between whole pixels (70.4, say) rather than rounding it. The offset is exact when the picture is a whole number of squares wide and high; otherwise the picture is stretched a little differently each way and the lines can drift by up to half a square at the far edge.
 
+### Tokens between squares
+
+**Tokens snap to grid**, under **Grid Settings** in Create Map and Edit Map, is on for every map unless you turn it off.
+
+- **On** (the default): tokens stand on whole squares, as they always have. You, the GM, can still put one between squares: hold **Alt** (**Option** on a Mac) while you move it and when you put it down, or, on a touch screen, turn on **Place tokens freely** in the map toolbar (under **More** on a narrow screen). A player's token always lands on a whole square here.
+- **Off**: anyone moving a token, players included, can stop it between squares, to a hundredth of a square. The token is drawn, sees and is seen from exactly where it stands, and a click anywhere on it picks it up. The ruler and the carried-token readout still count whole squares, rounded, and a player still cannot end a move overlapping another creature.
+- **Turning it back on** moves every token to its nearest whole square, kept on the map, and a rider onto its mount's square.
+- A **hex map** always snaps, so the box is ticked and greyed out there; switching a map to hexes turns snapping on.
+
+Changing the grid of a map whose tokens do not snap keeps each token where it stood on the picture, to a hundredth of a square, and tokens moved to another map follow that map's setting. The server decides all of this from the map and who is moving, never from the page.
+
 ### Drawing a map
 
 No map ready for the scene? Draw one in CozyVTT: a room or a clearing sketched while your players wait, or a dungeon drawn with care before the session. A drawn map is a map like any other: tokens, walls, lights, fog of war, export and import work on it as on an uploaded one.
@@ -830,7 +841,7 @@ An archive exported by an older version of CozyVTT imports into a newer one, wit
 - **Creatures and token templates past 2,000:** an archive carries up to 2,000 of each. Any after the first 2,000 are left out and listed under **Left out** as one line. Exporting a campaign with more than 2,000 custom creatures or token templates says so instead of saving an archive.
 - **Shortened:** a map name over 200 characters, a token name over 200 characters, an asset's name over 200 characters or description over 1,000, token notes over 5,000 characters, and text or lists in a stat block longer than the creature editor allows (an action's description over 5,000 characters, say, or more than 50 actions). Older versions of CozyVTT stored some of these at any length, and an imported creature that kept them could not be placed on a map or saved.
 - **Game system:** a campaign or creature whose game system this server does not know, from a hand-edited archive for example, is imported with none.
-- **Moved:** a token that is not on a whole square, or that hangs off the edge of its map, is put on the nearest whole square inside it.
+- **Moved:** a token that is not on a whole square, or that hangs off the edge of its map, is put on the nearest whole square inside it. On a map whose tokens do not snap, a token between squares keeps its place, to a hundredth of a square.
 - **Left out on its own:** a token that CozyVTT cannot store (one with no position, for example), and any tokens past the first 1,000 on a map. The rest of the map is imported. A stat block that cannot be stored even when shortened is left off its token or template, which are kept; a creature, which needs one, is left out.
 - **Walls, doors and lights left behind:** a wall, door or light that CozyVTT cannot store, one more than 500 squares outside its map, and any past the first 5,000 walls and doors or the first 200 lights on a map are not imported. The rest of the map is. The window lists these under **Changed to fit**, as a note on the map they belonged to, and not under **Left out**.
 - **Left out whole:** a map larger than the map limits (more than 500 squares on a side, a grid size outside 10 to 500, or more than 100 feet per square). Make the map smaller on the server it came from, export again and import that.
