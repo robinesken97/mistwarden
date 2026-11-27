@@ -6,7 +6,7 @@
 // ============================================
 
 import { useEffect, useEffectEvent, useId, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { ZoomIn, ZoomOut, Maximize2, Grid3x3, Palette, Ghost, Ruler, Zap, MapPin, Pencil, Paintbrush, SlidersHorizontal, Eye, EyeOff } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize2, Grid3x3, Palette, Ghost, Ruler, Zap, MapPin, Pencil, Paintbrush, SlidersHorizontal, Eye, EyeOff, Move } from 'lucide-react';
 import { useCampaign } from '@/contexts/CampaignContext';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -103,14 +103,14 @@ import { useWallLightRequest } from './map/useWallLightRequest';
 import { useMapDrawings } from './map/useMapDrawings';
 import { labelFontSize } from './map/drawingGeometry';
 import { DRAWING_LIMITS } from '@/constants/drawingLimits';
-import { releaseHeldToken, carriedSquare, carriedDistance, heldDrawnAt, carryOffset } from './map/tokenHold';
+import { releaseHeldToken, carriedSquare, carriedDistance, heldDrawnAt, carryOffset, type Carrier } from './map/tokenHold';
 import { gridDistanceLabel } from '@/utils/geometry';
 import type { DoorViewer } from './map/doorAccess';
-import { fogOrigin, tokenFogCell } from './map/coords';
+import { fogOrigin, mapPxToGridPoint, tokenFogCell } from './map/coords';
 import { isTypingInto } from './map/typingTarget';
 import { keyBelongsToMap, mapKeyAction, createRepeatPacer, ARROW_REPEAT_MS, MAP_KEYS_HINT } from './map/keyboard';
 import { selectableTokens, nextSelectedId, squareFromArrow, panToKeepInView, keepInViewMargin, settleArrowEcho, type ArrowKey, type StepDirection } from './map/selection';
-import { tokenCentre, type GridFrame } from '@/utils/tokenCentre';
+import { isHexGrid, tokenCentre, type GridFrame } from '@/utils/tokenCentre';
 import { createOwnEdits } from './map/ownEdits';
 import mapService from '@/services/map.service';
 import { isHexColor, isSafeVibeFilter, parseSpiritStyle } from '@/utils/styleAllowlists';
@@ -128,7 +128,7 @@ import { createTokenTurns } from './map/tokenTurns';
 import { tokenMenuHasItems, tokenMenuItems, type TokenMenuActions, type TokenMenuView } from './map/tokenMenuItems';
 import { doorMenuItems } from './map/doorMenuItems';
 import { mapControlItems, mapControlsTitle, gridColorLabel, rulerColorLabel, type MapControlsActions } from './map/mapControlItems';
-import { tokenCopyRequest, clampTokenPosition, copyController } from '@/utils/tokenCopy';
+import { tokenCopyRequest, clampTokenPosition, copyController, mayPlaceFreely } from '@/utils/tokenCopy';
 import { apiErrorMessage, errorSummary } from '@/utils/errors';
 import { useRenderLoop, type MapLayer } from './map/useRenderLoop';
 import { applyViewport, clearLayer, drawSaved, effectiveDpr, resetLayer, sizeBackingStore } from './map/layerCanvas';
@@ -345,7 +345,16 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
    * token, and the square of it the finger took it by. A ref, since the
    * drag's down and first move arrive in one event.
    */
-  const carryRef = useRef<{ tokenId: string; offset: Position } | null>(null);
+  const carryRef = useRef<{ tokenId: string; offset: Position; pointOffset: Position } | null>(null);
+  /**
+   * The point of the held token the pointer took it by, in grid squares
+   * from its position: what a token placed freely keeps under the pointer.
+   */
+  const dragPointOffsetRef = useRef<Position>({ x: 0, y: 0 });
+  /** Where the pointer carries the held token while it is placed freely (map/tokenHold.ts Carrier.free), or null. */
+  const [freeCarry, setFreeCarry] = useState<Carrier['free']>(null);
+  /** The GM's Place freely button: on a map whose tokens snap, the GM's moves stop between squares, as with Alt held. */
+  const [placeFreely, setPlaceFreely] = useState(false);
   /**
    * The held token's id as of now, not as of the last render: a pen landing
    * during a finger's carry puts the token back and then presses, in one
@@ -493,7 +502,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
     isGM, markDirty,
     // Asked at a press, by when all three are known.
     measuresFromToken: () => myToken !== null,
-    picksUpAt: (square) => getMovableTokenAtPosition(square.x, square.y) !== null,
+    picksUpAt: (point) => getMovableTokenAtPosition(point.x, point.y) !== null,
     holdsToken: () => draggedToken !== null,
   });
 
@@ -877,6 +886,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
     setDraggedToken(null);
     setDragOffset(null);
     setCarrierSquare(null);
+    setFreeCarry(null);
     carryRef.current = null;
     heldIdRef.current = null;
     setPutBackOffered(false);
@@ -1831,8 +1841,8 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   const heldHere = useMemo(() => {
     if (!draggedToken || !carrierSquare || !dragOffset || !currentMap) return null;
     const stored = tokens.find((t) => t.id === draggedToken.id) ?? draggedToken;
-    return { token: stored, at: keepCoupledOnMap(tokens, stored, carriedSquare({ square: carrierSquare, offset: dragOffset }, stored.size, currentMap), currentMap) };
-  }, [draggedToken, carrierSquare, dragOffset, currentMap, tokens]);
+    return { token: stored, at: keepCoupledOnMap(tokens, stored, carriedSquare({ square: carrierSquare, offset: dragOffset, free: freeCarry }, stored.size, currentMap), currentMap) };
+  }, [draggedToken, carrierSquare, dragOffset, freeCarry, currentMap, tokens]);
   // Where held tokens are drawn: others' drags as their frames place them,
   // with their mounts and riders (the store), and the mount and riders of
   // the token this screen carries, beside it.
@@ -1941,7 +1951,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   const { tool: doorTool, doorAt, setDoorType, hoveredDoorId, setHoveredDoorId } = useDoorTool({
     mapId: currentMap?.id, wallSegments, doorViewer, zoom: mapControls.zoom,
     wallMode, fogMode, lightMode, holdingToken: draggedToken !== null,
-    tokenTakesClick: ({ gridCoords }) => draggedToken !== null || getMovableTokenAtPosition(gridCoords.x, gridCoords.y) !== null,
+    tokenTakesClick: ({ gridPoint }) => draggedToken !== null || getMovableTokenAtPosition(gridPoint.x, gridPoint.y) !== null,
     carryWallHistory, socket, ownEdits, showToast, markDirty,
   });
 
@@ -2097,7 +2107,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
         heldDrawnAt: held
           ? (heldHere?.at ?? heldDrawnAt(
             tokens.find((t) => t.id === held.id) ?? held,
-            carrierSquare && dragOffset ? { square: carrierSquare, offset: dragOffset } : null,
+            carrierSquare && dragOffset ? { square: carrierSquare, offset: dragOffset, free: freeCarry } : null,
             currentMap,
           ))
           : null,
@@ -2119,7 +2129,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
         nameMode,
       }, viewport);
     });
-  }, [symbolSprites, classIcons, nameMode, currentMap, mapShown, mapControls.panOffset, mapControls.zoom, dpr, campaign?.spiritLayerStyle, tokens, tokenImages, animatingTokens, drawnHeldAt, heldHere, draggedToken, dragOffset, carrierSquare, hoverToken, viewerRevealed, viewerOwn, previewing, previewedPlane, ruleFor, gmShowSpiritTokens, gmViewBothPlanes, characterHpCache, currentTurnTokenId, prefersReducedMotion, peekTokenId, selectedTokenId, isGM, previewControls]);
+  }, [symbolSprites, classIcons, nameMode, currentMap, mapShown, mapControls.panOffset, mapControls.zoom, dpr, campaign?.spiritLayerStyle, tokens, tokenImages, animatingTokens, drawnHeldAt, heldHere, draggedToken, dragOffset, carrierSquare, freeCarry, hoverToken, viewerRevealed, viewerOwn, previewing, previewedPlane, ruleFor, gmShowSpiritTokens, gmViewBothPlanes, characterHpCache, currentTurnTokenId, prefersReducedMotion, peekTokenId, selectedTokenId, isGM, previewControls]);
 
   /**
    * Draw the OVERLAY layer (top canvas): dynamic-lighting darkness, GM light
@@ -2712,17 +2722,31 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
    * drag that starts on that token's own square carries it the same way, and
    * a drag anywhere else pans the map with the token still held.
    */
+  /**
+   * Whether this pointer places a token freely, between squares: on a map
+   * whose tokens do not snap, anyone; on one whose do, the GM holding Alt or
+   * with Place freely on; on a hex map, nobody. The server applies the same
+   * rule from the map and the role (utils/tokenCopy.ts mayPlaceFreely).
+   */
+  const placesFreely = (e: MapPointer): boolean =>
+    !!currentMap && mayPlaceFreely(userRole === 'GM', currentMap) && (currentMap.snapTokens === false || e.altKey || placeFreely);
+  /** The free carry for a pointer at `gridPoint` holding a token by `pointOffset`, or null when it snaps. */
+  const freeCarryAt = (e: MapPointer, gridPoint: Position, pointOffset: Position): Carrier['free'] =>
+    (placesFreely(e) ? { point: gridPoint, offset: pointOffset } : null);
+
   const tokenTool: MapTool = {
-    down({ e, via, gridCoords }: PointerAt) {
+    down({ e, via, gridCoords, gridPoint }: PointerAt) {
       if (!currentMap) return false;
         // If we're already holding a token, place it on this click
         if (draggedToken && dragOffset && heldIdRef.current === draggedToken.id) {
           if (via === 'drag') {
             const own = useGameStore.getState().tokens[draggedToken.id] ?? draggedToken;
-            if (tokenCoversCell(own, gridCoords.x, gridCoords.y, gridFrame(currentMap))) {
+            if (tokenCoversCell(own, gridPoint.x, gridPoint.y, gridFrame(currentMap))) {
               // Taken again by whichever of its squares the finger landed on.
               const offset = carryOffset(gridCoords, own.position, gridFrame(currentMap));
-              carryRef.current = { tokenId: own.id, offset };
+              const pointOffset = carryOffset(gridPoint, own.position, gridFrame(currentMap));
+              carryRef.current = { tokenId: own.id, offset, pointOffset };
+              dragPointOffsetRef.current = pointOffset;
               setFingerCarrying(true);
               setDragOffset(offset);
             } else {
@@ -2731,7 +2755,8 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
             }
             return true;
           }
-          putDown(draggedToken, carriedSquare({ square: gridCoords, offset: dragOffset }, draggedToken.size, currentMap));
+          const free = freeCarryAt(e, gridPoint, dragPointOffsetRef.current);
+          putDown(draggedToken, carriedSquare({ square: gridCoords, offset: dragOffset, free }, draggedToken.size, currentMap));
           return true;
         }
 
@@ -2740,7 +2765,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
         // Deliberately looks past tokens this user cannot move rather than stopping
         // at whatever is drawn on top: a player standing on the same square as an
         // NPC could otherwise never pick their own token up again.
-        const token = getMovableTokenAtPosition(gridCoords.x, gridCoords.y);
+        const token = getMovableTokenAtPosition(gridPoint.x, gridPoint.y);
         console.log('🔍 Movable token at click position:', token?.name || 'none');
 
         if (token) {
@@ -2750,12 +2775,15 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
           heldOnMapRef.current = currentMap.id;
           heldIdRef.current = token.id;
           const offset = carryOffset(gridCoords, token.position, gridFrame(currentMap));
+          const pointOffset = carryOffset(gridPoint, token.position, gridFrame(currentMap));
+          dragPointOffsetRef.current = pointOffset;
           setDraggedToken(token);
           setDragOffset(offset);
           setCarrierSquare(null);
+          setFreeCarry(null);
           setPutBackOffered(e.kind !== 'mouse' && via !== 'drag');
           if (via === 'drag') {
-            carryRef.current = { tokenId: token.id, offset };
+            carryRef.current = { tokenId: token.id, offset, pointOffset };
             setFingerCarrying(true);
           }
 
@@ -2780,7 +2808,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
           // found as the viewer sees the map: in Player Preview, only what
           // the preview draws. On empty ground it clears the selection when
           // the button lifts, unless the press dragged the map.
-          const seen = via === 'drag' ? null : getHoverTokenAt(gridCoords.x, gridCoords.y);
+          const seen = via === 'drag' ? null : getHoverTokenAt(gridPoint.x, gridPoint.y);
           if (seen) {
             useGameStore.getState().selectToken(seen.id);
             setSelectionDetailsClosedFor(null);
@@ -2799,7 +2827,10 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
         // The carry is still recorded while it is put down, so the hold ends
         // even before a render has caught up with the drag's pick-up.
         const token = useGameStore.getState().tokens[carry.tokenId];
-        if (token && at && currentMap) putDown(token, carriedSquare({ square: at.gridCoords, offset: carry.offset }, token.size, currentMap));
+        if (token && at && currentMap) {
+          const free = freeCarryAt(at.e, at.gridPoint, carry.pointOffset);
+          putDown(token, carriedSquare({ square: at.gridCoords, offset: carry.offset, free }, token.size, currentMap));
+        }
         else cancelHold();
         carryRef.current = null;
         setFingerCarrying(false);
@@ -2817,17 +2848,18 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
       mapControls.stopDrag();
       if (carryRef.current) cancelHold();
     },
-    move({ e, via, gridCoords }: PointerAt) {
+    move({ e, via, gridCoords, gridPoint }: PointerAt) {
       if (!currentMap) return false;
         // What this move carries: for a finger, the token its drag took; for
         // a mouse or a pen, the held token, wherever it goes over the map.
         const carry = carryRef.current;
         const carried = via === 'drag'
-          ? (carry ? { token: useGameStore.getState().tokens[carry.tokenId], offset: carry.offset } : null)
-          : (draggedToken && dragOffset ? { token: draggedToken, offset: dragOffset } : null);
+          ? (carry ? { token: useGameStore.getState().tokens[carry.tokenId], offset: carry.offset, pointOffset: carry.pointOffset } : null)
+          : (draggedToken && dragOffset ? { token: draggedToken, offset: dragOffset, pointOffset: dragPointOffsetRef.current } : null);
         if (carried?.token) {
-          const { token, offset } = carried;
-          const square = keepCoupledOnMap(tokens, token, carriedSquare({ square: gridCoords, offset }, token.size, currentMap), currentMap);
+          const { token, offset, pointOffset } = carried;
+          const free = freeCarryAt(e, gridPoint, pointOffset);
+          const square = keepCoupledOnMap(tokens, token, carriedSquare({ square: gridCoords, offset, free }, token.size, currentMap), currentMap);
 
           // Throttle move events to 60fps
           const now = Date.now();
@@ -2842,15 +2874,17 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
             lastMoveEmitRef.current = now;
           }
 
-          // The ghost is drawn under the pointer carrying it.
+          // The ghost is drawn under the pointer carrying it: from square to
+          // square, or placed freely, wherever the pointer goes.
           setCarrierSquare((prev) => (prev && prev.x === gridCoords.x && prev.y === gridCoords.y ? prev : gridCoords));
+          setFreeCarry(free);
 
           // Keep the hover panel honest while dragging. It used to be updated only
           // in the branch below, so a held token left the last name it happened to
           // read sitting beside live coordinates — "Brave Fighter (12, 8)" while
           // the cursor was over something else entirely. Reading the square under
           // the cursor also shows what you are about to land on.
-          setHoverToken(getHoverTokenAt(gridCoords.x, gridCoords.y));
+          setHoverToken(getHoverTokenAt(gridPoint.x, gridPoint.y));
 
           // Ghost follows the cursor — tokens layer only.
           markDirty('tokens');
@@ -2861,7 +2895,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
           if (press && !press.panned && Math.hypot(e.clientX - press.x, e.clientY - press.y) > CLICK_COUNT_PX) press.panned = true;
 
           // Update hover token
-          const token = getHoverTokenAt(gridCoords.x, gridCoords.y);
+          const token = getHoverTokenAt(gridPoint.x, gridPoint.y);
           setHoverToken(token);
 
           // Pan moves the whole scene → repaint every layer.
@@ -2910,7 +2944,8 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
     const screenX = e.clientX - rect.left;
     const screenY = e.clientY - rect.top;
     const gridCoords = mapControls.screenToGrid({ x: screenX, y: screenY });
-    return { e, via, screenX, screenY, mapPx: screenToMapPx(screenX, screenY), gridCoords };
+    const mapPx = screenToMapPx(screenX, screenY);
+    return { e, via, screenX, screenY, mapPx, gridCoords, gridPoint: currentMap ? mapPxToGridPoint(mapPx, gridFrame(currentMap)) : gridCoords };
   };
 
   /**
@@ -3391,6 +3426,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
       // shown it there again.
       showHeldTokenHome();
       setCarrierSquare(null);
+      setFreeCarry(null);
     }
 
     // Clear hover state, unless a finger or a pen is still pressing
@@ -3899,13 +3935,13 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
     const rect = canvasRef.current.getBoundingClientRect();
     const screenX = clientX - rect.left;
     const screenY = clientY - rect.top;
-    const gridCoords = mapControls.screenToGrid({ x: screenX, y: screenY });
 
     // Check tokens first — they sit on a higher visual layer than doors. A
     // token whose menu would be empty for this viewer is passed over.
     // In Player Preview this finds a creature the preview hides too, and opens
     // the GM's menu for it: the GM previewing is still the GM.
-    const token = getTokenAtPosition(gridCoords.x, gridCoords.y);
+    const gridPoint = mapPxToGridPoint(screenToMapPx(screenX, screenY), gridFrame(currentMap));
+    const token = getTokenAtPosition(gridPoint.x, gridPoint.y);
     if (token && tokenMenuHasItems(token, tokenMenuView(token))) {
       rememberMenuPoint(clientX, clientY);
       if (drawnIds.has(token.id)) useGameStore.getState().selectToken(token.id);
@@ -4099,7 +4135,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
     ? drawnTokens.find((t) => t.id === selectedToken.id) ?? null
     : null;
   const selectionAnnouncement = selectedToken
-    ? `Selected ${tokenDisplayName(selectedToken)}, square ${selectedToken.position.x}, ${selectedToken.position.y}`
+    ? `Selected ${tokenDisplayName(selectedToken)}, square ${Math.round(selectedToken.position.x)}, ${Math.round(selectedToken.position.y)}`
     : '';
 
   // The toolbar buttons that say what they show now: the tooltip and the
@@ -4119,7 +4155,11 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
     toggleSpiritTokens: () => setGmShowSpiritTokens((prev) => !prev),
     toggleTools: () => (stackShown ? hideTools() : showTools()),
     togglePaint: () => togglePaint(),
+    togglePlaceFreely: () => setPlaceFreely((on) => !on),
   };
+  // Place freely is offered to the GM on a square map whose tokens snap; elsewhere the map decides alone.
+  const placeFreelyOffered = isGM && !!currentMap && currentMap.snapTokens !== false && !isHexGrid(gridFrame(currentMap));
+  const placeFreelyLabel = placeFreely ? 'Place freely: on — tokens you move stop between squares' : 'Place freely: off — hold Alt, or press to stop tokens between squares';
   // Where the Put back bar starts: null keeps its place under one row of a
   // mouse's buttons. The compact layout's band spans the map, so it starts
   // under the band there. The AoE panel starts under the band with every
@@ -4271,6 +4311,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
     spiritTokensShown: gmShowSpiritTokens,
     toolsShown: stackShown,
     paint: paintOffered ? (paint.on ? 'on' : 'offered') : null,
+    placeFreely: placeFreelyOffered ? placeFreely : null,
   }, mapControlActions);
   // The buttons both layouts' toolbars hold: the zoom buttons and their
   // readout, Ping and Draw.
@@ -4455,7 +4496,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   const heldDistance = draggedToken && currentMap && drawnIds.has(draggedToken.id)
     ? carriedDistance(
       tokens.find((t) => t.id === draggedToken.id) ?? draggedToken,
-      carrierSquare && dragOffset ? { square: carrierSquare, offset: dragOffset } : null,
+      carrierSquare && dragOffset ? { square: carrierSquare, offset: dragOffset, free: freeCarry } : null,
       currentMap,
     )
     : null;
@@ -4780,6 +4821,19 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
               </>)}
               {paintButton}
             </>
+          )}
+
+          {/* GM-only, on a map whose tokens snap: the GM's moves stop between squares, as with Alt held */}
+          {placeFreelyOffered && !paint.on && (
+              <Button
+                onClick={mapControlActions.togglePlaceFreely}
+                variant="secondary" iconOnly className={placeFreely ? 'bg-moss-green/20' : undefined}
+                title={placeFreelyLabel}
+                aria-label="Place tokens freely"
+                aria-pressed={placeFreely}
+              >
+                <Move className={`w-4 h-4 ${placeFreely ? 'text-brand-ink' : ''}`} />
+              </Button>
           )}
 
           {/* GM-only: toggle spirit layer token visibility */}

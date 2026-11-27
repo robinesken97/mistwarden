@@ -13,9 +13,11 @@ import { hexDistance, isHexGrid, shiftCell, type GridFrame } from '@/utils/token
 import { coupledIds } from './mounts';
 
 /**
- * Whether a grid cell falls inside a token's footprint. On a hex map a token
- * stands on one hex and is drawn `size` hexes across around it, so it covers
- * the hexes within half that of its own.
+ * Whether a grid cell, or a point in grid squares (map/coords.ts
+ * mapPxToGridPoint), falls inside a token's footprint: a token between
+ * squares is hit anywhere on its box, and a whole-square one exactly where
+ * its cells are. On a hex map a token stands on one hex and is drawn `size`
+ * hexes across around it, so it covers the hexes within half that of its own.
  */
 export function tokenCoversCell(token: Token, gridX: number, gridY: number, grid?: GridFrame): boolean {
   if (grid && isHexGrid(grid)) {

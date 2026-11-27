@@ -17,11 +17,16 @@
 //
 // While it is held, the map's lower left shows how far it has come from its
 // own square to where it would be put down, measured as the ruler measures.
+//
+// Placed freely (a map whose tokens do not snap, or the GM holding Alt or
+// with Place freely on), the token follows the pointer between squares, to
+// hundredths, instead of jumping from square to square.
 // ============================================
 
 import type { CampaignMap, Position, Token, TokenMoveEvent } from '@/types';
 import { gridMeasure, type GridMeasure } from '@/utils/geometry';
 import { isHexGrid, nearestHexOnMap } from '@/utils/tokenCentre';
+import { roundTokenPosition } from '@/utils/tokenCopy';
 import { gridFrame, type MapGrid } from './layers/types';
 
 /** The move that puts a held token back where it was picked up. */
@@ -36,6 +41,12 @@ export function releaseHeldToken(token: Pick<Token, 'id' | 'position'>, mapId: s
 export interface Carrier {
   square: Position;
   offset: Position;
+  /**
+   * Set while the token is placed freely: the pointer in grid squares, not
+   * snapped (PointerAt.gridPoint), and the point of the token it took the
+   * token by, counted from the token's position.
+   */
+  free?: { point: Position; offset: Position } | null;
 }
 
 /**
@@ -51,11 +62,19 @@ export function carryOffset(pointer: Position, token: Position, map: MapGrid): P
  * The square a carried token stands on: the pointer's square less the
  * offset, so the square it was taken by stays under the pointer, and kept
  * whole on the map. On a hex map, the hex under the pointer, or the nearest
- * one on the map.
+ * one on the map. Placed freely, the pointer's point less the point it was
+ * taken by, kept on the map, to hundredths.
  */
 export function carriedSquare(carrier: Carrier, size: Token['size'], map: MapGrid): Position {
   const frame = gridFrame(map);
   if (isHexGrid(frame)) return nearestHexOnMap(carrier.square, frame);
+  if (carrier.free) {
+    const { point, offset } = carrier.free;
+    return roundTokenPosition({
+      x: Math.max(0, Math.min(point.x - offset.x, map.width - size.width)),
+      y: Math.max(0, Math.min(point.y - offset.y, map.height - size.height)),
+    });
+  }
   return {
     x: Math.floor(Math.max(0, Math.min(carrier.square.x - carrier.offset.x, map.width - size.width))),
     y: Math.floor(Math.max(0, Math.min(carrier.square.y - carrier.offset.y, map.height - size.height))),

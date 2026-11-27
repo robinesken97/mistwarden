@@ -68,6 +68,24 @@ export function tokenControllerStanding(
 }
 
 /**
+ * A position to hundredths of a square, as the server stores one
+ * (backend utils/mapTokens.ts roundTokenPosition), so the two compare equal.
+ */
+export function roundTokenPosition(position: Position): Position {
+  // `+ 0` turns -0 into 0.
+  return { x: Math.round(position.x * 100) / 100 + 0, y: Math.round(position.y * 100) / 100 + 0 };
+}
+
+/**
+ * Whether `isGM` may stop a token between squares on `map`, the server's
+ * rule (backend utils/mapTokens.ts mayPlaceFreely): anyone where tokens do not
+ * snap, the GM alone where they do, nobody on a hex map.
+ */
+export function mayPlaceFreely(isGM: boolean, map: MapGrid & { snapTokens?: boolean }): boolean {
+  return !isHexGrid(gridFrame(map)) && (map.snapTokens === false || isGM);
+}
+
+/**
  * A position that keeps the token's whole footprint on the map.
  *
  * The three move sites clamped differently: one to `width - 1`, which lets a

@@ -886,6 +886,8 @@ export interface CampaignMap {
   gridOffsetY?: number;
   feetPerSquare: number;
   diagonalRule: 'flat' | 'alternating';
+  /** Tokens stand on whole squares. Off lets anyone stop one between squares; a hex map always snaps. Absent on older payloads means on. */
+  snapTokens?: boolean;
   /** The colour a map drawn in CozyVTT was made in, as #rrggbb; null for one made from a picture. */
   drawnBackground: string | null;
   tokens: Token[];
@@ -1317,6 +1319,7 @@ export interface CreateMapRequest {
   gridOffsetY?: number;
   feetPerSquare?: number;
   diagonalRule?: 'flat' | 'alternating';
+  snapTokens?: boolean;
   /** For a map drawn in CozyVTT: the colour it is made in, as #rrggbb. */
   drawnBackground?: string;
   spiritLayerUrl?: string;
@@ -1338,6 +1341,7 @@ export interface UpdateMapRequest {
   fogEnabled?: boolean;
   globalIllumination?: boolean;
   explorationEnabled?: boolean;
+  snapTokens?: boolean;
 }
 
 // Token

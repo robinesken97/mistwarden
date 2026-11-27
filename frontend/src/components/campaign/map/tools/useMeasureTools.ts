@@ -25,7 +25,7 @@ interface UseMeasureToolsArgs {
   markDirty: (...layers: MapLayer[]) => void;
   /** A player has a token on the map for their ruler to start from; asked at a press. */
   measuresFromToken?: () => boolean;
-  /** A token the viewer may move stands on this square, so a tap there picks it up; asked at a press. */
+  /** A token the viewer may move stands at this point (PointerAt.gridPoint), so a tap there picks it up; asked at a press. */
   picksUpAt?: (square: Square) => boolean;
   /** A token is held, so a press puts it down; asked at a press. */
   holdsToken?: () => boolean;
@@ -152,7 +152,7 @@ export function useMeasureTools({ isGM, markDirty, measuresFromToken = () => fal
   };
 
   const tool: MapTool = {
-    down({ e, via, mapPx, gridCoords }: PointerAt) {
+    down({ e, via, mapPx, gridCoords, gridPoint }: PointerAt) {
       if (showRuler && !holdsToken()) {
         const pins = e.kind !== 'mouse';
         if (isGM) {
@@ -176,7 +176,7 @@ export function useMeasureTools({ isGM, markDirty, measuresFromToken = () => fal
           return true;
         }
         // A player's ruler starts at their token, so a press sets its end.
-        if (pins && measuresFromToken() && !picksUpAt(gridCoords)) {
+        if (pins && measuresFromToken() && !picksUpAt(gridPoint)) {
           setRulerEnd(via === 'drag' ? null : gridCoords);
           rulerPressRef.current = { from: gridCoords, via };
           return true;

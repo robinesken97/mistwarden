@@ -465,7 +465,7 @@ export default function SpiritLayerControls({ isOpen, onClose }: SpiritLayerCont
                           {token.name}
                         </p>
                         <p className="text-[10px] text-stone-gray">
-                          ({token.position.x}, {token.position.y})
+                          ({Math.round(token.position.x)}, {Math.round(token.position.y)})
                         </p>
                       </div>
                     </div>

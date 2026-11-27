@@ -9,6 +9,7 @@
 
 import type { CombatState, Position, Token } from '@/types';
 import { isHexGrid, nearestHexOnMap } from '@/utils/tokenCentre';
+import { roundTokenPosition } from '@/utils/tokenCopy';
 import { gridFrame, type MapGrid } from './layers/types';
 
 /** Forward (`.`) or back (`,`) through the list. */
@@ -80,20 +81,22 @@ const clamp = (value: number, min: number, max: number) => Math.max(min, Math.mi
  * hex on it.
  */
 export function squareFromArrow(
-  position: Position,
+  from: Position,
   size: { width: number; height: number },
   key: ArrowKey,
   squares: number,
-  map: MapGrid
+  map: MapGrid & { snapTokens?: boolean }
 ): Position {
   const dx = key === 'ArrowLeft' ? -squares : key === 'ArrowRight' ? squares : 0;
   const dy = key === 'ArrowDown' ? -squares : key === 'ArrowUp' ? squares : 0;
   const frame = gridFrame(map);
-  if (isHexGrid(frame)) return nearestHexOnMap({ x: position.x + dx, y: position.y + dy }, frame);
-  return {
+  if (isHexGrid(frame)) return nearestHexOnMap({ x: from.x + dx, y: from.y + dy }, frame);
+  // Where tokens snap, a token the GM placed between squares steps from its nearest whole one.
+  const position = map.snapTokens === false ? from : { x: Math.round(from.x), y: Math.round(from.y) };
+  return roundTokenPosition({
     x: clamp(position.x + dx, 0, Math.max(0, map.width - size.width)),
     y: clamp(position.y + dy, 0, Math.max(0, map.height - size.height)),
-  };
+  });
 }
 
 /** The least room, in screen pixels, between a token brought into view and the edge. */

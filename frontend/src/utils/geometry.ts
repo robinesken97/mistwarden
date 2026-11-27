@@ -61,8 +61,9 @@ export function gridMeasure(
     const hexes = hexDistance(from, to, grid);
     return { squares: hexes, feet: hexes * feetPerSquare, hexes: true };
   }
-  const dx = Math.abs(to.x - from.x);
-  const dy = Math.abs(to.y - from.y);
+  // Whole squares: a token placed between squares still counts its move in them.
+  const dx = Math.round(Math.abs(to.x - from.x));
+  const dy = Math.round(Math.abs(to.y - from.y));
   return { squares: Math.max(dx, dy), feet: calcGridDistance(dx, dy, feetPerSquare, diagonalRule) };
 }
 

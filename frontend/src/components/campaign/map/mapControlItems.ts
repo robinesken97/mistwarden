@@ -19,7 +19,7 @@
 // Pure: no React, no DOM.
 // ============================================
 
-import { Ghost, Grid3x3, Maximize2, Paintbrush, Palette, Ruler, Wrench, Zap } from 'lucide-react';
+import { Ghost, Grid3x3, Maximize2, Move, Paintbrush, Palette, Ruler, Wrench, Zap } from 'lucide-react';
 import type { MenuAction, MenuItem } from '@/components/ui/menu';
 
 export type GridColor = 'black' | 'white';
@@ -48,6 +48,8 @@ export interface MapControlsView {
   toolsShown: boolean;
   /** For the GM: Paint is offered on this map, or on; null where it is not offered. */
   paint: 'offered' | 'on' | null;
+  /** For the GM, on a map whose tokens snap: whether Place freely is on; null or absent where it is not offered. */
+  placeFreely?: boolean | null;
 }
 
 /** What each row does. */
@@ -61,6 +63,7 @@ export interface MapControlsActions {
   toggleSpiritTokens: () => void;
   toggleTools: () => void;
   togglePaint: () => void;
+  togglePlaceFreely: () => void;
 }
 
 const row = (id: string, label: string, icon: MenuAction['icon'], run: () => void, extra: Partial<MenuAction> = {}): MenuAction => ({
@@ -89,6 +92,9 @@ export function mapControlItems(view: MapControlsView, actions: MapControlsActio
     }
     // The stack is drawn only on a map.
     if (view.hasMap) items.push(row('tools', view.toolsShown ? 'Hide tools' : 'Show tools', Wrench, actions.toggleTools, { title: 'Fog, Walls and Lights' }));
+    if (view.hasMap && typeof view.placeFreely === 'boolean') {
+      items.push(row('place-freely', view.placeFreely ? 'Snap tokens to the grid' : 'Place tokens freely', Move, actions.togglePlaceFreely, { title: 'Tokens you move stop between squares (or hold Alt)' }));
+    }
     items.push(row('spirit-tokens', view.spiritTokensShown ? 'Hide spirit tokens' : 'Show spirit tokens', Ghost, actions.toggleSpiritTokens, { tone: 'spirit' }));
   }
   return items;
@@ -96,7 +102,7 @@ export function mapControlItems(view: MapControlsView, actions: MapControlsActio
 
 /** What each row is about, as Map controls' tooltip names it; the colours' rows go with theirs. */
 const TOPICS: Record<string, string> = {
-  fit: 'fit', grid: 'grid', ruler: 'ruler', aoe: 'AoE shape', paint: 'Mapmaker', tools: 'tools', 'spirit-tokens': 'spirit tokens',
+  fit: 'fit', grid: 'grid', ruler: 'ruler', aoe: 'AoE shape', paint: 'Mapmaker', tools: 'tools', 'place-freely': 'free placement', 'spirit-tokens': 'spirit tokens',
 };
 
 /** Map controls' tooltip: what its rows are about, in their order. */

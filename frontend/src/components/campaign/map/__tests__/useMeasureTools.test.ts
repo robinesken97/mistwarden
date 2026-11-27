@@ -34,6 +34,8 @@ function on(square: Square, how: 'mouse' | 'tap' | 'drag' | 'pen'): PointerAt {
     screenY: (19 - square.y) * 50 + 25,
     mapPx: { x: square.x * 50 + 25, y: (19 - square.y) * 50 + 25 },
     gridCoords: square,
+    // The middle of the square, as the pointer stands there.
+    gridPoint: { x: square.x + 0.5, y: square.y + 0.5 },
   };
 }
 
@@ -42,7 +44,7 @@ function setup(who: 'GM' | 'PLAYER', options: { hasToken?: boolean; movableAt?: 
     isGM: who === 'GM',
     markDirty: vi.fn(),
     measuresFromToken: () => options.hasToken ?? true,
-    picksUpAt: (s) => options.movableAt !== undefined && s.x === options.movableAt.x && s.y === options.movableAt.y,
+    picksUpAt: (s) => options.movableAt !== undefined && Math.floor(s.x) === options.movableAt.x && Math.floor(s.y) === options.movableAt.y,
     holdsToken: () => options.holding?.now ?? false,
   }));
   act(() => { view.result.current.handleToggleRuler(); });
