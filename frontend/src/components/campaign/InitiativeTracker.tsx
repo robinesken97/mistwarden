@@ -465,7 +465,7 @@ function CombatantRow({
           <button
             ref={valueButtonRef}
             type="button"
-            className={`text-sm font-bold cursor-pointer rounded-sm focus:outline-hidden focus-visible:ring-2 focus-visible:ring-brand/50 ${isActive ? 'text-accent-ink' : 'text-stone-gray'}`}
+            className={`touch-target inline-flex items-center justify-center text-sm font-bold cursor-pointer rounded-sm focus:outline-hidden focus-visible:ring-2 focus-visible:ring-brand/50 ${isActive ? 'text-accent-ink' : 'text-stone-gray'}`}
             onClick={() => setEditing(true)}
             aria-label={`Initiative for ${name}: ${entry.initiative !== null ? entry.initiative : 'none'}. Edit`}
             title="Click to edit initiative value"
@@ -933,7 +933,7 @@ export default function InitiativeTracker() {
                 {viewedMapId && (
                   <button
                     onClick={() => setShowAddModal(true)}
-                    className="w-full flex items-center justify-center gap-2 py-1.5 px-3 text-xs font-medium text-brand-ink border border-dashed border-moss-green/30 rounded-lg hover:bg-moss-green/5 transition-colors"
+                    className="touch-target w-full flex items-center justify-center gap-2 py-1.5 px-3 text-xs font-medium text-brand-ink border border-dashed border-moss-green/30 rounded-lg hover:bg-moss-green/5 transition-colors"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     Add Combatant
@@ -946,7 +946,7 @@ export default function InitiativeTracker() {
                     {!combatState.active ? (
                       <button
                         onClick={handleStart}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 text-xs font-semibold bg-moss-green text-brand-text rounded-lg hover:bg-brand-hover transition-colors"
+                        className="touch-target flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 text-xs font-semibold bg-moss-green text-brand-text rounded-lg hover:bg-brand-hover transition-colors"
                       >
                         <Play className="w-3.5 h-3.5" />
                         Start Combat
@@ -955,14 +955,14 @@ export default function InitiativeTracker() {
                       <>
                         <button
                           onClick={handleNext}
-                          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 text-xs font-semibold bg-accent text-accent-text rounded-lg hover:bg-accent-hover transition-colors"
+                          className="touch-target flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 text-xs font-semibold bg-accent text-accent-text rounded-lg hover:bg-accent-hover transition-colors"
                         >
                           <SkipForward className="w-3.5 h-3.5" />
                           Next Turn
                         </button>
                         <button
                           onClick={handleEnd}
-                          className="flex items-center justify-center gap-1.5 py-1.5 px-3 text-xs font-semibold border border-danger/30 text-danger-ink rounded-lg hover:bg-danger/10 transition-colors"
+                          className="touch-target flex items-center justify-center gap-1.5 py-1.5 px-3 text-xs font-semibold border border-danger/30 text-danger-ink rounded-lg hover:bg-danger/10 transition-colors"
                           title="End combat"
                         >
                           <XCircle className="w-3.5 h-3.5" />

@@ -572,7 +572,7 @@ export const FifthEditionCharacterView: React.FC<FifthEditionCharacterViewProps>
       {hasSpellcasting(data) ? (
         <SpellcastingBlock spellcasting={data.spellcasting!} character={data} />
       ) : (
-        <div className="text-center py-12 text-ink-muted">
+        <div className={`${SHEET_BOX} text-center py-8 text-ink-muted`}>
           <Sparkles className="w-12 h-12 mx-auto mb-3 text-ink-muted" />
           <p>This character is not a spellcaster</p>
         </div>
@@ -703,6 +703,13 @@ export const FifthEditionCharacterView: React.FC<FifthEditionCharacterViewProps>
   // Render Biography tab
   const renderBioTab = () => (
     <div className={`flex flex-col ${SHEET_GAP}`}>
+      {!(data.appearance || data.personality || data.backstory || data.alliesAndOrganizations || data.treasure) && (
+        <div className={`${SHEET_BOX} text-center py-8 text-ink-muted`}>
+          <User className="w-12 h-12 mx-auto mb-3 text-ink-muted" aria-hidden="true" />
+          <p>No biography yet</p>
+          {onEdit && <p className="text-sm mt-1">Use Edit to write one.</p>}
+        </div>
+      )}
       {/* Appearance */}
       {data.appearance && (
         <div className={SHEET_BOX}>

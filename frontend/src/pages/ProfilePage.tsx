@@ -899,7 +899,7 @@ export default function ProfilePage() {
                   <button
                     type="button"
                     onClick={() => setShowPwCurrent((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-gray/50 hover:text-stone-gray"
+                    className="touch-target inline-flex items-center justify-center absolute right-0 top-1/2 -translate-y-1/2 px-3 text-stone-gray/50 hover:text-stone-gray"
                     aria-label={showPwCurrent ? 'Hide current password' : 'Show current password'}
                   >
                     {showPwCurrent ? <EyeOff className="w-4 h-4" aria-hidden="true" /> : <Eye className="w-4 h-4" aria-hidden="true" />}
@@ -921,7 +921,7 @@ export default function ProfilePage() {
                   <button
                     type="button"
                     onClick={() => setShowPwNew((v) => !v)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-gray/50 hover:text-stone-gray"
+                    className="touch-target inline-flex items-center justify-center absolute right-0 top-1/2 -translate-y-1/2 px-3 text-stone-gray/50 hover:text-stone-gray"
                     aria-label={showPwNew ? 'Hide new password' : 'Show new password'}
                   >
                     {showPwNew ? <EyeOff className="w-4 h-4" aria-hidden="true" /> : <Eye className="w-4 h-4" aria-hidden="true" />}
@@ -1038,7 +1038,7 @@ export default function ProfilePage() {
               {!deleteConfirmOpen && (
                 <button
                   onClick={() => setDeleteConfirmOpen(true)}
-                  className="ml-4 shrink-0 text-sm py-1.5 px-3 rounded-lg border border-danger/30 text-danger-ink hover:bg-danger/10 transition-colors font-medium"
+                  className="touch-target ml-4 shrink-0 text-sm py-1.5 px-3 rounded-lg border border-danger/30 text-danger-ink hover:bg-danger/10 transition-colors font-medium"
                 >
                   Delete Account
                 </button>
