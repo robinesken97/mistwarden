@@ -11,6 +11,7 @@ import {
   Shield,
   Zap,
   Footprints,
+  Eye,
   Swords,
   Package,
   Sparkles,
@@ -355,6 +356,14 @@ export const FifthEditionCharacterView: React.FC<FifthEditionCharacterViewProps>
             <Footprints className="w-6 h-6 mx-auto mb-2 text-info-ink" />
             <div className="text-xs text-ink-muted mb-1">Speed</div>
             <div className="text-2xl font-bold text-ink">{data.speed} ft</div>
+          </div>
+        )}
+        {/* Shown only when the character has it; most sheets have none. */}
+        {(data.darkvisionFeet ?? 0) > 0 && (
+          <div className="bg-ink/5 border-2 border-ink/20 rounded-lg p-4 text-center">
+            <Eye className="w-6 h-6 mx-auto mb-2 text-info-ink" />
+            <div className="text-xs text-ink-muted mb-1">Darkvision</div>
+            <div className="text-2xl font-bold text-ink">{data.darkvisionFeet} ft</div>
           </div>
         )}
         {data.hp && (

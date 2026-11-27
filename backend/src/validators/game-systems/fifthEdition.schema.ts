@@ -18,6 +18,7 @@ import {
   FIFTH_EDITION_CUSTOM_SKILLS_MAX,
   FIFTH_EDITION_DAMAGE_ROLL_TEXT_MAX,
   FIFTH_EDITION_DAMAGE_TYPE_MAX,
+  FIFTH_EDITION_DARKVISION_FEET_MAX,
   FIFTH_EDITION_HIT_DIE_MAX,
   FIFTH_EDITION_PROFICIENCY_BOX_MAX,
   FIFTH_EDITION_WEAPON_PROPERTIES_MAX,
@@ -396,6 +397,9 @@ export const fifthEditionCharacterDataSchema = z.object({
   // utils/rules/initiative.ts).
   initiativeAdvantage: z.boolean().optional(),
   speed: z.number().int().min(0).optional(),
+  // Darkvision in feet; 0 or absent is none. A token bound to the character
+  // takes it as its sight when the GM saves a changed value (routes/characters.ts).
+  darkvisionFeet: z.number().int().min(0).max(FIFTH_EDITION_DARKVISION_FEET_MAX).optional(),
   hp: hitPointsSchema.optional(),
   conditions: sheetList(shortText).optional(),
   // Exhaustion is six cumulative levels, not a condition you either have or do

@@ -323,6 +323,8 @@ export interface FifthEditionCharacterData extends SheetChrome {
    */
   initiativeAdvantage?: boolean;
   speed?: number;
+  /** Darkvision in feet; 0 or absent is none. Linked tokens follow it when the GM changes it. */
+  darkvisionFeet?: number;
   hp?: FifthEditionHitPoints;
   conditions?: string[];
   /** Exhaustion 0-6; six cumulative levels, not a yes/no condition. */

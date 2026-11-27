@@ -131,3 +131,9 @@ export const FIFTH_EDITION_DAMAGE_TYPE_MAX = 40;
 
 /** 5E: one property of an attack, bounded so the field cannot be used as storage. */
 export const FIFTH_EDITION_WEAPON_PROPERTY_LENGTH_MAX = 60;
+
+/**
+ * 5E: darkvision in feet. The rules give 60 or 120, a few creatures more;
+ * a linked token's sight is worked out from it on the GM's save.
+ */
+export const FIFTH_EDITION_DARKVISION_FEET_MAX = 1000;

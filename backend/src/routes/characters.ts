@@ -18,8 +18,9 @@ import {
   sheetNameFor,
 } from '../validators/game-systems';
 import { CreateCharacterSchema, UpdateCharacterSchema } from '../validators/characters';
-import { TOKEN_IMAGE_NOT_A_TOKEN_PICTURE_MESSAGE } from '../validators/tokens';
-import { broadcastToCampaign, emitCharacterUpdated } from '../websocket/utils';
+import { TOKEN_IMAGE_NOT_A_TOKEN_PICTURE_MESSAGE, TokenSightRadiusSchema } from '../validators/tokens';
+import { broadcastToCampaign, emitCharacterUpdated, getSocketInstance } from '../websocket/utils';
+import { broadcastMapData } from '../websocket/shared';
 import {
   characterForReader, clearGmNotes, hasGmNotes, isGmOf, sheetKeepingGmNotes, sheetWithoutGmNotes,
 } from '../utils/gmNotes';
@@ -774,12 +775,27 @@ router.put('/:id', authenticated, async (req: AuthenticatedRequest, res: Respons
     // Only the image is synced. A token's NAME is deliberately left alone: the
     // GM may have renamed it ("Aldra (charmed)", or A/B for duplicates) and
     // silently overwriting that on the player's next save would be its own bug.
+    //
+    // The 5E sheet's darkvision rides the same visit, as the tokens' sight in
+    // the map's squares. Only a GM of the map's campaign writes it, whoever
+    // owns the character: `sightRadius` decides what the server sends a
+    // player, which is why the token route keeps it GM-only, and the owner
+    // may save this sheet. A player's change stays on the sheet for the GM to
+    // apply. Only a change in this save is applied, so a GM's own override on
+    // one token stands until the sheet value changes again.
     let tokensChanged = false;
     const campaignsWithChangedTokens = new Set<string>();
-    if (
+    const campaignsWithChangedSight = new Set<string>();
+    const imageChanged =
       updateData.tokenImageUrl !== undefined &&
-      updateData.tokenImageUrl !== character.tokenImageUrl
-    ) {
+      updateData.tokenImageUrl !== character.tokenImageUrl;
+    const darkvisionOf = (sheet: unknown) =>
+      (readJsonObject(sheet as Prisma.JsonValue)?.darkvisionFeet as number | undefined) ?? 0;
+    const darkvisionFeet =
+      data !== undefined && sheetSystem === 'FIFTH_EDITION' && darkvisionOf(sheetData) !== darkvisionOf(character.data)
+        ? darkvisionOf(sheetData)
+        : undefined;
+    if (imageChanged || darkvisionFeet !== undefined) {
       try {
         // Maps are found by the binding itself — a token carrying this
         // `characterId` — rather than by the character's own `campaignId`.
@@ -820,38 +836,69 @@ router.put('/:id', authenticated, async (req: AuthenticatedRequest, res: Respons
         const mayRepaint = (campaignId: string) =>
           isOwner ? editorRoles.get(campaignId) !== 'SPECTATOR' : editorRoles.get(campaignId) === 'GM';
 
+        const mayResight = (campaignId: string) => editorRoles.get(campaignId) === 'GM';
+
         for (const map of boundMaps) {
-          if (!mayRepaint(map.campaignId)) continue;
+          const repaint = imageChanged && mayRepaint(map.campaignId);
+          const resight = darkvisionFeet !== undefined && mayResight(map.campaignId);
+          if (!repaint && !resight) continue;
           // Rewritten from the list as it is under the map's lock, like every
           // other write to a map's tokens; the list the query above returned
           // only says which maps to visit.
-          const mapChanged = await withMapsLocked([map.id], async (tx) => {
-            const fresh = await tx.map.findUniqueOrThrow({ where: { id: map.id }, select: { tokens: true } });
-            let changed = false;
+          const written = await withMapsLocked([map.id], async (tx) => {
+            const fresh = await tx.map.findUniqueOrThrow({ where: { id: map.id }, select: { tokens: true, feetPerSquare: true } });
+            // Plain feet over the map's scale, within the token schema's bounds.
+            const sight = resight
+              ? Math.min(TokenSightRadiusSchema.maxValue ?? 200, Math.max(0, darkvisionFeet! / (fresh.feetPerSquare || 5)))
+              : undefined;
+            let painted = false;
+            let sighted = false;
             const nextTokens = readTokens(fresh.tokens).map((token) => {
               if (token?.characterId !== updatedCharacter.id) return token;
-              changed = true;
-              return { ...token, imageUrl: updateData.tokenImageUrl ?? '' };
+              let next = token;
+              if (repaint) {
+                painted = true;
+                next = { ...next, imageUrl: updateData.tokenImageUrl ?? '' };
+              }
+              if (sight !== undefined && (token.sightRadius ?? 0) !== sight) {
+                sighted = true;
+                next = { ...next, sightRadius: sight };
+              }
+              return next;
             });
-            if (changed) await tx.map.update({ where: { id: map.id }, data: { tokens: toJson(nextTokens) } });
-            return changed;
+            if (!painted && !sighted) return null;
+            const row = await tx.map.update({ where: { id: map.id }, data: { tokens: toJson(nextTokens) } });
+            return { row, painted, sighted };
           });
 
-          if (mapChanged) {
+          if (written?.painted) {
             tokensChanged = true;
             campaignsWithChangedTokens.add(map.campaignId);
+          }
+          if (written?.sighted) {
+            // As the token route re-sends a sight change: the map again, as
+            // each member may see it, since a token's sight decides what its
+            // player is sent. broadcastMapData sends nothing for a map the
+            // table is not on.
+            campaignsWithChangedSight.add(map.campaignId);
+            try {
+              await broadcastMapData(getSocketInstance(), map.campaignId, written.row);
+            } catch (err) {
+              logger.warn('Map not re-sent to the table after a sheet darkvision change; the change stands', { err, mapId: map.id });
+            }
           }
         }
       } catch (error) {
         // The character update itself already succeeded and is what the user
         // asked for; a failure to repaint tokens must not fail the request.
-        logger.error('Failed to sync token images after character update', { err: error });
+        logger.error('Failed to sync tokens after character update', { err: error });
       }
     }
 
     // A combatant bound to this character shows the token's picture, which
-    // the sync above may just have changed.
-    for (const affectedCampaignId of campaignsWithChangedTokens) {
+    // the sync above may just have changed, and its player is sent the order
+    // by what their tokens see.
+    for (const affectedCampaignId of new Set([...campaignsWithChangedTokens, ...campaignsWithChangedSight])) {
       await resendInitiative(affectedCampaignId);
     }
 

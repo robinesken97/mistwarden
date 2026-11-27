@@ -1561,6 +1561,8 @@ Each token has a **Darkvision** value, in grid squares: how far it makes things 
 
 Set it in the **Token Manager** when placing a token, or afterwards from **Edit Token** (right-click the token, or the pencil in the Token Roster), which opens for player tokens too. Only you can change it: it decides what the server sends that token's player.
 
+A 5E character sheet has a **Darkvision (ft)** box. When you change it, every token linked to that character on your maps takes it as its darkvision, converted to each map's feet per square; placing a token for the character fills it in too. A player's own entry stays on the sheet: the token's darkvision field shows it to you as **Sheet: 60 ft** with an **Apply** button. Changing a map's feet per square later does not rescale its tokens, and a value you set on one token by hand is overwritten the next time you change the sheet's value.
+
 > **Tip:** With no darkvision and no lights nearby, a player sees only the square their token stands on. If that is not what you want for a map, tick **Global Illumination** in the map's settings (see above).
 
 ### Light Sources

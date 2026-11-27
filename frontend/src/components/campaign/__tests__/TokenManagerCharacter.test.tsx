@@ -50,7 +50,7 @@ vi.mock('@/contexts/CampaignContext', () => ({
 vi.mock('@/contexts/WebSocketContext', () => ({ useWebSocket: () => ({ socket: null }) }));
 vi.mock('@/components/assets/AssetGrid', () => ({ default: () => null }));
 
-const api = vi.hoisted(() => ({ addToken: vi.fn(), listAssets: vi.fn() }));
+const api = vi.hoisted(() => ({ addToken: vi.fn(), listAssets: vi.fn(), getCharacter: vi.fn() }));
 vi.mock('@/services/api', () => ({ api, default: api }));
 
 import TokenManager from '../TokenManager';
@@ -62,6 +62,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   characters.list = [aldra, npcOfGms];
   api.listAssets.mockResolvedValue({ assets: [], pagination: {} });
+  api.getCharacter.mockRejectedValue(new Error('not stubbed'));
   api.addToken.mockImplementation((_c: string, _m: string, payload: Partial<Token>) => Promise.resolve({ token: { id: 'new', ...payload } }));
   useGameStore.getState().setTokens([]);
 });
@@ -116,4 +117,15 @@ it('says so when the campaign has no characters', async () => {
   await choosePlayer();
   expect(screen.queryByLabelText('Character')).not.toBeInTheDocument();
   expect(screen.getByText(/No characters are in this campaign yet/)).toBeInTheDocument();
+});
+
+it('takes the sight from a 5E sheet\'s darkvision, in the map\'s squares', async () => {
+  api.getCharacter.mockResolvedValue({ character: { ...aldra, gameSystem: 'FIFTH_EDITION', data: { darkvisionFeet: 60 } } });
+  await choosePlayer();
+  await userEvent.selectOptions(screen.getByLabelText('Character'), 'char-aldra');
+  await waitFor(() => expect(screen.getByLabelText('Darkvision in grid squares')).toHaveValue(12));
+
+  await userEvent.click(screen.getByRole('button', { name: 'Place on Map' }));
+  await waitFor(() => expect(api.addToken).toHaveBeenCalled());
+  expect(sent()).toMatchObject({ characterId: 'char-aldra', sightRadius: 12 });
 });

@@ -38,7 +38,7 @@ import { StatBlockViewer, StatBlockEditor } from './npc-stat-blocks';
 import Button from '@/components/ui/Button';
 import SlideOver, { SlideOverClose, SlideOverTitle } from '@/components/ui/SlideOver';
 import AssetGrid from '@/components/assets/AssetGrid';
-import TokenVisionField from './TokenVisionField';
+import TokenVisionField, { useSheetDarkvisionFeet } from './TokenVisionField';
 import TokenRotationField from './TokenRotationField';
 import RemoveTokenDialog from './RemoveTokenDialog';
 import { assetNameFrom } from '@/utils/assetName';
@@ -148,6 +148,8 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
   // for the moment it is not in the store.
   const liveToken = useGameStore((s) => s.tokens[token.id]);
   const current = liveToken ?? token;
+  // A linked character's sheet, for its darkvision beside the token's.
+  const linkedDarkvision = useSheetDarkvisionFeet(current.characterId);
 
   // Each quick control shows the GM's change at once, in place of the
   // table's value, until its save is answered: then the table's value again,
@@ -1054,6 +1056,7 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
               value={current.sightRadius ?? 0}
               onCommit={(squares) => { void saveUpdate({ sightRadius: squares }); }}
               feetPerSquare={viewedMap?.feetPerSquare ?? 5}
+              sheetFeet={linkedDarkvision}
             />
           </section>
         )}
