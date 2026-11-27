@@ -452,7 +452,6 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   // Mistwarden, 2026-11-27: this device's mist (DiceOverlay's sibling setting);
   // still under reduced motion.
   const [mist, setMist] = useState(fogMistMode);
-  const darknessMistOffscreenRef = useRef<HTMLCanvasElement | null>(null);
   useEffect(() => {
     const read = () => setMist(fogMistMode());
     window.addEventListener(FOG_MIST_EVENT, read);
@@ -690,7 +689,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   // The fog boxes (map/tools/useFogTool.ts).
   // Mistwarden: a player's mist drifts, about ten frames a second, while there is fog to show.
   // A player's fog, or a GM's preview of it: the timer and the drift go together.
-  const mistOnScreen = mistDrifts && (!isGM || previewing) && ((currentMap?.fogEnabled ?? false) || (currentMap?.lightingEnabled ?? false));
+  const mistOnScreen = mistDrifts && (!isGM || previewing) && (currentMap?.fogEnabled ?? false);
   useEffect(() => {
     if (!mistOnScreen) return;
     const timer = window.setInterval(() => markDirty('overlay'), 100);
@@ -2087,8 +2086,6 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
             memoryCanvas: memoryOffscreenRef,
             dpr,
             compositeCache: lightingCompositeRef,
-            mistCanvas: darknessMistOffscreenRef,
-            mistTime: mist === 'flat' ? undefined : mistOnScreen ? performance.now() : null,
           }, viewport);
 
           // Report what this viewer has just seen, at most every 300 ms, from the

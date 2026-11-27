@@ -79,27 +79,15 @@ function mistTileCanvas(): HTMLCanvasElement | null {
   return canvas;
 }
 
-/**
- * Mist over the rectangle (0, 0, width, height) of `ctx`, drifting with
- * `time`, for the darkness of dynamic lighting (drawLights.ts). False where
- * no mist can be drawn.
- */
-export function paintMistRect(ctx: CanvasRenderingContext2D, width: number, height: number, time: number, scale: number, opacity: number): boolean {
-  ctx.beginPath();
-  ctx.rect(0, 0, width, height);
-  return fillMist(ctx, time, opacity, scale);
-}
-
 /** Lay the mist over the current path, drifting with `time`. The path must already be filled. */
-function fillMist(ctx: CanvasRenderingContext2D, time: number, opacity: number, tileScale = 1): boolean {
+function fillMist(ctx: CanvasRenderingContext2D, time: number, opacity: number): boolean {
   const tile = mistTileCanvas();
   if (!tile || typeof DOMMatrix === 'undefined') return false;
   const pattern = ctx.createPattern(tile, 'repeat');
   if (!pattern || typeof pattern.setTransform !== 'function') return false;
   // Two layers drifting at different speeds and directions read as moving mist.
-  for (const [speedX, speedY, layerScale] of [[0.012, 0.004, 1], [-0.007, 0.009, 1.7]] as const) {
-    const scale = layerScale * tileScale;
-    pattern.setTransform(new DOMMatrix().translateSelf((time * speedX * tileScale) % (MIST_TILE * scale), (time * speedY * tileScale) % (MIST_TILE * scale)).scaleSelf(scale));
+  for (const [speedX, speedY, scale] of [[0.012, 0.004, 1], [-0.007, 0.009, 1.7]] as const) {
+    pattern.setTransform(new DOMMatrix().translateSelf((time * speedX) % (MIST_TILE * scale), (time * speedY) % (MIST_TILE * scale)).scaleSelf(scale));
     ctx.globalAlpha = opacity;
     ctx.fillStyle = pattern;
     ctx.fill();
