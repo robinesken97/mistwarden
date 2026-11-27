@@ -1,9 +1,12 @@
 {
-  "_comment": "Shared vision scenarios. Tokens are in grid units (x from the left, y from the bottom row); walls, lights and samples are map pixels (y from the top). Both packages run every scenario; the backend checks which tokens are sent, the frontend checks the tier at each sample and that a token is seen exactly when it is sent. A token's `light` is the torch it carries, lit at its centre; `visible: false` is a hidden token, which no player is sent. Keep both copies identical.",
+  "_comment": "Shared vision scenarios. Tokens are in grid units (x from the left, y from the bottom row); walls, lights and samples are map pixels (y from the top). Both packages run every scenario; the backend checks which tokens are sent, the frontend checks the tier at each sample and that a token is seen exactly when it is sent. A token's `light` is the torch it carries, lit at its centre; `visible: false` is a hidden token, which no player is sent. Keep both copies identical. A scenario's `grid` replaces the map's grid type and offset for it; on a hex map a token's x and y are its hex (utils/tokenCentre.ts).",
   "map": {
     "width": 20,
     "height": 20,
-    "gridSize": 100
+    "gridSize": 100,
+    "gridType": "square",
+    "gridOffsetX": 0,
+    "gridOffsetY": 0
   },
   "viewer": "p1",
   "scenarios": [
@@ -800,6 +803,71 @@
         {
           "x": 1050,
           "y": 1250,
+          "tier": "dark"
+        }
+      ]
+    },
+    {
+      "name": "a pointy hex map: a token on a shifted row is seen from the hex centres, not the squares",
+      "grid": {
+        "gridType": "hexPointy"
+      },
+      "globalIllumination": true,
+      "walls": [
+        {
+          "id": "w1",
+          "x1": 500,
+          "y1": 970,
+          "x2": 700,
+          "y2": 970,
+          "type": "wall"
+        },
+        {
+          "id": "w2",
+          "x1": 420,
+          "y1": 980,
+          "x2": 420,
+          "y2": 1100,
+          "type": "wall"
+        }
+      ],
+      "lights": [],
+      "tokens": [
+        {
+          "id": "me",
+          "x": 5,
+          "y": 12,
+          "controlledBy": "p1"
+        },
+        {
+          "id": "npc",
+          "x": 5,
+          "y": 11
+        },
+        {
+          "id": "side",
+          "x": 3,
+          "y": 11
+        },
+        {
+          "id": "far",
+          "x": 8,
+          "y": 12
+        }
+      ],
+      "expectVisible": [
+        "me",
+        "far"
+      ],
+      "samples": [
+        {
+          "x": 550,
+          "y": 923,
+          "tier": "bright"
+        },
+        {
+          "x": 600,
+          "y": 1010,
           "tier": "dark"
         }
       ]

@@ -2505,7 +2505,10 @@ paths:
                                 imageUrl: { type: string }
                                 width: { type: integer }
                                 height: { type: integer }
-                                gridSize: { type: integer }
+                                gridSize: { type: number }
+                                gridType: { type: string, enum: [square, hexPointy, hexFlat] }
+                                gridOffsetX: { type: number }
+                                gridOffsetY: { type: number }
                                 feetPerSquare: { type: integer }
                                 diagonalRule: { type: string, enum: [flat, alternating] }
                                 drawnBackground: { type: string, nullable: true }
@@ -7534,7 +7537,10 @@ paths:
                         baseLayerUrl: { type: string }
                         width: { type: integer }
                         height: { type: integer }
-                        gridSize: { type: integer }
+                        gridSize: { type: number }
+                        gridType: { type: string, enum: [square, hexPointy, hexFlat] }
+                        gridOffsetX: { type: number }
+                        gridOffsetY: { type: number }
                         feetPerSquare: { type: integer }
                         diagonalRule: { type: string, enum: [flat, alternating] }
                         drawnBackground: { type: string, nullable: true }
@@ -7586,8 +7592,12 @@ paths:
 
         `gridSize`, `feetPerSquare`, `diagonalRule` and `drawnBackground` are
         never rejected: a missing or out-of-range value is replaced with its
-        default (50, 5, `flat`, null). `gridSize` is in range as a whole number from 10 to 500,
-        `feetPerSquare` as a whole number from 1 to 100. Only `name`,
+        default (50, 5, `flat`, null). `gridSize` is in range as a number from 10 to 500,
+        not necessarily whole, `feetPerSquare` as a whole number from 1 to 100.
+        `gridType` (`square`, `hexPointy`, `hexFlat`; default `square`) and
+        `gridOffsetX`/`gridOffsetY` (numbers from -500 to 500, default 0)
+        may be left out, but one sent that is not one of these answers 400.
+        Otherwise only `name`,
         `imageUrl`, `spiritLayerUrl`, `width` and `height` can make this route answer 400;
         `width` and `height` must be whole numbers from 1 to 500, and `name`
         at most 200 characters once trimmed (`A map name can be at most 200
@@ -7627,9 +7637,25 @@ paths:
                   maximum: 500
                   description: In grid squares.
                 gridSize:
-                  type: integer
+                  type: number
                   default: 50
-                  description: Pixels per grid square. Falls back to 50 when omitted or not a whole number from 10 to 500.
+                  description: Pixels between neighbouring cell centres, not necessarily whole. Falls back to 50 when omitted or not a number from 10 to 500.
+                gridType:
+                  type: string
+                  enum: [square, hexPointy, hexFlat]
+                  default: square
+                gridOffsetX:
+                  type: number
+                  minimum: -500
+                  maximum: 500
+                  default: 0
+                  description: Where the grid starts, in map pixels from the left edge.
+                gridOffsetY:
+                  type: number
+                  minimum: -500
+                  maximum: 500
+                  default: 0
+                  description: Where the grid starts, in map pixels from the top edge.
                 feetPerSquare:
                   type: integer
                   default: 5
@@ -7726,9 +7752,10 @@ paths:
         Update map settings (GM only). Send only the fields to change. Each
         field sent is checked and a bad one answers 400; unlike on create,
         nothing is replaced with a default. `width` and `height` must be
-        whole numbers from 1 to 500, `gridSize` from 10 to 500,
-        `feetPerSquare` from 1 to 100, and `diagonalRule` `flat` or
-        `alternating`. A `width`, `height`, `gridSize` or `feetPerSquare`
+        whole numbers from 1 to 500, `gridSize` a number from 10 to 500,
+        `feetPerSquare` from 1 to 100, `diagonalRule` `flat` or
+        `alternating`, `gridType` `square`, `hexPointy` or `hexFlat`, and
+        `gridOffsetX` and `gridOffsetY` numbers from -500 to 500. A `width`, `height`, `gridSize` or `feetPerSquare`
         equal to the stored value is accepted as it is, so a map stored
         larger than these limits, before they existed, still saves an edit
         that sends its size back unchanged. `name` is trimmed, must not be
@@ -7747,7 +7774,8 @@ paths:
         `lightingEnabled` or `globalIllumination` actually changes, since
         those two decide which tokens a player is sent, or anything the map is
         drawn from (`name`, `imageUrl`, `baseLayerUrl`, `width`, `height`,
-        `gridSize`, `feetPerSquare`, `diagonalRule`, `spiritLayerUrl`), and
+        `gridSize`, `gridType`, `gridOffsetX`, `gridOffsetY`, `feetPerSquare`,
+        `diagonalRule`, `spiritLayerUrl`), and
         the map is the one the campaign is showing, every member is also sent
         the map as they can now see it (`map.changed`); editing another map in
         the library sends no `map.changed`.
@@ -7766,6 +7794,14 @@ paths:
         to either side of that moves every wall end and light by the same
         factor on that axis, rounded to whole pixels, under the map's lock.
         Light radii are in squares and do not change, nor do token positions.
+
+        On a hex map (`gridType` `hexPointy` or `hexFlat`, as the map is after
+        the edit) a change to `width`, `height`, `gridSize`, `gridType`,
+        `gridOffsetX` or `gridOffsetY` brings every token whose hex is no
+        longer on the map (a hex is on it when its centre lies inside the
+        frame) to the nearest one, under the map's lock; the others keep
+        their positions. Fog stays one square cell per grid square, starting
+        at the grid's offset brought within half a square of the corner.
         Every member who may read the map is then sent `walls:replaced` and
         `lights:replaced`, as for a bulk replace and with no `opId`, so open
         pages draw them where they now are.
@@ -7827,8 +7863,19 @@ paths:
                   minimum: 1
                   maximum: 500
                 gridSize:
-                  type: integer
+                  type: number
                   minimum: 10
+                  maximum: 500
+                gridType:
+                  type: string
+                  enum: [square, hexPointy, hexFlat]
+                gridOffsetX:
+                  type: number
+                  minimum: -500
+                  maximum: 500
+                gridOffsetY:
+                  type: number
+                  minimum: -500
                   maximum: 500
                 feetPerSquare:
                   type: integer
@@ -12770,6 +12817,12 @@ paths:
         spirit layer are not included.
 
 
+        Answers 422 for a hex map (`gridType` `hexPointy` or `hexFlat`): the
+        format has square grids only (`Universal VTT files have square grids
+        only, so a hex map cannot be exported as one. Switch the map to
+        squares in Edit Map to export it.`). A square map's grid offset is
+        not written; the file's grid starts at the picture's corner.
+
         Answers 422 when the picture cannot be put in the file: the map has
         no picture at all (`Map has no image`), as happens when a campaign
         import leaves its picture off; its image address names no asset, an
@@ -13757,9 +13810,31 @@ components:
           type: integer
           description: In grid squares, 1 to 500. A map stored before that limit may be larger.
         gridSize:
-          type: integer
+          type: number
           default: 50
-          description: Pixels per grid square, 10 to 500. A map stored before that limit may be outside it.
+          description: >
+            Pixels between neighbouring cell centres (squares and hexes
+            alike), 10 to 500 and not necessarily whole. A map stored before
+            that limit may be outside it. The map's frame is width × gridSize
+            by height × gridSize whatever the grid type.
+        gridType:
+          type: string
+          enum: [square, hexPointy, hexFlat]
+          default: square
+          description: >
+            Squares, or hexes with a point (`hexPointy`, odd rows moved half
+            a hex right) or a flat side (`hexFlat`, odd columns moved half a
+            hex down) at the top. On a hex map a token position names a hex:
+            x counts from the first column, y from the bottom row of hexes
+            whose centres lie inside the frame.
+        gridOffsetX:
+          type: number
+          default: 0
+          description: Where the grid starts, in map pixels from the frame's left edge, -500 to 500.
+        gridOffsetY:
+          type: number
+          default: 0
+          description: Where the grid starts, in map pixels from the frame's top edge, -500 to 500.
         feetPerSquare:
           type: integer
           default: 5

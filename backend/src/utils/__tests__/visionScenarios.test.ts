@@ -12,6 +12,7 @@ import path from 'path';
 import { filterTokensByLighting, filterTokensByRole } from '../spirit-layer';
 import type { Token } from '../../websocket/shared';
 import type { CarriedLight } from '../../types/walls';
+import type { GridFrame } from '../tokenCentre';
 
 interface ScenarioToken {
   id: string; x: number; y: number; controlledBy?: string; sightRadius?: number;
@@ -24,8 +25,10 @@ interface Scenario {
   lights: Array<{ id: string; x: number; y: number; brightRadius: number; dimRadius: number; enabled: boolean }>;
   tokens: ScenarioToken[];
   expectVisible: string[];
+  /** The grid type and offset this scenario's map has instead of the fixture's. */
+  grid?: Partial<GridFrame>;
 }
-interface Fixture { map: { width: number; height: number; gridSize: number }; viewer: string; scenarios: Scenario[] }
+interface Fixture { map: GridFrame; viewer: string; scenarios: Scenario[] }
 
 const fixture = JSON.parse(readFileSync(path.resolve(__dirname, '../__fixtures__/vision-scenarios.json'), 'utf8')) as Fixture;
 
@@ -40,11 +43,11 @@ function toToken(t: ScenarioToken): Token {
 
 describe('vision scenarios (server: which tokens are sent)', () => {
   it.each(fixture.scenarios.map((s) => [s.name, s] as const))('%s', (_name, s) => {
-    const { width, height, gridSize } = fixture.map;
+    const map: GridFrame = { ...fixture.map, ...s.grid };
     // As the map fetch does: the role filter first (a hidden token), then sight.
     const forRole = filterTokensByRole(s.tokens.map(toToken), 'PLAYER', false, fixture.viewer);
     const sent = filterTokensByLighting(
-      forRole, fixture.viewer, s.walls, width, height, gridSize, true, s.lights, s.globalIllumination
+      forRole, fixture.viewer, s.walls, map, true, s.lights, s.globalIllumination
     );
     expect(sent.map((t) => t.id).sort()).toEqual([...s.expectVisible].sort());
   });

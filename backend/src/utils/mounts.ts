@@ -12,6 +12,7 @@
 
 import type { Token } from '../websocket/shared';
 import { clampTokenPosition } from './mapTokens';
+import { isHexGrid, nearestHexOnMap, shiftCell, type GridFrame } from './tokenCentre';
 
 /**
  * The ids that move with `tokenId`, itself included, in list order: a
@@ -36,11 +37,21 @@ export function moveCoupled(
   tokens: readonly Token[],
   tokenId: string,
   target: { x: number; y: number },
-  map: { width: number; height: number }
+  map: GridFrame
 ): { tokens: Token[]; moved: Token[] } {
   const ids = new Set(coupledIds(tokens, tokenId));
   const dragged = tokens.find((t) => t.id === tokenId);
   if (!dragged) return { tokens: [...tokens], moved: [] };
+  if (isHexGrid(map)) {
+    // Hex positions shift every other row, so the step is taken on the
+    // lattice (shiftCell), and each lands on the nearest hex on the map.
+    const to = nearestHexOnMap(target, map);
+    const next = tokens.map((t) => (ids.has(t.id)
+      ? { ...t, position: t.id === tokenId ? to : nearestHexOnMap(shiftCell(t.position, dragged.position, to, map), map) }
+      : t));
+    const moved = next.filter((t) => ids.has(t.id)).sort((a, b) => Number(b.id === tokenId) - Number(a.id === tokenId));
+    return { tokens: next, moved };
+  }
   const group = tokens.filter((t) => ids.has(t.id));
   const dx = target.x - dragged.position.x;
   const dy = target.y - dragged.position.y;

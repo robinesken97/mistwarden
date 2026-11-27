@@ -20,6 +20,7 @@ import {
 import logger from '../../utils/logger';
 import { readTokens, toJson } from '../../utils/prisma-json';
 import { withMapsLocked } from '../../utils/mapTokens';
+import { GRID_FRAME_SELECT } from '../../validators/maps';
 import { filterTokensByRole, getSpiritVisibilityBatch, tokensSentTo, type MapTokenSight } from '../../utils/spirit-layer';
 import { canControlToken, canReadMap, canRollDice } from '../../services/permissions';
 import {
@@ -127,7 +128,7 @@ export async function sendInitiativeState(io: Server, campaignId: string, only?:
   const [maps, campaign] = await Promise.all([
     prisma.map.findMany({
       where: { id: { in: mapIds }, campaignId },
-      select: { id: true, tokens: true, lightingEnabled: true, globalIllumination: true, wallSegments: true, lights: true, width: true, height: true, gridSize: true },
+      select: { id: true, tokens: true, lightingEnabled: true, globalIllumination: true, wallSegments: true, lights: true, ...GRID_FRAME_SELECT },
     }),
     prisma.campaign.findUnique({ where: { id: campaignId }, select: { currentMapId: true } }),
   ]);

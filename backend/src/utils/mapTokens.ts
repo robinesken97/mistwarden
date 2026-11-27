@@ -15,6 +15,7 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../config/database';
 import { createTurnQueue } from './turnQueue';
+import { isHexGrid, nearestHexOnMap, type GridFrame } from './tokenCentre';
 
 /**
  * Writers in line for each map in this process (see utils/turnQueue.ts): a
@@ -65,13 +66,15 @@ export async function withMapsLocked<T>(
  * A position that keeps the token's whole footprint on the map it arrives
  * on: pulled back from the far edge by its size, never below zero. A token
  * larger than the map starts at its corner. The same rule the client
- * applies when it offers a move.
+ * applies when it offers a move. On a hex map a token of any size stands on
+ * one hex: the nearest whose centre is in the frame.
  */
 export function clampTokenPosition(
   position: { x: number; y: number },
   size: { width: number; height: number },
-  map: { width: number; height: number }
+  map: GridFrame
 ): { x: number; y: number } {
+  if (isHexGrid(map)) return nearestHexOnMap(position, map);
   return {
     x: Math.max(0, Math.min(position.x, map.width - size.width)),
     y: Math.max(0, Math.min(position.y, map.height - size.height)),

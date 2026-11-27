@@ -9,6 +9,7 @@ import { prisma } from '../../config/database';
 import { WallSegmentSchema, WallSegmentsArraySchema, DUPLICATE_WALL_ID_MESSAGE, MAX_WALL_SEGMENTS, TOO_MANY_WALLS_MESSAGE } from '../../validators/walls';
 import type { FogState, WallSegment } from '../../types/walls';
 import { doorBesideRevealed } from '../../utils/doorFog';
+import { squareOrigin } from '../../utils/tokenCentre';
 import logger from '../../utils/logger';
 import { emitToMapReaders, emitToMapReadersAs } from '../utils';
 import {
@@ -19,13 +20,13 @@ import { mapEditLimiter, MAP_EDITS_PER_SECOND, TOO_MANY_MAP_EDITS_MESSAGE, limit
 import { emitNewestState } from '../outgoingQueue';
 import { toJson } from '../../utils/prisma-json';
 import { canReadMap, canToggleDoor } from '../../services/permissions';
-import { wallOutsideMap, WALL_OUTSIDE_MAP_MESSAGE } from '../../validators/maps';
+import { wallOutsideMap, WALL_OUTSIDE_MAP_MESSAGE, GRID_FRAME_SELECT } from '../../validators/maps';
 import { withMapsLocked } from '../../utils/mapTokens';
 import { echoedOpId } from '../opId';
 import { ackFrom, refuseRequest } from '../ack';
 
 /** What a wall edit reads of the map to check it: whose it is, and its extent. */
-const EXTENT = { campaignId: true, width: true, height: true, gridSize: true } as const;
+const EXTENT = { campaignId: true, ...GRID_FRAME_SELECT } as const;
 
 /**
  * Whether a door on a map with manual fog is beside a revealed square
@@ -34,7 +35,7 @@ const EXTENT = { campaignId: true, width: true, height: true, gridSize: true } a
  */
 function doorBesideRevealedFog(
   door: WallSegment,
-  map: { width: number; height: number; gridSize: number; fogData: unknown }
+  map: { width: number; height: number; gridSize: number; gridOffsetX: number; gridOffsetY: number; fogData: unknown }
 ): boolean {
   let fog: FogState;
   try {
@@ -43,7 +44,8 @@ function doorBesideRevealedFog(
     if (error instanceof FogTooLargeError) return false;
     throw error;
   }
-  return doorBesideRevealed(door, fog, (cell) => fog.revealed[cell] === true);
+  const origin = squareOrigin(map);
+  return doorBesideRevealed(door, { ...fog, originX: origin.x, originY: origin.y }, (cell) => fog.revealed[cell] === true);
 }
 
 /**
@@ -81,7 +83,7 @@ async function doorSightFor(
   const spiritVisible = await getSpiritVisibility(campaignId, userId);
   return playerSightOnLitMap(
     filterTokensByRole(map.tokens, role ?? 'PLAYER', spiritVisible, userId), viewerIdFor(role, userId), map.wallSegments,
-    map.width, map.height, map.gridSize, map.lights, map.globalIllumination
+    map, map.lights, map.globalIllumination
   );
 }
 

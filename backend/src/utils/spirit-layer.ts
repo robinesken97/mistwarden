@@ -4,7 +4,7 @@ import type { Map as MapRow, Prisma } from '@prisma/client';
 import { prisma } from '../config/database';
 import { computeVisibility, isPointVisible, type VisibilityPolygon } from './raycasting';
 import { isSeen, carriedLightCounts, type Viewer, type Lit, type InsideFn } from './visibilityRule';
-import { tokenCentre } from './tokenCentre';
+import { tokenCentre, type GridFrame } from './tokenCentre';
 import type { WallSegment, LightSource } from '../types/walls';
 import { tokenSentTo } from './tokenMask';
 import logger from './logger';
@@ -321,9 +321,9 @@ export function filterTokensByRole(
  * @param playerUserId   The player's user ID, from `viewerIdFor`: undefined for
  *                       a spectator, who controls no token and so sees nothing
  * @param walls          Map wall segments (for raycasting)
- * @param mapWidth       Map pixel width
- * @param mapHeight      Map pixel height
- * @param gridSize       Map grid size in pixels (to convert position to map-space)
+ * @param map            The map's frame and grid (to convert position to map-space);
+ *                       every field required, so a read that left out the grid
+ *                       type cannot judge a hex map as squares
  * @param lightingEnabled Whether dynamic lighting is active
  * @returns Tokens visible to this player
  */
@@ -331,9 +331,7 @@ export function filterTokensByLighting(
   tokens: Token[],
   playerUserId: string | undefined,
   walls: unknown,
-  mapWidth: number,
-  mapHeight: number,
-  gridSize: number,
+  map: GridFrame,
   lightingEnabled: boolean,
   lights?: unknown,
   /**
@@ -345,7 +343,7 @@ export function filterTokensByLighting(
   globalIllumination = false
 ): Token[] {
   if (!lightingEnabled) return tokens;
-  const sight = playerSightOnLitMap(tokens, playerUserId, walls, mapWidth, mapHeight, gridSize, lights, globalIllumination);
+  const sight = playerSightOnLitMap(tokens, playerUserId, walls, map, lights, globalIllumination);
   const seen = tokens.filter((t) => sight.seesToken(t));
   // A rider in sight whose mount is not names no mount, as in filterTokensByRole.
   const seenIds = new Set(seen.map((t) => t.id));
@@ -501,12 +499,11 @@ export function playerSightOnLitMap(
   tokens: Token[],
   playerUserId: string | undefined,
   walls: unknown,
-  mapWidth: number,
-  mapHeight: number,
-  gridSize: number,
+  map: GridFrame,
   lights: unknown,
   globalIllumination: boolean
 ): PlayerSight {
+  const { width: mapWidth, height: mapHeight, gridSize } = map;
   const wallSegs = (Array.isArray(walls) ? walls : []) as unknown as WallSegment[];
   const lightSources = (Array.isArray(lights) ? lights : []) as unknown as LightSource[];
   const enabledLights = lightSources.filter((l) => l.enabled);
@@ -542,7 +539,7 @@ export function playerSightOnLitMap(
     // the client draws sight from.
     const w = t.size?.width ?? 1;
     const h = t.size?.height ?? 1;
-    const { x: cx, y: cy } = tokenCentre(t, gridSize, mapHeight);
+    const { x: cx, y: cy } = tokenCentre(t, map);
     return {
       cx,
       cy,
@@ -568,7 +565,7 @@ export function playerSightOnLitMap(
   const carriedLits: Lit[] = [];
   for (const t of tokens) {
     if (t.light?.enabled !== true) continue;
-    const at = tokenCentre(t, gridSize, mapHeight);
+    const at = tokenCentre(t, map);
     if (!carriedLightCounts(t.controlledBy === playerUserId, at, viewers, inside)) continue;
     carriedLits.push(litOf({ ...t.light, ...at }, wallsKeyOf(wallSegs), wallSegs, mapWidthPx, mapHeightPx, gridSize));
   }
@@ -590,8 +587,8 @@ export function playerSightOnLitMap(
     // hold the light where the token stood.
     seesToken: (t) =>
       t.controlledBy === playerUserId
-      || (t.light?.enabled === true && carriedLightCounts(false, tokenCentre(t, gridSize, mapHeight), viewers, inside))
-      || isSeen(tokenCentre(t, gridSize, mapHeight), viewers, lits, globalIllumination, inside),
+      || (t.light?.enabled === true && carriedLightCounts(false, tokenCentre(t, map), viewers, inside))
+      || isSeen(tokenCentre(t, map), viewers, lits, globalIllumination, inside),
     seesPoint: (x, y) => viewers.some((v) => {
       const dx = v.cx - x;
       const dy = v.cy - y;
@@ -806,7 +803,7 @@ export function lightRemovalSentTo(
  * Sent to everyone, as stored: what every member needs to draw the map.
  */
 export const MAP_FIELDS_SENT_TO_EVERYONE = [
-  'id', 'campaignId', 'name', 'imageUrl', 'baseLayerUrl', 'width', 'height', 'gridSize', 'feetPerSquare', 'diagonalRule',
+  'id', 'campaignId', 'name', 'imageUrl', 'baseLayerUrl', 'width', 'height', 'gridSize', 'gridType', 'gridOffsetX', 'gridOffsetY', 'feetPerSquare', 'diagonalRule',
   'drawnBackground', 'lightingEnabled', 'fogEnabled', 'globalIllumination', 'explorationEnabled', 'createdAt', 'updatedAt',
 ] as const satisfies readonly (keyof MapRow)[];
 
@@ -865,7 +862,7 @@ function mapFieldsSentToEveryone(map: MapRow): Pick<MapRow, MapFieldSentToEveryo
 /** What a map's tokens and lighting are: all that decides which of its tokens a member is sent. */
 export type MapTokenSight = Pick<
   MapRow,
-  'tokens' | 'lightingEnabled' | 'wallSegments' | 'width' | 'height' | 'gridSize' | 'lights' | 'globalIllumination'
+  'tokens' | 'lightingEnabled' | 'wallSegments' | 'width' | 'height' | 'gridSize' | 'gridType' | 'gridOffsetX' | 'gridOffsetY' | 'lights' | 'globalIllumination'
 >;
 
 /**
@@ -885,7 +882,7 @@ export function tokensSentTo(
   const forRole = filterTokensByRole(map.tokens, userRole, spiritVisible, userId);
   if (userRole === 'GM' || !map.lightingEnabled || !userId) return forRole;
   return filterTokensByLighting(
-    forRole, viewerIdFor(userRole, userId), map.wallSegments, map.width, map.height, map.gridSize, true, map.lights, map.globalIllumination
+    forRole, viewerIdFor(userRole, userId), map.wallSegments, map, true, map.lights, map.globalIllumination
   );
 }
 

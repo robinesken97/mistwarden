@@ -30,6 +30,7 @@ import { MAP_LIMITS, GEOMETRY_MARGIN_SQUARES, wallWithinMap, lightWithinMap } fr
 import { WallSegmentSchema, LightSourceSchema, MAX_WALL_SEGMENTS, MAX_LIGHT_SOURCES } from '../validators/walls';
 import { NewDrawingSchema, drawingOutsideMap, markupLimitReached, archiveShare, DRAWING_LIMITS, MARKUP_SHARES, type MarkupShare } from '../validators/drawings';
 import { clampTokenPosition } from '../utils/mapTokens';
+import type { GridFrame } from '../utils/tokenCentre';
 import { cutText } from '../utils/cutText';
 import { RETIRED_GAME_SYSTEM } from '../legacy/retiredGameSystem';
 
@@ -197,7 +198,11 @@ export function prepareMap(raw: unknown, ctx: MapContext): PreparedMap | null {
   }
   const say = (what: string) => report.warn(`Map "${label(name, fallbackName)}": ${what}`);
 
-  const tokens = ctx.importTokens ? prepareTokens(map.tokens, map, name, ctx) : [];
+  const grid: GridFrame = {
+    width: map.width, height: map.height, gridSize: map.gridSize,
+    gridType: map.gridType ?? 'square', gridOffsetX: map.gridOffsetX ?? 0, gridOffsetY: map.gridOffsetY ?? 0,
+  };
+  const tokens = ctx.importTokens ? prepareTokens(map.tokens, grid, name, ctx) : [];
   const wallSegments = prepareWalls(map.wallSegments, map, say);
   const lights = prepareLights(map.lights, map, say);
 
@@ -237,6 +242,9 @@ export function prepareMap(raw: unknown, ctx: MapContext): PreparedMap | null {
       width: map.width,
       height: map.height,
       gridSize: map.gridSize,
+      gridType: grid.gridType,
+      gridOffsetX: grid.gridOffsetX,
+      gridOffsetY: grid.gridOffsetY,
       feetPerSquare: map.feetPerSquare,
       diagonalRule: map.diagonalRule ?? 'flat',
       drawnBackground: map.drawnBackground ?? null,
@@ -259,7 +267,7 @@ export function prepareMap(raw: unknown, ctx: MapContext): PreparedMap | null {
 /** A map's tokens, each held to what the token routes store. */
 function prepareTokens(
   raw: unknown,
-  map: { width: number; height: number },
+  map: GridFrame,
   mapName: string,
   ctx: MapContext
 ): PlacedToken[] {
