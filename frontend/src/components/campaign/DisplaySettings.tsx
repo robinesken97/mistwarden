@@ -1,7 +1,7 @@
 // Added for Mistwarden on 2026-11-27.
 /**
- * How this device draws the table: the fog's mist, the dice animation, and
- * whether carried lights follow a token while it is dragged.
+ * How this device draws the table: the fog's mist, the dice animation,
+ * token names, and whether carried lights follow a token while it is dragged.
  * Each choice stays on the device that made it (localStorage), so a slow
  * tablet can go flat while the laptop keeps the mist. The desk layout opens
  * it from the header (DisplaySettingsButton), the compact one from More.
@@ -15,11 +15,13 @@ import { DICE_MODES, type DiceMode } from '@/dice/mode';
 import { optionalStorage } from '@/utils/optionalStorage';
 import { DICE_MODE_KEY, diceMode, FOG_MIST_EVENT, FOG_MIST_KEY, FOG_MIST_MODES, fogMistMode, type FogMistMode } from './DiceOverlay';
 import { lightsFollowDrag, setLightsFollowDrag } from './map/lightsFollow';
+import { setTokenNameMode, tokenNameMode, TOKEN_NAME_MODES, type TokenNameMode } from './map/namePlates';
 
 export const DISPLAY_SETTINGS_LABEL = 'Display on this device';
 
 const DICE_LABELS: Record<DiceMode, string> = { '3d': '3D', simple: 'Simple', off: 'Off' };
 const MIST_LABELS: Record<FogMistMode, string> = { mist: 'Mist', still: 'Still mist', flat: 'Flat' };
+const NAME_LABELS: Record<TokenNameMode, string> = { always: 'Always', hover: 'On hover or tap', never: 'Never' };
 
 // A height, not a min-height: WebKit ignores min-height on a styled select.
 const SELECT = 'w-full px-2 py-1 pointer-coarse:h-11 text-sm border border-warm-amber/30 rounded-cozy bg-parchment/60';
@@ -29,6 +31,7 @@ export function DisplaySettings() {
   const fogId = useId();
   const diceId = useId();
   const lightsId = useId();
+  const namesId = useId();
   return (
     <div className="space-y-3">
       <div>
@@ -56,6 +59,19 @@ export function DisplaySettings() {
           {DICE_MODES.map((mode) => <option key={mode} value={mode}>{DICE_LABELS[mode]}</option>)}
         </select>
         <p id={`${diceId}-help`} className="mt-1 text-xs text-ink-muted">How rolls tumble across the screen. The result in the log is the same either way.</p>
+      </div>
+      <div>
+        <label htmlFor={namesId} className="block text-sm font-semibold text-ink">Token names</label>
+        <select
+          id={namesId}
+          aria-describedby={`${namesId}-help`}
+          defaultValue={tokenNameMode()}
+          onChange={(e) => setTokenNameMode(e.target.value as TokenNameMode)}
+          className={`mt-1 ${SELECT}`}
+        >
+          {TOKEN_NAME_MODES.map((mode) => <option key={mode} value={mode}>{NAME_LABELS[mode]}</option>)}
+        </select>
+        <p id={`${namesId}-help`} className="mt-1 text-xs text-ink-muted">A name under each token, under the one pointed at or tapped, or none. Too small a token shows none.</p>
       </div>
       <div>
         <label className="flex items-center gap-2 pointer-coarse:min-h-11 text-sm font-semibold text-ink cursor-pointer">

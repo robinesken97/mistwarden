@@ -27,6 +27,10 @@ describe('tokenPublicName', () => {
     expect(tokenPublicName({ name: 'Ambusher', visible: false })).toBe('Unknown creature');
     expect(tokenPublicName({ name: 'Goblin', visible: true })).toBe('Goblin');
   });
+
+  it('never names a token whose name the GM hides', () => {
+    expect(tokenPublicName({ name: 'Spy', nameHidden: true })).toBe('Unknown creature');
+  });
 });
 
 describe('tokenPublicName on the spirit layer', () => {

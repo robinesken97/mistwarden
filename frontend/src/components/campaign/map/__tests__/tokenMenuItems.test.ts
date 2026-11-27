@@ -24,7 +24,7 @@ const spy = () => vi.fn<(...args: unknown[]) => void>();
 function actions(): Record<keyof TokenMenuActions, Mock<(...args: unknown[]) => void>> {
   return {
     viewSheet: spy(), rollCharacter: spy(), grantTemporaryHp: spy(), rotate: spy(), rollCreature: spy(), edit: spy(),
-    addToInitiative: spy(), duplicate: spy(), saveAsTemplate: spy(), setVisible: spy(), setObscured: spy(),
+    addToInitiative: spy(), duplicate: spy(), saveAsTemplate: spy(), setVisible: spy(), setObscured: spy(), setNameHidden: spy(),
     setLayer: spy(), moveToMap: spy(), mountOn: spy(), dismount: spy(), remove: spy(),
   };
 }
@@ -54,7 +54,7 @@ function commandOf(items: MenuItem[], id: string): MenuCommand {
 }
 
 const GM_ITEMS = [
-  'Edit Token', 'Add to Initiative', 'Duplicate Token', 'Save as Template', 'Hide from Players', 'Obscure Identity',
+  'Edit Token', 'Add to Initiative', 'Duplicate Token', 'Save as Template', 'Hide from Players', 'Obscure Identity', 'Hide Name from Players',
   'Send to Spirit Realm', '---', 'Move to Map…', '---', 'Remove from Map',
 ];
 
@@ -80,7 +80,7 @@ describe("the GM's items", () => {
     expect(labels(items)).toEqual(['Rotate Left', 'Rotate Right', 'Roll...', ...GM_ITEMS]);
     expect(ids(items)).toEqual([
       'rotate-left', 'rotate-right', 'roll-creature', 'edit', 'add-to-initiative', 'duplicate', 'save-as-template',
-      'visibility', 'identity', 'plane', 'separator-moves', 'move-to-map', 'separator-remove', 'remove',
+      'visibility', 'identity', 'name', 'plane', 'separator-moves', 'move-to-map', 'separator-remove', 'remove',
     ]);
   });
 
@@ -168,6 +168,7 @@ describe('how the items look', () => {
       ['Save as Template', 'plain', false, null],
       ['Hide from Players', 'plain', false, null],
       ['Obscure Identity', 'plain', false, null],
+      ['Hide Name from Players', 'plain', false, null],
       ['Send to Spirit Realm', 'spirit', false, null],
       ['Move to Map…', 'accent', false, null],
       ['Remove from Map', 'danger', false, null],
@@ -234,6 +235,7 @@ describe('what each item does', () => {
     ['save-as-template', 'saveAsTemplate', []],
     ['visibility', 'setVisible', [false]],
     ['identity', 'setObscured', [true]],
+    ['name', 'setNameHidden', [true]],
     ['plane', 'setLayer', [TokenLayer.SPIRIT]],
     ['remove', 'remove', []],
   ] as const)('%s calls %s with the token and nothing else', (id, action, args) => {
@@ -254,8 +256,9 @@ describe('what each item does', () => {
 
   it('turns each switch back', () => {
     const ctx = context();
-    const items = tokenMenuItems(token({ visible: false, obscured: true, layer: TokenLayer.SPIRIT }), ctx);
-    for (const id of ['visibility', 'identity', 'plane']) commandOf(items, id).run?.();
+    const items = tokenMenuItems(token({ visible: false, obscured: true, nameHidden: true, layer: TokenLayer.SPIRIT }), ctx);
+    for (const id of ['visibility', 'identity', 'name', 'plane']) commandOf(items, id).run?.();
+    expect(ctx.actions.setNameHidden).toHaveBeenCalledWith(expect.anything(), false);
     expect(ctx.actions.setVisible).toHaveBeenCalledWith(expect.anything(), true);
     expect(ctx.actions.setObscured).toHaveBeenCalledWith(expect.anything(), false);
     expect(ctx.actions.setLayer).toHaveBeenCalledWith(expect.anything(), TokenLayer.TOKEN);

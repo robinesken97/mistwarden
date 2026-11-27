@@ -47,6 +47,7 @@ const state = (held: { x: number; y: number } | null): TokenDrawState => ({
   draggedToken: held ? wolf : null, heldDrawnAt: held, hoverTokenId: null, revealedCells: null,
   isGM: true, gmShowSpiritTokens: true, gmViewBothPlanes: false, spiritAccentColor: '#000',
   characterHpCache: {}, isOwnToken: () => false, currentTurnTokenId: 't1', pulsePhase: 0.5, peekTokenId: 't1', selectedTokenId: 't1',
+  symbolSprites: new Map(), classIcons: {}, nameMode: 'never',
 });
 
 function draw(held: { x: number; y: number } | null) {

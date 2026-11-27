@@ -31,8 +31,10 @@ import { TOKEN_LIMITS } from '@/constants/tokenLimits';
 import { playedGameSystem } from '@/constants/game-systems';
 import { tokenControllerStanding } from '@/utils/tokenCopy';
 import api from '@/services/api';
-import { useGameStore } from '@/stores/gameStore';
+import { useGameStore, useCharacterIcons } from '@/stores/gameStore';
 import type { Token, UpdateTokenRequest, TokenHp, NpcStatBlock, Asset } from '@/types';
+import { TOKEN_ICONS, isTokenIcon, type TokenIcon } from '@/utils/tokenIcons';
+import { tokenIcon } from './map/tokenSymbols';
 import { TokenType, TokenDisposition, AssetType, AssetScope } from '@/types';
 import { StatBlockViewer, StatBlockEditor } from './npc-stat-blocks';
 import Button from '@/components/ui/Button';
@@ -44,6 +46,9 @@ import TokenRotationField from './TokenRotationField';
 import RemoveTokenDialog from './RemoveTokenDialog';
 import { assetNameFrom } from '@/utils/assetName';
 import { extractAssetId } from '@/utils/assetUrl';
+
+/** A symbol's name as the editor lists it. */
+const iconLabel = (icon: TokenIcon) => icon.charAt(0).toUpperCase() + icon.slice(1);
 
 /** How long typing in the stat block pauses before it is saved. */
 const STAT_BLOCK_SAVE_DELAY_MS = 750;
@@ -185,6 +190,7 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
   // than one that waits for the save.
   const visible = current.visible;
   const obscured = current.obscured ?? false;
+  const classIcons = useCharacterIcons();
   const [savingVisibility, setSavingVisibility] = useState(false);
   const [isRemoving, setIsRemoving] = useState(false);
   // Set while the Remove confirmation is open.
@@ -1166,6 +1172,37 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
             rows={3}
             className="input-cozy w-full text-sm resize-none"
           />
+        </section>
+
+        {/* ── Symbol and name (Mistwarden, 2026-11-27) ── */}
+        <section>
+          <h3 className="text-xs font-semibold text-stone-gray uppercase tracking-wide mb-2">
+            Symbol and name
+          </h3>
+          <label htmlFor={`${token.id}-symbol`} className="block text-xs text-stone-gray mb-1">
+            Symbol, drawn while the token has no picture
+          </label>
+          <select
+            id={`${token.id}-symbol`}
+            value={isTokenIcon(current.icon) ? current.icon : 'auto'}
+            onChange={(e) => { void saveUpdate({ icon: e.target.value === 'auto' ? null : e.target.value as TokenIcon }); }}
+            className="input-cozy w-full text-sm pointer-coarse:h-11"
+          >
+            <option value="auto">Automatic ({iconLabel(tokenIcon({ ...current, icon: null }, classIcons))})</option>
+            {TOKEN_ICONS.map((icon) => <option key={icon} value={icon}>{iconLabel(icon)}</option>)}
+          </select>
+          <label className="mt-2 flex items-center gap-2 pointer-coarse:min-h-11 text-sm text-ink cursor-pointer">
+            <input
+              type="checkbox"
+              checked={current.nameHidden ?? false}
+              onChange={(e) => { void saveUpdate({ nameHidden: e.target.checked }); }}
+              className="rounded-sm"
+            />
+            Hide name from players
+          </label>
+          <p className="text-[10px] text-stone-gray/60 mt-1">
+            Players see no name plate and the order calls it an unknown creature.
+          </p>
         </section>
 
         {/* ── Controlled By ── */}

@@ -38,6 +38,7 @@ import { useStoreWithEqualityFn } from 'zustand/traditional';
 import type { CombatState, Position, Token } from '@/types';
 import type { GridFrame } from '@/utils/tokenCentre';
 import type { CharacterHpInfo } from '@/utils/characterHp';
+import type { TokenIcon } from '@/utils/tokenIcons';
 import type { Drawing } from '@/types/drawings';
 import { drawingOrder } from '@/components/campaign/map/drawingGeometry';
 import { isSessionTab, type SessionTab } from '@/components/campaign/sessionTabs';
@@ -129,6 +130,8 @@ interface GameState {
    * map's HP bars; here so a change in a fight re-renders only those.
    */
   characterHp: Record<string, CharacterHpInfo>;
+  /** Mistwarden, 2026-11-27: the symbol each character's class gives its token, seeded from the roster. */
+  characterIcons: Record<string, TokenIcon>;
   /**
    * Who has at least one live connection to the campaign, by user id, as the
    * last `presence.state` said; the server sends the whole set every time.
@@ -213,6 +216,8 @@ interface GameState {
   setCharacterHp: (characterId: string, hp: CharacterHpInfo) => void;
   /** The roster's answer: every character it lists that has hit points. */
   seedCharacterHp: (entries: { id: string; hp: CharacterHpInfo | null }[]) => void;
+  /** The roster's class symbols, in place of what was there. */
+  seedCharacterIcons: (entries: { id: string; icon?: TokenIcon | null }[]) => void;
   /** `presence.state`: the whole set of who is online. */
   setOnlineUserIds: (userIds: readonly string[]) => void;
   /** `drawings:state`, or a map switch: a map's drawings, whole. */
@@ -260,6 +265,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   peekSource: null,
   selectedTokenId: null,
   characterHp: {},
+  characterIcons: {},
   onlineUserIds: new Set(),
   drawings: [],
   drawingsMapId: null,
@@ -392,6 +398,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       return { characterHp };
     }),
 
+  seedCharacterIcons: (entries) =>
+    set({ characterIcons: Object.fromEntries(entries.flatMap(({ id, icon }) => (icon ? [[id, icon]] : []))) }),
+
   setOnlineUserIds: (userIds) => set({ onlineUserIds: new Set(userIds) }),
 
   setDrawings: (mapId, drawings) => set({ drawingsMapId: mapId, drawings: [...drawings].sort(drawingOrder) }),
@@ -425,7 +434,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({
       tokens: {}, tokensMapId: null, loadingTokensOf: null, heldTokenEvents: [],
       tokenOrder: [], heldAt: {}, combat: EMPTY_COMBAT, peekTokenId: null, peekSource: null, selectedTokenId: null,
-      characterHp: {}, onlineUserIds: new Set(), drawings: [], drawingsMapId: null,
+      characterHp: {}, characterIcons: {}, onlineUserIds: new Set(), drawings: [], drawingsMapId: null,
       sessionTab: storedSessionTab(), unreadChat: 0,
     }),
 }));
@@ -492,6 +501,11 @@ export function useTokenListIgnoringMovement(): Token[] {
 /** Characters' hit points by character id, for the roster and the map's HP bars. */
 export function useCharacterHp(): Record<string, CharacterHpInfo> {
   return useGameStore((s) => s.characterHp);
+}
+
+/** The symbol each character's class gives its token, by character id. */
+export function useCharacterIcons(): Record<string, TokenIcon> {
+  return useGameStore((s) => s.characterIcons);
 }
 
 /** The current map's drawings, in drawing order: the map's layer and the draw tool. */

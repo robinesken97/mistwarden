@@ -2,6 +2,7 @@
 // See GAME_CONTENT_NOTICES.md for the notice and credits.
 
 import type { CharacterHpInfo } from '@/utils/characterHp';
+import type { TokenIcon } from '@/utils/tokenIcons';
 import type { GridType } from '@/utils/tokenCentre';
 // ============================================
 // CozyVTT Frontend Type Definitions
@@ -905,6 +906,14 @@ export interface CampaignMap {
 
 export interface Token {
   id: string;
+  /**
+   * Mistwarden, 2026-11-27: the symbol drawn when the token has no picture
+   * (utils/tokenIcons.ts). Null or absent works it out; a player is sent it
+   * worked out from the stat block they are not sent. GM only on write.
+   */
+  icon?: TokenIcon | null;
+  /** The GM keeps the name from the table: a player is sent it blank, and never this flag. GM only. */
+  nameHidden?: boolean;
   characterId: string | null;
   name: string;
   imageUrl: string;
@@ -992,6 +1001,8 @@ export interface RosterMember {
     gameSystem: GameSystem | null;
     userId: string;
     hp: CharacterHpInfo | null;
+    /** The symbol the sheet's class gives a token with no picture (Mistwarden, 2026-11-27). */
+    icon?: TokenIcon | null;
   }[];
 }
 
@@ -1388,6 +1399,8 @@ export interface UpdateTokenRequest {
   creatureTemplateId?: string | null;
   /** GM only: hide what the token is from players who do not control it. */
   obscured?: boolean;
+  icon?: TokenIcon | null;
+  nameHidden?: boolean;
   /** GM only: the light the token carries; null for none. */
   light?: import('./walls').CarriedLight | null;
   /** Ride this token (null gets off): the GM any two, a player two they control. */

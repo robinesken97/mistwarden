@@ -9,7 +9,9 @@
  * with the creature's stats copied into the token's statBlock field.
  */
 
-import { DISPOSITION_PICKED, tokenPlaceholder } from '@/utils/tokenColours';
+import { DISPOSITION_PICKED } from '@/utils/tokenColours';
+import { creatureTypeIcon, statBlockIcon } from '@/utils/tokenIcons';
+import TokenSymbol from './TokenSymbol';
 import { useState, useEffect, useEffectEvent, useCallback, useRef, type RefObject } from 'react';
 import {
   X,
@@ -806,11 +808,11 @@ function CreatureRow({
               className="w-8 h-8 rounded-full object-cover shrink-0 border border-moss-green/20"
             />
           ) : (
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 font-bold text-sm ${tokenPlaceholder('npc', creature.disposition)}`}
-            >
-              {creature.name.charAt(0).toUpperCase()}
-            </div>
+            <TokenSymbol
+              icon={creatureTypeIcon(creature.creatureType) ?? statBlockIcon(creature.statBlock) ?? 'person'}
+              type="npc"
+              disposition={creature.disposition}
+            />
           )}
 
           <div className="flex-1 min-w-0">

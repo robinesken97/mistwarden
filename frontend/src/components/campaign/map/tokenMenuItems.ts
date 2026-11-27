@@ -30,6 +30,8 @@ export interface TokenMenuActions {
   saveAsTemplate: (token: Token) => void;
   setVisible: (token: Token, visible: boolean) => void;
   setObscured: (token: Token, obscured: boolean) => void;
+  /** Mistwarden, 2026-11-27: keeps the name from players, or shows it again. */
+  setNameHidden: (token: Token, hidden: boolean) => void;
   setLayer: (token: Token, layer: TokenLayer) => void;
   moveToMap: (token: Token, mapId: string) => void;
   /** Puts the token on `mountId`, to move with it as one. */
@@ -163,6 +165,7 @@ export function tokenMenuItems(token: Token, ctx: TokenMenuContext): MenuItem[] 
   }
   if (controls.obscure) {
     items.push(command('identity', token.obscured ? 'Reveal Identity' : 'Obscure Identity', () => act.setObscured(token, !token.obscured)));
+    items.push(command('name', token.nameHidden ? 'Show Name to Players' : 'Hide Name from Players', () => act.setNameHidden(token, !token.nameHidden)));
   }
 
   // Creatures cross planes; scenery does not.
@@ -200,7 +203,7 @@ export function tokenMenuItems(token: Token, ctx: TokenMenuContext): MenuItem[] 
 const NO_ACTIONS: TokenMenuActions = {
   viewSheet: () => undefined, rollCharacter: () => undefined, grantTemporaryHp: () => undefined, rotate: () => undefined, rollCreature: () => undefined,
   edit: () => undefined, addToInitiative: () => undefined, duplicate: () => undefined, saveAsTemplate: () => undefined,
-  setVisible: () => undefined, setObscured: () => undefined, setLayer: () => undefined, moveToMap: () => undefined,
+  setVisible: () => undefined, setObscured: () => undefined, setNameHidden: () => undefined, setLayer: () => undefined, moveToMap: () => undefined,
   mountOn: () => undefined, dismount: () => undefined, remove: () => undefined,
 };
 

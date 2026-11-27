@@ -13,7 +13,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { campaignHasCharacter as campaignHasTokenCharacter, canRollTokenCharacter } from '@/utils/tokenCharacter';
 import { tokenTemporaryHp, type TemporaryHpTarget } from '@/utils/temporaryHp';
 import { useTableRoll } from '@/hooks/useTableRoll';
-import { useGameStore, useTokenList, useCurrentTurnTokenId, useMapPeekTokenId, useCharacterHp, useSelectedTokenId } from '@/stores/gameStore';
+import { useGameStore, useTokenList, useCurrentTurnTokenId, useMapPeekTokenId, useCharacterHp, useSelectedTokenId, useCharacterIcons } from '@/stores/gameStore';
+import { tokenIcon, useTokenSymbolSprites } from '@/components/campaign/map/tokenSymbols';
+import { tokenNameMode, TOKEN_NAMES_EVENT } from '@/components/campaign/map/namePlates';
 import { useMapControls } from '@/hooks/useMapControls';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { useCoarsePointer } from '@/hooks/useMediaQuery';
@@ -326,6 +328,9 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   // Token state
   // Token pictures by token id, as they load (map/useTokenImages.ts).
   const tokenImages = useTokenImages(tokens);
+  // Mistwarden, 2026-11-27: the symbols tokens with no picture are drawn with.
+  const classIcons = useCharacterIcons();
+  const symbolSprites = useTokenSymbolSprites(tokens.filter((t) => !t.imageUrl).map((t) => tokenIcon(t, classIcons)));
   const [draggedToken, setDraggedToken] = useState<Token | null>(null);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
   /**
@@ -463,6 +468,13 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
     return () => window.removeEventListener(FOG_MIST_EVENT, read);
   }, []);
   const mistDrifts = mist === 'mist' && !prefersReducedMotion;
+  // This device's name plates (map/namePlates.ts).
+  const [nameMode, setNameMode] = useState(tokenNameMode);
+  useEffect(() => {
+    const read = () => setNameMode(tokenNameMode());
+    window.addEventListener(TOKEN_NAMES_EVENT, read);
+    return () => window.removeEventListener(TOKEN_NAMES_EVENT, read);
+  }, []);
   // This device's choice: carried lights drawn where a held token is (map/lightsFollow.ts).
   const [lightsFollow, setLightsFollow] = useState(lightsFollowDrag);
   useEffect(() => {
@@ -2102,9 +2114,12 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
         pulsePhase: prefersReducedMotion ? 0.5 : pulsePhaseAt(Date.now()),
         peekTokenId,
         selectedTokenId,
+        symbolSprites,
+        classIcons,
+        nameMode,
       }, viewport);
     });
-  }, [currentMap, mapShown, mapControls.panOffset, mapControls.zoom, dpr, campaign?.spiritLayerStyle, tokens, tokenImages, animatingTokens, drawnHeldAt, heldHere, draggedToken, dragOffset, carrierSquare, hoverToken, viewerRevealed, viewerOwn, previewing, previewedPlane, ruleFor, gmShowSpiritTokens, gmViewBothPlanes, characterHpCache, currentTurnTokenId, prefersReducedMotion, peekTokenId, selectedTokenId, isGM, previewControls]);
+  }, [symbolSprites, classIcons, nameMode, currentMap, mapShown, mapControls.panOffset, mapControls.zoom, dpr, campaign?.spiritLayerStyle, tokens, tokenImages, animatingTokens, drawnHeldAt, heldHere, draggedToken, dragOffset, carrierSquare, hoverToken, viewerRevealed, viewerOwn, previewing, previewedPlane, ruleFor, gmShowSpiritTokens, gmViewBothPlanes, characterHpCache, currentTurnTokenId, prefersReducedMotion, peekTokenId, selectedTokenId, isGM, previewControls]);
 
   /**
    * Draw the OVERLAY layer (top canvas): dynamic-lighting darkness, GM light
@@ -2420,7 +2435,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   useEffect(() => {
     markDirty('tokens');
     if (currentMap?.lightingEnabled) markDirty('overlay');
-  }, [markDirty, tokens, tokenImages, animatingTokens, hoverToken, characterHpCache, gmShowSpiritTokens, currentMap?.lightingEnabled, currentTurnTokenId, peekTokenId, selectedTokenId, previewing, previewViewer]);
+  }, [markDirty, tokens, tokenImages, symbolSprites, classIcons, nameMode, animatingTokens, hoverToken, characterHpCache, gmShowSpiritTokens, currentMap?.lightingEnabled, currentTurnTokenId, peekTokenId, selectedTokenId, previewing, previewViewer]);
 
   // Publish this map's own token hover so the initiative tracker can tint the
   // matching row — the other half of the cross-highlight.
@@ -3802,6 +3817,14 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
         await setTokenFlag(campaign.id, currentMap.id, token, 'obscured', obscured);
       } catch (err) {
         showToast(apiErrorMessage(err) || (obscured ? "Could not obscure the token's identity" : "Could not reveal the token's identity"), 'error');
+      }
+    },
+    setNameHidden: async (token, hidden) => {
+      if (!campaign?.id || !currentMap?.id) return;
+      try {
+        await setTokenFlag(campaign.id, currentMap.id, token, 'nameHidden', hidden);
+      } catch (err) {
+        showToast(apiErrorMessage(err) || (hidden ? "Could not hide the token's name" : "Could not show the token's name"), 'error');
       }
     },
     setLayer: async (token, layer) => {

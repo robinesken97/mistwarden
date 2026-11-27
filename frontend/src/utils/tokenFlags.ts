@@ -2,7 +2,7 @@ import api from '@/services/api';
 import { useGameStore } from '@/stores/gameStore';
 import type { Token } from '@/types';
 
-export type TokenFlag = 'visible' | 'obscured';
+export type TokenFlag = 'visible' | 'obscured' | 'nameHidden';
 
 /**
  * Flip one of the GM's two switches on a token, from wherever it is offered:
@@ -18,7 +18,7 @@ export async function setTokenFlag(
   flag: TokenFlag,
   value: boolean,
 ): Promise<void> {
-  const patch = flag === 'visible' ? { visible: value } : { obscured: value };
+  const patch = { [flag]: value };
   await api.updateToken(campaignId, mapId, token.id, patch);
   useGameStore.getState().patchToken(token.id, patch, mapId);
 }

@@ -35,6 +35,7 @@ const state = (t: Token): TokenDrawState => ({
   draggedToken: null, heldDrawnAt: null, hoverTokenId: null, revealedCells: null,
   isGM: true, gmShowSpiritTokens: true, gmViewBothPlanes: false, spiritAccentColor: '#000',
   characterHpCache: {}, isOwnToken: () => false, currentTurnTokenId: null, pulsePhase: 0.5, peekTokenId: null, selectedTokenId: null,
+  symbolSprites: new Map(), classIcons: {}, nameMode: 'never',
 });
 
 describe('a turned token', () => {

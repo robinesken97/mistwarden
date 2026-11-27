@@ -77,6 +77,7 @@ function makeMockCtx(): MockCtx {
     setTransform: record('setTransform'),
     translate: record('translate'),
     scale: record('scale'),
+    ellipse: record('ellipse'),
     measureText: (text: string) => ({ width: text.length * 6 }),
     createRadialGradient: () => gradient,
   } as unknown as MockCtx;
@@ -145,6 +146,9 @@ function baseTokenState(overrides: Partial<TokenDrawState> = {}): TokenDrawState
     pulsePhase: 0.5,
     peekTokenId: null,
     selectedTokenId: null,
+    symbolSprites: new Map(),
+    classIcons: {},
+    nameMode: 'never',
     ...overrides,
   };
 }
@@ -429,6 +433,84 @@ describe('drawTokens', () => {
     const plain = makeMockCtx();
     drawTokens(plain, baseTokenState({ tokens: [makeToken('p', { imageUrl: '/api/assets/tokens/p' })], tokenImages: new Map([['p', fakeImage]]), isGM: true }), viewport3x3);
     expect(plain.calls.filter((c) => c.method === 'fillText' && c.args[0] === '?')).toHaveLength(0);
+  });
+
+  // Mistwarden, 2026-11-27: the symbol look and the name plates.
+  describe('a token with no picture', () => {
+    const sprite = {} as HTMLCanvasElement;
+    const goblin = makeToken('g', {
+      name: 'Goblin', imageUrl: '', disposition: TokenDisposition.HOSTILE,
+      statBlock: { creatureType: 'Small humanoid (goblinoid)' } as Token['statBlock'],
+    });
+
+    it('is drawn from its symbol\'s sprite, ringed in its disposition\'s colour, with no second ring', () => {
+      const ctx = makeMockCtx();
+      drawTokens(ctx, baseTokenState({ tokens: [goblin], symbolSprites: new Map([['humanoid', sprite]]), isGM: true }), viewport3x3);
+      expect(ctx.calls.filter((c) => c.method === 'drawImage' && c.args[0] === sprite)).toHaveLength(1);
+      expect(count(ctx, 'stroke')).toBe(2);
+      expect(ctx.calls.some((c) => c.method === 'fillText' && c.args[0] === 'G')).toBe(false);
+    });
+
+    it('keeps its letter until the sprite is made, and for a token masked as obscured', () => {
+      const loading = makeMockCtx();
+      drawTokens(loading, baseTokenState({ tokens: [goblin], isGM: true }), viewport3x3);
+      expect(loading.calls.some((c) => c.method === 'fillText' && c.args[0] === 'G')).toBe(true);
+      const veiled = makeToken('v', { obscured: true, name: '', imageUrl: '', icon: 'person' });
+      const masked = makeMockCtx();
+      drawTokens(masked, baseTokenState({ tokens: [veiled], symbolSprites: new Map([['person', sprite]]), isGM: false }), viewport3x3);
+      expect(count(masked, 'drawImage')).toBe(0);
+    });
+  });
+
+  describe('name plates', () => {
+    const named = makeToken('n', { name: 'Goblin Archer' });
+    const plates = (ctx: MockCtx, text: string) => ctx.calls.filter((c) => c.method === 'fillText' && c.args[0] === text).length;
+
+    it('shows a name always, on the token pointed at or selected, or never', () => {
+      const always = makeMockCtx();
+      drawTokens(always, baseTokenState({ tokens: [named], nameMode: 'always' }), viewport3x3);
+      expect(plates(always, 'Goblin Archer')).toBe(1);
+      const idle = makeMockCtx();
+      drawTokens(idle, baseTokenState({ tokens: [named], nameMode: 'hover' }), viewport3x3);
+      expect(plates(idle, 'Goblin Archer')).toBe(0);
+      for (const pointed of [{ hoverTokenId: 'n' }, { selectedTokenId: 'n' }]) {
+        const ctx = makeMockCtx();
+        drawTokens(ctx, baseTokenState({ tokens: [named], nameMode: 'hover', ...pointed }), viewport3x3);
+        expect(plates(ctx, 'Goblin Archer')).toBe(1);
+      }
+      const never = makeMockCtx();
+      drawTokens(never, baseTokenState({ tokens: [named], nameMode: 'never', hoverTokenId: 'n' }), viewport3x3);
+      expect(plates(never, 'Goblin Archer')).toBe(0);
+    });
+
+    it('shows none on a token under 28 pixels on screen', () => {
+      const ctx = makeMockCtx();
+      drawTokens(ctx, baseTokenState({ tokens: [named], nameMode: 'always' }), { ...viewport3x3, zoom: 0.5 });
+      expect(plates(ctx, 'Goblin Archer')).toBe(0);
+    });
+
+    it('shortens a long name with an ellipsis', () => {
+      const ctx = makeMockCtx();
+      drawTokens(ctx, baseTokenState({ tokens: [makeToken('l', { name: 'A'.repeat(40) })], nameMode: 'always' }), viewport3x3);
+      const text = ctx.calls.filter((c) => c.method === 'fillText').pop()?.args[0] as string;
+      expect(text.endsWith('…')).toBe(true);
+      expect(text.length * 6).toBeLessThanOrEqual(120);
+    });
+
+    it('shows a question mark for a token masked as obscured, none for a blank name, and marks a hidden name for the GM', () => {
+      const veiled = makeToken('v', { obscured: true, name: '', imageUrl: '' });
+      const masked = makeMockCtx();
+      drawTokens(masked, baseTokenState({ tokens: [veiled], nameMode: 'always', isGM: false }), viewport3x3);
+      // The question mark on the shape and the one on its plate.
+      expect(plates(masked, '?')).toBe(2);
+      const blank = makeMockCtx();
+      drawTokens(blank, baseTokenState({ tokens: [makeToken('b', { name: '' })], tokenImages: new Map([['b', fakeImage]]), nameMode: 'always' }), viewport3x3);
+      expect(count(blank, 'fillText')).toBe(0);
+      const gm = makeMockCtx();
+      drawTokens(gm, baseTokenState({ tokens: [makeToken('h', { name: 'Spy', nameHidden: true })], nameMode: 'always', isGM: true }), viewport3x3);
+      expect(plates(gm, 'Spy')).toBe(1);
+      expect(count(gm, 'ellipse')).toBe(1);
+    });
   });
 
   it('players never see hidden tokens; the GM sees them', () => {

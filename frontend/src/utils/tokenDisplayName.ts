@@ -14,6 +14,7 @@
 export interface NamedToken {
   name: string;
   obscured?: boolean;
+  nameHidden?: boolean;
   visible?: boolean;
   layer?: string;
   controlledBy?: string | null;
@@ -28,7 +29,8 @@ export function tokenDisplayName(token: NamedToken): string {
 
 /** Whether a token may not be named in front of everyone. */
 function unnamedInPublic(token: NamedToken): boolean {
-  return token.obscured === true || token.visible === false || token.layer === 'spirit';
+  // Mistwarden, 2026-11-27: and one whose name the GM keeps from the table.
+  return token.obscured === true || token.nameHidden === true || token.visible === false || token.layer === 'spirit';
 }
 
 /** The name to use in front of everyone. */

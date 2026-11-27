@@ -59,16 +59,3 @@ export const DISPOSITION_PICKED = {
   neutral: 'border-token-neutral bg-token-neutral/10 text-token-neutral-ink font-semibold',
   hostile: 'border-token-hostile bg-token-hostile/10 text-token-hostile-ink font-semibold',
 } as const;
-
-/** A creature or template with no picture: its first letter on the colour the map draws it in. */
-const PLACEHOLDER: Record<TokenKind, string> = {
-  player: 'bg-token-player text-black',
-  friendly: 'bg-token-friendly text-black',
-  neutral: 'bg-token-neutral text-black',
-  hostile: 'bg-token-hostile text-black',
-  object: 'bg-token-object text-white',
-};
-
-export function tokenPlaceholder(type: string | null | undefined, disposition: string | null | undefined): string {
-  return PLACEHOLDER[tokenKind(type, disposition)];
-}
