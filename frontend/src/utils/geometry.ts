@@ -164,12 +164,22 @@ export function snapPointsToEdges(
 export function edgeSnapPoints(
   points: Point[],
   mapImage: HTMLImageElement,
-  searchRadius: number
+  searchRadius: number,
+  // Mistwarden, 2026-11-27: the map's extent in map pixels. The picture is
+  // stretched across it and is often smaller (large maps are stored shrunk),
+  // so the points are moved into the picture's pixels and back.
+  mapSize?: { width: number; height: number }
 ): Point[] {
   if (points.length < 2) return points;
   const imgW = mapImage.naturalWidth;
   const imgH = mapImage.naturalHeight;
   if (imgW === 0 || imgH === 0) return points;
+  if (mapSize && mapSize.width > 0 && mapSize.height > 0 && (mapSize.width !== imgW || mapSize.height !== imgH)) {
+    const sx = imgW / mapSize.width;
+    const sy = imgH / mapSize.height;
+    const snapped = edgeSnapPoints(points.map((p) => ({ ...p, x: p.x * sx, y: p.y * sy })), mapImage, searchRadius * Math.min(sx, sy));
+    return snapped.map((p) => ({ ...p, x: p.x / sx, y: p.y / sy }));
+  }
 
   const r = Math.ceil(searchRadius);
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;

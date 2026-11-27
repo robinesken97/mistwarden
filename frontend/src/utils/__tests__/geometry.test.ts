@@ -3,13 +3,14 @@
  * (extracted from MapCanvas.tsx).
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import {
   calcGridDistance,
   gridMeasure,
   gridDistanceLabel,
   douglasPeucker,
   snapPointsToEdges,
+  edgeSnapPoints,
   diagonalStepCosts,
   type Point,
   type EdgeSnapRegion,
@@ -174,5 +175,34 @@ describe('diagonalStepCosts', () => {
 
   it('costs each diagonal one square under the flat rule', () => {
     expect(diagonalStepCosts(5, 'flat')).toEqual([5, 5, 5, 5]);
+  });
+});
+
+// Mistwarden, 2026-11-27: a large map's picture is stored smaller than the map.
+describe('edgeSnapPoints on a picture smaller than the map', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('finds the edge in picture pixels and answers in map pixels', () => {
+    // The picture is 100 px wide, dark left of x = 50; the map is 200 px wide,
+    // so the edge is at x = 100 in map pixels.
+    let roiX = 0;
+    const ctx = {
+      drawImage: (_img: unknown, sx: number) => { roiX = sx; },
+      getImageData: (_x: number, _y: number, w: number, h: number) => {
+        const data = new Uint8ClampedArray(w * h * 4);
+        for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+          const v = x + roiX < 50 ? 0 : 255;
+          data.set([v, v, v, 255], (y * w + x) * 4);
+        }
+        return { data };
+      },
+    };
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(ctx as unknown as CanvasRenderingContext2D);
+    const image = { naturalWidth: 100, naturalHeight: 100 } as HTMLImageElement;
+    const pts: Point[] = [{ x: 94, y: 40 }, { x: 106, y: 120 }];
+    const result = edgeSnapPoints(pts, image, 10, { width: 200, height: 200 });
+    for (const pt of result) expect(Math.abs(pt.x - 100)).toBeLessThanOrEqual(2);
+    expect(Math.abs(result[0]!.y - 40)).toBeLessThanOrEqual(2);
+    expect(Math.abs(result[1]!.y - 120)).toBeLessThanOrEqual(2);
   });
 });

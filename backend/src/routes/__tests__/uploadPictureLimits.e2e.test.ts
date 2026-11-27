@@ -13,6 +13,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import request from 'supertest';
+import sharp from 'sharp';
 
 const UPLOAD_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'cozyvtt-upload-picture-limits-'));
 process.env.UPLOAD_DIR = UPLOAD_DIR;
@@ -135,4 +136,23 @@ describe('an uploaded picture over its file size limit', () => {
       read.mockRestore();
     }
   });
+});
+
+// Mistwarden, 2026-11-27: large maps are stored shrunk (utils/mapPicture.ts).
+describe('an uploaded map larger than a tablet can hold', () => {
+  it('is stored shrunk to 4,096 pixels on its longer side, in its own format', async () => {
+    const res = await upload('MAP', await plainPng(2_000, 8_000), 'tower.png');
+    expect(res.status).toBe(201);
+    const asset = await prisma.asset.findUniqueOrThrow({ where: { id: res.body.asset.id } });
+    const stored = await sharp(asset.filePath).metadata();
+    expect([stored.format, stored.width, stored.height]).toEqual(['png', 1024, 4096]);
+    expect(asset.fileSize).toBe(fs.statSync(asset.filePath).size);
+  }, 30000);
+
+  it('leaves a token of the same size as it is', async () => {
+    const res = await upload('TOKEN', await plainPng(2_000, 8_000), 'giant.png');
+    expect(res.status).toBe(201);
+    const asset = await prisma.asset.findUniqueOrThrow({ where: { id: res.body.asset.id } });
+    expect((await sharp(asset.filePath).metadata()).height).toBe(8_000);
+  }, 30000);
 });
