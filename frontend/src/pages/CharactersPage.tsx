@@ -9,7 +9,7 @@ import { useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
-import { Plus, LogOut, Loader2, RefreshCw, Upload } from 'lucide-react';
+import { ArrowLeft, Plus, LogOut, Loader2, RefreshCw, Upload } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import characterService from '@/services/character.service';
 import { useCampaignsQuery, useCharactersQuery, queryKeys, toCharacterSummary } from '@/hooks/queries';
@@ -219,8 +219,8 @@ export default function CharactersPage() {
                 onClick={() => navigate('/dashboard')}
                 variant="secondary" className="flex items-center gap-2"
               >
-                <span className="hidden sm:inline">Back to Dashboard</span>
-                <span className="sm:hidden">Dashboard</span>
+                <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+                <span className="max-sm:sr-only">Dashboard</span>
               </Button>
 
               <Button
@@ -236,7 +236,7 @@ export default function CharactersPage() {
 
               <Button
                 onClick={handleLogout}
-                variant="danger" className="flex items-center gap-2"
+                variant="secondary" className="flex items-center gap-2"
                 aria-label="Log out of Mistwarden"
               >
                 <LogOut className="w-4 h-4" aria-hidden="true" />
