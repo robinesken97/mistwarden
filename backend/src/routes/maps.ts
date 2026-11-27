@@ -22,7 +22,7 @@ import { inBackgroundAfter } from '../utils/backgroundWork';
 import { canReadAssetById, canReferenceAsset, isMapPicture, isTokenPicture, canControlToken, canHoldTokens, canMoveTokensNow, canReadMap, PAUSED_MOVE_REFUSAL } from '../services/permissions';
 import { WallSegmentSchema, WallSegmentsArraySchema, FogOperationSchema, LightSourceSchema, LightSourcesArraySchema, LightSourceUpdateSchema, DUPLICATE_WALL_ID_MESSAGE, DUPLICATE_LIGHT_ID_MESSAGE, MAX_WALL_SEGMENTS, MAX_LIGHT_SOURCES, TOO_MANY_WALLS_MESSAGE, TOO_MANY_LIGHTS_MESSAGE } from '../validators/walls';
 import { validateTokenShapes, TokenMetadataSchema, MoveTokensSchema, TOKEN_TYPES, TOKEN_DISPOSITIONS, TOKEN_DISPLAY_MODES, TOKEN_IMAGE_NOT_A_TOKEN_PICTURE_MESSAGE } from '../validators/tokens';
-import { withMapsLocked, clampTokenPosition } from '../utils/mapTokens';
+import { withMapsLocked, clampTokenPosition, regridTokens } from '../utils/mapTokens';
 import { moveCoupled, untangleMounts, uncouple, mountRefusal, mount } from '../utils/mounts';
 import type { WallSegment, FogState, LightSource, SkippedWall, WallsAdded } from '../types/walls';
 import { parseUVTT } from '../services/uvttParser';
@@ -1210,20 +1210,24 @@ router.put('/:id', campaignGM, async (req: AuthenticatedRequest, res: Response) 
         typeof updateData[field] === 'number' ? (updateData[field] as number) : current[field];
       const kx = (size('width') * size('gridSize')) / (current.width * current.gridSize);
       const ky = (size('height') * size('gridSize')) / (current.height * current.gridSize);
-      // On a hex map the cells a position names follow the frame, the type
-      // and the offset (utils/tokenCentre.ts), so an edit of any of them
-      // brings every token to the nearest hex on the map, here under the
-      // lock. Positions stay whole cells; a token already on one stays.
+      // A position names a cell of the grid, so an edit of the grid's type,
+      // size or offset moves every token to the cell nearest where it stood
+      // on the picture (regridTokens), here under the lock. A change of the
+      // frame alone keeps positions, and on a hex map brings each to the
+      // nearest hex on the map. Positions stay whole cells.
       const grid = {
         width: size('width'), height: size('height'), gridSize: size('gridSize'),
         gridType: typeof updateData.gridType === 'string' ? updateData.gridType : current.gridType,
         gridOffsetX: typeof updateData.gridOffsetX === 'number' ? updateData.gridOffsetX : current.gridOffsetX,
         gridOffsetY: typeof updateData.gridOffsetY === 'number' ? updateData.gridOffsetY : current.gridOffsetY,
       };
-      const gridMoved = (['width', 'height', 'gridSize', 'gridType', 'gridOffsetX', 'gridOffsetY'] as const).some((k) => grid[k] !== current[k]);
-      if (isHexGrid(grid) && gridMoved) {
+      const changed = (keys: readonly (keyof typeof grid)[]) => keys.some((k) => grid[k] !== current[k]);
+      const gridChanged = changed(['gridSize', 'gridType', 'gridOffsetX', 'gridOffsetY']);
+      if (gridChanged || (isHexGrid(grid) && changed(['width', 'height']))) {
         const { tokens: stored } = await tx.map.findUniqueOrThrow({ where: { id }, select: { tokens: true } });
-        const tokens = readTokens(stored).map((t) => ({ ...t, position: clampTokenPosition(t.position, t.size, grid) }));
+        const tokens = gridChanged
+          ? regridTokens(readTokens(stored), current, grid)
+          : readTokens(stored).map((t) => ({ ...t, position: clampTokenPosition(t.position, t.size, grid) }));
         updateData.tokens = toJson(tokens);
       }
       if (kx === 1 && ky === 1) {

@@ -7965,15 +7965,22 @@ paths:
         drawn across `width` × `gridSize` by `height` × `gridSize`, so a change
         to either side of that moves every wall end and light by the same
         factor on that axis, rounded to whole pixels, under the map's lock.
-        Light radii are in squares and do not change, nor do token positions.
+        Light radii are in squares and do not change.
 
-        On a hex map (`gridType` `hexPointy` or `hexFlat`, as the map is after
-        the edit) a change to `width`, `height`, `gridSize`, `gridType`,
-        `gridOffsetX` or `gridOffsetY` brings every token whose hex is no
-        longer on the map (a hex is on it when its centre lies inside the
-        frame) to the nearest one, under the map's lock; the others keep
-        their stored positions, which on another grid type name another
-        place on the picture. Fog stays one square cell per grid square, starting
+        A token position names a cell of the grid, so a change to `gridType`,
+        `gridSize`, `gridOffsetX` or `gridOffsetY` moves every token, under
+        the map's lock, to the cell nearest where its centre stood on the
+        picture (carried with the picture as it is stretched to the new
+        frame): on squares the footprint of its size whose centre is nearest,
+        kept on the map; on hexes the hex on the map whose centre is nearest.
+        A rider is put on its mount's new cell. A change of `gridSize` alone
+        on a square map with no offset leaves every position as it was.
+        Nearest is not always the way back: a point can lie up to
+        `gridSize`/√3 from the nearest hex centre, so squares → hexes →
+        squares can end a token one square off. A change to `width` or
+        `height` alone keeps positions; on a hex map it brings every token
+        whose hex is no longer on the map (a hex is on it when its centre lies
+        inside the frame) to the nearest one. Fog stays one square cell per grid square, starting
         at the grid's offset brought within half a square of the corner.
         Every member who may read the map is then sent `walls:replaced` and
         `lights:replaced`, as for a bulk replace and with no `opId`, so open

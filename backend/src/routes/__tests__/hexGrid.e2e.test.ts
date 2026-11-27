@@ -1,9 +1,9 @@
 /**
  * A hex map through the map and token routes: where a token may stand is
  * judged by its hex (a cell is on the map when its centre lies in the frame,
- * utils/tokenCentre.ts), a change of the grid brings every token to the
- * nearest hex under the map's lock, the new fields are checked, and a hex map
- * is not exported as a Universal VTT file.
+ * utils/tokenCentre.ts), a change of the grid moves every token to the cell
+ * nearest where it stood on the picture under the map's lock, the new fields
+ * are checked, and a hex map is not exported as a Universal VTT file.
  *
  * Requires PostgreSQL at DATABASE_URL.
  */
@@ -13,7 +13,7 @@ import { randomUUID } from 'crypto';
 import { createTestApp } from '../../__tests__/helpers/test-app';
 import { prisma, createTestUser, createTestCampaign, cleanupUsers, cleanupCampaigns, TEST_PASSWORD } from '../../__tests__/helpers/db';
 import { readTokens, toJson } from '../../utils/prisma-json';
-import { cellOnMap } from '../../utils/tokenCentre';
+import { cellOnMap, isHexGrid, tokenCentre } from '../../utils/tokenCentre';
 import { UVTT_HEX_REFUSAL } from '../maps';
 
 const app = createTestApp();
@@ -79,27 +79,43 @@ describe('tokens on a pointy hex map', () => {
 });
 
 describe('changing the grid', () => {
-  it('brings every token to the nearest hex on the map, and back to squares leaves them', async () => {
+  it('moves every token to the cell nearest where it stood on the picture, a rider with its mount', async () => {
     const onEdge = token({ position: { x: 9, y: 9 } });
     const inside = token({ position: { x: 3, y: 3 } });
-    const mapId = await newMap({}, [onEdge, inside]);
-
-    const pointy = await gm.put(at(`/${mapId}`)).send({ gridType: 'hexPointy' });
-    expect(pointy.status).toBe(200);
+    const horse = token({ position: { x: 5, y: 5 }, size: { width: 2, height: 2 } });
+    const rider = token({ position: { x: 5, y: 5 }, mountedOn: horse.id });
+    const mapId = await newMap({}, [onEdge, inside, horse, rider]);
     let map = await stored(mapId);
-    expect(map.gridType).toBe('hexPointy');
-    const positions = Object.fromEntries(readTokens(map.tokens).map((t) => [t.id, t.position]));
-    expect(positions[inside.id]).toEqual({ x: 3, y: 3 });
-    expect(positions[onEdge.id]).not.toEqual({ x: 9, y: 9 });
-    expect(cellOnMap(positions[onEdge.id], map)).toBe(true);
 
-    expect((await gm.put(at(`/${mapId}`)).send({ gridType: 'hexFlat', gridOffsetX: 12.5 })).status).toBe(200);
-    map = await stored(mapId);
-    for (const t of readTokens(map.tokens)) expect(cellOnMap(t.position, map)).toBe(true);
+    // Each switch moves a centre at most to the nearest cell centre: within
+    // gridSize/√3 of a hex centre, within half a square each way of a square's.
+    const steps: Array<[Record<string, unknown>, (dx: number, dy: number) => boolean]> = [
+      [{ gridType: 'hexPointy' }, (dx, dy) => Math.hypot(dx, dy) <= 50 / Math.sqrt(3) + 1e-6],
+      [{ gridType: 'square' }, (dx, dy) => dx <= 25 + 1e-6 && dy <= 25 + 1e-6],
+      [{ gridType: 'hexFlat', gridOffsetX: 12.5 }, (dx, dy) => Math.hypot(dx, dy) <= 50 / Math.sqrt(3) + 1e-6],
+      [{ gridType: 'square', gridOffsetX: 0 }, (dx, dy) => dx <= 25 + 1e-6 && dy <= 25 + 1e-6],
+    ];
+    for (const [edit, near] of steps) {
+      const before = map;
+      expect((await gm.put(at(`/${mapId}`)).send(edit)).status).toBe(200);
+      map = await stored(mapId);
+      const was = Object.fromEntries(readTokens(before.tokens).map((t) => [t.id, tokenCentre(t, before)]));
+      const now = readTokens(map.tokens);
+      for (const t of now.filter((t) => t.id !== rider.id)) {
+        const c = tokenCentre(t, map);
+        expect(near(Math.abs(c.x - was[t.id].x), Math.abs(c.y - was[t.id].y))).toBe(true);
+        if (isHexGrid(map)) expect(cellOnMap(t.position, map)).toBe(true);
+      }
+      const byId = Object.fromEntries(now.map((t) => [t.id, t]));
+      expect(byId[rider.id].position).toEqual(byId[horse.id].position);
+    }
+  });
 
-    const before = readTokens(map.tokens).map((t) => t.position);
-    expect((await gm.put(at(`/${mapId}`)).send({ gridType: 'square', gridOffsetX: 0 })).status).toBe(200);
-    expect(readTokens((await stored(mapId)).tokens).map((t) => t.position)).toEqual(before);
+  it("keeps every position when only a square grid's size changes", async () => {
+    const tokens = [token({ position: { x: 9, y: 9 } }), token({ position: { x: 2, y: 6 }, size: { width: 3, height: 3 } })];
+    const mapId = await newMap({}, tokens);
+    expect((await gm.put(at(`/${mapId}`)).send({ gridSize: 70.4 })).status).toBe(200);
+    expect(readTokens((await stored(mapId)).tokens).map((t) => t.position)).toEqual(tokens.map((t) => t.position));
   });
 
   it('refuses a grid type or offset it does not know, and takes a grid size between whole pixels', async () => {
