@@ -567,8 +567,9 @@ export function registerInitiativeHandlers(io: Server, socket: AuthenticatedSock
         const user = await prisma.user.findUnique({ where: { id: socket.userId }, select: { displayName: true } });
         // The server names the token; a name the client sends is not used.
         // An obscured token is stored and sent under the placeholder, except
-        // to the player who rolled for it, who knows it.
-        const publicName = token.obscured === true ? 'Unknown creature' : token.name;
+        // to the player who rolled for it, who knows it. So is one whose name
+        // the GM hides (Mistwarden, 2026-11-27).
+        const publicName = token.obscured === true || token.nameHidden === true ? 'Unknown creature' : token.name;
         // A token some player is not sent makes a secret roll: the roller
         // and the GM see it, in the history too.
         const secret = !(await sentToEveryPlayer(campaignId, token, mapId));

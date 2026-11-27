@@ -14,6 +14,7 @@ import { TokenHpSchema, TokenSightRadiusSchema, TokenSizeSchema, TOKEN_TYPES, TO
 import { MapSideSchema, GridSizeSchema, GridTypeSchema, GridOffsetSchema, FeetPerSquareSchema, DrawnBackgroundSchema, MAP_LIMITS, MAX_FOG_CELLS } from './maps';
 import { TOKEN_LIMITS } from './tokenLimits';
 import { CarriedLightSchema } from './walls';
+import { TOKEN_ICONS } from '../utils/tokenIcons';
 import { CAMPAIGN_LIMITS } from './campaignLimits';
 import { ASSET_LIMITS } from './assetLimits';
 import { tidyTags, isDrawnMapTag } from './assets';
@@ -168,6 +169,10 @@ export const ImportTokenSchema = z.object({
   // A UUID, as the token routes require; anything else links to nothing.
   creatureTemplateId: z.uuid().nullable().optional().catch(null),
   obscured: z.boolean().optional().default(false).catch(false),
+  // Mistwarden, 2026-11-27. A symbol not on the list is worked out again; a
+  // hidden name stays hidden when the flag is not one.
+  icon: z.enum(TOKEN_ICONS).nullable().optional().catch(null),
+  nameHidden: z.boolean().optional().default(false).catch(true),
 }).strip();
 
 // ── Fog ─────────────────────────────────────────────────────────────────────

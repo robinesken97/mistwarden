@@ -17,6 +17,7 @@ import { NpcStatBlockSchema } from './statBlock';
 import { TOKEN_LIMITS } from './tokenLimits';
 import { CarriedLightSchema } from './walls';
 import { MAX_TEMPORARY_HIT_POINTS } from '../utils/rules/hitPoints';
+import { TOKEN_ICONS } from '../utils/tokenIcons';
 
 /** How many squares a token occupies. */
 /**
@@ -107,7 +108,7 @@ const IdSchema = z.uuid();
  * Each field is optional, so a partial update is checked only on what it
  * actually carries. `null` is accepted where a token records having none:
  * `hp`, `statBlock`, `sightRadius`, `light`, `notes`, `imageUrl`, `initiative`,
- * `mountedOn`, and the three ids.
+ * `mountedOn`, `icon`, and the three ids.
  *
  * Returns the parsed values rather than the raw ones, so callers store what the
  * schema produced — a trimmed condition list, a position that is only its
@@ -138,6 +139,9 @@ export type TokenShapes = {
   name?: string;
   notes?: string | null;
   imageUrl?: string | null;
+  // Mistwarden, 2026-11-27: the symbol drawn without a picture, and a name kept from players.
+  icon?: (typeof TOKEN_ICONS)[number] | null;
+  nameHidden?: boolean;
 };
 
 export function validateTokenShapes(
@@ -239,6 +243,14 @@ export function validateTokenShapes(
   const imageUrl = check('imageUrl', TokenImageUrlSchema, true);
   if ('failed' in imageUrl) return { ok: false, message: imageUrl.failed };
   if (imageUrl.parsed !== undefined) value.imageUrl = imageUrl.parsed;
+
+  const icon = check('icon', z.enum(TOKEN_ICONS), true);
+  if ('failed' in icon) return { ok: false, message: icon.failed };
+  if (icon.parsed !== undefined) value.icon = icon.parsed;
+
+  const nameHidden = check('nameHidden', z.boolean());
+  if ('failed' in nameHidden) return { ok: false, message: nameHidden.failed };
+  if (nameHidden.parsed !== undefined) value.nameHidden = nameHidden.parsed ?? undefined;
 
   return { ok: true, value };
 }

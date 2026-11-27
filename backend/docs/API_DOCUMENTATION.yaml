@@ -2765,6 +2765,10 @@ paths:
                               tokenImageUrl: { type: string, nullable: true }
                               gameSystem: { type: string, nullable: true }
                               userId: { type: string, format: uuid }
+                              icon:
+                                type: string
+                                nullable: true
+                                description: The symbol the first class the sheet names gives a token of this character with no picture (see Token `icon`); null when it names none.
                               hp:
                                 type: object
                                 nullable: true
@@ -8452,6 +8456,14 @@ paths:
                 obscured:
                   type: boolean
                   description: Hide what the token is from players who do not control it. GM only; this route is the only way to change it after creation.
+                icon:
+                  type: string
+                  nullable: true
+                  enum: [aberration, beast, celestial, construct, dragon, elemental, fey, fiend, giant, humanoid, monstrosity, ooze, plant, undead, barbarian, bard, cleric, druid, fighter, monk, paladin, ranger, rogue, sorcerer, warlock, wizard, person]
+                  description: The symbol drawn when the token has no picture; null works it out. GM only (403 for a player); a name not on the list answers 400.
+                nameHidden:
+                  type: boolean
+                  description: Keep the token's name from players who do not control it. GM only (403 for a player).
                 type:
                   type: string
                   enum: [player, npc, object]
@@ -14269,6 +14281,21 @@ components:
           type: boolean
           default: false
           description: The GM has hidden what this token is. GM only on write; players who do not control it receive it masked (see the schema description).
+        icon:
+          type: string
+          nullable: true
+          enum: [aberration, beast, celestial, construct, dragon, elemental, fey, fiend, giant, humanoid, monstrosity, ooze, plant, undead, barbarian, bard, cleric, druid, fighter, monk, paladin, ranger, rogue, sorcerer, warlock, wizard, person]
+          description: |
+            The symbol the token is drawn with when it has no picture. GM only on
+            write; null works it out: the creature type the stat block gives,
+            then the class of the bound character, then `person`. A player is
+            sent the token's own symbol or the stat block's one in its place
+            (the stat block itself is not sent), and none for a token masked
+            as obscured.
+        nameHidden:
+          type: boolean
+          default: false
+          description: The GM keeps the token's name from the table. GM only, and never sent to a player; a player who does not control the token receives `name` empty.
         light:
           allOf:
             - $ref: '#/components/schemas/CarriedLight'
@@ -14324,6 +14351,14 @@ components:
         obscured:
           type: boolean
           description: Hide what the token is from players who do not control it. GM only.
+        icon:
+          type: string
+          nullable: true
+          enum: [aberration, beast, celestial, construct, dragon, elemental, fey, fiend, giant, humanoid, monstrosity, ooze, plant, undead, barbarian, bard, cleric, druid, fighter, monk, paladin, ranger, rogue, sorcerer, warlock, wizard, person]
+          description: The symbol drawn when the token has no picture; null (the default) works it out. A name not on the list answers 400.
+        nameHidden:
+          type: boolean
+          description: Keep the token's name from players who do not control it; false when omitted.
         sightRadius:
           type: number
           minimum: 0

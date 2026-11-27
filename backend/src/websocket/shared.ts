@@ -62,6 +62,10 @@ export interface Token {
   light?: CarriedLight | null;
   /** The token this one rides; the two move as one. See utils/mounts.ts. */
   mountedOn?: string | null;
+  /** The symbol drawn without a picture (utils/tokenIcons.ts); null works it out. GM-only on write. */
+  icon?: string | null;
+  /** The name is sent to nobody but the controller; see utils/tokenMask.ts. GM-only on write. */
+  nameHidden?: boolean;
 }
 
 /** One window of a flood ceiling: at most `limit` events in any `windowMs`. */

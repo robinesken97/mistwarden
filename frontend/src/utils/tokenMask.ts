@@ -26,6 +26,8 @@
 // browser it is sent to counts that light, as the server does. No mount.
 // ============================================
 
+import { statBlockIcon } from './tokenIcons';
+
 /** The fields the rule and the mask read; any token shape with them will do. */
 export interface MaskableToken {
   id: string;
@@ -53,6 +55,8 @@ export interface MaskableToken {
   sightRadius?: unknown;
   light?: unknown;
   mountedOn?: string | null;
+  icon?: string | null;
+  nameHidden?: boolean;
 }
 
 /** Every field a masked token has, so a test can pin the exact set. */
@@ -147,6 +151,7 @@ export const PLAYER_TOKEN_FIELDS = [
   'obscured',
   'light',
   'mountedOn',
+  'icon',
 ] as const satisfies readonly (keyof MaskableToken)[];
 
 /**
@@ -161,6 +166,11 @@ export const PLAYER_TOKEN_FIELDS = [
  * recipient is sent the mount too: the id of a hidden mount would tell them
  * something is there. A hidden mount's rider is still sent, as any visible
  * token is; it just arrives riding nothing.
+ *
+ * Mistwarden, 2026-11-27: the symbol a token with no picture is drawn with
+ * is sent worked out, the token's own or its stat block's creature type's
+ * (utils/tokenIcons.ts), since the stat block is not sent. A name the GM
+ * hides (`nameHidden`, itself never sent) goes to nobody but the controller.
  */
 export function tokenSentTo<T extends MaskableToken>(token: T, own: boolean, mountSent = false): T {
   const listed = PLAYER_TOKEN_FIELDS.filter((field) => field in token).map((field) => [field, token[field]]);
@@ -168,6 +178,10 @@ export function tokenSentTo<T extends MaskableToken>(token: T, own: boolean, mou
   const sent = Object.fromEntries(listed) as T;
   if (!mountSent) delete sent.mountedOn;
   if (!(own || token.showHpBar === true)) delete sent.hp;
+  const icon = token.icon || statBlockIcon(token.statBlock);
+  if (icon) sent.icon = icon;
+  else delete sent.icon;
+  if (!own && token.nameHidden === true) sent.name = '';
   if (!own) {
     delete sent.sightRadius;
     // The link resolves to a library entry, whose stat block and true name
