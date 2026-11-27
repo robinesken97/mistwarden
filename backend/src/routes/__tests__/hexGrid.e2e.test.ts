@@ -88,7 +88,7 @@ describe('changing the grid', () => {
     expect(pointy.status).toBe(200);
     let map = await stored(mapId);
     expect(map.gridType).toBe('hexPointy');
-    let positions = Object.fromEntries(readTokens(map.tokens).map((t) => [t.id, t.position]));
+    const positions = Object.fromEntries(readTokens(map.tokens).map((t) => [t.id, t.position]));
     expect(positions[inside.id]).toEqual({ x: 3, y: 3 });
     expect(positions[onEdge.id]).not.toEqual({ x: 9, y: 9 });
     expect(cellOnMap(positions[onEdge.id], map)).toBe(true);

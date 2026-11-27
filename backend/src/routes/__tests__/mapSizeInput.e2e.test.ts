@@ -131,4 +131,11 @@ describe('POST /api/campaigns/:campaignId/maps/import-uvtt gridSize', () => {
     expect(res.status).toBe(201);
     expect(res.body.map.gridSize).toBe(100);
   });
+
+  it('uses a grid size between whole pixels when one is sent', async () => {
+    const res = await importUvtt('52.5');
+
+    expect(res.status).toBe(201);
+    expect(res.body.map.gridSize).toBe(52.5);
+  });
 });

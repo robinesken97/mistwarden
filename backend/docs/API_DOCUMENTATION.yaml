@@ -7800,7 +7800,8 @@ paths:
         `gridOffsetX` or `gridOffsetY` brings every token whose hex is no
         longer on the map (a hex is on it when its centre lies inside the
         frame) to the nearest one, under the map's lock; the others keep
-        their positions. Fog stays one square cell per grid square, starting
+        their stored positions, which on another grid type name another
+        place on the picture. Fog stays one square cell per grid square, starting
         at the grid's offset brought within half a square of the corner.
         Every member who may read the map is then sent `walls:replaced` and
         `lights:replaced`, as for a bulk replace and with no `opId`, so open
@@ -12662,13 +12663,14 @@ paths:
                   type: string
                   description: The map's name. Defaults to the file's name without its extension.
                 gridSize:
-                  type: integer
+                  type: number
                   default: 70
                   description: >-
                     Pixels per grid square on the new map, used to place the
-                    file's walls and lights. Anything other than a whole
-                    number from 10 to 500, including a missing value, means
-                    70.
+                    file's walls and lights; not necessarily whole. Anything
+                    other than a number from 10 to 500, including a missing
+                    value, means 70. The new map has a square grid at the
+                    picture's corner.
                 confirm:
                   type: string
                   enum: ['true']
