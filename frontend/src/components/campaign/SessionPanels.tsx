@@ -26,6 +26,7 @@ import { useCompactLayout } from '@/contexts/LayoutContext';
 import { cn } from '@/utils/cn';
 import { SESSION_TAB_LOOKS, type SessionTab } from './sessionTabs';
 import ChatPanel from './ChatPanel';
+import GalleryPanel from './GalleryPanel';
 import DiceRoller from './DiceRoller';
 import VibeTracker from './VibeTracker';
 import InitiativeTracker from './InitiativeTracker';
@@ -115,6 +116,14 @@ export default function SessionPanels() {
         )}
       >
         <PersonalNotes />
+      </div>
+
+      <div
+        id="session-tabpanel-gallery"
+        {...panel('gallery')}
+        className={cn('absolute inset-0', pad, 'overflow-y-auto', activeTab === 'gallery' ? 'animate-fade-in' : 'invisible')}
+      >
+        <GalleryPanel />
       </div>
 
       <div

@@ -619,6 +619,22 @@ export interface VibePeriod {
   audio?: string | null;
 }
 
+/**
+ * Mistwarden, 2026-11-27: a picture in a campaign's gallery. A player is sent
+ * only the pictures shown to them, without folder and who else sees them.
+ */
+export interface GalleryPicture {
+  id: string;
+  assetId: string;
+  name: string;
+  folder?: string;
+  shownToAll?: boolean;
+  shownTo?: string[];
+  url: string;
+  thumbnailUrl: string;
+  updatedAt: string;
+}
+
 export interface CampaignMembership {
   id: string;
   userId: string;

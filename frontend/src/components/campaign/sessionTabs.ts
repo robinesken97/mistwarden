@@ -1,11 +1,11 @@
-import { MessageCircle, Dices, ListOrdered, PlayCircle, NotebookPen, type LucideIcon } from 'lucide-react';
+import { MessageCircle, Dices, ListOrdered, PlayCircle, NotebookPen, Images, type LucideIcon } from 'lucide-react';
 
 /**
  * The session panels (`SessionPanels.tsx`), in the order their tabs show
  * them. The rail's tab bar takes its tabs from here and the game store keeps
  * the open one (`sessionTab`), so a list of tabs is written once.
  */
-export const SESSION_TABS = ['chat', 'dice', 'initiative', 'notes', 'session'] as const;
+export const SESSION_TABS = ['chat', 'dice', 'initiative', 'notes', 'gallery', 'session'] as const;
 
 export type SessionTab = (typeof SESSION_TABS)[number];
 
@@ -20,6 +20,8 @@ export const SESSION_TAB_LOOKS: Record<SessionTab, { label: string; icon: Lucide
   // Its own tab rather than a widget under Session: long-form writing needs the
   // full height of the rail, and people come back to it constantly during play.
   notes: { label: 'Notes', icon: NotebookPen },
+  // Mistwarden, 2026-11-27: pictures the GM shows to players.
+  gallery: { label: 'Gallery', icon: Images },
   session: { label: 'Session', icon: PlayCircle },
 };
 

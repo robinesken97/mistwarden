@@ -17,11 +17,12 @@ vi.mock('../InitiativeTracker', nothing);
 vi.mock('../SessionControls', nothing);
 vi.mock('../SessionHistory', nothing);
 vi.mock('../PersonalNotes', nothing);
+vi.mock('../GalleryPanel', nothing);
 
 import SessionPanels from '../SessionPanels';
 import { LayoutProvider } from '@/contexts/LayoutContext';
 
-const PANELS = ['chat', 'dice', 'initiative', 'notes', 'session'];
+const PANELS = ['chat', 'dice', 'initiative', 'notes', 'gallery', 'session'];
 
 it('names each panel by its tab on the desktop', () => {
   const { container } = render(<SessionPanels />);
@@ -36,8 +37,8 @@ it('names each panel itself on the compact layout, as a group and no tab panel',
   expect(screen.getByRole('group', { name: 'Chat' })).toBeInTheDocument();
   expect(screen.queryByRole('tabpanel')).toBeNull();
   const panels = PANELS.map((tab) => document.getElementById(`session-tabpanel-${tab}`) as HTMLElement);
-  expect(panels.map((p) => p.getAttribute('role'))).toEqual(['group', 'group', 'group', 'group', 'group']);
-  expect(panels.map((p) => p.getAttribute('aria-label'))).toEqual(['Chat', 'Dice', 'Initiative', 'Notes', 'Session']);
+  expect(panels.map((p) => p.getAttribute('role'))).toEqual(['group', 'group', 'group', 'group', 'group', 'group']);
+  expect(panels.map((p) => p.getAttribute('aria-label'))).toEqual(['Chat', 'Dice', 'Initiative', 'Notes', 'Gallery', 'Session']);
   expect(panels.every((p) => !p.hasAttribute('aria-labelledby'))).toBe(true);
 });
 
@@ -47,7 +48,7 @@ it('clips each panel to its box, so a panel taller than the compact sheet, shown
   for (const panel of panels) {
     const classes = panel.className.split(/\s+/);
     expect(classes, panel.id).toContain('absolute');
-    // Exactly one: clipped (Chat, Dice, Notes scroll inside) or scrolling as a whole (Initiative, Session).
+    // Exactly one: clipped (Chat, Dice, Notes scroll inside) or scrolling as a whole (Initiative, Gallery, Session).
     expect(classes.filter((c) => c === 'overflow-hidden' || c === 'overflow-y-auto'), panel.id).toHaveLength(1);
   }
 });
