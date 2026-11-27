@@ -36,7 +36,17 @@ describe('manifest guard', () => {
     expect((await stat(again.file)).mode & 0o777).toBe(0o600);
     await again.remove('map', [MAP]);
     expect((await Manifest.load(dir, CAMPAIGN)).has('map', MAP)).toBe(false);
-    expect(JSON.parse(await readFile(again.file, 'utf8')).campaignId).toBe(CAMPAIGN);
+    const onDisk = JSON.parse(await readFile(again.file, 'utf8'));
+    expect(onDisk.campaignId).toBe(CAMPAIGN);
+    expect(onDisk.items.map).toEqual([]);
+  });
+
+  it('keeps every id when creates run side by side', async () => {
+    const [a, b] = await Promise.all([Manifest.load(dir, CAMPAIGN), Manifest.load(dir, CAMPAIGN)]);
+    await Promise.all([a.add('wall', ['w1']), b.add('wall', ['w2']), a.add('light', ['l1'])]);
+    const onDisk = JSON.parse(await readFile(a.file, 'utf8')).items;
+    expect(onDisk.wall).toEqual(['w1', 'w2']);
+    expect(onDisk.light).toEqual(['l1']);
   });
 
   it('refuses a campaign id that is not a UUID, so no path can be built from it', async () => {

@@ -30,7 +30,7 @@ session cookie and the address to `~/.config/mistwarden-mcp/session.json`,
 readable by you alone (mode 0600). Set `MISTWARDEN_SESSION_FILE` to keep it
 elsewhere. The session lasts 30 days without use and is renewed by every
 request; when it has ended, the tools answer with a request to run
-`npm run login` again. Signing out everywhere in Mistwarden, or turning
+`npm run login` again (no restart of the server needed). Signing out everywhere in Mistwarden, or turning
 two-factor authentication on or off, ends it too.
 
 ## Registering it in Claude Code
@@ -101,10 +101,10 @@ connected. The same entry by hand, in a project's `.mcp.json`:
   passes `allowDuplicate: true`, so a build that is run again does not add a
   second set.
 - **Rate limits respected.** The client reads the `RateLimit-Remaining` and
-  `RateLimit-Reset` headers and pauses when fewer than 10 requests are left in
-  the window (the budget of 300 a minute is per address and shared with your
+  `RateLimit-Reset` headers and pauses when fewer than 10 requests are left in a
+  short window (the general budget of 300 a minute is per address and shared with your
   browser). After a 429 it waits for `Retry-After` and retries, up to four
-  times; a wait longer than about a minute (the hourly export limit) is
+  times; a wait longer than 45 s (the hourly export limit, say) is
   reported instead.
 
 ## Coordinates

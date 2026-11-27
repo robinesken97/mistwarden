@@ -26,9 +26,13 @@ interface ManifestData {
 }
 
 /** The ids of everything this server created in one campaign, in a JSON file beside the session file. */
+// One instance per file, so tool calls running side by side share the ids.
+const loaded = new Map<string, Promise<Manifest>>();
+
 export class Manifest {
   readonly file: string;
   private data: ManifestData;
+  private saving: Promise<void> = Promise.resolve();
 
   private constructor(file: string, data: ManifestData) {
     this.file = file;
@@ -38,6 +42,16 @@ export class Manifest {
   static async load(stateDir: string, campaignId: string): Promise<Manifest> {
     assertUuid(campaignId, 'campaignId');
     const file = path.join(stateDir, `manifest-${campaignId.toLowerCase()}.json`);
+    let manifest = loaded.get(file);
+    if (!manifest) {
+      manifest = Manifest.read(file, campaignId);
+      loaded.set(file, manifest);
+      manifest.catch(() => loaded.delete(file));
+    }
+    return manifest;
+  }
+
+  private static async read(file: string, campaignId: string): Promise<Manifest> {
     const empty = Object.fromEntries(KINDS.map((k) => [k, [] as string[]])) as Record<Kind, string[]>;
     let items = empty;
     try {
@@ -61,12 +75,18 @@ export class Manifest {
   async add(kind: Kind, ids: string[]): Promise<void> {
     const list = this.data.items[kind];
     for (const id of ids) if (!list.includes(id)) list.push(id);
-    await writePrivateJson(this.file, this.data);
+    await this.save();
   }
 
   async remove(kind: Kind, ids: string[]): Promise<void> {
     this.data.items[kind] = this.data.items[kind].filter((id) => !ids.includes(id));
-    await writePrivateJson(this.file, this.data);
+    await this.save();
+  }
+
+  /** Writes one at a time, each with the latest ids. */
+  private save(): Promise<void> {
+    this.saving = this.saving.catch(() => undefined).then(() => writePrivateJson(this.file, this.data));
+    return this.saving;
   }
 }
 

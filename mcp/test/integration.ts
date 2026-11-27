@@ -200,6 +200,31 @@ assert.match(storedNote.content, /The door is locked/);
 const { pictures } = await rest<{ pictures: Array<{ id: string; shownToAll: boolean; shownTo: string[]; folder: string }> }>('GET', `/api/campaigns/${campaignId}/gallery`);
 assert.deepEqual(pictures.map((p) => [p.id, p.shownToAll, p.shownTo.length, p.folder]), [[picture.pictureId, false, 0, 'Mistvale']]);
 
+step('the read tools, and changing and removing what was built');
+const listed = await gm.ok('list_campaigns', {});
+assert.ok(listed.some((c: { id: string; role: string }) => c.id === campaignId && c.role === 'GM'));
+const info = await gm.ok('get_campaign', { campaignId });
+assert.ok(info.members.length >= 1);
+const maps = await gm.ok('list_maps', { campaignId });
+assert.ok(maps.some((m: { id: string; createdByThisServer: boolean }) => m.id === mapId && m.createdByThisServer));
+assert.ok((await gm.ok('list_notes', { campaignId })).some((n: { id: string }) => n.id === note.noteId));
+assert.match((await gm.ok('get_note', { campaignId, noteId: note.noteId })).content, /locked/);
+assert.equal((await gm.ok('list_gallery', { campaignId })).length, 1);
+const moved = await gm.ok('update_token', { campaignId, mapId, tokenId: token.id, x: 3, y: 2, size: 2, visible: true });
+assert.deepEqual([moved.x, moved.y, moved.size, moved.visible], [3, 2, 2, true]);
+assert.equal((await gm.ok('update_light', { campaignId, mapId, lightId: light.id, dimRadius: 6, enabled: false })).dimRadius, 6);
+const extra = await gm.ok('add_token', { campaignId, mapId, name: 'Mistvale rat', x: 10, y: 10 });
+await gm.ok('delete_token', { campaignId, mapId, tokenId: extra.id });
+const spare = await gm.ok('add_light', { campaignId, mapId, x: 900, y: 900, brightRadius: 1, dimRadius: 2 });
+await gm.ok('delete_light', { campaignId, mapId, lightId: spare.id });
+const twoWalls = walls.added.slice(0, 2).map((w: { id: string }) => w.id);
+assert.deepEqual((await gm.ok('delete_walls', { campaignId, mapId, wallIds: twoWalls })).deleted, twoWalls);
+assert.equal((await gm.ok('fog_hide_rect', { campaignId, mapId, x: 0, y: 0, width: 100, height: 100 })).revealedCells, 11);
+assert.equal((await gm.ok('fog_reveal_all', { campaignId, mapId })).revealedCells, 42 * 14);
+assert.equal((await gm.ok('fog_hide_all', { campaignId, mapId })).revealedCells, 0);
+await gm.ok('fog_reveal_rect', { campaignId, mapId, x: 0, y: 0, width: 400, height: 300 });
+assert.deepEqual(await gm.ok('delete_map', { campaignId, mapId: cellar.mapId }), { deleted: cellar.mapId });
+
 step('manifest guard refuses an object it did not create');
 const { token: foreign } = await rest<{ token: { id: string } }>('POST', `/api/campaigns/${campaignId}/maps/${mapId}/tokens`, { name: 'Placed by hand', position: { x: 5, y: 5 } });
 const refused = await gm.call('delete_token', { campaignId, mapId, tokenId: foreign.id });
@@ -214,13 +239,19 @@ assert.ok(live.isError && /players currently see/.test(live.text), 'changed the 
 
 const full = await gm.ok('create_backup', { campaignId });
 process.stdout.write(`  export after the scene: ${full.bytes} bytes in ${full.seconds} s\n`);
+assert.equal((await readFile(full.file)).toString('latin1', 0, 2), 'PK', 'the backup is not a zip archive');
+assert.equal((await stat(full.file)).mode & 0o777, 0o600);
 await gm.client.close();
 
 step('player-visible tools appear only with the switch');
 const open = await connect({ MISTWARDEN_MCP_PLAYER_VISIBLE: '1' });
 const openNames = (await open.client.listTools()).tools.map((t) => t.name);
 for (const t of PLAYER_TOOLS) assert.ok(openNames.includes(t), `${t} missing with the switch on`);
+assert.equal((await open.ok('set_current_map', { campaignId, mapId })).currentMapId, mapId);
+await open.ok('add_token', { campaignId, mapId, name: 'Late arrival', x: 2, y: 2 });
 await open.ok('show_gallery_picture', { campaignId, pictureId: picture.pictureId, toAll: true });
+const shownPics = await rest<{ pictures: Array<{ id: string; shownToAll: boolean }> }>('GET', `/api/campaigns/${campaignId}/gallery`);
+assert.equal(shownPics.pictures.find((p) => p.id === picture.pictureId)?.shownToAll, true);
 const shared = await open.ok('share_document', { campaignId, name: 'Mistvale handout', markdown: '# Mistvale\n\nA village in the fog.' });
 const { documents } = await rest<{ documents: Array<{ id: string }> }>('GET', `/api/campaigns/${campaignId}/documents`);
 assert.ok(documents.some((d) => d.id === shared.documentId), 'the document was not shared');

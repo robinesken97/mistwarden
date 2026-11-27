@@ -36,9 +36,11 @@ const seconds = (value: string | null): number | null => {
   return Number.isFinite(n) && n >= 0 ? n : null;
 };
 
+type SessionSource = Pick<Session, 'baseUrl' | 'cookie'> | (() => Promise<Pick<Session, 'baseUrl' | 'cookie'>>);
+
 export class Api {
-  readonly baseUrl: string;
-  private readonly cookie: string;
+  // A function is called for every request, so a fresh `npm run login` takes effect without a restart.
+  private readonly session: SessionSource;
   private readonly fetchImpl: typeof fetch;
   private readonly sleep: (ms: number) => Promise<void>;
   private readonly maxWaitMs: number;
@@ -46,12 +48,12 @@ export class Api {
   private readonly retries: number;
   private pauseUntil = 0;
 
-  constructor(session: Pick<Session, 'baseUrl' | 'cookie'>, options: ApiOptions = {}) {
-    this.baseUrl = session.baseUrl.replace(/\/+$/, '');
-    this.cookie = session.cookie;
+  constructor(session: SessionSource, options: ApiOptions = {}) {
+    this.session = session;
     this.fetchImpl = options.fetch ?? fetch;
     this.sleep = options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
-    this.maxWaitMs = options.maxWaitMs ?? 65_000;
+    // Below the 60 s an MCP client waits for a tool by default.
+    this.maxWaitMs = options.maxWaitMs ?? 45_000;
     // The per-address budget is shared with the GM's own browser: leave it room.
     this.reserve = options.reserve ?? 10;
     this.retries = options.retries ?? 4;
@@ -63,7 +65,8 @@ export class Api {
       const wait = this.pauseUntil - Date.now();
       if (wait > 0) await this.sleep(wait);
 
-      const headers: Record<string, string> = { cookie: this.cookie, accept: 'application/json' };
+      const session = typeof this.session === 'function' ? await this.session() : this.session;
+      const headers: Record<string, string> = { cookie: session.cookie, accept: 'application/json' };
       let payload: string | FormData | undefined;
       if (body.json !== undefined) {
         headers['content-type'] = 'application/json';
@@ -71,12 +74,16 @@ export class Api {
       } else if (body.form) {
         payload = body.form;
       }
-      const res = await this.fetchImpl(`${this.baseUrl}${path}`, { method, headers, body: payload });
+      const res = await this.fetchImpl(`${session.baseUrl.replace(/\/+$/, '')}${path}`, { method, headers, body: payload });
 
       const remaining = seconds(res.headers.get('ratelimit-remaining'));
       const reset = seconds(res.headers.get('ratelimit-reset'));
-      if (remaining !== null && remaining <= this.reserve && reset !== null) {
-        this.pauseUntil = Date.now() + Math.min(reset * 1000, this.maxWaitMs);
+      const limit = seconds(res.headers.get('ratelimit-limit'));
+      // Pace only short windows with room to spare (the general per-minute one);
+      // an hourly limit such as the export one answers with a 429 when spent.
+      const reserve = Math.min(this.reserve, Math.floor((limit ?? 0) / 10));
+      if (remaining !== null && reset !== null && remaining <= reserve && reset * 1000 <= this.maxWaitMs) {
+        this.pauseUntil = Date.now() + reset * 1000;
       }
 
       if (res.status === 401) {

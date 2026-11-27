@@ -62,7 +62,7 @@ describe('Api', () => {
   });
 
   it('pauses before the next request when the window is nearly spent', async () => {
-    const { fetchImpl } = scripted([json(200, {}, { 'ratelimit-remaining': '2', 'ratelimit-reset': '7' }), json(200, {})]);
+    const { fetchImpl } = scripted([json(200, {}, { 'ratelimit-limit': '300', 'ratelimit-remaining': '2', 'ratelimit-reset': '7' }), json(200, {})]);
     const { waits, sleep } = clock();
     const api = new Api(session, { fetch: fetchImpl, sleep, reserve: 5 });
     await api.json('GET', '/a');
@@ -80,6 +80,25 @@ describe('Api', () => {
     await api.json('GET', '/a');
     await api.json('GET', '/b');
     expect(waits).toEqual([]);
+  });
+
+  it('does not pace an hourly limit, which would outlast the tool call', async () => {
+    const { fetchImpl } = scripted([json(200, {}, { 'ratelimit-limit': '5', 'ratelimit-remaining': '4', 'ratelimit-reset': '3600' }), json(200, {})]);
+    const { waits, sleep } = clock();
+    const api = new Api(session, { fetch: fetchImpl, sleep });
+    await api.json('GET', '/export');
+    await api.json('GET', '/b');
+    expect(waits).toEqual([]);
+  });
+
+  it('reads the session for each request when given a function', async () => {
+    const { calls, fetchImpl } = scripted([json(200, {}), json(200, {})]);
+    let cookie = 'sid=old';
+    const api = new Api(async () => ({ baseUrl: 'http://mistwarden.test', cookie }), { fetch: fetchImpl });
+    await api.json('GET', '/a');
+    cookie = 'sid=new';
+    await api.json('GET', '/b');
+    expect(calls.map((c) => (c.init?.headers as Record<string, string>).cookie)).toEqual(['sid=old', 'sid=new']);
   });
 
   it('turns a 401 into the login hint', async () => {

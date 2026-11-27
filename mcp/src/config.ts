@@ -1,6 +1,7 @@
 // Added for Mistwarden on 2026-11-27.
 // Where the server keeps its files, and the switches it reads from the environment.
 
+import { randomBytes } from 'node:crypto';
 import { chmod, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -56,7 +57,7 @@ export async function readSession(file: string): Promise<Session> {
 /** Writes JSON readable by the owner only, atomically (temp file, then rename). */
 export async function writePrivateJson(file: string, data: unknown): Promise<void> {
   await mkdir(path.dirname(file), { recursive: true, mode: 0o700 });
-  const temp = `${file}.${process.pid}.tmp`;
+  const temp = `${file}.${process.pid}.${randomBytes(4).toString('hex')}.tmp`;
   await writeFile(temp, `${JSON.stringify(data, null, 2)}\n`, { mode: 0o600 });
   // `mode` only applies when the file is created; make sure either way.
   await chmod(temp, 0o600);
