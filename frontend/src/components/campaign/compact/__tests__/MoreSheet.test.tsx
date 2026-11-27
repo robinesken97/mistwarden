@@ -44,7 +44,7 @@ function groups(): Array<[string, string[]]> {
   ]);
 }
 
-const AT_THE_TABLE: [string, string[]] = ['At the table', ['Notes', 'Session', 'Documents', 'Shortcuts']];
+const AT_THE_TABLE: [string, string[]] = ['At the table', ['Notes', 'Gallery', 'Session', 'Documents', 'Shortcuts']];
 
 describe('More', () => {
   it('is a modal sheet at full height, named More', () => {
@@ -81,6 +81,7 @@ describe('More', () => {
 
   it.each([
     ['Notes', 'onOpenPanel', ['notes']],
+    ['Gallery', 'onOpenPanel', ['gallery']],
     ['Session', 'onOpenPanel', ['session']],
     ['Documents', 'onOpenDocuments', []],
     ['Shortcuts', 'onOpenShortcuts', []],

@@ -44,6 +44,7 @@ import type {
   MapPingEvent,
   MapPingedBroadcast,
   AccessRevoked,
+  GalleryPicture,
 } from '@/types';
 import type {
   DrawingAddEvent,
@@ -611,6 +612,15 @@ class SocketClient {
 
   onChatSystem(callback: EventCallback<ChatSystemBroadcast>) {
     this.addListener('chat.system', callback);
+  }
+
+  // Gallery (Mistwarden, 2026-11-27): the list changed, or a picture was shown to this user.
+  onGalleryChanged(callback: EventCallback<{ campaignId: string }>) {
+    this.addListener('gallery.changed', callback);
+  }
+
+  onGalleryShown(callback: EventCallback<{ campaignId: string; picture: GalleryPicture }>) {
+    this.addListener('gallery.shown', callback);
   }
 
   // ============================================

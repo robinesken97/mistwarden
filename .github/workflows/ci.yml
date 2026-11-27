@@ -211,6 +211,9 @@ jobs:
             echo "HTTP_PORT=8080"
             echo "HTTPS_PORT=8443"
             echo "CORS_ORIGIN=http://localhost:8080"
+            # Mistwarden, 2026-11-27: e2e/table.spec.ts seats five browsers at one
+            # table, all from this one address; 300 requests a minute is per visitor.
+            echo "RATE_LIMIT_MAX_REQUESTS=1000"
           } > .env
           docker compose up -d --wait --wait-timeout 180
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0

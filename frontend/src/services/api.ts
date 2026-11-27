@@ -680,6 +680,34 @@ class ApiClient {
   // server decides who may read, edit or share each one; these calls only ask.
   // ============================================
 
+  // Gallery (Mistwarden, 2026-11-27)
+  async listGallery(campaignId: string): Promise<{ pictures: import('@/types').GalleryPicture[] }> {
+    const response = await this.client.get(`/api/campaigns/${campaignId}/gallery`);
+    return response.data;
+  }
+
+  async addGalleryPicture(
+    campaignId: string,
+    body: { assetId: string; name: string; folder?: string }
+  ): Promise<{ picture: import('@/types').GalleryPicture }> {
+    const response = await this.client.post(`/api/campaigns/${campaignId}/gallery`, body);
+    return response.data;
+  }
+
+  async updateGalleryPicture(
+    campaignId: string,
+    pictureId: string,
+    body: { name?: string; folder?: string; shownToAll?: boolean; shownTo?: string[] }
+  ): Promise<{ picture: import('@/types').GalleryPicture }> {
+    const response = await this.client.patch(`/api/campaigns/${campaignId}/gallery/${pictureId}`, body);
+    return response.data;
+  }
+
+  async removeGalleryPicture(campaignId: string, pictureId: string): Promise<{ message: string }> {
+    const response = await this.client.delete(`/api/campaigns/${campaignId}/gallery/${pictureId}`);
+    return response.data;
+  }
+
   /**
    * The documents a campaign's members may read: shared in by the GM, or
    * created for the campaign. Any member can list.

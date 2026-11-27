@@ -21,6 +21,7 @@ vi.mock('../InitiativeTracker', nothing);
 vi.mock('../SessionControls', nothing);
 vi.mock('../SessionHistory', nothing);
 vi.mock('../PersonalNotes', nothing);
+vi.mock('../GalleryPanel', nothing);
 
 import SessionSidebar from '../SessionSidebar';
 
