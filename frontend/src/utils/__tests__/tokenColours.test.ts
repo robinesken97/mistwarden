@@ -6,7 +6,7 @@
  * compares the map with the same constants would pass whatever they were.
  */
 import { describe, it, expect } from 'vitest';
-import { TOKEN_HUES, HP_HUES, TEMP_HP_FILL, hpTier, tokenKind, tokenPlaceholder } from '../tokenColours';
+import { TOKEN_HUES, HP_HUES, TEMP_HP_FILL, hpTier, tokenKind } from '../tokenColours';
 
 const hex = (channels: string) => `#${channels.split(' ').map((c) => Number(c).toString(16).padStart(2, '0')).join('')}`;
 
@@ -34,11 +34,5 @@ describe('which colour a token is', () => {
     expect(tokenKind('object', 'neutral')).toBe('neutral');
     expect(tokenKind('npc', null)).toBe('object');
     expect(tokenKind('object', undefined)).toBe('object');
-  });
-
-  it('gives a picture-less creature or template the same colour as its letter circle', () => {
-    expect(tokenPlaceholder('player', null)).toContain('bg-token-player');
-    expect(tokenPlaceholder('object', null)).toContain('bg-token-object');
-    expect(tokenPlaceholder('npc', 'friendly')).toContain('bg-token-friendly');
   });
 });

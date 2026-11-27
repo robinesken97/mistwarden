@@ -42,11 +42,45 @@ UI icons are provided by [Lucide](https://lucide.dev/), licensed under the ISC L
 
 ## Pictures
 
-The pictures in the repository are CozyVTT's own artwork: its logo, its mascot and the app's icons. None came from a game publisher.
+The pictures in the repository are CozyVTT's own artwork, its logo, its mascot and the app's icons, except the token symbols below, which come from game-icons.net. None came from a game publisher.
 
 - `assets/default-logo.png` and `frontend/public/default-logo.png`: the logo
 - `frontend/public/default-mascot.png`: the mascot
 - `frontend/public/favicon.svg`, `frontend/public/favicon-32.png`, `frontend/public/favicon-192.png`, `frontend/public/icon-512.png` and `frontend/public/apple-touch-icon.png`: the app's icons, which a browser shows in a tab or on a home screen
+
+### Token symbols
+
+A token with no picture is drawn as a symbol for its creature type or class. The symbols are from [game-icons.net](https://game-icons.net/), licensed under the [Creative Commons Attribution 3.0 Unported License](https://creativecommons.org/licenses/by/3.0/) (CC BY 3.0). Each file is the white-on-transparent download of the icon named beside it, renamed for what it stands for; the only change is a width and height of 512 added to its `<svg>` tag, so a canvas draws it at a known size.
+
+| File | Icon | Credit |
+|------|------|--------|
+| `frontend/src/assets/token-icons/aberration.svg` | tentacle-strike | Icons by Lorc from game-icons.net, CC BY 3.0 |
+| `frontend/src/assets/token-icons/beast.svg` | wolf-head | Icons by Lorc from game-icons.net, CC BY 3.0 |
+| `frontend/src/assets/token-icons/celestial.svg` | angel-wings | Icons by Lorc from game-icons.net, CC BY 3.0 |
+| `frontend/src/assets/token-icons/construct.svg` | robot-golem | Icons by Lorc from game-icons.net, CC BY 3.0 |
+| `frontend/src/assets/token-icons/dragon.svg` | dragon-head | Icons by Lorc from game-icons.net, CC BY 3.0 |
+| `frontend/src/assets/token-icons/elemental.svg` | fire-ring | Icons by Lorc from game-icons.net, CC BY 3.0 |
+| `frontend/src/assets/token-icons/fey.svg` | fairy | Icons by Lorc from game-icons.net, CC BY 3.0 |
+| `frontend/src/assets/token-icons/fiend.svg` | imp-laugh | Icons by Lorc from game-icons.net, CC BY 3.0 |
+| `frontend/src/assets/token-icons/giant.svg` | giant | Icons by Delapouite from game-icons.net, CC BY 3.0 |
+| `frontend/src/assets/token-icons/humanoid.svg` | cowled | Icons by Lorc from game-icons.net, CC BY 3.0 |
+| `frontend/src/assets/token-icons/monstrosity.svg` | spiked-tentacle | Icons by Lorc from game-icons.net, CC BY 3.0 |
+| `frontend/src/assets/token-icons/ooze.svg` | slime | Icons by Delapouite from game-icons.net, CC BY 3.0 |
+| `frontend/src/assets/token-icons/plant.svg` | oak | Icons by Lorc from game-icons.net, CC BY 3.0 |
+| `frontend/src/assets/token-icons/undead.svg` | skull-crossed-bones | Icons by Lorc from game-icons.net, CC BY 3.0 |
+| `frontend/src/assets/token-icons/barbarian.svg` | barbarian | Icons by Delapouite from game-icons.net, CC BY 3.0 |
+| `frontend/src/assets/token-icons/bard.svg` | lyre | Icons by Lorc from game-icons.net, CC BY 3.0 |
+| `frontend/src/assets/token-icons/cleric.svg` | holy-symbol | Icons by Lorc from game-icons.net, CC BY 3.0 |
+| `frontend/src/assets/token-icons/druid.svg` | leaf-swirl | Icons by Lorc from game-icons.net, CC BY 3.0 |
+| `frontend/src/assets/token-icons/fighter.svg` | crossed-swords | Icons by Lorc from game-icons.net, CC BY 3.0 |
+| `frontend/src/assets/token-icons/monk.svg` | meditation | Icons by Lorc from game-icons.net, CC BY 3.0 |
+| `frontend/src/assets/token-icons/paladin.svg` | templar-shield | Icons by Delapouite from game-icons.net, CC BY 3.0 |
+| `frontend/src/assets/token-icons/ranger.svg` | high-shot | Icons by Lorc from game-icons.net, CC BY 3.0 |
+| `frontend/src/assets/token-icons/rogue.svg` | cloak-dagger | Icons by Lorc from game-icons.net, CC BY 3.0 |
+| `frontend/src/assets/token-icons/sorcerer.svg` | magic-swirl | Icons by Lorc from game-icons.net, CC BY 3.0 |
+| `frontend/src/assets/token-icons/warlock.svg` | pentagram-rose | Icons by Lorc from game-icons.net, CC BY 3.0 |
+| `frontend/src/assets/token-icons/wizard.svg` | wizard-staff | Icons by Lorc from game-icons.net, CC BY 3.0 |
+| `frontend/src/assets/token-icons/person.svg` | person | Icons by Delapouite from game-icons.net, CC BY 3.0 |
 
 ## Campaign Export/Import Libraries
 

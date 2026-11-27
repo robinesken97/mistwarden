@@ -89,6 +89,7 @@ export default function CampaignRoster() {
         m.characters.map((c) => ({ id: c.id, hp: c.hp }))
       );
       useGameStore.getState().seedCharacterHp(hpEntries);
+      useGameStore.getState().seedCharacterIcons(response.roster.flatMap((m) => m.characters));
     } catch (error) {
       if (seq !== rosterSeq.current) return;
       setLoadFailed(true);

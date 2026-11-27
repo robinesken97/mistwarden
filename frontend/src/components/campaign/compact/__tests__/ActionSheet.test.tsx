@@ -38,7 +38,7 @@ function token(extra: Partial<Token> = {}): Token {
 function tokenActions(): TokenMenuActions {
   return {
     viewSheet: vi.fn(), rollCharacter: vi.fn(), grantTemporaryHp: vi.fn(), rotate: vi.fn(), rollCreature: vi.fn(), edit: vi.fn(), addToInitiative: vi.fn(),
-    duplicate: vi.fn(), saveAsTemplate: vi.fn(), setVisible: vi.fn(), setObscured: vi.fn(), setLayer: vi.fn(), moveToMap: vi.fn(), mountOn: vi.fn(), dismount: vi.fn(),
+    duplicate: vi.fn(), saveAsTemplate: vi.fn(), setVisible: vi.fn(), setObscured: vi.fn(), setNameHidden: vi.fn(), setLayer: vi.fn(), moveToMap: vi.fn(), mountOn: vi.fn(), dismount: vi.fn(),
     remove: vi.fn(),
   };
 }

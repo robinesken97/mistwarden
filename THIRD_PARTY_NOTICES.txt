@@ -113,6 +113,14 @@ is at the end of this file and in frontend/src/assets/fonts/OFL.txt:
     License: SIL Open Font License 1.1
     https://fonts.google.com/specimen/UnifrakturMaguntia
 
+  Token symbols (pictures, bundled)
+    The symbols drawn on a token with no picture, in
+    frontend/src/assets/token-icons/: icons by Lorc and by Delapouite from
+    game-icons.net. Each file names its icon in THIRD_PARTY_CREDITS.md; the
+    only change is a width and height added to its <svg> tag.
+    License: Creative Commons Attribution 3.0 Unported (CC BY 3.0)
+    https://creativecommons.org/licenses/by/3.0/
+
 
 ================================================================================
 SECTION 2: GAME CONTENT

@@ -31,6 +31,7 @@ import { errorMessage } from '../utils/errors';
 import { inSerializableTransaction } from '../utils/serializable';
 import { toJson, readJsonObject } from '../utils/prisma-json';
 import { extractCharacterHp } from '../utils/characterHp';
+import { classIcon } from '../utils/tokenIcons';
 import logger from '../utils/logger';
 import { encodeMessageCursor, decodeMessageCursor } from '../utils/messageCursor';
 import { MULTIPART_FIELD_LIMITS, MULTIPART_NAME_CHARSET } from '../utils/multipartLimits';
@@ -424,10 +425,12 @@ router.get('/:campaignId/characters', campaignMember, async (req: AuthenticatedR
     const roster = memberships.map((membership) => {
       const memberCharacters = characters
         .filter((c) => membership.characterIds.includes(c.id))
-        .map(({ data, ...char }) => ({
-          ...char,
-          hp: extractCharacterHp(char.gameSystem, readJsonObject(sheetAsRead(char.gameSystem, data))),
-        }));
+        .map(({ data, ...char }) => {
+          const sheet = readJsonObject(sheetAsRead(char.gameSystem, data));
+          // Mistwarden, 2026-11-27: the symbol the class gives a token with no
+          // picture (utils/tokenIcons.ts), never the sheet's own text.
+          return { ...char, hp: extractCharacterHp(char.gameSystem, sheet), icon: classIcon(sheet?.class) };
+        });
 
       return {
         userId: membership.userId,

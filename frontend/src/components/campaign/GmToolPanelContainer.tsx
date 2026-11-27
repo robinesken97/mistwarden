@@ -11,7 +11,7 @@
  */
 
 import { useState, useRef, useCallback, useEffect, type ReactNode, type RefObject } from 'react';
-import { X } from 'lucide-react';
+import { GripHorizontal, X } from 'lucide-react';
 import { stackCornerTop, type TopBand } from './map/toolbarLayout';
 
 interface GmToolPanelContainerProps {
@@ -34,16 +34,21 @@ interface GmToolPanelContainerProps {
    * the compact layout's dock at the map's foot, as tall as it is.
    */
   roomBelow?: number;
+  /** The card's heading: "GM tools", or what a player's Draw panel is under. */
+  label?: string;
 }
 
 /**
  * Where the stack starts: the map's top right corner, beside its toolbar,
  * or under it where the toolbar reaches the corner.
  */
-const CORNER_TOP = '3.5rem';
+// Mistwarden, 2026-11-27: one card in the toolbar's style, its top level with
+// the toolbar's (top-4) and as far in from the right edge as the toolbar is
+// from the left (left-4); 200 pixels of panels inside its padding.
+const CORNER_TOP = '1rem';
 /** The stack's gap from the map's right edge, and its one width, in pixels: set here and read for the toolbar's reach. */
-const CORNER_RIGHT_PX = 8;
-const STACK_WIDTH_PX = 200;
+const CORNER_RIGHT_PX = 16;
+const STACK_WIDTH_PX = 216;
 /**
  * Room kept below the stack for the Preview Player View button, which sits
  * 5rem above the map's bottom edge: that, its height and a gap. A taller
@@ -56,7 +61,7 @@ const ROOM_BELOW = '8rem';
 /** The stack is never cut shorter than this, wherever it is dropped. */
 const SHORTEST = '6rem';
 
-export default function GmToolPanelContainer({ children, containerRef, band = null, hidden = false, onHide, topLimit = 0, roomBelow }: GmToolPanelContainerProps) {
+export default function GmToolPanelContainer({ children, containerRef, band = null, hidden = false, onHide, topLimit = 0, roomBelow, label = 'GM tools' }: GmToolPanelContainerProps) {
   // Where the stack was dropped, in pixels from the map container's top left
   // corner; null for its place in the top right corner. It was fixed to the
   // window, so it stayed put when the map moved or shrank and could be left
@@ -138,18 +143,19 @@ export default function GmToolPanelContainer({ children, containerRef, band = nu
   };
 
   // One width for the stack, the one Walls and Lights take, so a section's
-  // notes wrap instead of widening every panel when it is opened.
+  // notes wrap instead of widening every panel when it is opened. The card is
+  // the toolbar's (glass-panel p-2 bg-parchment/90 backdrop-blur-xs).
   return (
-    <div ref={panelRef} style={style} hidden={hidden || undefined} className="flex flex-col gap-1.5 overflow-y-auto *:shrink-0">
-      {/* Drag handle, kept in view while the panels below it scroll. Taller
-          for a finger on a touch screen, and it takes the touch itself:
-          left to the browser, a finger's drag scrolled the stack and
-          cancelled the move. Once moved, it offers Reset position, the
-          double-click's way back, which a finger rarely lands; on a touch
-          screen the bar then grows to hold the button's 44 pixels, which
-          stood out of it, cut off above and over the first panel below. */}
+    <div ref={panelRef} style={style} hidden={hidden || undefined} className="glass-panel p-2 bg-parchment/90 backdrop-blur-xs flex flex-col gap-1.5 overflow-y-auto *:shrink-0">
+      {/* The card's heading, which is its drag handle, kept in view while the
+          panels below it scroll. Taller for a finger on a touch screen, and
+          it takes the touch itself: left to the browser, a finger's drag
+          scrolled the stack and cancelled the move. Once moved, it offers
+          Reset position, the double-click's way back, which a finger rarely
+          lands; on a touch screen the row then grows to hold the button's
+          44 pixels. */}
       <div
-        className={`sticky top-0 z-10 flex items-center justify-center py-0.5 ${onHide ? 'min-h-11' : position ? 'pointer-coarse:min-h-6' : 'pointer-coarse:h-6'} touch-none cursor-grab active:cursor-grabbing select-none rounded-t bg-stone-700 border border-stone-600/30 hover:bg-stone-600 transition-colors`}
+        className={`sticky top-0 z-10 flex items-center gap-1 pl-1 pb-1 border-b border-ink/10 bg-parchment/95 ${onHide ? 'min-h-11' : position ? 'pointer-coarse:min-h-6' : 'pointer-coarse:h-6'} touch-none cursor-grab active:cursor-grabbing select-none`}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -157,14 +163,8 @@ export default function GmToolPanelContainer({ children, containerRef, band = nu
         onDoubleClick={() => setPosition(null)}
         title="Drag to move the panels; double-click to put them back in the corner"
       >
-        <svg width="16" height="6" viewBox="0 0 16 6" className="opacity-40 mx-auto">
-          <circle cx="4" cy="1.5" r="1.2" fill="currentColor" className="text-stone-400" />
-          <circle cx="8" cy="1.5" r="1.2" fill="currentColor" className="text-stone-400" />
-          <circle cx="12" cy="1.5" r="1.2" fill="currentColor" className="text-stone-400" />
-          <circle cx="4" cy="4.5" r="1.2" fill="currentColor" className="text-stone-400" />
-          <circle cx="8" cy="4.5" r="1.2" fill="currentColor" className="text-stone-400" />
-          <circle cx="12" cy="4.5" r="1.2" fill="currentColor" className="text-stone-400" />
-        </svg>
+        <span className="text-xs font-semibold uppercase tracking-wider text-ink-muted">{label}</span>
+        <GripHorizontal className="ml-auto w-4 h-4 shrink-0 text-ink-muted/70" aria-hidden="true" />
         {position && (
           <button
             type="button"
@@ -172,13 +172,13 @@ export default function GmToolPanelContainer({ children, containerRef, band = nu
             onPointerDown={(e) => e.stopPropagation()}
             onClick={() => setPosition(null)}
             title="Put the panels back in the corner"
-            className="touch-target shrink-0 px-1.5 py-0.5 rounded-sm text-[10px] leading-none text-stone-300 hover:text-white hover:bg-stone-500/60 transition-colors"
+            className="touch-target shrink-0 px-1.5 py-0.5 rounded-sm text-[10px] leading-none text-ink-muted hover:text-ink hover:bg-ink/10 transition-colors"
           >
             Reset position
           </button>
         )}
         {/* The compact layout's way to put the stack away, beside Map
-            controls' Hide tools: the handle is 44 pixels tall to hold it. */}
+            controls' Hide tools: the row is 44 pixels tall to hold it. */}
         {onHide && (
           <button
             type="button"
@@ -186,7 +186,7 @@ export default function GmToolPanelContainer({ children, containerRef, band = nu
             onClick={onHide}
             aria-label="Hide tools"
             title="Hide tools"
-            className="inline-flex size-11 shrink-0 items-center justify-center rounded-sm text-stone-300 hover:text-white hover:bg-stone-500/60 transition-colors"
+            className="inline-flex size-11 shrink-0 items-center justify-center rounded-sm text-ink-muted hover:text-ink hover:bg-ink/10 transition-colors"
           >
             <X className="w-4 h-4" aria-hidden="true" />
           </button>

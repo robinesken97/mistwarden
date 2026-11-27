@@ -4,7 +4,8 @@
  * Tokens saved here can be reused across maps and copied to other campaigns.
  */
 
-import { tokenPlaceholder } from '@/utils/tokenColours';
+import { statBlockIcon } from '@/utils/tokenIcons';
+import TokenSymbol from './TokenSymbol';
 import { useState, useEffect, useCallback, useRef, type RefObject } from 'react';
 import {
   X,
@@ -448,9 +449,7 @@ function TemplateRow({
             className="w-8 h-8 rounded-full object-cover shrink-0 border border-moss-green/20"
           />
         ) : (
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 font-bold text-sm ${tokenPlaceholder(template.type, template.disposition)}`}>
-            {template.name.charAt(0).toUpperCase()}
-          </div>
+          <TokenSymbol icon={statBlockIcon(template.statBlock) ?? 'person'} type={template.type} disposition={template.disposition} />
         )}
 
         <div className="flex-1 min-w-0">

@@ -178,20 +178,20 @@ export default function GmLightControls({
   const displayColor = isEditing ? selectedLight.color : placementDefaults.color;
 
   return (
-    <div className="flex flex-col gap-0 bg-stone-800/90 rounded-lg border border-amber-400/20 min-w-[200px] overflow-hidden">
+    <div className="flex flex-col gap-0 bg-stone-800/90 rounded-lg border border-warm-amber/20 min-w-[200px] overflow-hidden">
       {/* Header with collapse toggle */}
       <button
         type="button"
         aria-expanded={!collapsed}
         aria-controls={bodyId}
-        className="touch-target w-full flex items-center justify-between px-2 py-1.5 cursor-pointer hover:bg-stone-700/50 select-none"
+        className="touch-target w-full flex items-center justify-between px-3 py-3 cursor-pointer hover:bg-stone-700/50 select-none"
         onClick={() => {
           const next = !collapsed;
           setCollapsed(next);
           if (next) onCollapse?.();
         }}
       >
-        <span className="text-xs text-amber-400/70 font-medium uppercase tracking-wide">
+        <span className="text-xs text-amber-300 font-semibold uppercase tracking-wider">
           Lights
           {lightCount > 0 && (
             <>{' '}<span className="text-stone-400 normal-case">({lightCount})</span></>

@@ -457,11 +457,12 @@ describe('what sits under the toolbar', () => {
   it('starts the AoE panel under one row of a mouse’s buttons, and keeps the tool stack beside them', () => {
     render(<MapCanvas />);
     openAoE();
-    layOut(754, [[25, 25, 302, 34], [343, 25, 202, 34]]);
+    // Mistwarden, 2026-11-27: wide enough for the 216-pixel card 16 pixels in.
+    layOut(800, [[25, 25, 302, 34], [343, 25, 202, 34]]);
 
     // The band's foot is at 68, the buttons' 59 and its padding.
     expect(aoePanel().style.top).toBe('76px');
-    expect(toolStack().style.top).toBe('3.5rem');
+    expect(toolStack().style.top).toBe('1rem');
   });
 
   // A pen's hold on such a screen shows Put back at its own place.
@@ -531,6 +532,6 @@ describe('what sits under the toolbar', () => {
     render(<MapCanvas />);
     layOut(1200, [[25, 25, 543, 44], [25, 77, 300, 44]]);
 
-    expect(toolStack().style.top).toBe('3.5rem');
+    expect(toolStack().style.top).toBe('1rem');
   });
 });

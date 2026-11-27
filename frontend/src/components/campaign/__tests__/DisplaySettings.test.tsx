@@ -3,7 +3,7 @@
  * The desk header's "Display on this device" button opens this device's fog
  * and dice choices in a small panel, which Escape or a press outside closes.
  */
-import { it, expect } from 'vitest';
+import { it, expect, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { DisplaySettingsButton } from '../DisplaySettings';
 
@@ -40,4 +40,18 @@ it('keeps whether carried lights follow a drag on this device', () => {
   expect(window.localStorage.getItem('mistwarden.lightsFollowDrag')).toBe('off');
   fireEvent.click(follow);
   expect(window.localStorage.getItem('mistwarden.lightsFollowDrag')).toBe('on');
+});
+
+it('keeps the token names choice on this device, on the token pointed at or tapped until changed', () => {
+  window.localStorage.clear();
+  const heard = vi.fn();
+  window.addEventListener('mistwarden:tokennames', heard);
+  render(<DisplaySettingsButton />);
+  fireEvent.click(screen.getByRole('button', { name: 'Display on this device' }));
+  const names = screen.getByRole('combobox', { name: 'Token names' });
+  expect(names).toHaveValue('hover');
+  fireEvent.change(names, { target: { value: 'always' } });
+  expect(window.localStorage.getItem('mistwarden.tokenNames')).toBe('always');
+  expect(heard).toHaveBeenCalledTimes(1);
+  window.removeEventListener('mistwarden:tokennames', heard);
 });

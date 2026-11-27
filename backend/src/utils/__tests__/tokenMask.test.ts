@@ -77,7 +77,8 @@ describe('tokenSentTo', () => {
   const token = {
     id: 't1', name: 'Goblin', imageUrl: '', position: { x: 1, y: 1 }, size: { width: 1, height: 1 },
     layer: 'token' as const, visible: true, controlledBy: 'user-a', rotation: 0, conditions: [], metadata: {},
-    notes: 'secretly a mimic', statBlock: { ac: 15 }, hp, showHpBar: false, sightRadius: 12, obscured: false,
+    notes: 'secretly a mimic', statBlock: { ac: 15 } as object, hp, showHpBar: false, sightRadius: 12, obscured: false,
+    icon: null as string | null,
   };
 
   it('never carries the notes or the stat block', () => {
@@ -126,7 +127,7 @@ describe('tokenSentTo', () => {
     const everything = {
       ...token, characterId: 'char-1', type: 'npc' as const, disposition: 'hostile' as const, initiative: 12,
       displayMode: 'pog' as const, creatureTemplateId: 'tmpl-1', showHpBar: true,
-      light: { brightRadius: 4, dimRadius: 8, color: '#ffcc66', enabled: true }, mountedOn: 'horse',
+      light: { brightRadius: 4, dimRadius: 8, color: '#ffcc66', enabled: true }, mountedOn: 'horse', icon: 'beast',
       // A field tokens do not have today, standing in for a GM-only one added later.
       trapTrigger: 'the third flagstone',
     };
@@ -144,6 +145,34 @@ describe('tokenSentTo', () => {
     expect(tokenSentTo(rider, true, true).mountedOn).toBe('horse');
     expect(tokenSentTo(rider, true)).not.toHaveProperty('mountedOn');
     expect(tokenSentTo({ ...rider, obscured: true }, false, true)).not.toHaveProperty('mountedOn');
+  });
+
+  // Mistwarden, 2026-11-27.
+  it('sends the symbol worked out from the stat block, which it does not send, and the token\'s own over it', () => {
+    const goblin = { ...token, statBlock: { creatureType: 'Small humanoid (goblinoid)' } };
+    for (const own of [true, false]) expect(tokenSentTo(goblin, own).icon).toBe('humanoid');
+    expect(tokenSentTo({ ...goblin, icon: 'fiend' }, false).icon).toBe('fiend');
+    expect(tokenSentTo(token, false)).not.toHaveProperty('icon');
+  });
+
+  it('sends no symbol for an obscured token to anyone but the controller', () => {
+    const veiled = { ...token, obscured: true, icon: 'dragon' };
+    expect(tokenSentTo(veiled, false)).not.toHaveProperty('icon');
+    expect(tokenSentTo(veiled, true).icon).toBe('dragon');
+  });
+
+  it('sends with a hidden name only the symbol the GM set, never the one the stat block gives', () => {
+    const hidden = { ...token, nameHidden: true, statBlock: { creatureType: 'Small humanoid (goblinoid)' } };
+    expect(tokenSentTo(hidden, false)).not.toHaveProperty('icon');
+    expect(tokenSentTo(hidden, true).icon).toBe('humanoid');
+    expect(tokenSentTo({ ...hidden, icon: 'fiend' }, false).icon).toBe('fiend');
+  });
+
+  it('sends a name the GM hides to the controller alone, and never the flag', () => {
+    const hidden = { ...token, nameHidden: true };
+    expect(tokenSentTo(hidden, false).name).toBe('');
+    expect(tokenSentTo(hidden, true).name).toBe('Goblin');
+    for (const own of [true, false]) expect(tokenSentTo(hidden, own)).not.toHaveProperty('nameHidden');
   });
 
   it('leaves out a field the token does not have', () => {

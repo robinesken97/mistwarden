@@ -15,6 +15,9 @@ import { tokenCentre } from '@/utils/tokenCentre';
 import { conditionAbbreviation, MAX_CONDITION_BADGES } from '@/utils/conditions';
 import { isTokenDowned, isTokenVisibleTo, visibleTokenHp } from '../tokenHitTest';
 import { facing } from '@/utils/tokenRotation';
+import type { TokenIcon } from '@/utils/tokenIcons';
+import { tokenIcon } from '../tokenSymbols';
+import { drawNamePlate, NAME_PLATE_MIN_TOKEN_PX, type TokenNameMode } from '../namePlates';
 
 /** How much of its opacity a token at zero hit points keeps. */
 export const DOWNED_TOKEN_ALPHA = 0.45;
@@ -74,6 +77,13 @@ export interface TokenDrawState {
    * this viewer cannot see shows nothing.
    */
   selectedTokenId: string | null;
+  // Mistwarden, 2026-11-27: the look of a token with no picture, and the name plates.
+  /** The symbols' sprites made so far (map/tokenSymbols.ts). */
+  symbolSprites: ReadonlyMap<TokenIcon, HTMLCanvasElement>;
+  /** The symbol each character's class gives, by character id, from the roster. */
+  classIcons: Readonly<Record<string, TokenIcon>>;
+  /** This device's name plate choice (map/namePlates.ts). */
+  nameMode: TokenNameMode;
 }
 
 // ── Turn highlight ──────────────────────────────────────────────────────────
@@ -209,6 +219,48 @@ export function placeholderColor(token: Token): string {
   return hueColour(TOKEN_HUES[tokenKind(effectiveTypeForColor, token.disposition)]);
 }
 
+/**
+ * A token with no picture (Mistwarden, 2026-11-27): its symbol's sprite,
+ * ringed in the colour its kind or disposition gives; until the sprite is
+ * made, or for a token whose identity is masked, its letter on that colour.
+ */
+function drawPictureless(
+  ctx: CanvasRenderingContext2D,
+  token: Token,
+  sprite: HTMLCanvasElement | undefined,
+  centerX: number,
+  centerY: number,
+  radius: number
+): void {
+  if (sprite) {
+    ctx.drawImage(sprite, centerX - radius, centerY - radius, radius * 2, radius * 2);
+    const ring = radius * 0.09;
+    ctx.lineWidth = ring;
+    ctx.strokeStyle = placeholderColor(token);
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius - ring / 2, 0, Math.PI * 2);
+    ctx.stroke();
+    // A dark edge outside the ring, so a red ring holds on a red map.
+    ctx.lineWidth = radius * 0.025;
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius - ctx.lineWidth / 2, 0, Math.PI * 2);
+    ctx.stroke();
+    return;
+  }
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+  ctx.fillStyle = placeholderColor(token);
+  ctx.fill();
+  const initial = (token.name || '?').charAt(0).toUpperCase();
+  const fontSize = Math.max(12, radius * 1.0);
+  ctx.font = `bold ${fontSize}px 'Inter', system-ui, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(initial, centerX, centerY + fontSize * 0.04);
+}
+
 export function drawTokens(
   ctx: CanvasRenderingContext2D,
   state: TokenDrawState,
@@ -232,6 +284,17 @@ export function drawTokens(
 
   /** Whether the loop drew the held token, on its own square. */
   let heldDrawn = false;
+  /** The name plates, drawn after every token so none is covered by a neighbour. */
+  const plates: Array<{ x: number; y: number; name: string; hidden: boolean }> = [];
+  /**
+   * The symbol sprite a token with no picture is drawn from. Not for a token
+   * whose identity this viewer is sent masked: an obscured token they do not
+   * control, which is drawn with a question mark.
+   */
+  const spriteFor = (token: Token, hasPicture: boolean): HTMLCanvasElement | undefined =>
+    hasPicture || (token.obscured === true && !isGM && !state.isOwnToken(token))
+      ? undefined
+      : state.symbolSprites.get(tokenIcon(token, state.classIcons));
   for (const token of state.tokens) {
     if (!isTokenVisibleTo(token, view)) continue;
 
@@ -272,6 +335,7 @@ export function drawTokens(
     const centerX = centre.x;
     const centerY = centre.y;
     const radius = Math.min(tokenWidth, tokenHeight) / 2;
+    const sprite = spriteFor(token, !!tokenImg);
 
     // Hidden tokens shown to GM at 50% opacity
     const isHiddenFromPlayers = !token.visible;
@@ -320,20 +384,7 @@ export function drawTokens(
         ctx.drawImage(tokenImg, tokenX, tokenY, tokenWidth, tokenHeight);
       }
     } else {
-      // === PLACEHOLDER ICON (colored-letter circle) ===
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-      ctx.fillStyle = placeholderColor(token);
-      ctx.fill();
-
-      // Draw initial letter
-      const initial = (token.name || '?').charAt(0).toUpperCase();
-      const fontSize = Math.max(12, radius * 1.0);
-      ctx.font = `bold ${fontSize}px 'Inter', system-ui, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(initial, centerX, centerY + fontSize * 0.04);
+      drawPictureless(ctx, token, sprite, centerX, centerY, radius);
     }
     ctx.restore();
 
@@ -411,8 +462,9 @@ export function drawTokens(
 
     // Disposition ring (NPC tokens) — pog: solid ring; top-down: subtle ring;
     // full-art: bottom border stripe
+    // A symbol token carries its ring already.
     const effectiveType = token.type ?? (token.characterId ? TokenType.PLAYER : TokenType.NPC);
-    if (effectiveType === TokenType.NPC && token.disposition) {
+    if (!sprite && effectiveType === TokenType.NPC && token.disposition) {
       const ringColor = hueColour(
         token.disposition === TokenDisposition.HOSTILE  ? TOKEN_HUES.hostile :
         token.disposition === TokenDisposition.FRIENDLY ? TOKEN_HUES.friendly :
@@ -445,12 +497,15 @@ export function drawTokens(
     // tokens follow the character sheet. Shared with the hover panel so the
     // two cannot disagree about what a viewer may see.
     const hpSource = visibleTokenHp(token, state.characterHpCache, isGM);
+    /** Where a name plate starts: under the token, or under its HP bar. */
+    let underneath = (displayMode === 'full-art' ? tokenY + tokenHeight : centerY + radius) + 3 / zoom;
     if (hpSource) {
       const pct = Math.max(0, Math.min(1, hpSource.current / hpSource.max));
       const barW = displayMode === 'full-art' ? tokenWidth : radius * 2;
       const barH = Math.max(4, Math.round(5 / zoom));
       const barX = displayMode === 'full-art' ? tokenX : centerX - radius;
       const barY = (displayMode === 'full-art' ? tokenY + tokenHeight : centerY + radius) + Math.round(3 / zoom);
+      underneath = barY + barH + 2 / zoom;
 
       // Background track
       ctx.fillStyle = 'rgba(15, 15, 15, 0.8)';
@@ -595,7 +650,20 @@ export function drawTokens(
         ctx.fillText(label, bx + badgeW / 2, badgeY + badgeH / 2 + fontSize * 0.04);
       });
     }
+
+    // Name plate. A masked token's name arrives blank: it gets a question
+    // mark. A name the GM hides arrives blank too, and gets none; the GM sees
+    // it marked.
+    const masked = token.obscured === true && !isGM && !state.isOwnToken(token);
+    const plateName = masked ? '?' : token.name.trim();
+    const pointedAt = state.hoverTokenId === token.id || state.selectedTokenId === token.id;
+    if (plateName && Math.min(tokenWidth, tokenHeight) * zoom >= NAME_PLATE_MIN_TOKEN_PX
+      && (state.nameMode === 'always' || (state.nameMode === 'hover' && pointedAt))) {
+      plates.push({ x: centerX, y: underneath, name: plateName, hidden: isGM && token.nameHidden === true });
+    }
   }
+
+  for (const plate of plates) drawNamePlate(ctx, plate.x, plate.y, zoom, plate.name, plate.hidden);
 
   // The held token as a faded ghost under the pointer carrying it, with the
   // square it was taken by under the pointer. On its own square (nothing
@@ -634,18 +702,7 @@ export function drawTokens(
         ctx.drawImage(tokenImg, ghostX, ghostY, ghostW, ghostH);
       }
     } else {
-      // Ghost placeholder
-      ctx.beginPath();
-      ctx.arc(ghostCX, ghostCY, ghostR, 0, Math.PI * 2);
-      ctx.fillStyle = placeholderColor(draggedToken);
-      ctx.fill();
-      const initial = (draggedToken.name || '?').charAt(0).toUpperCase();
-      const fontSize = Math.max(12, ghostR * 1.0);
-      ctx.font = `bold ${fontSize}px 'Inter', system-ui, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(initial, ghostCX, ghostCY + fontSize * 0.04);
+      drawPictureless(ctx, draggedToken, spriteFor(draggedToken, false), ghostCX, ghostCY, ghostR);
     }
 
     ctx.restore();

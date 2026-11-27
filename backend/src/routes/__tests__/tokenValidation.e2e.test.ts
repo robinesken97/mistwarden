@@ -806,6 +806,58 @@ describe('map token validation', () => {
   });
 
   // "Own" is the recipient's controller id and nobody else's.
+  // Mistwarden, 2026-11-27: the symbol drawn without a picture, and a name
+  // the GM keeps from the table.
+  describe('the symbol and the hidden name', () => {
+    let tokenId: string;
+    const url = () => `/api/campaigns/${campaignId}/maps/${mapId}/tokens/${tokenId}`;
+    const asPlayer = async () => {
+      const res = await player.get(`/api/campaigns/${campaignId}/maps/${mapId}`);
+      return res.body.map.tokens.find((t: { id: string }) => t.id === tokenId);
+    };
+
+    beforeAll(async () => {
+      const res = await place({
+        name: 'Hooded Stranger', position: { x: 14, y: 2 }, controlledBy: playerId,
+        statBlock: { ac: 12, speed: '30 ft.', abilities: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 }, creatureType: 'Medium fiend (devil)' },
+      });
+      expect(res.status).toBe(201);
+      tokenId = res.body.token.id;
+      expect(res.body.token).toMatchObject({ icon: null, nameHidden: false });
+    });
+
+    it('refuses a symbol not on the list, on placing and on update', async () => {
+      const placed = await place({ name: 'Bad icon', icon: '../maps/x' });
+      expect(placed.status).toBe(400);
+      expect(placed.body.message).toMatch(/icon/);
+      expect((await gm.put(url()).send({ icon: 'dragonborn' })).status).toBe(400);
+      expect((await gm.put(url()).send({ nameHidden: 'yes' })).status).toBe(400);
+    });
+
+    it('lets the GM alone set both', async () => {
+      expect((await player.put(url()).send({ icon: 'bard' })).status).toBe(403);
+      expect((await player.put(url()).send({ nameHidden: true })).status).toBe(403);
+      expect((await gm.put(url()).send({ icon: 'dragon' })).status).toBe(200);
+      expect((await gm.put(url()).send({ icon: null })).status).toBe(200);
+    });
+
+    it('sends a player the symbol the stat block gives, which it does not send', async () => {
+      const token = await asPlayer();
+      expect(token.icon).toBe('fiend');
+      expect(token).not.toHaveProperty('statBlock');
+    });
+
+    it('sends a hidden name to the controller alone, and the flag to nobody but the GM', async () => {
+      expect((await gm.put(url()).send({ nameHidden: true })).status).toBe(200);
+      expect((await asPlayer()).name).toBe('Hooded Stranger');
+      expect(await asPlayer()).not.toHaveProperty('nameHidden');
+      await gm.put(url()).send({ controlledBy: null });
+      expect((await asPlayer()).name).toBe('');
+      const gmView = await gm.get(`/api/campaigns/${campaignId}/maps/${mapId}`);
+      expect(gmView.body.map.tokens.find((t: { id: string }) => t.id === tokenId)).toMatchObject({ name: 'Hooded Stranger', nameHidden: true });
+    });
+  });
+
   describe("another member's token, fetched by a player", () => {
     let theirsId: string;
 

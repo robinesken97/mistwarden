@@ -120,4 +120,11 @@ describe('tokenSentTo', () => {
     expect(tokenSentTo(veiled, false).name).toBe('');
     expect(tokenSentTo(veiled, false).controlledBy).toBeNull();
   });
+
+  it('sends with a hidden name only the symbol the GM set, never the one the stat block gives', () => {
+    const hidden = { ...token, nameHidden: true, icon: null as string | null, statBlock: { creatureType: 'Small humanoid (goblinoid)' } };
+    expect(tokenSentTo(hidden, false)).not.toHaveProperty('icon');
+    expect(tokenSentTo(hidden, true).icon).toBe('humanoid');
+    expect(tokenSentTo({ ...hidden, icon: 'fiend' }, false).icon).toBe('fiend');
+  });
 });

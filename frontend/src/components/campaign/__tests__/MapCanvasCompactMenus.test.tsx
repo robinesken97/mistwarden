@@ -267,7 +267,7 @@ describe('the token menu on the compact layout', () => {
     expect(openMenu()).toBeNull();
     expect(sheetLabels()).toEqual([
       'Rotate Left', 'Rotate Right', 'Roll...', 'Edit Token', 'Add to Initiative', 'Duplicate Token', 'Save as Template',
-      'Hide from Players', 'Obscure Identity', 'Send to Spirit Realm', '---', 'Move to Map…', '---', 'Remove from Map',
+      'Hide from Players', 'Obscure Identity', 'Hide Name from Players', 'Send to Spirit Realm', '---', 'Move to Map…', '---', 'Remove from Map',
     ]);
   });
 

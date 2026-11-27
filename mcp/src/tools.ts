@@ -315,18 +315,28 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
   const toCell = (map: MapRow, x: number, y: number, origin: string | undefined, size: number) =>
     origin === 'top-left' ? cellFromTop(x, y, size, map.height, map) : { x, y };
 
+  // Mistwarden, 2026-11-27: the symbols the server allows (backend/src/utils/tokenIcons.ts), and a name kept from players.
+  const tokenLook = {
+    icon: z.enum([
+      'aberration', 'beast', 'celestial', 'construct', 'dragon', 'elemental', 'fey', 'fiend', 'giant', 'humanoid', 'monstrosity', 'ooze', 'plant', 'undead',
+      'barbarian', 'bard', 'cleric', 'druid', 'fighter', 'monk', 'paladin', 'ranger', 'rogue', 'sorcerer', 'warlock', 'wizard', 'person',
+    ]).nullable().optional().describe('Symbol drawn while the token has no picture; null or absent works it out from the stat block, the character\'s class, else person.'),
+    nameHidden: z.boolean().optional().describe('Keep the name from players: they see no name plate and an unknown creature.'),
+  };
+
   tool('add_token', `Add a token to a map. Hidden from players by default (visible: false). ${COORDS} Size is in squares (1 = medium, 2 = large, 3 = huge). Not on the map players currently see unless MISTWARDEN_MCP_PLAYER_VISIBLE=1.`, {
     campaignId: campaignIdArg, mapId: mapIdArg,
     name: z.string().min(1).max(200),
     ...tokenPosition,
     size: z.number().int().min(1).max(10).optional().describe('Squares per side, default 1.'),
-    imagePath: z.string().optional().describe('Token picture under MISTWARDEN_MCP_FILE_ROOT (PNG, JPEG, WebP). Without it the token shows its initials.'),
+    imagePath: z.string().optional().describe('Token picture under MISTWARDEN_MCP_FILE_ROOT (PNG, JPEG, WebP). Without it the token shows its symbol (see icon).'),
     visible: z.boolean().optional().describe('Seen by players. Default false (GM only).'),
     darkvision: z.number().min(0).max(200).optional().describe('Darkvision radius in squares.'),
     type: z.enum(['player', 'npc', 'object']).optional().describe('Default npc.'),
     disposition: z.enum(['friendly', 'neutral', 'hostile']).optional(),
     controlledBy: z.string().uuid().optional().describe('User id of a player who may move it (from get_campaign).'),
     notes: z.string().max(5000).optional().describe('GM notes kept on the token.'),
+    ...tokenLook,
   }, async (a) => {
     const { campaign, manifest } = await campaignAsGm(ctx, a.campaignId);
     assertNotLive(ctx, campaign, a.mapId);
@@ -344,6 +354,7 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
       json: {
         name: a.name, position, size: { width: size, height: size }, imageUrl, visible: a.visible ?? false,
         sightRadius: a.darkvision, type: a.type, disposition: a.disposition, controlledBy: a.controlledBy, notes: a.notes,
+        icon: a.icon, nameHidden: a.nameHidden,
       },
     });
     await manifest.add('token', [inMap(a.mapId, token.id)]);
@@ -363,6 +374,7 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
     notes: z.string().max(5000).optional(),
     mountedOn: z.string().min(1).max(100).nullable().optional()
       .describe('Id of a token on the same map and plane for this one to ride (they then move as one); null gets off.'),
+    ...tokenLook,
   }, async (a) => {
     const { campaign, manifest } = await campaignAsGm(ctx, a.campaignId);
     assertEditable(manifest, 'token', inMap(a.mapId, a.tokenId), ctx.settings.allowAnyEdit);
@@ -376,6 +388,7 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
     const size = a.size ?? current.size.width;
     const body: Record<string, unknown> = {
       name: a.name, visible: a.visible, sightRadius: a.darkvision, type: a.type, disposition: a.disposition, controlledBy: a.controlledBy, notes: a.notes, mountedOn: a.mountedOn,
+      icon: a.icon, nameHidden: a.nameHidden,
       size: a.size !== undefined ? { width: size, height: size } : undefined,
       position: a.x !== undefined && a.y !== undefined ? toCell(map, a.x, a.y, a.origin, size) : undefined,
     };

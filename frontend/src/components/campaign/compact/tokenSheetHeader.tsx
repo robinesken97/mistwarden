@@ -7,6 +7,9 @@ import type { CampaignMembership, Token } from '@/types';
 import type { CharacterHpInfo } from '@/utils/characterHp';
 import { tokenControllerStanding } from '@/utils/tokenCopy';
 import { placeholderColor } from '@/components/campaign/map/layers/drawTokens';
+import { useCharacterIcons } from '@/stores/gameStore';
+import TokenSymbol from '@/components/campaign/TokenSymbol';
+import { tokenIcon } from '@/components/campaign/map/tokenSymbols';
 
 type Member = Pick<CampaignMembership, 'userId' | 'role'> & { user?: { displayName?: string } };
 
@@ -30,8 +33,13 @@ export function tokenSheetLine(
 
 /** The token's picture, when this viewer is sent one, else its colour and first letter, as the details card draws it. */
 export function TokenSheetPicture({ token, imageSrc }: { token: Token; imageSrc?: string }) {
+  const classIcons = useCharacterIcons();
   if (imageSrc) {
     return <img src={imageSrc} alt="" className="size-10 shrink-0 rounded-full border-2 border-warm-amber/50 object-cover" />;
+  }
+  // Mistwarden, 2026-11-27: the symbol the map draws; a masked token keeps its question mark.
+  if (!(token.obscured && !token.name)) {
+    return <TokenSymbol icon={tokenIcon(token, classIcons)} type={token.type} disposition={token.disposition} className="size-10" />;
   }
   return (
     <div
