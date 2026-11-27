@@ -108,6 +108,43 @@ describe('gameStore actions', () => {
     expect(result.current.map((t) => t.id)).toEqual(['wolf', 'horse', 'rider']);
   });
 
+  describe('a coupled pair while one of it is carried', () => {
+    const pair = () => [
+      makeToken('horse', { position: { x: 2, y: 2 }, size: { width: 2, height: 2 } }),
+      makeToken('rider', { position: { x: 2, y: 2 }, mountedOn: 'horse' }),
+    ];
+    const held = () => useGameStore.getState().heldAt;
+    const stored = (id: string) => useGameStore.getState().tokens[id].position;
+
+    it('draws the mount along with the rider\'s drag frames, and back home when the drag is let go', () => {
+      useGameStore.getState().setTokens(pair());
+      useGameStore.getState().receiveTokenMove('rider', { x: 4, y: 3 }, true);
+      expect(held()).toEqual({ rider: { x: 4, y: 3 }, horse: { x: 4, y: 3 } });
+      useGameStore.getState().receiveTokenMove('rider', { x: 2, y: 2 }, true);
+      expect(held()).toEqual({});
+    });
+
+    it('keeps the mount where the drop left it until its own move lands, with no step back', () => {
+      useGameStore.getState().setTokens(pair());
+      useGameStore.getState().receiveTokenMove('rider', { x: 4, y: 3 }, true);
+      useGameStore.getState().receiveTokenMove('rider', { x: 5, y: 3 }, false);
+      expect(held()).toEqual({ horse: { x: 5, y: 3 } });
+      useGameStore.getState().receiveTokenMove('horse', { x: 5, y: 3 }, false);
+      expect(held()).toEqual({});
+      expect([stored('rider'), stored('horse')]).toEqual([{ x: 5, y: 3 }, { x: 5, y: 3 }]);
+    });
+
+    it("this screen's own drop holds the mount beside it, and a refused drop puts both back", () => {
+      useGameStore.getState().setTokens(pair());
+      useGameStore.getState().holdFollowers('rider', { x: 6, y: 6 });
+      useGameStore.getState().applyTokenMove('rider', { x: 6, y: 6 });
+      expect(held()).toEqual({ horse: { x: 6, y: 6 } });
+      useGameStore.getState().receiveTokenMove('rider', { x: 2, y: 2 }, false);
+      expect(held()).toEqual({});
+      expect(stored('rider')).toEqual({ x: 2, y: 2 });
+    });
+  });
+
   it('revealToken takes the mount the event names for a token it holds', () => {
     useGameStore.getState().setTokens([makeToken('rider')]);
     useGameStore.getState().revealToken(makeToken('rider', { mountedOn: 'horse' }));

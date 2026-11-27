@@ -6,7 +6,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { TokenLayer, TokenType, type Token } from '@/types';
-import { coupledIds, mountCandidates, ridersAfterMounts, keepCoupledOnMap } from '../mounts';
+import { coupledIds, mountCandidates, ridersAfterMounts, keepCoupledOnMap, shiftFollowers } from '../mounts';
 
 function token(id: string, extra: Partial<Token> = {}): Token {
   return {
@@ -46,5 +46,24 @@ describe('map/mounts', () => {
     expect(keepCoupledOnMap([edgeHorse, edgeRider], edgeRider, { x: 9, y: 2 }, map)).toEqual({ x: 8, y: 2 });
     expect(keepCoupledOnMap([horse, rider], rider, { x: 3, y: 2 }, map)).toEqual({ x: 3, y: 2 });
     expect(keepCoupledOnMap([wolf], wolf, { x: 9, y: 9 }, map)).toEqual({ x: 9, y: 9 });
+  });
+
+  it('draws a dragged token\'s mount or riders the same step further on, and lets go of them at home', () => {
+    const tokens = [horse, rider, wolf];
+    expect(shiftFollowers(tokens, {}, 'rider', 3, 1)).toEqual({ horse: { x: 5, y: 3 } });
+    expect(shiftFollowers(tokens, { horse: { x: 5, y: 3 } }, 'rider', -3, -1)).toEqual({});
+    const none = {};
+    expect(shiftFollowers(tokens, none, 'wolf', 3, 1)).toBe(none);
+    expect(shiftFollowers(tokens, none, 'rider', 0, 0)).toBe(none);
+  });
+
+  it('settles only followers already held when the move is a drop, never pulling the dropped token back', () => {
+    expect(shiftFollowers([horse, rider], {}, 'horse', 2, 2, { onlyHeld: true })).toEqual({});
+    expect(shiftFollowers([horse, rider], { rider: { x: 4, y: 4 } }, 'horse', 1, 0, { onlyHeld: true })).toEqual({ rider: { x: 5, y: 4 } });
+  });
+
+  it('never moves a follower this screen was not sent: a rider whose mount it is not sent names none', () => {
+    const hiddenMountRider = token('rider', { position: { x: 2, y: 2 } });
+    expect(shiftFollowers([hiddenMountRider, wolf], {}, 'rider', 3, 1)).toEqual({});
   });
 });
