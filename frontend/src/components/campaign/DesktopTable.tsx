@@ -41,6 +41,7 @@ import { CampaignStatus } from '@/types';
 import type { Campaign } from '@/types';
 import Button from '@/components/ui/Button';
 import Tooltip from '@/components/ui/Tooltip';
+import { TABLET_WIDTH_QUERY } from '@/constants/layout';
 import { optionalStorage } from '@/utils/optionalStorage';
 
 interface DesktopTableProps {
@@ -76,7 +77,7 @@ export default function DesktopTable({
   });
   // No saved layout and a tablet-width window: start with the left column
   // folded so the map has the room. A saved layout, collapsed or not, wins.
-  const defaultLayout = savedLayout ?? (window.innerWidth <= 1024 ? { party: 0, map: 75, rail: 25 } : undefined);
+  const defaultLayout = savedLayout ?? (window.matchMedia(TABLET_WIDTH_QUERY).matches ? { party: 0, map: 75, rail: 25 } : undefined);
   const leftPanelRef = usePanelRef();
   const rightPanelRef = usePanelRef();
   const [leftCollapsed, setLeftCollapsed] = useState(false);
