@@ -191,7 +191,7 @@ export function registerTools(server: McpServer, ctx: Context): string[] {
 
   // ---- Backup ----
 
-  tool('create_backup', `Download a full export of the campaign (maps, pictures, tokens, notes) to a local folder. ${BACKUP_FIRST} The server allows only a few exports per hour.`, { campaignId: campaignIdArg }, async ({ campaignId }) => {
+  tool('create_backup', `Download a full export of the campaign (maps, pictures, tokens, notes) to a local folder. Gallery pictures are not in the export. ${BACKUP_FIRST} The server allows only a few exports per hour.`, { campaignId: campaignIdArg }, async ({ campaignId }) => {
     const { campaign } = await campaignAsGm(ctx, campaignId);
     const started = Date.now();
     const res = await ctx.api.request('GET', `/api/campaigns/${campaignId}/export`);
