@@ -4850,6 +4850,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
         <GmToolPanelContainer
           containerRef={containerRef}
           band={topBand}
+          label={userRole === 'GM' ? 'GM tools' : 'Tools'}
           // On the compact layout it hides behind Tools, in Map controls,
           // and a drag keeps it under the band, where Map controls is.
           hidden={compact && !stackShown}

@@ -62,8 +62,8 @@ describe('GmToolPanelContainer', () => {
       <GmToolPanelContainer containerRef={createRef<HTMLDivElement>()} band={beside}><p>Fog of War</p></GmToolPanelContainer>
     );
     const stack = container.firstElementChild as HTMLElement;
-    expect(stack.style.top).toBe('3.5rem');
-    expect(stack.style.right).toBe('8px');
+    expect(stack.style.top).toBe('1rem');
+    expect(stack.style.right).toBe('16px');
 
     rerender(
       <GmToolPanelContainer containerRef={createRef<HTMLDivElement>()} band={{ ...beside, buttonsRight: 584, width: 620, bottom: 78 }}>
@@ -71,9 +71,24 @@ describe('GmToolPanelContainer', () => {
       </GmToolPanelContainer>
     );
     expect(stack.style.top).toBe('86px');
-    expect(stack.style.right).toBe('8px');
+    expect(stack.style.right).toBe('16px');
     // jsdom rewrites calc(); the stack's height is still reckoned from its new top.
     expect(stack.style.maxHeight).toContain('86px');
+  });
+
+  // Mistwarden, 2026-11-27: one card in the toolbar's style, headed, its
+  // grip in the heading in place of a bar of its own.
+  it('is one card in the toolbar\'s style, headed GM tools, the heading its handle', () => {
+    const { container } = render(
+      <GmToolPanelContainer containerRef={createRef<HTMLDivElement>()}><p>Fog of War</p></GmToolPanelContainer>
+    );
+    expect(classesOf(container.firstElementChild as Element)).toEqual(expect.arrayContaining(['glass-panel', 'p-2', 'bg-parchment/90']));
+    expect(screen.getByTitle(/Drag to move the panels/)).toHaveTextContent('GM tools');
+  });
+
+  it('gives the heading it is told, for a player\'s Draw panel', () => {
+    render(<GmToolPanelContainer containerRef={createRef<HTMLDivElement>()} label="Tools"><p>Draw</p></GmToolPanelContainer>);
+    expect(screen.getByTitle(/Drag to move the panels/)).toHaveTextContent('Tools');
   });
 
   it('gives the panel stack one fixed width, so long notes wrap', () => {
@@ -83,7 +98,7 @@ describe('GmToolPanelContainer', () => {
       </GmToolPanelContainer>
     );
     // Set from the same number the corner's reach is worked out from.
-    expect((container.firstElementChild as HTMLElement).style.width).toBe('200px');
+    expect((container.firstElementChild as HTMLElement).style.width).toBe('216px');
   });
 });
 
@@ -194,8 +209,8 @@ describe('moving the GM tool panels', () => {
     drag(-300, 100);
     fireEvent.doubleClick(handle);
     expect(stack.style.left).toBe('');
-    expect(stack.style.right).toBe('8px');
-    expect(stack.style.top).toBe('3.5rem');
+    expect(stack.style.right).toBe('16px');
+    expect(stack.style.top).toBe('1rem');
   });
 
   // The double-click was the only way back, which a finger rarely lands.
@@ -207,8 +222,8 @@ describe('moving the GM tool panels', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Reset position' }));
 
     expect(stack.style.left).toBe('');
-    expect(stack.style.right).toBe('8px');
-    expect(stack.style.top).toBe('3.5rem');
+    expect(stack.style.right).toBe('16px');
+    expect(stack.style.top).toBe('1rem');
     expect(screen.queryByRole('button', { name: 'Reset position' })).toBeNull();
   });
 
@@ -243,9 +258,9 @@ describe('moving the GM tool panels', () => {
   // tall stack ran over it and hid the Lights panel's Place button behind it.
   it('stops above the Preview Player View button', () => {
     const { stack } = renderInMap();
-    // The map's height less the stack's 3.5rem from the top and 8rem kept at
+    // The map's height less the stack's 1rem from the top and 8rem kept at
     // the bottom, never under 6rem; the style engine may fold the sum.
-    expect(stack.style.maxHeight.replace(/\s+/g, '')).toMatch(/^max\(6rem,(calc\()?100%-(3\.5rem-8rem|11\.5rem)\)?\)$/);
+    expect(stack.style.maxHeight.replace(/\s+/g, '')).toMatch(/^max\(6rem,(calc\()?100%-(1rem-8rem|9rem)\)?\)$/);
   });
 
   // On the compact layout the dock at the map's foot holds Preview over the

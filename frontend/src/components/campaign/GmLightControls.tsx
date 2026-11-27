@@ -178,7 +178,7 @@ export default function GmLightControls({
   const displayColor = isEditing ? selectedLight.color : placementDefaults.color;
 
   return (
-    <div className="flex flex-col gap-0 bg-stone-800/90 rounded-lg border border-amber-400/20 min-w-[200px] overflow-hidden">
+    <div className="flex flex-col gap-0 bg-stone-800/90 rounded-lg border border-warm-amber/20 min-w-[200px] overflow-hidden">
       {/* Header with collapse toggle */}
       <button
         type="button"
@@ -191,7 +191,7 @@ export default function GmLightControls({
           if (next) onCollapse?.();
         }}
       >
-        <span className="text-xs text-amber-400/70 font-medium uppercase tracking-wide">
+        <span className="text-xs text-amber-300 font-medium uppercase tracking-wide">
           Lights
           {lightCount > 0 && (
             <>{' '}<span className="text-stone-400 normal-case">({lightCount})</span></>
