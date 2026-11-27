@@ -317,13 +317,13 @@ describe('Write with AI', () => {
     seat.ai = true;
     listNotes.mockResolvedValue({ notes: [] });
     const createNote = api.createNote as ReturnType<typeof vi.fn>;
-    createNote.mockResolvedValue({ note: { id: 'n-ai', title: 'NPC: A tired nobleman', content: 'Ismark looks tired.' } });
-    (api.writeWithAi as ReturnType<typeof vi.fn>).mockResolvedValue({ text: 'Ismark looks tired.' });
+    createNote.mockResolvedValue({ note: { id: 'n-ai', title: 'NPC: A tired nobleman', content: 'Oswin looks tired.' } });
+    (api.writeWithAi as ReturnType<typeof vi.fn>).mockResolvedValue({ text: 'Oswin looks tired.' });
     render(<LayoutProvider compact={false}><PersonalNotes /></LayoutProvider>);
     fireEvent.click(await screen.findByRole('button', { name: 'Write with AI' }));
     fireEvent.change(screen.getByRole('textbox', { name: 'What the text is about' }), { target: { value: 'A tired nobleman' } });
     fireEvent.click(screen.getByRole('button', { name: 'Write' }));
     await waitFor(() => expect(api.writeWithAi).toHaveBeenCalledWith('camp-1', 'npc', 'A tired nobleman'));
-    await waitFor(() => expect(createNote).toHaveBeenCalledWith('camp-1', 'NPC: A tired nobleman', 'Ismark looks tired.'));
+    await waitFor(() => expect(createNote).toHaveBeenCalledWith('camp-1', 'NPC: A tired nobleman', 'Oswin looks tired.'));
   });
 });

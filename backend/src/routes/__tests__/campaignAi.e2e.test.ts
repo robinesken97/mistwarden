@@ -46,7 +46,7 @@ beforeAll(async () => {
   const gmUser = await createTestUser({ email: `ai-gm-${stamp}@test.cozyvtt.local`, displayName: 'Secret GM Name' });
   const playerUser = await createTestUser({ email: `ai-player-${stamp}@test.cozyvtt.local`, displayName: 'Secret Player Name' });
   ids.push(gmUser.id, playerUser.id);
-  campaignId = (await createTestCampaign(gmUser.id, { name: `Barovia ${stamp}` })).id;
+  campaignId = (await createTestCampaign(gmUser.id, { name: `Mistvale ${stamp}` })).id;
   await prisma.campaignMembership.createMany({
     data: [
       { userId: gmUser.id, campaignId, role: 'GM', characterIds: [] },
@@ -89,7 +89,7 @@ describe('writing help through Anthropic', () => {
       status: 200,
       body: {
         id: 'msg_1', type: 'message', role: 'assistant', model: 'claude-opus-5-5',
-        content: [{ type: 'text', text: 'Ismark looks tired.' }],
+        content: [{ type: 'text', text: 'Oswin looks tired.' }],
         stop_reason: 'end_turn', stop_sequence: null, usage: { input_tokens: 10, output_tokens: 5 },
       },
     });
@@ -99,13 +99,13 @@ describe('writing help through Anthropic', () => {
     expect((await request(app).get('/api/config')).body.ai).toEqual({ enabled: true });
     const res = await write(gm, { kind: 'npc', prompt: 'A tired nobleman' });
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ text: 'Ismark looks tired.' });
+    expect(res.body).toEqual({ text: 'Oswin looks tired.' });
     expect(seen).toHaveLength(1);
     expect(seen[0].path).toContain('/v1/messages');
     expect(seen[0].headers.authorization ?? seen[0].headers['x-api-key']).toMatch(KEY);
     expect(seen[0].body).toMatchObject({ model: 'claude-opus-5-5', fallbacks: 'default', messages: [{ role: 'user', content: 'A tired nobleman' }] });
     const sent = JSON.stringify(seen[0].body);
-    expect(sent).toContain('Barovia');
+    expect(sent).toContain('Mistvale');
     expect(sent).not.toMatch(/Secret (GM|Player) Name/);
     expect(JSON.stringify(res.body)).not.toContain(KEY);
   });
@@ -141,12 +141,12 @@ describe('writing help through an OpenAI-compatible server', () => {
   });
 
   it('answers with the text, its reasoning removed, and sends no key when none is set', async () => {
-    const res = await write(gm, { kind: 'read-aloud', prompt: 'The gates of Barovia' });
+    const res = await write(gm, { kind: 'read-aloud', prompt: 'The gates of Mistvale' });
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ text: 'The mist parts.' });
     expect(seen[0].path).toBe('/v1/chat/completions');
     expect(seen[0].headers.authorization).toBeUndefined();
-    expect(seen[0].body).toMatchObject({ model: 'qwen-local', messages: [{ role: 'system' }, { role: 'user', content: 'The gates of Barovia' }] });
+    expect(seen[0].body).toMatchObject({ model: 'qwen-local', messages: [{ role: 'system' }, { role: 'user', content: 'The gates of Mistvale' }] });
   });
 
   it('is off without a model to name', async () => {
