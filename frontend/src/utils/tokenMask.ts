@@ -170,7 +170,9 @@ export const PLAYER_TOKEN_FIELDS = [
  * Mistwarden, 2026-11-27: the symbol a token with no picture is drawn with
  * is sent worked out, the token's own or its stat block's creature type's
  * (utils/tokenIcons.ts), since the stat block is not sent. A name the GM
- * hides (`nameHidden`, itself never sent) goes to nobody but the controller.
+ * hides (`nameHidden`, itself never sent) goes to nobody but the controller,
+ * and nor does the symbol worked out from the stat block: anyone else is
+ * sent only a symbol the GM set, else none (drawn as a person).
  */
 export function tokenSentTo<T extends MaskableToken>(token: T, own: boolean, mountSent = false): T {
   const listed = PLAYER_TOKEN_FIELDS.filter((field) => field in token).map((field) => [field, token[field]]);
@@ -178,7 +180,8 @@ export function tokenSentTo<T extends MaskableToken>(token: T, own: boolean, mou
   const sent = Object.fromEntries(listed) as T;
   if (!mountSent) delete sent.mountedOn;
   if (!(own || token.showHpBar === true)) delete sent.hp;
-  const icon = token.icon || statBlockIcon(token.statBlock);
+  // A hidden name hides the creature type too: only a symbol the GM chose goes out.
+  const icon = token.icon || (!own && token.nameHidden === true ? null : statBlockIcon(token.statBlock));
   if (icon) sent.icon = icon;
   else delete sent.icon;
   if (!own && token.nameHidden === true) sent.name = '';
