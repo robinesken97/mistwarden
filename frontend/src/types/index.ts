@@ -934,6 +934,12 @@ export interface Token {
    * sent it with its identity masked (utils/tokenMask.ts); only the GM may set it.
    */
   obscured?: boolean;
+  /**
+   * A torch or lantern the token carries, lit at its centre and moving with
+   * it. It lights things for a player only while the token is theirs or in
+   * their line of sight (visibilityRule.ts carriedLightCounts). GM only.
+   */
+  light?: import('./walls').CarriedLight | null;
 }
 
 export interface Position {
@@ -1320,6 +1326,8 @@ export interface CreateTokenRequest {
   creatureTemplateId?: string | null;
   /** GM only: hide what the token is from players who do not control it. */
   obscured?: boolean;
+  /** GM only: the light the token carries; null for none. */
+  light?: import('./walls').CarriedLight | null;
 }
 
 export interface UpdateTokenRequest {
@@ -1347,6 +1355,8 @@ export interface UpdateTokenRequest {
   creatureTemplateId?: string | null;
   /** GM only: hide what the token is from players who do not control it. */
   obscured?: boolean;
+  /** GM only: the light the token carries; null for none. */
+  light?: import('./walls').CarriedLight | null;
 }
 
 // ============================================

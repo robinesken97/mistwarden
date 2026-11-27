@@ -29,6 +29,8 @@ import Button from '@/components/ui/Button';
 import SlideOver, { SlideOverClose, SlideOverTitle } from '@/components/ui/SlideOver';
 import AssetGrid from '@/components/assets/AssetGrid';
 import TokenVisionField, { squaresForFeet, useSheetDarkvisionFeet } from './TokenVisionField';
+import TokenLightField from './TokenLightField';
+import type { CarriedLight } from '@/types/walls';
 import RemoveTokenDialog from './RemoveTokenDialog';
 import { setTokenFlag } from '@/utils/tokenFlags';
 import { tokenControllerStanding } from '@/utils/tokenCopy';
@@ -90,6 +92,7 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
   const [showHpBar, setShowHpBar] = useState(true);
   const [initiative, setInitiative] = useState<string>('');
   const [sightRadius, setSightRadius] = useState(0);
+  const [light, setLight] = useState<CarriedLight | null>(null);
   // Placing a token already hidden. Offered for the tokens that are secrets
   // (see utils/gmTokenMenu.ts). An object defaults to hidden, which is what
   // a secret door or a trapped chest wants; a creature defaults to visible, so
@@ -204,6 +207,7 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
         type: tokenType,
         displayMode,
         conditions: [] as string[],
+        light: light?.enabled ? light : null,
       };
 
       let tokenPayload: CreateTokenRequest;
@@ -267,13 +271,14 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
       setShowHpBar(true);
       setInitiative('');
       setSightRadius(0);
+      setLight(null);
       setPlaceHidden(tokenType === TokenType.OBJECT);
     } catch (err) {
       setError(apiErrorMessage(err) || 'Failed to add token to map');
     } finally {
       setIsAdding(false);
     }
-  }, [campaign, viewedMap, selectedAsset, pickedCharacter, tokenName, tokenSize, tokenLayer, assignTo, tokenType, displayMode, disposition, hpMax, tokenNotes, showHpBar, initiative, sightRadius, placeHidden]);
+  }, [campaign, viewedMap, selectedAsset, pickedCharacter, tokenName, tokenSize, tokenLayer, assignTo, tokenType, displayMode, disposition, hpMax, tokenNotes, showHpBar, initiative, sightRadius, light, placeHidden]);
 
   // ============================================
   // Token List Actions
@@ -745,6 +750,9 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
           {tokenType !== TokenType.OBJECT && (
             <TokenVisionField value={sightRadius} onChange={setSightRadius} feetPerSquare={feetPerSquare} sheetFeet={pickedDarkvision} />
           )}
+
+          {/* A carried torch or lantern; an object can carry one too (a brazier on a cart) */}
+          <TokenLightField value={light} onChange={setLight} />
 
           {/* Assign to player (NPC and Player only) */}
           {tokenType !== TokenType.OBJECT && players.length > 0 && (

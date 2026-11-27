@@ -89,7 +89,7 @@ import { createClickSwallow } from './map/clickSwallow';
 import {
   previewOwnFor, previewControlsFor, previewMemoryUser, previewOptions, defaultPreviewSelection, reconcilePreviewSelection, previewPlane,
   encodePreviewSelection, decodePreviewSelection, resolvePreviewSelection, followStepTokens, type PreviewSelection,
-  type PreviewPlane, previewTokens,
+  type PreviewPlane, previewTokens, tokensShownInPreview,
 } from './map/previewSelection';
 import { useExploredMemory } from './map/useExploredMemory';
 import { useFogStateRequest } from './map/useFogStateRequest';
@@ -108,7 +108,7 @@ import { tokenCentre } from '@/utils/tokenCentre';
 import { createOwnEdits } from './map/ownEdits';
 import mapService from '@/services/map.service';
 import { isHexColor, isSafeVibeFilter, parseSpiritStyle } from '@/utils/styleAllowlists';
-import { isSeen, type Viewer, type Lit, type InsideFn } from '@/utils/visibilityRule';
+import { isSeen, carriedLightCounts, type Viewer, type Lit, type InsideFn } from '@/utils/visibilityRule';
 import { isPointVisible } from '@/utils/raycasting';
 
 /** A player's revealed set before the server has answered: nothing revealed. */
@@ -1798,16 +1798,35 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
    * lighting layer and the door filter all ask this, so they cannot disagree.
    */
   const ruleFor = useCallback((myTokens: readonly Token[], viewport: Viewport) => {
-    const enabledLights = lightSources.filter((l) => l.enabled);
     const globalIllumination = currentMap?.globalIllumination ?? true;
-    const vision = visionCacheRef.current.compute(myTokens, enabledLights, wallSegments, viewport, { globalIllumination });
+    const inside: InsideFn = (p, poly) => poly.points.length >= 3 && isPointVisible(p, poly);
+    // Lights tokens carry, at their centres. Like sight, a light moves when
+    // its token is put down, not while a hand carries it. A player holds only
+    // the tokens the server sends; a GM preview holds every token, so only
+    // those the previewed player could be sent bear a light (visible, on
+    // their plane).
+    const pool = isGM ? tokensShownInPreview(tokens, () => true, null, viewport, previewedPlane) : tokens;
+    const bearers = pool.flatMap((t) => (t.light?.enabled === true
+      ? [{ id: t.id, light: { ...t.light, id: `carried:${t.id}`, ...tokenCentre(t, viewport.gridSize, viewport.mapHeight) } }]
+      : []));
+    const carried: LightSource[] = bearers.map((b) => b.light);
+    const mapLights = lightSources.filter((l) => l.enabled);
+    const candidates = carried.length > 0 ? [...mapLights, ...carried] : mapLights;
+    const all = visionCacheRef.current.compute(myTokens, candidates, wallSegments, viewport, { globalIllumination });
     const viewers: Viewer[] = myTokens.map((t, i) => ({
-      cx: vision.tokenSight[i].cx,
-      cy: vision.tokenSight[i].cy,
-      sight: vision.tokenSight[i].poly,
+      cx: all.tokenSight[i].cx,
+      cy: all.tokenSight[i].cy,
+      sight: all.tokenSight[i].poly,
       darkvisionPx: (t.sightRadius ?? 0) * viewport.gridSize,
       selfPx: (Math.max(t.size.width, t.size.height) / 2) * viewport.gridSize,
     }));
+    // A carried light shines for this viewer only while its bearer is theirs
+    // or in their line of sight (carriedLightCounts): what the server counts.
+    const mine = new Set(myTokens.map((t) => t.id));
+    const keep = candidates.map((l, i) => i < mapLights.length
+      || carriedLightCounts(mine.has(bearers[i - mapLights.length].id), l, viewers, inside));
+    const enabledLights = carried.length > 0 ? candidates.filter((_, i) => keep[i]) : candidates;
+    const vision = carried.length > 0 ? { ...all, lightVision: all.lightVision.filter((_, i) => keep[i]) } : all;
     const lits: Lit[] = enabledLights.map((l, i) => ({
       cx: l.x,
       cy: l.y,
@@ -1815,7 +1834,6 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
       brightPx: l.brightRadius * viewport.gridSize,
       dimPx: l.dimRadius * viewport.gridSize,
     }));
-    const inside: InsideFn = (p, poly) => poly.points.length >= 3 && isPointVisible(p, poly);
     // Closed doors lie exactly on a sight polygon's boundary, so each viewer
     // tests the point nudged 2px toward itself, as the door filter always has.
     const canSee = (x: number, y: number) => viewers.some((v) => {
@@ -1825,7 +1843,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
       return isSeen({ x: x + (dx / d) * 2, y: y + (dy / d) * 2 }, [v], lits, globalIllumination, inside);
     });
     return { vision, enabledLights, globalIllumination, canSee };
-  }, [lightSources, wallSegments, currentMap?.globalIllumination]);
+  }, [lightSources, wallSegments, currentMap?.globalIllumination, isGM, tokens, previewedPlane]);
 
   /**
    * Who is asking which doors the map offers (doorAccess.ts): the viewer's
