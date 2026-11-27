@@ -233,6 +233,11 @@ socket.io-client 4.x
   License: MIT
   https://github.com/socketio/socket.io
 
+three 0.187.x
+  Copyright (c) 2010-2026 three.js authors
+  License: MIT
+  https://github.com/mrdoob/three.js
+
 use-sync-external-store 1.x
   Copyright (c) Meta Platforms, Inc. and affiliates
   License: MIT

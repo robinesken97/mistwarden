@@ -39,6 +39,7 @@ import SpiritLayerControls from '@/components/campaign/SpiritLayerControls';
 import AtmospherePanel from '@/components/campaign/AtmospherePanel';
 import AtmospherePlayer from '@/components/campaign/AtmospherePlayer';
 import GalleryPopup from '@/components/campaign/GalleryPopup';
+import DiceOverlay from '@/components/campaign/DiceOverlay';
 import TableRefusals from '@/components/campaign/TableRefusals';
 import NpcQuickEditor from '@/components/campaign/NpcQuickEditor';
 import CreatureLibrary from '@/components/campaign/CreatureLibrary';
@@ -398,6 +399,7 @@ function CampaignPageContent() {
       {/* Atmosphere Player — mounts for ALL users, manages ambient audio sync */}
       <AtmospherePlayer />
       <GalleryPopup />
+      <DiceOverlay />
 
       {/* What the server refuses, shown as a message */}
       <TableRefusals />
