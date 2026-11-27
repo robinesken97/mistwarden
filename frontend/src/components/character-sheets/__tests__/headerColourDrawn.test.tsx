@@ -57,6 +57,13 @@ describe("the 5E sheet's open tab", () => {
     expect(rootOf(tab).style.getPropertyValue('--sheet-accent')).toBe(`rgb(${PRESET_THEMES[0].colors.accent})`);
   });
 
+  it("fills the editor's ability modifiers in the sheet colour, the theme's accent without one", () => {
+    render(<FifthEditionCharacterEditor character={fifthEditionCharacter({ themeColor: undefined })} onSave={noop} onCancel={vi.fn()} />);
+    const circle = screen.getByText('str').nextElementSibling as HTMLElement;
+    expect(circle).toHaveClass('bg-(--sheet-fill)', 'text-(--sheet-on-fill)');
+    expect(rootOf(circle).style.getPropertyValue('--sheet-fill')).toBe('rgb(var(--rgb-accent))');
+  });
+
   it('stays without a colour in the editor until one is picked, and saves none', async () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
     render(<FifthEditionCharacterEditor character={fifthEditionCharacter({ themeColor: undefined })} onSave={onSave} onCancel={vi.fn()} />);
@@ -116,9 +123,16 @@ describe('the Horror d100 sheet', () => {
 
 // The header is the player's colour, not the theme's, so its Save button is
 // drawn in fixed colours: in the theme's accent it could match the header.
+// The 5E editor's header is an accent box on the page instead, as its sheet's.
 describe('the header Save button', () => {
+  it('on 5E is filled in the sheet colour, as the open tab is', () => {
+    render(<FifthEditionCharacterEditor character={fifthEditionCharacter({ themeColor: undefined })} onSave={noop} onCancel={vi.fn()} />);
+    const save = screen.getByRole('button', { name: /^Save$/ });
+    expect(save).toHaveClass('bg-(--sheet-fill)', 'text-(--sheet-on-fill)');
+    expect(save).not.toHaveClass('bg-white');
+  });
+
   it.each([
-    ['5E', () => render(<FifthEditionCharacterEditor character={fifthEditionCharacter()} onSave={noop} onCancel={vi.fn()} />)],
     ['Fantasy d20', () => render(<FantasyD20CharacterEditor character={fantasyD20Character()} onSave={noop} onCancel={vi.fn()} />)],
     ['Horror d100', () => render(<HorrorD100CharacterEditor character={horrorD100Character()} onSave={noop} onCancel={vi.fn()} />)],
   ])('on %s does not take the theme accent', (_name, show) => {

@@ -97,7 +97,8 @@ describe('the read-only headers\' lines of details', () => {
 });
 
 describe.each([
-  ['5E', () => render(<FifthEditionCharacterEditor character={fifthEditionCharacter()} onSave={noop} onCancel={vi.fn()} />), 'Character name', 'Experience Points', true],
+  // The 5E editor keeps its experience in the details grid under the name (below).
+  ['5E', () => render(<FifthEditionCharacterEditor character={fifthEditionCharacter()} onSave={noop} onCancel={vi.fn()} />), 'Character name', null, true],
   ['Fantasy d20', () => render(<FantasyD20CharacterEditor character={fantasyD20Character()} onSave={noop} onCancel={vi.fn()} />), 'Character name', 'Experience Points', true],
   ['Horror d100', () => render(<HorrorD100CharacterEditor character={horrorD100Character()} onSave={noop} onCancel={vi.fn()} />), 'Character name', null, false],
 ] as const)('the %s editor header', (_system, show, name, aside, bigPortrait) => {
@@ -129,6 +130,18 @@ describe.each([
     });
   }
 
+});
+
+describe('the 5E editor header', () => {
+  it('puts level, race, class and experience in one grid under the name, two to a row on a phone', () => {
+    render(<FifthEditionCharacterEditor character={fifthEditionCharacter()} onSave={noop} onCancel={vi.fn()} />);
+    const grid = around(screen.getByLabelText('Level'), screen.getByLabelText('Experience Points'));
+    expect(grid.contains(screen.getByLabelText('Race'))).toBe(true);
+    expect(grid.contains(screen.getByLabelText('Class'))).toBe(true);
+    expect(grid.contains(screen.getByLabelText('Character name'))).toBe(false);
+    expect(classes(grid)).toEqual(expect.arrayContaining(['grid', 'grid-cols-2']));
+    expect(classes(screen.getByText('Experience Points'))).toContain('whitespace-nowrap');
+  });
 });
 
 describe('the Horror d100 editor header', () => {
