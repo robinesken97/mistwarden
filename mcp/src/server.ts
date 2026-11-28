@@ -16,13 +16,15 @@ const server = new McpServer(
   { name: 'mistwarden', version: '1.0.0' },
   {
     instructions:
-      'Builds scenes in a self-hosted Mistwarden campaign as its GM. Everything is GM-only unless the player-visible switch is on. ' +
-      'Call create_backup before a batch of changes: there is no undo. Walls, lights and fog use map pixels (top-left origin); tokens use grid cells (bottom-left origin).',
+      'Builds scenes in a self-hosted Mistwarden campaign as its GM, and with the co-GM switch helps run the game. ' +
+      'Everything is GM-only unless the player-visible or co-GM switch is on; secret rolls and reading never reach players. ' +
+      'Call create_backup before a batch of changes: there is no undo, and the delete tools refuse without a recent backup. ' +
+      'Walls, lights, fog and spell areas use map pixels (top-left origin); tokens use grid cells (bottom-left origin).',
   },
 );
 const tools = registerTools(server, { api: new Api(() => readSession(settings.sessionFile)), settings });
 await server.connect(new StdioServerTransport());
 process.stderr.write(
-  `mistwarden-mcp: ${tools.length} tools for ${where}; player-visible ${settings.playerVisible ? 'ON' : 'off'}, ` +
+  `mistwarden-mcp: ${tools.length} tools for ${where}; player-visible ${settings.playerVisible ? 'ON' : 'off'}, co-GM ${settings.coGm ? 'ON' : 'off'}, ` +
     `edit any ${settings.allowAnyEdit ? 'ON' : 'off'}, file root ${settings.fileRoot ?? 'not set'}\n`,
 );

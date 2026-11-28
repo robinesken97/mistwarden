@@ -14,6 +14,10 @@ export interface Settings {
   fileRoot: string | null;
   allowAnyEdit: boolean;
   playerVisible: boolean;
+  /** Co-GM mode: game state (hit points, positions, doors, fog, initiative...) of anything, and the table actions. */
+  coGm: boolean;
+  /** How recent a create_backup must be before a delete. */
+  backupMaxAgeHours: number;
 }
 
 export function readSettings(env: NodeJS.ProcessEnv = process.env): Settings {
@@ -26,7 +30,14 @@ export function readSettings(env: NodeJS.ProcessEnv = process.env): Settings {
     fileRoot: env.MISTWARDEN_MCP_FILE_ROOT || null,
     allowAnyEdit: env.MISTWARDEN_MCP_ALLOW_ANY_EDIT === '1',
     playerVisible: env.MISTWARDEN_MCP_PLAYER_VISIBLE === '1',
+    coGm: env.MISTWARDEN_MCP_COGM === '1',
+    backupMaxAgeHours: positive(env.MISTWARDEN_MCP_BACKUP_MAX_AGE_HOURS) ?? 6,
   };
+}
+
+function positive(value: string | undefined): number | null {
+  const n = Number(value);
+  return value && Number.isFinite(n) && n > 0 ? n : null;
 }
 
 export interface Session {

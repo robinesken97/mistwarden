@@ -1,6 +1,6 @@
 // Added for Mistwarden on 2026-11-27.
 import { describe, expect, it } from 'vitest';
-import { Api, ApiError, SessionExpired } from '../src/http.ts';
+import { Api, ApiError, callScope, MAX_REQUESTS_PER_CALL, newCallScope, SessionExpired } from '../src/http.ts';
 
 const session = { baseUrl: 'http://mistwarden.test/', cookie: 'sid=abc' };
 
@@ -109,5 +109,19 @@ describe('Api', () => {
   it('carries the server message on other errors', async () => {
     const { fetchImpl } = scripted([json(400, { error: 'Validation Error', message: 'Map name is required' })]);
     await expect(new Api(session, { fetch: fetchImpl }).json('POST', '/x')).rejects.toThrow(/400.*Map name is required/);
+  });
+
+  // Mistwarden, 2026-11-28.
+  it('refuses more than the per-call budget of requests inside one tool call, and none outside one', async () => {
+    const answers = Array.from({ length: MAX_REQUESTS_PER_CALL + 2 }, () => json(200, {}));
+    const { calls, fetchImpl } = scripted(answers);
+    const api = new Api(session, { fetch: fetchImpl });
+    await callScope.run(newCallScope(), async () => {
+      for (let i = 0; i < MAX_REQUESTS_PER_CALL; i++) await api.json('GET', '/api/x');
+      await expect(api.json('GET', '/api/x')).rejects.toThrow(/at most 100 requests/);
+    });
+    expect(calls).toHaveLength(MAX_REQUESTS_PER_CALL);
+    await api.json('GET', '/api/x');
+    expect(calls).toHaveLength(MAX_REQUESTS_PER_CALL + 1);
   });
 });

@@ -29,19 +29,23 @@ const step = (what: string) => process.stdout.write(`- ${what}\n`);
 
 // ---- Plain REST, as a browser-less client ----------------------------------
 
-let cookie = '';
-async function rest<T = Record<string, unknown>>(method: string, route: string, body?: unknown): Promise<T> {
-  const res = await fetch(`${BASE}${route}`, {
-    method,
-    headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  const set = res.headers.getSetCookie()[0];
-  if (set) cookie = set.split(';')[0];
-  const data = (await res.json().catch(() => ({}))) as T;
-  if (!res.ok) throw new Error(`${method} ${route}: ${res.status} ${JSON.stringify(data)}`);
-  return data;
+/** A client with its own session cookie: the GM's, or (Mistwarden, 2026-11-28) a player's. */
+function restClient() {
+  let cookie = '';
+  return async function rest<T = Record<string, unknown>>(method: string, route: string, body?: unknown): Promise<T> {
+    const res = await fetch(`${BASE}${route}`, {
+      method,
+      headers: { 'content-type': 'application/json', ...(cookie ? { cookie } : {}) },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const set = res.headers.getSetCookie()[0];
+    if (set) cookie = set.split(';')[0];
+    const data = (await res.json().catch(() => ({}))) as T;
+    if (!res.ok) throw new Error(`${method} ${route}: ${res.status} ${JSON.stringify(data)}`);
+    return data;
+  };
 }
+const rest = restClient();
 
 // ---- The account ------------------------------------------------------------
 
@@ -131,10 +135,19 @@ async function connect(extraEnv: Record<string, string> = {}) {
 }
 
 const PLAYER_TOOLS = ['set_current_map', 'show_gallery_picture', 'share_document'];
+// Mistwarden, 2026-11-28: what the whole table sees, behind co-GM or player-visible.
+const TABLE_TOOLS = ['send_chat', 'send_whisper', 'start_combat', 'next_turn', 'end_combat', 'add_to_initiative', 'roll_initiative', 'set_vibe', 'start_session', 'update_campaign'];
 const gm = await connect();
 const names = (await gm.client.listTools()).tools.map((t) => t.name);
 step(`MCP server lists ${names.length} tools`);
 for (const t of PLAYER_TOOLS) assert.ok(!names.includes(t), `${t} is registered without the switch`);
+for (const t of TABLE_TOOLS) assert.ok(!names.includes(t), `${t} is registered without the switch`);
+
+step('without a switch: a public roll is refused, a secret one goes to the GM alone');
+const publicRoll = await gm.call('roll_dice', { campaignId, expression: '1d20' });
+assert.ok(publicRoll.isError && /whole table/.test(publicRoll.text), 'a public roll was made without a switch');
+const SECRET_PURPOSE = `mcp-it secret ${randomBytes(3).toString('hex')}`;
+await gm.ok('roll_dice', { campaignId, expression: '2d6+1', secret: true, purpose: SECRET_PURPOSE });
 
 step('backup');
 const backup = await gm.ok('create_backup', { campaignId });
@@ -254,6 +267,9 @@ for (const t of PLAYER_TOOLS) assert.ok(openNames.includes(t), `${t} missing wit
 assert.equal((await open.ok('set_current_map', { campaignId, mapId })).currentMapId, mapId);
 await open.ok('add_token', { campaignId, mapId, name: 'Late arrival', x: 2, y: 2 });
 await open.ok('show_gallery_picture', { campaignId, pictureId: picture.pictureId, toAll: true });
+const regridded = await open.ok('update_map_settings', { campaignId, mapId, gridOffsetX: 10, gridType: 'square' });
+assert.deepEqual([regridded.gridOffsetX, regridded.gridType], [10, 'square']);
+await open.ok('update_map_settings', { campaignId, mapId, gridOffsetX: 0 });
 const shownPics = await rest<{ pictures: Array<{ id: string; shownToAll: boolean }> }>('GET', `/api/campaigns/${campaignId}/gallery`);
 assert.equal(shownPics.pictures.find((p) => p.id === picture.pictureId)?.shownToAll, true);
 const shared = await open.ok('share_document', { campaignId, name: 'Mistvale handout', markdown: '# Mistvale\n\nA village in the fog.' });
@@ -261,4 +277,170 @@ const { documents } = await rest<{ documents: Array<{ id: string }> }>('GET', `/
 assert.ok(documents.some((d) => d.id === shared.documentId), 'the document was not shared');
 await open.client.close();
 
-process.stdout.write(`OK: scene built and checked in campaign ${campaignId} (${names.length} tools without the switch, ${openNames.length} with it)\n`);
+// ---- Mistwarden, 2026-11-28: running the game in co-GM mode -----------------------
+
+step('a player joins the campaign');
+const player = restClient();
+const playerEmail = `mcp-player-${randomBytes(4).toString('hex')}@example.com`;
+const created = await rest<{ user: { id: string }; temporaryPassword?: string }>('POST', '/api/admin/users', { email: playerEmail, displayName: 'Mistvale Player' });
+assert.ok(created.temporaryPassword, 'the new account came without a temporary password');
+await player('POST', '/api/auth/login', { email: playerEmail, password: created.temporaryPassword });
+await player('POST', '/api/auth/change-password', { currentPassword: created.temporaryPassword, newPassword: `Mcp-${randomBytes(12).toString('hex')}-Aa1!` });
+await rest('POST', `/api/campaigns/${campaignId}/invite`, { userId: created.user.id });
+const invitations = await player<Array<{ id: string; campaign: { id: string } }>>('GET', '/api/invitations');
+await player('POST', `/api/invitations/${invitations.find((i) => i.campaign.id === campaignId)?.id}/accept`, {});
+
+const tag = `mcp-it-${randomBytes(3).toString('hex')}`;
+// Invented creature and spell, in the shapes the importers read.
+await writeFile(path.join(root, 'bestiary.md'), `### Thrumwing Drake
+
+*Large dragon, chaotic neutral*
+
+**Armor Class** 17 (natural armor)
+
+**Hit Points** 52 (7d10 + 14)
+
+**Speed** 40 ft., fly 80 ft.
+
+| STR | DEX | CON | INT | WIS | CHA |
+|-----|-----|-----|-----|-----|-----|
+| 18 (+4) | 14 (+2) | 15 (+2) | 8 (-1) | 12 (+1) | 10 (+0) |
+
+**Challenge** 4 (1,100 XP)
+
+**Actions**
+
+**Bite.** Melee Weapon Attack: +6 to hit, reach 5 ft., one target. Hit: 9 (1d10 + 4) piercing damage.
+`);
+await writeFile(path.join(root, 'spells.md'), `### Cinder Fan
+
+*3rd-level evocation*  
+**Casting Time:** 1 action  
+**Range:** Self (30-foot cone)  
+**Components:** V, S  
+**Duration:** Instantaneous  
+
+Embers sweep out from your hand. Each creature in a 30-foot cone takes 3d6 fire damage.
+`);
+await mkdir(path.join(root, 'notes'));
+await writeFile(path.join(root, 'notes', 'chapter-2.md'), '# Chapter 2\n\nThe iron door is locked.\n');
+await writeFile(path.join(root, 'notes', '.drafts.md'), 'The iron door hides a key.\n');
+
+const cogm = await connect({ MISTWARDEN_MCP_COGM: '1' });
+const cogmNames = (await cogm.client.listTools()).tools.map((t) => t.name);
+for (const t of TABLE_TOOLS) assert.ok(cogmNames.includes(t), `${t} missing in co-GM mode`);
+for (const t of PLAYER_TOOLS) assert.ok(!cogmNames.includes(t), `${t} is registered in co-GM mode`);
+
+step('local files: list, search, read; hidden ones skipped');
+const listedFiles = await cogm.ok('list_files', {});
+assert.ok(listedFiles.files.some((f: { path: string }) => f.path === path.join('notes', 'chapter-2.md')));
+assert.ok(!listedFiles.files.some((f: { path: string }) => f.path === 'mistvale-crypt.png'), 'a picture was listed');
+assert.ok(!listedFiles.files.some((f: { path: string }) => f.path.includes('.drafts')), 'a hidden file was listed');
+const found = await cogm.ok('search_files', { query: 'iron door' });
+assert.deepEqual(found.hits.map((h: { path: string }) => h.path), [path.join('notes', 'chapter-2.md')]);
+assert.match((await cogm.ok('read_file', { path: 'notes/chapter-2.md' })).text, /locked/);
+assert.ok((await cogm.call('read_file', { path: 'notes/.drafts.md' })).isError, 'a hidden file was read');
+
+step('co-GM: game state on a token placed by hand, on the map players see; no rename, no delete');
+const hp = await cogm.ok('update_token', { campaignId, mapId, tokenId: foreign.id, hp: { current: 4, max: 7 }, conditions: ['prone'] });
+assert.deepEqual([hp.hp, hp.conditions], [{ current: 4, max: 7, temp: 0 }, ['prone']]);
+assert.ok((await cogm.call('update_token', { campaignId, mapId, tokenId: foreign.id, name: 'Renamed' })).isError, 'renamed a token it did not create');
+assert.ok((await cogm.call('delete_token', { campaignId, mapId, tokenId: foreign.id })).isError, 'deleted a token it did not create');
+
+step('instance import: a dry run by default, then a creature searched for and placed');
+const dry = await cogm.ok('import_creatures_markdown', { path: 'bestiary.md', sourceTag: tag });
+assert.deepEqual([dry.dryRun, dry.counts.imported], [true, 1]);
+assert.equal((await cogm.ok('search_creatures', { campaignId, query: 'Thrumwing', source: `custom:${tag}` })).total, 0, 'the dry run wrote');
+assert.equal((await cogm.ok('import_creatures_markdown', { path: 'bestiary.md', sourceTag: tag, dryRun: false })).counts.imported, 1);
+const creatures = await cogm.ok('search_creatures', { campaignId, query: 'Thrumwing', source: `custom:${tag}` });
+assert.equal(creatures.total, 1);
+assert.equal((await cogm.ok('get_creature', { campaignId, creatureId: creatures.creatures[0].id })).name, 'Thrumwing Drake');
+const drake = await cogm.ok('place_creature', { campaignId, mapId, creatureId: creatures.creatures[0].id, x: 6, y: 6 });
+assert.deepEqual([drake.hp, drake.visible, drake.creatureTemplateId], [{ current: 52, max: 52, temp: 0 }, false, creatures.creatures[0].id]);
+await cogm.ok('match_token_pictures', { sourceTag: tag });
+const batch = await cogm.ok('update_tokens', { campaignId, mapId, changes: [{ tokenId: drake.id, rotation: 90 }, { tokenId: foreign.id, conditions: [] }] });
+assert.deepEqual(batch.changed.map((t: { rotation: number; conditions: string[] }) => [t.rotation, t.conditions.length]), [[90, 0], [0, 0]]);
+assert.equal((await cogm.ok('list_tokens', { campaignId, mapId, name: 'thrumwing' }))[0].hp.max, 52);
+assert.ok((await cogm.ok('get_map_summary', { campaignId, mapId })).tokens.total >= 3);
+
+step('an initiative round');
+await cogm.ok('add_to_initiative', { campaignId, mapId, tokenIds: [foreign.id] });
+const rolled = await cogm.ok('roll_initiative', { campaignId, mapId, tokenIds: [drake.id] });
+assert.equal(typeof rolled.rolled[0].value, 'number');
+await cogm.ok('set_initiative', { campaignId, tokenId: foreign.id, value: 30 });
+const started = await cogm.ok('start_combat', { campaignId });
+assert.deepEqual([started.active, started.round, started.currentTokenId], [true, 1, foreign.id]);
+assert.equal((await cogm.ok('next_turn', { campaignId })).currentTokenId, drake.id);
+const round2 = await cogm.ok('next_turn', { campaignId });
+assert.deepEqual([round2.round, round2.currentTokenId], [2, foreign.id]);
+assert.equal((await cogm.ok('get_initiative', { campaignId })).round, 2);
+const reordered = await cogm.ok('set_initiative_order', { campaignId, tokenIds: [drake.id, foreign.id] });
+assert.deepEqual(reordered.combatants.map((c: { tokenId: string }) => c.tokenId), [drake.id, foreign.id]);
+assert.equal((await cogm.ok('remove_from_initiative', { campaignId, tokenId: foreign.id })).combatants.length, 1);
+assert.equal((await cogm.ok('end_combat', { campaignId })).active, false);
+
+step('chat, a whisper, and the secret roll kept from the player');
+await cogm.ok('send_chat', { campaignId, content: 'The torches gutter.' });
+await cogm.ok('send_whisper', { campaignId, recipientId: created.user.id, content: 'You hear scratching behind the door.' });
+const seen = await player<{ messages: Array<{ content: string; recipientId: string | null }> }>('GET', `/api/campaigns/${campaignId}/messages`);
+assert.ok(seen.messages.some((m) => m.content === 'The torches gutter.'));
+assert.ok(seen.messages.some((m) => m.content === 'You hear scratching behind the door.' && m.recipientId === created.user.id), 'the whisper did not reach the player');
+const playerRolls = await player<{ rolls: Array<{ purpose: string | null }> }>('GET', `/api/campaigns/${campaignId}/dice-rolls`);
+assert.ok(!playerRolls.rolls.some((r) => r.purpose === SECRET_PURPOSE), 'the player was sent the secret roll');
+assert.ok((await cogm.ok('get_dice_rolls', { campaignId })).rolls.some((r: { purpose: string | null }) => r.purpose === SECRET_PURPOSE));
+assert.ok((await cogm.ok('get_messages', { campaignId })).messages.length >= 2);
+
+step('time of day, weather, campaign settings, the roster');
+assert.equal((await cogm.ok('set_vibe', { campaignId, period: 'dusk' })).period, 'dusk');
+await cogm.ok('set_atmosphere', { campaignId, effect: null });
+assert.equal((await cogm.ok('update_campaign', { campaignId, description: 'Fog and lanterns.' })).description, 'Fog and lanterns.');
+assert.ok((await cogm.ok('list_characters', { campaignId })).some((m: { userId: string }) => m.userId === created.user.id));
+
+step('a spell area from the stored spell, then removed; exploration reset');
+assert.equal((await cogm.ok('import_spells_markdown', { path: 'spells.md', sourceTag: tag, dryRun: false })).counts.imported, 1);
+const area = await cogm.ok('place_spell_area', { campaignId, mapId, spellName: 'Cinder Fan', anchorX: 300, anchorY: 300, towardX: 600, towardY: 300 });
+assert.deepEqual([area.shape, area.sizeFt, area.angle, area.element], ['cone', 30, 0, 'fire']);
+assert.ok((await cogm.ok('list_areas', { campaignId, mapId })).some((a: { id: string }) => a.id === area.areaId));
+const playerAreas = await player<{ areas: Array<{ id: string }> }>('GET', `/api/campaigns/${campaignId}/maps/${mapId}/areas`);
+assert.ok(playerAreas.areas.some((a) => a.id === area.areaId), 'the player does not see the area');
+await cogm.ok('remove_area', { campaignId, mapId, areaId: area.areaId });
+assert.equal((await cogm.ok('list_areas', { campaignId, mapId })).length, 0);
+const spells = await cogm.ok('list_spells', { campaignId, query: 'cinder fan' });
+assert.match((await cogm.ok('get_spell', { campaignId, spellId: spells.spells[0].id })).description, /Embers/);
+await cogm.ok('place_area', { campaignId, mapId, shape: 'sphere', sizeFt: 20, anchorX: 500, anchorY: 500, audience: 'GM' });
+await cogm.ok('clear_areas', { campaignId, mapId });
+assert.equal((await cogm.ok('list_areas', { campaignId, mapId })).length, 0);
+await cogm.ok('reset_exploration', { campaignId, mapId });
+
+step('a session, started, paused, resumed and ended');
+await cogm.ok('start_session', { campaignId });
+await cogm.ok('pause_session', { campaignId });
+await cogm.ok('resume_session', { campaignId });
+await cogm.ok('end_session', { campaignId, notes: 'The drake fled.' });
+const [lastSession] = await cogm.ok('list_sessions', { campaignId });
+assert.equal(lastSession.notes, 'The drake fled.');
+assert.equal((await cogm.ok('set_session_notes', { campaignId, sessionId: lastSession.id, notes: 'The drake fled north.' })).notes, 'The drake fled north.');
+
+step("a player's character: refused in co-GM mode, one field merged with the edit override, the old sheet saved");
+const { character: made } = await player<{ character: { id: string } }>('POST', '/api/characters', { name: 'Wren', campaignId, data: { notes: 'Left-handed.', class: 'ranger' } });
+const before = await cogm.ok('get_character', { campaignId, characterId: made.id });
+const textField = Object.keys(before.data ?? {}).find((k) => typeof before.data[k] === 'string');
+assert.ok(textField, `no text field on the new sheet: ${Object.keys(before.data ?? {}).join(', ')}`);
+const refusedSheet = await cogm.call('update_character', { campaignId, characterId: made.id, updatedAt: before.updatedAt, fields: { [textField]: 'Changed by the GM' } });
+assert.ok(refusedSheet.isError && /ALLOW_ANY_EDIT/.test(refusedSheet.text), "co-GM mode changed a player's sheet");
+const anyEdit = await connect({ MISTWARDEN_MCP_ALLOW_ANY_EDIT: '1' });
+const changed = await anyEdit.ok('update_character', { campaignId, characterId: made.id, updatedAt: before.updatedAt, fields: { [textField]: 'Changed by the GM' } });
+await anyEdit.client.close();
+const { character: sheetAfter } = await player<{ character: { data: Record<string, unknown> } }>('GET', `/api/characters/${made.id}`);
+assert.deepEqual(sheetAfter.data, { ...before.data, [textField]: 'Changed by the GM' }, 'the other fields of the sheet changed');
+assert.equal((await stat(changed.previousSheetSavedTo)).mode & 0o777, 0o600);
+assert.deepEqual(JSON.parse(await readFile(changed.previousSheetSavedTo, 'utf8')).data, before.data);
+process.stdout.write(`  merged "${textField}"; old sheet in ${changed.previousSheetSavedTo}\n`);
+
+step('the imports deleted again by their tag');
+assert.ok((await cogm.call('delete_imported_creatures', { sourceTag: tag })).isError, 'deleted without confirm');
+assert.equal((await cogm.ok('delete_imported_creatures', { sourceTag: tag, confirm: true })).deleted, 1);
+assert.equal((await cogm.ok('delete_imported_spells', { sourceTag: tag, confirm: true })).deleted, 1);
+await cogm.client.close();
+
+process.stdout.write(`OK: scene built and checked in campaign ${campaignId} (${names.length} tools without a switch, ${openNames.length} player-visible, ${cogmNames.length} co-GM)\n`);
