@@ -91,8 +91,8 @@ export type FlatMenuItem = Exclude<MenuItem, MenuSubmenu>;
 /** The classes a popover draws a rule, a heading and a line of text with. */
 export const MENU_ROW_CLASSES = {
   separator: 'h-px bg-moss-green/20 my-1',
-  heading: 'px-4 py-1.5 text-xs font-semibold text-stone-gray/70 border-b border-moss-green/10 select-none',
-  text: 'px-4 py-2 text-sm text-stone-gray/70 italic select-none',
+  heading: 'px-4 py-1.5 text-xs font-semibold text-stone-gray border-b border-moss-green/10 select-none',
+  text: 'px-4 py-2 text-sm text-stone-gray italic select-none',
 };
 
 /**

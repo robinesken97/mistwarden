@@ -4986,7 +4986,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
                 title={spiritTokensLabel}
                 aria-label={spiritTokensLabel}
               >
-                <Ghost className={`w-4 h-4 ${gmShowSpiritTokens ? 'text-spirit-ink' : 'text-stone-gray/40'}`} />
+                <Ghost className={`w-4 h-4 ${gmShowSpiritTokens ? 'text-spirit-ink' : 'text-stone-gray'}`} />
               </Button>
           )}
           </div>
@@ -5468,7 +5468,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
             </button>
           )}
 
-          <p className="text-xs text-stone-gray/70">
+          <p className="text-xs text-stone-gray">
             {aoePersist
               ? (aoeConfig.shape === 'cone' || aoeConfig.shape === 'line')
                 ? (aoeAnchor ? 'Click where it points to place it for everyone' : 'Click its square, then where it points')
@@ -5480,7 +5480,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
               the escape hatch for an effect cast at a distance — a wall of
               fire, say. */}
           {(aoeConfig.shape === 'cone' || aoeConfig.shape === 'line') && (
-            <p className="text-xs text-stone-gray/70">
+            <p className="text-xs text-stone-gray">
               {/* A finger has no hover to aim with, nor an Alt key. */}
               {aoeAnchor
                 ? (coarsePointer ? 'Drag from its square to aim it' : 'Move the cursor to aim it around that square')
@@ -5530,7 +5530,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
                 {areaCovers.map((t) => <li key={t.id}>{tokenDisplayName(t)}</li>)}
               </ul>
             ) : (
-              <p className="text-xs text-stone-gray/70">No tokens you can see</p>
+              <p className="text-xs text-stone-gray">No tokens you can see</p>
             )}
             {mapAreas.mayErase(selectedArea) && (
               <button
@@ -5653,7 +5653,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
           <div className="text-center">
             <Grid3x3 className="w-12 h-12 text-brand-ink/30 mx-auto mb-3" />
             <p className="text-sm text-warm-gray mb-2">No map loaded</p>
-            <p className="text-xs text-stone-gray/70">
+            <p className="text-xs text-stone-gray">
               Upload a map to get started
             </p>
           </div>

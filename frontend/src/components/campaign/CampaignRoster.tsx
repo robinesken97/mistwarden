@@ -352,7 +352,7 @@ export default function CampaignRoster() {
           <button
             type="button"
             onClick={() => { void fetchRoster(); }}
-            className="text-xs text-brand-ink underline hover:text-brand-ink/80"
+            className="text-xs text-brand-ink underline hover:decoration-2"
           >
             Try again
           </button>
@@ -714,7 +714,7 @@ function CharacterRow({ character, canDrag, coarsePointer, onClick, onMenu }: Ch
           draggable
           title={dragTitle}
           aria-hidden="true"
-          className="touch-target inline-flex items-center justify-center shrink-0 -my-1.5 -mx-2.5 rounded-sm text-stone-gray/60 cursor-grab active:cursor-grabbing"
+          className="touch-target inline-flex items-center justify-center shrink-0 -my-1.5 -mx-2.5 rounded-sm text-stone-gray cursor-grab active:cursor-grabbing"
         >
           <GripVertical className="w-4 h-4" />
         </span>

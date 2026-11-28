@@ -164,7 +164,7 @@ export default function GmToolPanelContainer({ children, containerRef, band = nu
         title="Drag to move the panels; double-click to put them back in the corner"
       >
         <span className="text-xs font-semibold uppercase tracking-wider text-ink-muted">{label}</span>
-        <GripHorizontal className="ml-auto w-4 h-4 shrink-0 text-ink-muted/70" aria-hidden="true" />
+        <GripHorizontal className="ml-auto w-4 h-4 shrink-0 text-ink-muted" aria-hidden="true" />
         {position && (
           <button
             type="button"

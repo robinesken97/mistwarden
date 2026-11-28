@@ -249,8 +249,8 @@ const SEPARATOR = 'h-px bg-moss-green/20 my-1';
 const SUBMENU = 'bg-parchment/80 border-t border-moss-green/10 px-2 py-1 space-y-0.5';
 const SUBMENU_ITEM = 'w-full px-2 py-1.5 pointer-coarse:min-h-11 text-left text-xs text-charcoal hover:bg-moss-green/10 rounded-sm transition-colors';
 const SUBMENU_WAIT = 'text-xs text-stone-gray px-2 py-1';
-const DOOR_HEADING = 'px-4 py-1.5 text-xs font-semibold text-stone-gray/70 border-b border-moss-green/10 select-none';
-const DOOR_NOTE = 'px-4 py-2 text-sm text-stone-gray/70 italic select-none';
+const DOOR_HEADING = 'px-4 py-1.5 text-xs font-semibold text-stone-gray border-b border-moss-green/10 select-none';
+const DOOR_NOTE = 'px-4 py-2 text-sm text-stone-gray italic select-none';
 const MENU = 'fixed z-50 glass-panel bg-parchment/95 backdrop-blur-xs border border-moss-green/20 shadow-lg py-1 flex flex-col w-max min-w-[160px] max-w-[18rem] pointer-coarse:max-h-[calc(100dvh-1rem)] pointer-coarse:overflow-y-auto pointer-coarse:overscroll-contain';
 
 function describeButton(button: HTMLButtonElement, looks: Record<string, string>): string {
@@ -563,7 +563,7 @@ describe('Move to Map…', () => {
     show(goblin());
     rightClick(0, 19);
     const opener = screen.getByText('Move to Map…').parentElement!;
-    expect(opener.innerHTML).toBe('<span>Move to Map…</span><span class="text-xs opacity-60">▶</span>');
+    expect(opener.innerHTML).toBe('<span>Move to Map…</span><span class="text-xs">▶</span>');
 
     fireEvent.click(opener);
     expect(rows().slice(-6)).toEqual(['---', 'Move to Map…▶ (accent, opens a submenu)', '› Map B', '› Map C', '---', 'Remove from Map (danger)']);

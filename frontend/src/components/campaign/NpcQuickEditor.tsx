@@ -637,7 +637,7 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
             // read as "favourite" and gave no hint that the avatar is a
             // button that opens the image picker.
             <div className="w-14 h-14 rounded-full bg-stone-gray/10 border border-dashed border-stone-gray/30 flex items-center justify-center">
-              <Upload className="w-5 h-5 text-stone-gray/50" />
+              <Upload className="w-5 h-5 text-stone-gray" />
             </div>
           )}
           <div className="absolute inset-0 rounded-full bg-forest-shadow/0 group-hover:bg-forest-shadow/40 transition-colors flex items-center justify-center">
@@ -689,7 +689,7 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
                 <button
                   onClick={() => imageFileRef.current?.click()}
                   disabled={isUploadingImage}
-                  className="flex items-center gap-1 text-xs text-brand-ink hover:text-brand-ink/80 disabled:opacity-40 transition-colors"
+                  className="flex items-center gap-1 text-xs text-brand-ink hover:underline disabled:opacity-40 transition-colors"
                 >
                   {isUploadingImage ? (
                     <Loader2 className="w-3 h-3 animate-spin" />
@@ -701,7 +701,7 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
                 <span className="text-ink-muted">·</span>
                 <button
                   onClick={() => setShowImagePicker(false)}
-                  className="text-xs text-stone-gray hover:text-stone-gray/80 transition-colors"
+                  className="text-xs text-stone-gray hover:text-ink transition-colors"
                 >
                   Cancel
                 </button>
@@ -892,7 +892,7 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
               </>
             ) : (
               <div className="glass-panel p-3">
-                <p className="text-sm text-stone-gray/70 italic mb-2">No HP tracking</p>
+                <p className="text-sm text-stone-gray italic mb-2">No HP tracking</p>
                 {enableHpPrompt ? (
                   <div className="flex gap-2 items-center">
                     <input
@@ -943,7 +943,7 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
                       flushStatBlock();
                       setEditingStatBlock(!editingStatBlock);
                     }}
-                    className="text-xs text-brand-ink hover:text-brand-ink/80 transition-colors"
+                    className="text-xs text-brand-ink hover:underline transition-colors"
                   >
                     {editingStatBlock ? 'View' : 'Edit'}
                   </button>

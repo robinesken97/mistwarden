@@ -359,7 +359,7 @@ function CombatantRow({
             }}
             className="shrink-0 touch-target inline-flex items-center justify-center rounded-sm cursor-grab active:cursor-grabbing focus:outline-hidden focus-visible:ring-2 focus-visible:ring-brand/50"
           >
-            <GripVertical className="w-3.5 h-3.5 text-stone-gray/40 hover:text-stone-gray transition-colors" aria-hidden="true" />
+            <GripVertical className="w-3.5 h-3.5 text-stone-gray hover:text-stone-gray transition-colors" aria-hidden="true" />
           </button>
         )
         : <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${isActive ? 'bg-warm-amber' : 'bg-transparent'}`} />

@@ -352,7 +352,7 @@ export default function EditMapModal({
                         decimals
                       />
                     </div>
-                    <p className="text-xs text-stone-gray/50 mt-2">
+                    <p className="text-xs text-stone-gray mt-2">
                       Canvas will be {Math.round(width * gridSize)}×{Math.round(height * gridSize)}px
                     </p>
                   </div>
@@ -411,7 +411,7 @@ export default function EditMapModal({
                           />
                         )}
                       </div>
-                      <p className="text-xs text-stone-gray/50 mt-1">How many feet each grid square represents.</p>
+                      <p className="text-xs text-stone-gray mt-1">How many feet each grid square represents.</p>
                     </div>
 
                     {/* Diagonal Movement: hexes have no diagonals */}
@@ -432,7 +432,7 @@ export default function EditMapModal({
                             <span className="text-sm text-stone-gray group-hover:text-brand-ink transition-colors">
                               Flat — every square costs the same
                             </span>
-                            <p className="text-xs text-stone-gray/50">{GAME_SYSTEM_SHORT_LABELS[GameSystem.FIFTH_EDITION]} default</p>
+                            <p className="text-xs text-stone-gray">{GAME_SYSTEM_SHORT_LABELS[GameSystem.FIFTH_EDITION]} default</p>
                           </div>
                         </label>
                         <label className="flex items-start gap-3 cursor-pointer group">
@@ -449,7 +449,7 @@ export default function EditMapModal({
                             <span className="text-sm text-stone-gray group-hover:text-brand-ink transition-colors">
                               Alternating — {diagonalStepCosts(feetPerSquare, 'alternating').join('/')} ft diagonals
                             </span>
-                            <p className="text-xs text-stone-gray/50">{GAME_SYSTEM_SHORT_LABELS[GameSystem.FANTASY_D20]} default</p>
+                            <p className="text-xs text-stone-gray">{GAME_SYSTEM_SHORT_LABELS[GameSystem.FANTASY_D20]} default</p>
                           </div>
                         </label>
                       </div>
@@ -471,7 +471,7 @@ export default function EditMapModal({
                           <span className="text-sm text-stone-gray group-hover:text-brand-ink transition-colors">
                             Tokens snap to grid
                           </span>
-                          <p id="snap-tokens-note-edit" className="text-xs text-stone-gray/50">
+                          <p id="snap-tokens-note-edit" className="text-xs text-stone-gray">
                             {gridType !== 'square'
                               ? 'A hex map always snaps: every token stands on one hex.'
                               : 'Off, anyone can stop a token between squares. On, tokens stand on whole squares; the GM can still place one freely by holding Alt.'}
@@ -488,12 +488,12 @@ export default function EditMapModal({
                     <label className="block text-sm font-medium text-stone-gray">Grid Preview</label>
                     <div className="flex items-center gap-2">
                       {isDetecting && (
-                        <span className="flex items-center gap-1 text-xs text-stone-gray/50">
+                        <span className="flex items-center gap-1 text-xs text-stone-gray">
                           <Loader2 className="w-3 h-3 animate-spin" />
                           Analysing…
                         </span>
                       )}
-                      <span className="text-xs text-stone-gray/50 tabular-nums">{previewZoom.toFixed(2)}×</span>
+                      <span className="text-xs text-stone-gray tabular-nums">{previewZoom.toFixed(2)}×</span>
                     </div>
                   </div>
 
@@ -510,7 +510,7 @@ export default function EditMapModal({
 
                   {/* Zoom control */}
                   <div className="flex items-center gap-2">
-                    <ZoomOut className="w-4 h-4 text-stone-gray/50 shrink-0" />
+                    <ZoomOut className="w-4 h-4 text-stone-gray shrink-0" />
                     <input
                       type="range"
                       min="0.1"
@@ -521,7 +521,7 @@ export default function EditMapModal({
                       className="flex-1 accent-moss-green cursor-pointer"
                       aria-label="Preview zoom level"
                     />
-                    <ZoomIn className="w-4 h-4 text-stone-gray/50 shrink-0" />
+                    <ZoomIn className="w-4 h-4 text-stone-gray shrink-0" />
                   </div>
 
                   {/* Auto-detect suggestion banner — only shown when image is changed */}
@@ -560,7 +560,7 @@ export default function EditMapModal({
                     </div>
                   )}
 
-                  <p className="text-xs text-stone-gray/50 text-center leading-relaxed">
+                  <p className="text-xs text-stone-gray text-center leading-relaxed">
                     Zoom in to verify the grid aligns<br />with the lines on your map image.
                   </p>
                 </div>
@@ -586,7 +586,7 @@ export default function EditMapModal({
                           <span className="text-sm text-stone-gray group-hover:text-brand-ink transition-colors">
                             Enable Dynamic Lighting
                           </span>
-                          <p className="text-xs text-stone-gray/50">Raycasting visibility — players only see what their tokens can see through walls</p>
+                          <p className="text-xs text-stone-gray">Raycasting visibility — players only see what their tokens can see through walls</p>
                         </div>
                       </label>
                     </div>
@@ -605,7 +605,7 @@ export default function EditMapModal({
                           <span className="text-sm text-stone-gray group-hover:text-brand-ink transition-colors">
                             Global Illumination
                           </span>
-                          <p className="text-xs text-stone-gray/50">Everything in line of sight is lit. Untick to make lights and darkvision matter</p>
+                          <p className="text-xs text-stone-gray">Everything in line of sight is lit. Untick to make lights and darkvision matter</p>
                         </div>
                       </label>
                     </div>
@@ -624,7 +624,7 @@ export default function EditMapModal({
                           <span className="text-sm text-stone-gray group-hover:text-brand-ink transition-colors">
                             Remember Explored Areas
                           </span>
-                          <p className="text-xs text-stone-gray/50">Places a player has seen stay on their map, greyed, until they see them again</p>
+                          <p className="text-xs text-stone-gray">Places a player has seen stay on their map, greyed, until they see them again</p>
                         </div>
                       </label>
                     </div>
@@ -644,7 +644,7 @@ export default function EditMapModal({
                           <span className="text-sm text-stone-gray group-hover:text-brand-ink transition-colors">
                             Fog of War
                           </span>
-                          <p className="text-xs text-stone-gray/50">Cover the map and reveal it by hand from the Fog panel. Off, players see the whole map (dynamic lighting still applies)</p>
+                          <p className="text-xs text-stone-gray">Cover the map and reveal it by hand from the Fog panel. Off, players see the whole map (dynamic lighting still applies)</p>
                         </div>
                       </label>
                     </div>

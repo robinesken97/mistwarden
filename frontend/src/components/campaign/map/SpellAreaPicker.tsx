@@ -21,7 +21,7 @@ export default function SpellAreaPicker({ campaignId, onPick }: { campaignId: st
         type="button"
         aria-expanded={open}
         onClick={() => setOpen(!open)}
-        className="touch-target inline-flex items-center gap-1 text-xs font-medium text-brand-ink hover:text-brand-ink/80"
+        className="touch-target inline-flex items-center gap-1 text-xs font-medium text-brand-ink hover:underline"
       >
         {open ? <ChevronDown className="w-3 h-3" aria-hidden="true" /> : <ChevronRight className="w-3 h-3" aria-hidden="true" />}
         From spell…

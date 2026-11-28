@@ -1364,7 +1364,7 @@ export default function AdminPage() {
                                         className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${
                                           u.globalAssetManager
                                             ? 'bg-warm-amber/15 text-accent-ink hover:bg-warm-amber/30'
-                                            : 'bg-warm-gray/10 text-warm-gray/60 hover:bg-warm-gray/20'
+                                            : 'bg-warm-gray/10 text-warm-gray hover:bg-warm-gray/20'
                                         } ${isSelf ? 'opacity-60 cursor-default' : 'cursor-pointer'}`}
                                       >
                                         {togglingGlobalAssets === u.id
@@ -1383,7 +1383,7 @@ export default function AdminPage() {
                                         className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-colors ${
                                           u.templateEditor
                                             ? 'bg-spirit-purple/15 text-spirit-ink hover:bg-spirit-purple/30'
-                                            : 'bg-warm-gray/10 text-warm-gray/60 hover:bg-warm-gray/20'
+                                            : 'bg-warm-gray/10 text-warm-gray hover:bg-warm-gray/20'
                                         } ${isSelf ? 'opacity-60 cursor-default' : 'cursor-pointer'}`}
                                       >
                                         {togglingTemplateEditor === u.id
@@ -1858,9 +1858,9 @@ export default function AdminPage() {
                                   ) : asset.type === AssetType.AUDIO ? (
                                     <FileAudio className="w-5 h-5 text-spirit-ink" />
                                   ) : asset.type === AssetType.DOCUMENT ? (
-                                    <FileText className="w-5 h-5 text-stone-gray/60" />
+                                    <FileText className="w-5 h-5 text-stone-gray" />
                                   ) : (
-                                    <ImageIcon className="w-5 h-5 text-stone-gray/40" />
+                                    <ImageIcon className="w-5 h-5 text-stone-gray" />
                                   )}
                                 </div>
                               </td>
@@ -1938,7 +1938,7 @@ export default function AdminPage() {
                                       <Loader2 className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 animate-spin text-brand-ink pointer-events-none" />
                                     )}
                                     {!isChangingScope && (
-                                      <ArrowRightLeft className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-warm-gray/60 pointer-events-none" />
+                                      <ArrowRightLeft className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-warm-gray pointer-events-none" />
                                     )}
                                   </div>
                                   {/* Delete */}
@@ -2226,14 +2226,14 @@ export default function AdminPage() {
                         <tr key={type} className="border-b border-warm-gray/10 last:border-0">
                           <td className="py-1.5 text-stone-gray font-medium w-24">{type}</td>
                           <td className="py-1.5 text-warm-gray">{formatFileSize(bytes, ADMIN_SIZES)}</td>
-                          <td className="py-1.5 text-right text-xs text-warm-gray/60">
+                          <td className="py-1.5 text-right text-xs text-warm-gray">
                             <code className="font-mono">MAX_{type}_SIZE_MB</code>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                  <p className="text-xs text-warm-gray/70 mt-3">
+                  <p className="text-xs text-warm-gray mt-3">
                     Your reverse proxy must allow request bodies of at least{' '}
                     <strong>{requiredProxyBodyMB(serverConfig.uploadLimits)} MB</strong>, or larger
                     uploads fail with HTTP 413 before reaching the API. For the bundled Nginx, set{' '}
@@ -2274,7 +2274,7 @@ export default function AdminPage() {
                       <td className="py-1.5 text-warm-gray">
                         {formatDuration(serverConfig.sessionTimeoutMs, 'largest')}
                       </td>
-                      <td className="py-1.5 text-right text-xs text-warm-gray/60">
+                      <td className="py-1.5 text-right text-xs text-warm-gray">
                         <code className="font-mono">SESSION_MAX_AGE</code>
                       </td>
                     </tr>
@@ -2283,7 +2283,7 @@ export default function AdminPage() {
                       <td className="py-1.5 text-warm-gray">
                         {formatDuration(serverConfig.rememberMeTimeoutMs, 'largest')}
                       </td>
-                      <td className="py-1.5 text-right text-xs text-warm-gray/60">
+                      <td className="py-1.5 text-right text-xs text-warm-gray">
                         <code className="font-mono">REMEMBER_ME_MAX_AGE</code>
                       </td>
                     </tr>

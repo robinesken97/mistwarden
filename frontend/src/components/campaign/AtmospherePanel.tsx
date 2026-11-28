@@ -268,7 +268,7 @@ export default function AtmospherePanel({ isOpen, onClose }: AtmospherePanelProp
               className={`flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all ${
                 !activeAtmosphereEffect
                   ? 'border-stone-gray/40 bg-stone-gray/10 text-stone-gray'
-                  : 'border-moss-green/20 bg-parchment/50 text-stone-gray/50 hover:border-stone-gray/40 hover:bg-stone-gray/5'
+                  : 'border-moss-green/20 bg-parchment/50 text-stone-gray hover:border-stone-gray/40 hover:bg-stone-gray/5'
               }`}
             >
               <Square className="w-5 h-5" />

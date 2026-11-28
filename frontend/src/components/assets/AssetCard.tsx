@@ -182,7 +182,7 @@ function AssetCardInner({ asset, viewMode, onView, onDelete }: AssetCardProps) {
                   </span>
                 ))}
                 {asset.tags.length > 3 && (
-                  <span className="text-xs text-stone-gray/50">
+                  <span className="text-xs text-stone-gray">
                     +{asset.tags.length - 3} more
                   </span>
                 )}
@@ -333,7 +333,7 @@ function AssetCardInner({ asset, viewMode, onView, onDelete }: AssetCardProps) {
               </span>
             ))}
             {asset.tags.length > 2 && (
-              <span className="text-xs text-stone-gray/50">
+              <span className="text-xs text-stone-gray">
                 +{asset.tags.length - 2}
               </span>
             )}

@@ -235,7 +235,7 @@ export default function LoginPage() {
 
             <Link
               to="/auth/forgot-password"
-              className="text-sm text-brand-ink hover:text-brand-ink/80 transition-colors"
+              className="text-sm text-brand-ink hover:underline transition-colors"
             >
               Forgot password?
             </Link>
@@ -284,7 +284,7 @@ export default function LoginPage() {
               Don't have an account?{' '}
               <Link
                 to="/auth/register"
-                className="text-brand-ink hover:text-brand-ink/80 font-medium transition-colors"
+                className="text-brand-ink hover:underline font-medium transition-colors"
               >
                 Create one
               </Link>

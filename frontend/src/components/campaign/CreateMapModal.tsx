@@ -399,7 +399,7 @@ export default function CreateMapModal({
                     {drawing ? (
                       <>
                         {drawnSize.fits && (
-                          <p className="text-xs text-stone-gray/50 mt-2">
+                          <p className="text-xs text-stone-gray mt-2">
                             It is painted at {count(drawnSize.width)} × {count(drawnSize.height)} px.
                           </p>
                         )}
@@ -408,7 +408,7 @@ export default function CreateMapModal({
                         )}
                       </>
                     ) : (
-                      <p className="text-xs text-stone-gray/50 mt-2">
+                      <p className="text-xs text-stone-gray mt-2">
                         Canvas will be {Math.round(width * gridSize)}×{Math.round(height * gridSize)}px
                       </p>
                     )}
@@ -511,7 +511,7 @@ export default function CreateMapModal({
                           />
                         )}
                       </div>
-                      <p className="text-xs text-stone-gray/50 mt-1">How many feet each grid square represents.</p>
+                      <p className="text-xs text-stone-gray mt-1">How many feet each grid square represents.</p>
                     </div>
 
                     {/* Diagonal Movement: hexes have no diagonals */}
@@ -532,7 +532,7 @@ export default function CreateMapModal({
                             <span className="text-sm text-stone-gray group-hover:text-brand-ink transition-colors">
                               Flat — every square costs the same
                             </span>
-                            <p className="text-xs text-stone-gray/50">{GAME_SYSTEM_SHORT_LABELS[GameSystem.FIFTH_EDITION]} default</p>
+                            <p className="text-xs text-stone-gray">{GAME_SYSTEM_SHORT_LABELS[GameSystem.FIFTH_EDITION]} default</p>
                           </div>
                         </label>
                         <label className="flex items-start gap-3 cursor-pointer group">
@@ -549,7 +549,7 @@ export default function CreateMapModal({
                             <span className="text-sm text-stone-gray group-hover:text-brand-ink transition-colors">
                               Alternating — {diagonalStepCosts(feetPerSquare, 'alternating').join('/')} ft diagonals
                             </span>
-                            <p className="text-xs text-stone-gray/50">{GAME_SYSTEM_SHORT_LABELS[GameSystem.FANTASY_D20]} default</p>
+                            <p className="text-xs text-stone-gray">{GAME_SYSTEM_SHORT_LABELS[GameSystem.FANTASY_D20]} default</p>
                           </div>
                         </label>
                       </div>
@@ -571,7 +571,7 @@ export default function CreateMapModal({
                           <span className="text-sm text-stone-gray group-hover:text-brand-ink transition-colors">
                             Tokens snap to grid
                           </span>
-                          <p id="snap-tokens-note-create" className="text-xs text-stone-gray/50">
+                          <p id="snap-tokens-note-create" className="text-xs text-stone-gray">
                             {!squareGrid
                               ? 'A hex map always snaps: every token stands on one hex.'
                               : 'Off, anyone can stop a token between squares. On, tokens stand on whole squares; the GM can still place one freely by holding Alt.'}
@@ -591,7 +591,7 @@ export default function CreateMapModal({
                       className="w-full max-h-72 rounded-sm border border-moss-green/30 mx-auto"
                       style={{ aspectRatio: `${width} / ${height}`, backgroundColor: background, maxWidth: `calc(18rem * ${width / height})` }}
                     />
-                    <p className="text-xs text-stone-gray/50 text-center leading-relaxed">
+                    <p className="text-xs text-stone-gray text-center leading-relaxed">
                       The map opens on your screen only, with Mapmaker on, while your players stay where they are.
                     </p>
                   </div>
@@ -601,12 +601,12 @@ export default function CreateMapModal({
                     <label className="block text-sm font-medium text-stone-gray">Grid Preview</label>
                     <div className="flex items-center gap-2">
                       {isDetecting && (
-                        <span className="flex items-center gap-1 text-xs text-stone-gray/50">
+                        <span className="flex items-center gap-1 text-xs text-stone-gray">
                           <Loader2 className="w-3 h-3 animate-spin" />
                           Analysing…
                         </span>
                       )}
-                      <span className="text-xs text-stone-gray/50 tabular-nums">{previewZoom.toFixed(2)}×</span>
+                      <span className="text-xs text-stone-gray tabular-nums">{previewZoom.toFixed(2)}×</span>
                     </div>
                   </div>
 
@@ -623,7 +623,7 @@ export default function CreateMapModal({
 
                   {/* Zoom control */}
                   <div className="flex items-center gap-2">
-                    <ZoomOut className="w-4 h-4 text-stone-gray/50 shrink-0" />
+                    <ZoomOut className="w-4 h-4 text-stone-gray shrink-0" />
                     <input
                       type="range"
                       min="0.1"
@@ -634,7 +634,7 @@ export default function CreateMapModal({
                       className="flex-1 accent-moss-green cursor-pointer"
                       aria-label="Preview zoom level"
                     />
-                    <ZoomIn className="w-4 h-4 text-stone-gray/50 shrink-0" />
+                    <ZoomIn className="w-4 h-4 text-stone-gray shrink-0" />
                   </div>
 
                   {/* Auto-detect suggestion banner: detection finds squares only */}
@@ -674,13 +674,13 @@ export default function CreateMapModal({
                   )}
 
                   {!isDetecting && !detectedGrid && mapAssetId && gridType === 'square' && (
-                    <p className="text-xs text-stone-gray/50 text-center leading-relaxed">
+                    <p className="text-xs text-stone-gray text-center leading-relaxed">
                       No grid detected automatically.<br />Use the sliders to align manually.
                     </p>
                   )}
 
                   {!mapAssetId && (
-                    <p className="text-xs text-stone-gray/50 text-center leading-relaxed">
+                    <p className="text-xs text-stone-gray text-center leading-relaxed">
                       Zoom in to verify the grid aligns<br />with the lines on your map image.
                     </p>
                   )}

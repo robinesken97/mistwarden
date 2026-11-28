@@ -184,7 +184,7 @@ function RegenerateForm({ onClose }: { onClose: () => void }) {
         <div>
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs font-semibold text-stone-gray uppercase tracking-wide">New Backup Codes</p>
-            <button onClick={copyAll} className="flex items-center gap-1 text-xs text-brand-ink hover:text-brand-ink/80">
+            <button onClick={copyAll} className="flex items-center gap-1 text-xs text-brand-ink hover:underline">
               {copyState === 'copied' ? <CheckCircle className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
               {copyState === 'copied' ? 'Copied!' : 'Copy all'}
             </button>
@@ -263,7 +263,7 @@ export default function MFASection() {
           {isEnabled ? (
             <ShieldCheck className="w-5 h-5 text-brand-ink" />
           ) : (
-            <Shield className="w-5 h-5 text-stone-gray/50" />
+            <Shield className="w-5 h-5 text-stone-gray" />
           )}
           <div>
             <h3 className="text-sm font-semibold text-brand-ink">Two-Factor Authentication</h3>

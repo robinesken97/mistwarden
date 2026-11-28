@@ -407,7 +407,7 @@ export default function SpiritLayerControls({ isOpen, onClose }: SpiritLayerCont
                       }`}
                     >
                       <p className="text-[11px] font-semibold">{eff.label}</p>
-                      <p className="text-[9px] leading-tight mt-0.5 opacity-70">{eff.description}</p>
+                      <p className="text-[9px] leading-tight mt-0.5">{eff.description}</p>
                     </button>
                   ))}
                 </div>
@@ -421,20 +421,20 @@ export default function SpiritLayerControls({ isOpen, onClose }: SpiritLayerCont
           <h3 className="text-sm font-semibold text-stone-gray uppercase tracking-wide mb-1">
             Spirits in the Realm
             {spiritTokens.length > 0 && (
-              <span className="ml-2 text-xs font-normal text-stone-gray/70 normal-case">
+              <span className="ml-2 text-xs font-normal text-stone-gray normal-case">
                 ({spiritTokens.length} present)
               </span>
             )}
           </h3>
-          <p className="text-[11px] text-stone-gray/70 mb-3">
+          <p className="text-[11px] text-stone-gray mb-3">
             Tokens on the spirit layer. Right-click any token on the map
             to send it to the spirit realm or return it to the material plane.
           </p>
 
           {!viewedMap ? (
-            <p className="text-sm text-stone-gray/70 italic">No map loaded.</p>
+            <p className="text-sm text-stone-gray italic">No map loaded.</p>
           ) : spiritTokens.length === 0 ? (
-            <p className="text-sm text-stone-gray/70 italic">
+            <p className="text-sm text-stone-gray italic">
               No tokens are in the spirit realm on this map.
               Right-click a token and choose "Send to Spirit Realm" to move one here.
             </p>
@@ -475,7 +475,7 @@ export default function SpiritLayerControls({ isOpen, onClose }: SpiritLayerCont
                       className={`shrink-0 p-2 rounded-cozy transition-colors ${
                         token.visible
                           ? 'text-brand-ink hover:bg-moss-green/10'
-                          : 'text-stone-gray/50 hover:bg-stone-gray/10'
+                          : 'text-stone-gray hover:bg-stone-gray/10'
                       }`}
                       title={token.visible ? 'Hide token' : 'Show token'}
                     >

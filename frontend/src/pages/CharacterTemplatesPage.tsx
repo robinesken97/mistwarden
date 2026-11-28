@@ -163,7 +163,7 @@ export default function CharacterTemplatesPage() {
         <div className="bg-parchment/50 border border-moss-green/20 rounded-xl p-4 mb-6">
           <div className="flex flex-col lg:flex-row gap-4">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-gray/60" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-gray" />
               <input
                 type="text"
                 value={search}
@@ -176,7 +176,7 @@ export default function CharacterTemplatesPage() {
                 <button
                   onClick={() => setSearch('')}
                   aria-label="Clear search"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-gray/60 hover:text-brand-ink"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-gray hover:text-brand-ink"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -254,7 +254,7 @@ export default function CharacterTemplatesPage() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <UserIcon className="w-5 h-5 text-brand-ink/40" />
+                      <UserIcon className="w-5 h-5 text-brand-ink" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">

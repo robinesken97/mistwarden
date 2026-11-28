@@ -87,7 +87,7 @@ export default function ForgotPasswordPage() {
             </p>
             <Link
               to="/auth/login"
-              className="inline-flex items-center gap-2 text-sm text-brand-ink hover:text-brand-ink/80 font-medium transition-colors"
+              className="inline-flex items-center gap-2 text-sm text-brand-ink hover:underline font-medium transition-colors"
             >
               <ArrowLeft className="w-4 h-4" aria-hidden="true" />
               Back to Sign In
@@ -105,14 +105,14 @@ export default function ForgotPasswordPage() {
                 ? 'If an account with that email address exists, we\'ve sent a password reset link. The link expires in 1 hour.'
                 : 'Your request was received.')}
             </p>
-            <p className="text-xs text-stone-gray/70">
+            <p className="text-xs text-stone-gray">
               {smtpConfigured
                 ? "Didn't receive it? Check your spam folder, or contact your administrator."
                 : 'If no email arrives, contact your administrator.'}
             </p>
             <Link
               to="/auth/login"
-              className="inline-flex items-center gap-2 text-sm text-brand-ink hover:text-brand-ink/80 font-medium transition-colors"
+              className="inline-flex items-center gap-2 text-sm text-brand-ink hover:underline font-medium transition-colors"
             >
               <ArrowLeft className="w-4 h-4" aria-hidden="true" />
               Back to Sign In
@@ -186,7 +186,7 @@ export default function ForgotPasswordPage() {
             <div className="text-center">
               <Link
                 to="/auth/login"
-                className="inline-flex items-center gap-1.5 text-sm text-brand-ink hover:text-brand-ink/80 transition-colors"
+                className="inline-flex items-center gap-1.5 text-sm text-brand-ink hover:underline transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" aria-hidden="true" />
                 Back to Sign In

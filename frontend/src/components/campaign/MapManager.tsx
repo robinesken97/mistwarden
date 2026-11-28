@@ -130,7 +130,7 @@ function MapCard({
       {/* Info */}
       <div className="p-3">
         <h3 className="font-semibold text-brand-ink truncate text-sm mb-0.5">{map.name}</h3>
-        <p className="text-xs text-stone-gray/60">
+        <p className="text-xs text-stone-gray">
           {map.width}×{map.height} grid · {map.gridSize}px/sq
         </p>
 
@@ -532,7 +532,7 @@ export default function MapManager({ isOpen, onClose }: MapManagerProps) {
             <div className="text-center py-16 space-y-3">
               <MapPin className="w-14 h-14 mx-auto text-stone-gray/25" />
               <p className="text-stone-gray font-medium">No maps yet</p>
-              <p className="text-sm text-stone-gray/60">
+              <p className="text-sm text-stone-gray">
                 Create your first map to start your adventure.
               </p>
               <Button

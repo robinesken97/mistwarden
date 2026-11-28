@@ -146,7 +146,7 @@ export default function DiceResult({ roll, isCurrentUser, rollerIsGM, dense = fa
                 already. */}
             <span className="min-w-0 max-w-[65%] shrink-0 truncate text-ink-secondary">
               <span className="font-medium text-ink">{subject}</span>
-              {attribution && <span className={isCurrentUser ? 'sr-only' : 'opacity-70'}> {attribution}</span>}
+              {attribution && <span className={isCurrentUser ? 'sr-only' : undefined}> {attribution}</span>}
             </span>
             {secret && (
               <span className="shrink-0 rounded-sm bg-ink/10 px-1 text-ink-muted" title={secretTitle}>
@@ -165,7 +165,7 @@ export default function DiceResult({ roll, isCurrentUser, rollerIsGM, dense = fa
             <span className="ml-auto shrink-0 pl-1 text-ink-muted">{formatTimestamp(timestamp)}</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="shrink-0 font-mono text-ink/90">{expression}</span>
+            <span className="shrink-0 font-mono text-ink">{expression}</span>
             <span className="min-w-0 truncate font-mono text-ink-secondary">{workingOf(breakdown?.formula, detail)}</span>
             {crits.map((crit) => (
               <span key={crit.said} className={`shrink-0 font-bold ${crit.ink}`}>
@@ -211,7 +211,7 @@ export default function DiceResult({ roll, isCurrentUser, rollerIsGM, dense = fa
               )}
             </span>
             {attribution && (
-              <span className="text-xs text-ink-secondary truncate opacity-70">
+              <span className="text-xs text-ink-secondary truncate">
                 {attribution}
               </span>
             )}
@@ -234,7 +234,7 @@ export default function DiceResult({ roll, isCurrentUser, rollerIsGM, dense = fa
       <div className="flex items-center gap-3 mb-2">
         <div className="flex items-center gap-2">
           <Dices className="w-5 h-5 text-brand-ink" />
-          <span className="text-sm font-mono text-ink/90">
+          <span className="text-sm font-mono text-ink">
             {expression}
           </span>
         </div>
@@ -257,7 +257,7 @@ export default function DiceResult({ roll, isCurrentUser, rollerIsGM, dense = fa
           {/* Formula */}
           {breakdown?.formula && (
             <div className="font-mono">
-              <span className="opacity-60">Formula: </span>
+              <span>Formula: </span>
               {breakdown.formula}
             </div>
           )}
@@ -268,7 +268,7 @@ export default function DiceResult({ roll, isCurrentUser, rollerIsGM, dense = fa
               <div key={idx} className="flex items-center gap-1">
                 {roll.type === 'dice' && roll.notation && (
                   <div className="inline-flex items-center gap-1 bg-ink/5 px-2 py-1 rounded-sm">
-                    <span className="font-mono text-xs opacity-80">{roll.notation}:</span>
+                    <span className="font-mono text-xs">{roll.notation}:</span>
                     <div className="flex gap-1">
                       {roll.results?.map((r, rIdx) => {
                         const isKept = keptMarks(roll)[rIdx];
@@ -280,7 +280,7 @@ export default function DiceResult({ roll, isCurrentUser, rollerIsGM, dense = fa
                             key={rIdx}
                             className={`
                               font-mono text-xs px-1 rounded
-                              ${!isKept ? 'line-through opacity-40' : ''}
+                              ${!isKept ? 'line-through text-ink-muted' : ''}
                               ${isCrit20 ? 'bg-success/15 text-success-ink font-bold' : ''}
                               ${isCrit1 ? 'bg-danger/15 text-danger-ink font-bold' : ''}
                             `}
@@ -291,7 +291,7 @@ export default function DiceResult({ roll, isCurrentUser, rollerIsGM, dense = fa
                       })}
                     </div>
                     {roll.total !== undefined && (
-                      <span className="font-mono text-xs opacity-60">
+                      <span className="font-mono text-xs">
                         = {roll.total}
                       </span>
                     )}
@@ -300,7 +300,7 @@ export default function DiceResult({ roll, isCurrentUser, rollerIsGM, dense = fa
 
                 {roll.type === 'modifier' && roll.value !== undefined && (
                   <div data-modifier className="inline-flex items-center gap-1 bg-warm-amber/10 px-2 py-1 rounded-sm">
-                    <span className="font-mono text-xs opacity-80">
+                    <span className="font-mono text-xs">
                       {modifierText(roll.value, operators[idx])}
                     </span>
                   </div>
@@ -394,7 +394,7 @@ function groupText(group: DiceRollDetail, signed: boolean): ReactNode {
           {i > 0 && ' '}
           <span
             className={cn(
-              !kept[i] && 'line-through opacity-60',
+              !kept[i] && 'line-through text-ink-muted',
               group.sides === 20 && face === 20 && 'font-bold text-success-ink',
               group.sides === 20 && face === 1 && 'font-bold text-danger-ink'
             )}

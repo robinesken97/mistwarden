@@ -761,7 +761,7 @@ export default function ChatPanel() {
       <div className="glass-panel h-full flex flex-col">
         {/* Header skeleton */}
         <div className="flex items-center gap-2 p-4 border-b border-moss-green/20">
-          <MessageCircle className="w-5 h-5 text-brand-ink/40" />
+          <MessageCircle className="w-5 h-5 text-brand-ink" />
           <div className="h-5 w-10 bg-moss-green/15 rounded-sm animate-pulse" />
         </div>
         {/* Message skeletons */}
@@ -966,7 +966,7 @@ export default function ChatPanel() {
           <div className="text-center py-8">
             <MessageCircle className="w-12 h-12 text-brand-ink/30 mx-auto mb-3" />
             <p className="text-sm text-warm-gray mb-2">No messages yet</p>
-            <p className="text-xs text-stone-gray/70">
+            <p className="text-xs text-stone-gray">
               Start a conversation with your party
             </p>
           </div>

@@ -62,7 +62,7 @@ export default function MapMenuRows({ items, onClose, openSubmenu = null, onTogg
                   }}
                 >
                   <span>{item.label}</span>
-                  <span className="text-xs opacity-60">▶</span>
+                  <span className="text-xs">▶</span>
                 </button>
                 {openSubmenu === item.id && (
                   <div className={SUBMENU}>
