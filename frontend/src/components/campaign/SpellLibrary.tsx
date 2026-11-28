@@ -71,11 +71,20 @@ function draftInput(d: Draft): SpellInput {
 }
 
 export default function SpellLibrary({ isOpen, onClose }: SpellLibraryProps) {
+  return (
+    <SlideOver open={isOpen} onClose={onClose} side="left" backdropClassName="bg-black/40" className="max-w-md bg-paper-white shadow-2xl flex flex-col">
+      <SpellLibraryContent />
+    </SlideOver>
+  );
+}
+
+/** The library while it is open: only then does it ask the server for anything. */
+function SpellLibraryContent() {
   const { campaign, userRole } = useCampaign();
   const campaignId = campaign?.id ?? null;
   const queryClient = useQueryClient();
-  const spellsQuery = useCampaignSpellsQuery(isOpen ? campaignId : null);
-  const status = useQuery({ queryKey: ['spell-seed-status'], queryFn: () => api.getSpellSeedStatus(), enabled: isOpen });
+  const spellsQuery = useCampaignSpellsQuery(campaignId);
+  const status = useQuery({ queryKey: ['spell-seed-status'], queryFn: () => api.getSpellSeedStatus() });
   const isGM = userRole === 'GM';
   const isAdmin = status.data?.canSeed === true;
 
@@ -90,8 +99,8 @@ export default function SpellLibrary({ isOpen, onClose }: SpellLibraryProps) {
 
   // Read again each time the library opens, so a spell the GM added reaches a player.
   useEffect(() => {
-    if (isOpen && campaignId) void queryClient.invalidateQueries({ queryKey: queryKeys.campaignSpells(campaignId) });
-  }, [isOpen, campaignId, queryClient]);
+    if (campaignId) void queryClient.invalidateQueries({ queryKey: queryKeys.campaignSpells(campaignId) });
+  }, [campaignId, queryClient]);
 
   const spells = useMemo(() => spellsQuery.data ?? [], [spellsQuery.data]);
   const shown = useMemo(() => {
@@ -160,7 +169,7 @@ export default function SpellLibrary({ isOpen, onClose }: SpellLibraryProps) {
   }
 
   return (
-    <SlideOver open={isOpen} onClose={onClose} side="left" backdropClassName="bg-black/40" className="max-w-md bg-paper-white shadow-2xl flex flex-col">
+    <>
       <div className="flex items-center gap-3 px-5 py-4 border-b border-moss-green/20 bg-parchment/60 sticky top-0 z-10">
         <Sparkles className="w-5 h-5 text-brand-ink shrink-0" aria-hidden="true" />
         <SlideOverTitle className="flex-1 text-base font-bold text-brand-ink">Spell Library</SlideOverTitle>
@@ -251,7 +260,7 @@ export default function SpellLibrary({ isOpen, onClose }: SpellLibraryProps) {
           )}
         </>
       )}
-    </SlideOver>
+    </>
   );
 }
 
