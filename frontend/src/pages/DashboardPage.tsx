@@ -11,7 +11,7 @@ import { useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/contexts/ToastContext';
-import { Plus, LogOut, RefreshCw, User, ArrowRight, Mail, FolderOpen, Shield, AlertCircle, Upload, FileText, BookOpen } from 'lucide-react';
+import { Plus, LogOut, RefreshCw, User, ArrowRight, Mail, FolderOpen, Shield, AlertCircle, Upload, FileText, BookOpen, GraduationCap } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useCampaignsQuery, useCharactersQuery, usePendingInvitationsQuery, queryKeys } from '@/hooks/queries';
 import CampaignCard from '@/components/CampaignCard';
@@ -24,6 +24,7 @@ import type { Campaign, CampaignInvitation } from '@/types';
 import { CampaignRole, PlatformRole } from '@/types';
 import Button from '@/components/ui/Button';
 import { apiErrorMessage } from '@/utils/errors';
+import api from '@/services/api';
 import { CAMPAIGN_ROLE_LABEL } from '@/utils/campaignRoles';
 import { gameSystemName } from '@/constants/game-systems';
 import { AboutButton } from '@/components/common/AboutDialog';
@@ -37,6 +38,7 @@ export default function DashboardPage() {
   const [selectedInvitation, setSelectedInvitation] = useState<CampaignInvitation | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
+  const [openingPractice, setOpeningPractice] = useState(false);
 
   // Server resources via react-query — cached, deduped, refetched on
   // network reconnect (client defaults in lib/queryClient.ts).
@@ -65,6 +67,19 @@ export default function DashboardPage() {
   const handleCampaignCreated = (newCampaign: Campaign) => {
     queryClient.setQueryData<Campaign[]>(queryKeys.campaigns, (prev) => [newCampaign, ...(prev ?? [])]);
     showToast(`Campaign "${newCampaign.name}" created!`, 'success');
+  };
+
+  // The user's practice campaign, made the first time (one per user).
+  const openPracticeCampaign = async () => {
+    setOpeningPractice(true);
+    try {
+      const { campaign } = await api.openPracticeCampaign();
+      void queryClient.invalidateQueries({ queryKey: queryKeys.campaigns });
+      navigate(`/campaigns/${campaign.id}`);
+    } catch (err) {
+      showToast(apiErrorMessage(err) ?? 'Failed to open the practice campaign', 'error');
+      setOpeningPractice(false);
+    }
   };
 
   const handleLogout = async () => {
@@ -435,6 +450,15 @@ export default function DashboardPage() {
                 Your Campaigns
               </h2>
               <div className="flex items-center gap-2">
+                <Button
+                  onClick={openPracticeCampaign}
+                  disabled={openingPractice}
+                  variant="secondary" className="flex items-center gap-2"
+                  aria-label="Practice campaign"
+                >
+                  <GraduationCap className="w-4 h-4" />
+                  <span className="max-sm:sr-only">Practice campaign</span>
+                </Button>
                 <Button
                   onClick={() => setShowImportDialog(true)}
                   variant="secondary" className="flex items-center gap-2"

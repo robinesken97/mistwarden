@@ -604,6 +604,8 @@ export interface Campaign {
   chatCooldownSeconds: number;
   /** Players may draw on the map and point the laser; the GM always may. */
   playersMayDraw: boolean;
+  /** The user's practice campaign, which its GM can reset; set by the server alone. */
+  isPractice?: boolean;
   createdAt: string;
   updatedAt: string;
   lastPlayedAt: string | null;

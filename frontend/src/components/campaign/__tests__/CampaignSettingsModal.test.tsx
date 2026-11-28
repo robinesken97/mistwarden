@@ -20,6 +20,7 @@ const viewer = vi.hoisted(() => ({ role: 'GM', user: { id: 'dm', platformRole: '
 const updateCampaign = vi.hoisted(() => vi.fn());
 const invitationsApi = vi.hoisted(() => ({
   listCampaignInvitations: vi.fn(), withdrawCampaignInvitation: vi.fn(), removeCampaignMember: vi.fn(), changeCampaignMemberRole: vi.fn(),
+  resetPracticeCampaign: vi.fn(),
 }));
 vi.mock('@/services/api', () => ({ default: invitationsApi, api: invitationsApi }));
 const refreshCampaign = vi.hoisted(() => vi.fn());
@@ -106,6 +107,38 @@ describe('the Danger Zone', () => {
 // The owner was told twice: by the panel's own notice, and by the page's,
 // which the server's word to every tab of the campaign brings. The panel
 // hands its answer to the page's handler, which says a notice once.
+describe('resetting a practice campaign', () => {
+  const resetButton = () => screen.queryByRole('button', { name: 'Reset practice campaign' });
+
+  it('is offered to the GM of a practice campaign only', () => {
+    current = campaign();
+    const { unmount } = render(<CampaignSettingsModal isOpen onDeleted={() => undefined} onClose={() => undefined} />);
+    expect(resetButton()).toBeNull();
+    unmount();
+    current = { ...campaign(), isPractice: true } as Campaign;
+    render(<CampaignSettingsModal isOpen onDeleted={() => undefined} onClose={() => undefined} />);
+    expect(resetButton()).not.toBeNull();
+  });
+
+  it('resets after the confirmation and loads the page again', async () => {
+    const reload = vi.fn();
+    const location = window.location;
+    Object.defineProperty(window, 'location', { configurable: true, value: { ...location, reload } });
+    try {
+      invitationsApi.resetPracticeCampaign.mockReset().mockResolvedValue({ message: 'Practice campaign reset', mapId: 'm2' });
+      current = { ...campaign(), isPractice: true } as Campaign;
+      render(<CampaignSettingsModal isOpen onDeleted={() => undefined} onClose={() => undefined} />);
+      fireEvent.click(resetButton()!);
+      expect(invitationsApi.resetPracticeCampaign).not.toHaveBeenCalled();
+      fireEvent.click(await screen.findByRole('button', { name: 'Reset' }));
+      await waitFor(() => expect(reload).toHaveBeenCalled());
+      expect(invitationsApi.resetPracticeCampaign).toHaveBeenCalledWith('c1');
+    } finally {
+      Object.defineProperty(window, 'location', { configurable: true, value: location });
+    }
+  });
+});
+
 describe('deleting the campaign', () => {
   it('hands its answer to the page and says nothing itself', async () => {
     current = campaign();
