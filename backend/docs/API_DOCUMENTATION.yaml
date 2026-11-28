@@ -311,6 +311,8 @@ tags:
     description: Map management and token manipulation
   - name: Creatures
     description: Creature template library — SRD and custom creatures, favorites, seeding
+  - name: Spells
+    description: Spell Library — the SRD 5.1 spells an administrator imports, the server's own spells, and each campaign's own, with an area the AoE tool places (Mistwarden)
   - name: Token Templates
     description: Reusable token configurations savable per-campaign and copyable across campaigns the GM owns
   - name: Walls & Lighting
@@ -10170,6 +10172,305 @@ paths:
                 message: api.open5e.com did not answer within 15 seconds. Nothing was imported; check that this server can reach it, then try again.
 
   # ============================================
+  # SPELL LIBRARY ENDPOINTS (Mistwarden)
+  # ============================================
+
+  /api/spells/seed/status:
+    get:
+      tags: [Spells]
+      summary: Check the SRD spell import
+      description: How many SRD spells the server holds, whether an import is running in this process, and whether the caller may run one. Any signed-in user.
+      operationId: getSpellSeedStatus
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Import status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  srdCount:
+                    type: integer
+                  seedInProgress:
+                    type: boolean
+                  canSeed:
+                    type: boolean
+                    description: Whether the caller is a platform admin, who alone imports the SRD spells and writes the server's own spells.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/spells/seed:
+    post:
+      tags: [Spells]
+      summary: Import the SRD spells
+      description: |
+        Fetch the SRD 5.1 spells from Open5e (`/v1/spells/?document__slug=wotc-srd`)
+        and store them with no campaign, which every campaign lists. **Platform
+        admins only.** Pages come from `https://api.open5e.com` only, 15
+        seconds each, at most 40, as the creature import's do; anything else
+        answers 502 having written nothing.
+
+        Each spell's area and look are read from its range and description
+        (Open5e has no reliable area fields): a sphere, cylinder, cone, line or
+        cube the text names, or none; the look from the one element-like damage
+        type it rolls dice for. Safe to run again: a stored SRD spell, found by
+        name under a lock, is brought up to date rather than added twice.
+        Custom spells are never touched. 409 while an import runs in this process.
+      operationId: seedSrdSpells
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Import complete
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  fetched:
+                    type: integer
+                  created:
+                    type: integer
+                  updated:
+                    type: integer
+                    description: SRD spells already stored, rewritten from Open5e and the parser.
+                  rejected:
+                    type: integer
+                    description: Spells the library would refuse, left out.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '500':
+          description: Unexpected failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '502':
+          description: Open5e could not be read, or answered something the import does not follow. Nothing was written.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/spells:
+    post:
+      tags: [Spells]
+      summary: Add a spell of the server's own
+      description: A custom spell with no campaign, which every campaign lists. Platform admins only. 409 when the server has a spell of its own of that name, in any case.
+      operationId: createInstanceSpell
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpellInput'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpellTemplate'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/spells/{spellId}:
+    parameters:
+      - $ref: '#/components/parameters/SpellId'
+    put:
+      tags: [Spells]
+      summary: Change a spell of the server's own
+      description: Any fields of `SpellInput`; `area` null takes the area away. Platform admins only. An SRD spell or a campaign's answers 404.
+      operationId: updateInstanceSpell
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpellInput'
+      responses:
+        '200':
+          description: Changed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpellTemplate'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [Spells]
+      summary: Delete a spell of the server's own
+      description: Platform admins only. An SRD spell or a campaign's answers 404. Areas placed from it keep their copy.
+      operationId: deleteInstanceSpell
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/campaigns/{campaignId}/spells:
+    parameters:
+      - $ref: '#/components/parameters/CampaignId'
+    get:
+      tags: [Spells]
+      summary: List the spells a campaign may use
+      description: >-
+        The SRD spells, the server's own and this campaign's own, never another
+        campaign's, by name, without descriptions (`GET …/spells/{spellId}`
+        has them). Several may share a name; a client picks the campaign's,
+        then the server's, then the SRD's. Any member.
+      operationId: listCampaignSpells
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: The spells
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  spells:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SpellSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Spells]
+      summary: Add a campaign spell
+      description: GM only. 409 when the campaign has a spell of that name, in any case.
+      operationId: createCampaignSpell
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpellInput'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpellTemplate'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /api/campaigns/{campaignId}/spells/{spellId}:
+    parameters:
+      - $ref: '#/components/parameters/CampaignId'
+      - $ref: '#/components/parameters/SpellId'
+    get:
+      tags: [Spells]
+      summary: Read one spell in full
+      description: Any member; a spell of another campaign answers 404.
+      operationId: getCampaignSpell
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: The spell
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpellTemplate'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Spells]
+      summary: Change a campaign spell
+      description: GM only. An SRD spell, the server's own and another campaign's answer 404.
+      operationId: updateCampaignSpell
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpellInput'
+      responses:
+        '200':
+          description: Changed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpellTemplate'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      tags: [Spells]
+      summary: Delete a campaign spell
+      description: GM only. Areas placed from it keep their copy.
+      operationId: deleteCampaignSpell
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # ============================================
   # TOKEN TEMPLATE ENDPOINTS
   # ============================================
 
@@ -13342,6 +13643,12 @@ components:
       description: Session cookie obtained via /api/auth/login
 
   parameters:
+    SpellId:
+      name: spellId
+      in: path
+      required: true
+      schema:
+        type: string
     CampaignId:
       name: campaignId
       in: path
@@ -13435,6 +13742,126 @@ components:
       description: Items per page (max 100)
 
   schemas:
+    SpellArea:
+      type: object
+      description: As a MapArea takes it. `sizeFt` is a sphere's or cylinder's radius, a cone's or line's length, a cube's side; `widthFt` a line's only.
+      required: [shape, sizeFt]
+      properties:
+        shape:
+          type: string
+          enum: [sphere, cylinder, cone, line, cube]
+        sizeFt:
+          type: integer
+          minimum: 5
+          maximum: 500
+        widthFt:
+          type: integer
+          minimum: 5
+          maximum: 100
+    SpellInput:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        level:
+          type: integer
+          minimum: 0
+          maximum: 9
+          description: 0 for a cantrip; 0 when left out of a new spell.
+        gameSystem:
+          type: string
+          nullable: true
+        school:
+          type: string
+          nullable: true
+        castingTime:
+          type: string
+          nullable: true
+        range:
+          type: string
+          nullable: true
+        components:
+          type: string
+          nullable: true
+        duration:
+          type: string
+          nullable: true
+        concentration:
+          type: boolean
+        ritual:
+          type: boolean
+        description:
+          type: string
+          maxLength: 20000
+        area:
+          allOf:
+            - $ref: '#/components/schemas/SpellArea'
+          nullable: true
+        element:
+          type: string
+          enum: [fire, cold, water, lightning, acid, poison, necrotic, radiant, thunder, force, psychic, none]
+    SpellSummary:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        source:
+          type: string
+          enum: [srd, custom]
+        gameSystem:
+          type: string
+          nullable: true
+        campaignId:
+          type: string
+          nullable: true
+          description: Null for an SRD spell or the server's own.
+        level:
+          type: integer
+        school:
+          type: string
+          nullable: true
+        castingTime:
+          type: string
+          nullable: true
+        range:
+          type: string
+          nullable: true
+        components:
+          type: string
+          nullable: true
+        duration:
+          type: string
+          nullable: true
+        concentration:
+          type: boolean
+        ritual:
+          type: boolean
+        area:
+          allOf:
+            - $ref: '#/components/schemas/SpellArea'
+          nullable: true
+        element:
+          type: string
+    SpellTemplate:
+      allOf:
+        - $ref: '#/components/schemas/SpellSummary'
+        - type: object
+          properties:
+            description:
+              type: string
+            createdById:
+              type: string
+              nullable: true
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
     User:
       type: object
       properties:

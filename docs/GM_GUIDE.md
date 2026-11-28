@@ -15,17 +15,18 @@ This guide focuses on GM-specific features. For general platform features (chara
 2. [Preparing Your Maps](#preparing-your-maps)
 3. [Setting Up Tokens](#setting-up-tokens)
 4. [The Creature Library](#the-creature-library)
-5. [Token Templates](#token-templates)
-6. [Campaign Export & Import](#campaign-export--import)
-7. [Managing Your Players](#managing-your-players)
-8. [Running a Session](#running-a-session)
-9. [Combat and Initiative](#combat-and-initiative)
-10. [Fog of War](#fog-of-war)
-11. [Walls & Dynamic Lighting](#walls--dynamic-lighting)
-12. [The Spirit Layer](#the-spirit-layer)
-13. [Atmosphere Controls](#atmosphere-controls)
-14. [Session State and Continuity](#session-state-and-continuity)
-15. [Tips and Best Practices](#tips-and-best-practices)
+5. [The Spell Library](#the-spell-library)
+6. [Token Templates](#token-templates)
+7. [Campaign Export & Import](#campaign-export--import)
+8. [Managing Your Players](#managing-your-players)
+9. [Running a Session](#running-a-session)
+10. [Combat and Initiative](#combat-and-initiative)
+11. [Fog of War](#fog-of-war)
+12. [Walls & Dynamic Lighting](#walls--dynamic-lighting)
+13. [The Spirit Layer](#the-spirit-layer)
+14. [Atmosphere Controls](#atmosphere-controls)
+15. [Session State and Continuity](#session-state-and-continuity)
+16. [Tips and Best Practices](#tips-and-best-practices)
 
 ---
 
@@ -748,6 +749,22 @@ To customize an SRD creature without modifying the original:
 4. Edit the duplicate freely — change stats, add an image, rename it
 
 ---
+
+## The Spell Library
+
+The Spell Library lists the spells a campaign can use, each with its level, school, casting time, range, components, duration and, where it has one, the area it fills: a circle (a sphere seen from above), a cylinder, a cone, a line or a cube, with a look such as fire or cold. Open it with **Spell Library** (the sparkles icon) in the campaign header, or **More → Spell Library** on a phone or a tablet. Every member of the campaign can read it; players cannot change it.
+
+It holds three kinds of spell, each marked in the list:
+
+- **SRD 5.1**: the spells of the System Reference Document 5.1, which an administrator imports with **Import SRD spells**, once, for every campaign on the server. The server fetches them from Open5e and reads each spell's area from its own text (a "20-foot-radius sphere", a "line 100 feet long and 5 feet wide"). A spell whose text names no area clearly, such as one that only makes light, gets none; give a campaign spell of the same name an area if you want one. Running the import again adds no spell twice and brings the stored ones up to date. They cannot be edited.
+- **Server**: spells an administrator adds for every campaign on the server.
+- **Campaign**: spells you add with **New spell**, for this campaign only. Open one in the list to **Edit** or **Delete** it. No other campaign sees them, and a campaign export carries them (the SRD's and the server's stay on the server).
+
+Two spells may share a name. Where they do, the campaign's is the one a character sheet uses, then the server's, then the SRD's, so a campaign's own Fireball replaces the SRD's at your table.
+
+**Placing a spell's area.** In the **AoE Shape** panel, **From spell…** searches the library by name and level. Choosing a spell sets the shape and size, the look and the label, and turns on **Place for everyone** where you may place areas; a spell with no area is shown greyed. On a 5E character sheet, a spell whose name the library knows, in any case, has a **Place area** button beside it while the campaign shows a map: it closes the sheet and opens the AoE tool with that spell. A placed area keeps its own copy of the shape, size, look and label, so changing or deleting the spell later changes nothing on the map. Players place areas for everyone only while **Players may draw** is on.
+
+The SRD credit its licence asks for is shown at the foot of the library whenever it may list an SRD spell.
 
 ## Token Templates
 

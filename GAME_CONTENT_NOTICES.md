@@ -6,7 +6,7 @@ The game rules CozyVTT uses, the licences they are under, and the credits those 
 
 - **Sheet layouts and arithmetic for three game systems:** 5E (SRD 5.1), Fantasy d20 (ORC) and Horror d100. What each one takes from its open rules is set out under its name below.
 - **Example characters** for each system: the ready-made characters the app offers and the files in `Examples/`. Their rules names come from the open rules, and their descriptions are in CozyVTT's own words.
-- **Creatures an administrator imports** into the Creature Library. The server fetches them from the [Open5e API](https://open5e.com), asking for the SRD 5.1 only, and stores them in that instance's own database. CozyVTT's code holds none of them.
+- **Creatures and spells an administrator imports** into the Creature Library and the Spell Library. The server fetches them from the [Open5e API](https://open5e.com), asking for the SRD 5.1 only, and stores them in that instance's own database. CozyVTT's code holds none of them, apart from short passages of SRD 5.1 spell text that its tests read (`backend/src/services/__tests__/fixtures/open5eSrdSpells.json`, which credits them).
 
 Everything else in CozyVTT is the project's own work. Third-party software and fonts are credited in [THIRD_PARTY_CREDITS.md](THIRD_PARTY_CREDITS.md) and [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt).
 
@@ -18,7 +18,7 @@ CozyVTT has reformatted this material and, in places, reworded it.
 
 CozyVTT's 5E sheet is compatible with fifth edition.
 
-The creatures an administrator imports reach CozyVTT through Open5e (https://open5e.com), a community project that serves the SRD 5.1 in a structured form. Our thanks to the people who maintain it.
+The creatures and spells an administrator imports reach CozyVTT through Open5e (https://open5e.com), a community project that serves the SRD 5.1 in a structured form. Our thanks to the people who maintain it.
 
 ## Fantasy d20 (ORC)
 

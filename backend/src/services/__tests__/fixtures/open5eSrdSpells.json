@@ -1,5 +1,5 @@
 {
- "_source": "Sentences from the System Reference Document 5.1 by Wizards of the Coast LLC, licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/legalcode), as Open5e's v1 API served them on 2026-11-28 (https://api.open5e.com/v1/spells/?document__slug=wotc-srd). Each spell keeps only the sentences naming its area or its damage.",
+ "_source": "Sentences from the System Reference Document 5.1 (SRD 5.1), licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/legalcode); GAME_CONTENT_NOTICES.md gives the attribution in full. As Open5e's v1 API served them on 2026-11-28 (https://api.open5e.com/v1/spells/?document__slug=wotc-srd). Each spell keeps only the sentences naming its area or its damage.",
  "names": [
   "Acid Arrow",
   "Acid Splash",

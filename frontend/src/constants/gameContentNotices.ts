@@ -1,6 +1,6 @@
 /**
- * The credits for the game rules CozyVTT uses, as About CozyVTT and the
- * Creature Library show them. GAME_CONTENT_NOTICES.md has the full notices;
+ * The credits for the game rules CozyVTT uses, as About CozyVTT, the
+ * Creature Library and the Spell Library show them. GAME_CONTENT_NOTICES.md has the full notices;
  * every line here is a line of it, and of Section 2 of
  * THIRD_PARTY_NOTICES.txt, word for word. The backend's documentedFacts test
  * holds the three together and reads this file as text, so each line is a
@@ -36,7 +36,7 @@ export const GAME_CONTENT_NOTICES: readonly { system: string; lines: readonly st
     lines: [
       SRD_ATTRIBUTION,
       SRD_MODIFIED,
-      `The creatures an administrator imports reach CozyVTT through Open5e (https://open5e.com), a community project that serves the SRD 5.1 in a structured form. Our thanks to the people who maintain it.`,
+      `The creatures and spells an administrator imports reach CozyVTT through Open5e (https://open5e.com), a community project that serves the SRD 5.1 in a structured form. Our thanks to the people who maintain it.`,
     ],
   },
   {
