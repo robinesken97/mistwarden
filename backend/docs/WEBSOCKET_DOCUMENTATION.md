@@ -1403,7 +1403,7 @@ _Sent to: map readers are every member while the map is the one the campaign is 
 | `areas:cleared` | Map readers, as their role sees it | `mapAreas.ts` |
 | `areas:state` | Map readers, as their role sees it; the sender | `areas.ts` |
 | `atmosphere.audio.updated` | The campaign | `atmosphereAudio.ts` |
-| `atmosphere.effect.updated` | The campaign | `atmosphere.ts` |
+| `atmosphere.effect.updated` | The campaign | `atmosphereAudio.ts` |
 | `authenticated` | The sender | `events.ts` |
 | `campaign.access.revoked` | One socket | `utils.ts` |
 | `campaign.dm.transferred` | The campaign | `campaigns.ts` |
@@ -1416,8 +1416,8 @@ _Sent to: map readers are every member while the map is the one the campaign is 
 | `chat.system` | The campaign | `utils.ts` |
 | `connected` | The sender | `events.ts` |
 | `dice.historyCleared` | The campaign | `dice.ts` |
-| `dice.rolled` | Members the handler picks; the campaign; the sender | `dice.ts` |
-| `dice.rolled.secret` | Members the handler picks | `dice.ts` |
+| `dice.rolled` | Members the handler picks; the campaign | `initiative.ts` |
+| `dice.rolled.secret` | Members the handler picks | `initiative.ts` |
 | `drawing:added` | Map readers, as their role sees it | `drawings.ts` |
 | `drawing:previewed` | Members the handler picks | `drawings.ts` |
 | `drawing:removed` | Map readers, as their role sees it | `drawings.ts` |
@@ -1455,7 +1455,7 @@ _Sent to: map readers are every member while the map is the one the campaign is 
 | `user.joined` | The campaign but the sender | `events.ts` |
 | `user.left` | The campaign but the sender | `events.ts` |
 | `vibe.settings.updated` | The campaign | `vibeSave.ts` |
-| `vibe.updated` | The campaign | `vibe.ts` |
+| `vibe.updated` | The campaign | `vibeSave.ts` |
 | `wall:added` | Map readers, as their role sees it | `walls.ts` |
 | `wall:removed` | Map readers | `walls.ts` |
 | `wall:updated` | Map readers, as their role sees it; the sender | `walls.ts` |

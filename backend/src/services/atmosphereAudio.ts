@@ -98,7 +98,23 @@ export async function lastAmbientVolume(campaignId: string): Promise<number> {
   return 0.5;
 }
 
+/** The weather effects a GM may lay over the map; null is none. */
+export const ATMOSPHERE_EFFECTS = ['rain', 'mist', 'leaves', 'sparkles', 'snow', 'wind'] as const;
+
 /** Store the campaign's weather effect (null for none), leaving the rest of its vibe settings alone. */
 export async function setCampaignAtmosphereEffect(campaignId: string, effect: string | null): Promise<void> {
   await setVibeSettingsLiveKey(campaignId, 'atmosphereEffect', effect);
+}
+
+/** Store the campaign's weather effect and tell the room, for the socket and REST alike. */
+export async function applyAtmosphereEffect(io: Server, campaignId: string, actingUserId: string | undefined, effect: string | null): Promise<void> {
+  await setCampaignAtmosphereEffect(campaignId, effect);
+
+  io.to(campaignId).emit('atmosphere.effect.updated', {
+    effect,
+    setBy: actingUserId,
+    timestamp: new Date().toISOString(),
+  });
+
+  logger.info('atmosphere.effect.set', { effect: effect ?? 'none', userId: actingUserId, campaignId });
 }

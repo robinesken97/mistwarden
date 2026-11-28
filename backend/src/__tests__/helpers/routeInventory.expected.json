@@ -476,6 +476,61 @@
       ]
     },
     {
+      "method": "PUT",
+      "path": "/api/campaigns/:campaignId/vibe/current",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireGM",
+        "<anonymous>",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/api/campaigns/:campaignId/atmosphere/effect",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireGM",
+        "<anonymous>",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/api/campaigns/:campaignId/atmosphere/audio",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireGM",
+        "<anonymous>",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/campaigns/:campaignId/messages",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireGM",
+        "<anonymous>",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/campaigns/:campaignId/dice-rolls",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireGM",
+        "<anonymous>",
+        "<anonymous>"
+      ]
+    },
+    {
       "method": "DELETE",
       "path": "/api/campaigns/:campaignId",
       "handlers": [
@@ -1335,6 +1390,50 @@
         "requireAuth",
         "loadCampaignMembership",
         "requireCampaignMember",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/campaigns/:campaignId/maps/:id/areas",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireGM",
+        "<anonymous>",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/campaigns/:campaignId/maps/:id/areas/:areaId",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireGM",
+        "<anonymous>",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/campaigns/:campaignId/maps/:id/areas",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireGM",
+        "<anonymous>",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/campaigns/:campaignId/maps/:id/exploration/reset",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireGM",
+        "<anonymous>",
         "<anonymous>"
       ]
     },

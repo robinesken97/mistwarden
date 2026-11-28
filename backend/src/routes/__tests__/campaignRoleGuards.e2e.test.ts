@@ -82,6 +82,15 @@ const GM_ONLY = [
   'DELETE /api/campaigns/:campaignId/maps/:id/lights/:lightId',
   'GET /api/campaigns/:campaignId/maps/:id/fog',
   'POST /api/campaigns/:campaignId/maps/:id/fog/operation',
+  'PUT /api/campaigns/:campaignId/vibe/current',
+  'PUT /api/campaigns/:campaignId/atmosphere/effect',
+  'PUT /api/campaigns/:campaignId/atmosphere/audio',
+  'POST /api/campaigns/:campaignId/messages',
+  'POST /api/campaigns/:campaignId/dice-rolls',
+  'POST /api/campaigns/:campaignId/maps/:id/areas',
+  'DELETE /api/campaigns/:campaignId/maps/:id/areas/:areaId',
+  'DELETE /api/campaigns/:campaignId/maps/:id/areas',
+  'POST /api/campaigns/:campaignId/maps/:id/exploration/reset',
   'PUT /api/campaigns/:campaignId/maps/:id/lighting',
 ];
 

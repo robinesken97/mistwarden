@@ -151,6 +151,30 @@ function forgetQueuedReveals(mapId: string): void {
   }
 }
 
+/**
+ * Forget every player's explored memory of a map and tell its readers, for
+ * the socket's exploration:reset and REST alike. False for a map that is not
+ * in the campaign.
+ */
+export async function resetExploration(io: Server, campaignId: string, mapId: string): Promise<boolean> {
+  const map = await prisma.map.findUnique({ where: { id: mapId }, select: { campaignId: true } });
+  if (!map || map.campaignId !== campaignId) return false;
+  forgetQueuedReveals(mapId);
+  // Each player's memory under that player's lock, the one a write of it
+  // holds: a write that had read the old row before the delete wrote it
+  // back after, and the player kept what the GM cleared. In a fixed
+  // order, so two resets cannot wait on each other.
+  await prisma.$transaction(async (tx) => {
+    const rows = await tx.mapExploration.findMany({ where: { mapId }, select: { userId: true }, orderBy: { userId: 'asc' } });
+    for (const { userId } of rows) {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${mapId}), hashtext(${userId}))`;
+    }
+    await tx.mapExploration.deleteMany({ where: { mapId } });
+  });
+  await emitToMapReaders(io, campaignId, mapId, 'exploration:state', { mapId, userId: null, cells: [] });
+  return true;
+}
+
 export function registerExplorationHandlers(io: Server, socket: AuthenticatedSocket): void {
   /**
    * exploration:reveal — a player's vision covered these cells; remember them (a GM names a player with userId to record theirs).
@@ -275,24 +299,9 @@ export function registerExplorationHandlers(io: Server, socket: AuthenticatedSoc
         socket.emit('error', { message: 'mapId required' });
         return;
       }
-      const map = await prisma.map.findUnique({ where: { id: mapId }, select: { campaignId: true } });
-      if (!map || map.campaignId !== socket.campaignId) {
+      if (!(await resetExploration(io, socket.campaignId, mapId))) {
         socket.emit('error', { message: 'Map not found' });
-        return;
       }
-      forgetQueuedReveals(mapId);
-      // Each player's memory under that player's lock, the one a write of it
-      // holds: a write that had read the old row before the delete wrote it
-      // back after, and the player kept what the GM cleared. In a fixed
-      // order, so two resets cannot wait on each other.
-      await prisma.$transaction(async (tx) => {
-        const rows = await tx.mapExploration.findMany({ where: { mapId }, select: { userId: true }, orderBy: { userId: 'asc' } });
-        for (const { userId } of rows) {
-          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${mapId}), hashtext(${userId}))`;
-        }
-        await tx.mapExploration.deleteMany({ where: { mapId } });
-      });
-      await emitToMapReaders(io, socket.campaignId, mapId, 'exploration:state', { mapId, userId: null, cells: [] });
     } catch (error) {
       logger.error('exploration:reset failed', { err: error });
       socket.emit('error', { message: 'Failed to reset explored areas' });

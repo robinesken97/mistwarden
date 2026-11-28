@@ -51,7 +51,10 @@ import { sendInitiativeState, resendInitiative } from '../websocket/handlers/ini
 import { currentMapChanged } from '../websocket/handlers/drawings';
 import { readTokens, toJson } from '../utils/prisma-json';
 import { drawingsFor, resendDrawings, scaleDrawings } from '../services/mapDrawings';
-import { areasFor, resendAreas, scaleAreas } from '../services/mapAreas';
+import { areasFor, resendAreas, scaleAreas, addArea, removeArea, clearAreas, AREA_MAP_NOT_FOUND, AREA_NOT_FOUND, type AreaActor } from '../services/mapAreas';
+import { AreaAddEventSchema, AreaRemoveEventSchema, AreaClearEventSchema, AREA_SHARE_FULL } from '../validators/areas';
+import { resetExploration } from '../websocket/handlers/exploration';
+import { gmActionLimiter } from '../middleware/gmActionLimiter';
 import type { Map as MapRow, Prisma } from '@prisma/client';
 import { cellOnMap, isHexGrid } from '../utils/tokenCentre';
 import { loadFogState, applyWsFogOperation, broadcastFogState, type Token, broadcastMapData, resendSightAfterChange, fogFits, FogTooLargeError } from '../websocket/shared';
@@ -2305,6 +2308,100 @@ router.get('/:id/areas', campaignMember, async (req: AuthenticatedRequest, res: 
   } catch (error) {
     logger.error('Error fetching areas', { err: error });
     return res.status(500).json({ error: 'Internal Server Error', message: 'Failed to fetch areas' });
+  }
+});
+
+/** The status an area refusal is answered with. */
+function areaRefusalStatus(error: string): number {
+  if (error === AREA_MAP_NOT_FOUND || error === AREA_NOT_FOUND) return 404;
+  return (Object.values(AREA_SHARE_FULL) as string[]).includes(error) ? 409 : 400;
+}
+
+/** The GM's actor for the area service, as the socket's would be. */
+const areaActor = (req: AuthenticatedRequest): AreaActor => ({
+  campaignId: req.params.campaignId, userId: req.session.userId!, role: req.campaignMembership!.role,
+});
+
+/**
+ * POST /api/campaigns/:campaignId/maps/:id/areas
+ * Place a spell area (GM only), as the socket's area:add does: `area:added`
+ * goes to each reader the area may be sent to, so one for the GM alone
+ * reaches no player. Body: { area } as area:add carries it. 201 { id }.
+ */
+router.post('/:id/areas', campaignGM, gmActionLimiter, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const parsed = AreaAddEventSchema.safeParse({ ...(req.body ?? {}), mapId: req.params.id });
+    if (!parsed.success) {
+      const message = parsed.error.issues[0]?.message ?? 'Invalid area';
+      return res.status(areaRefusalStatus(message)).json({ error: 'Validation Error', message });
+    }
+    const outcome = await addArea(areaActor(req), parsed.data.mapId, parsed.data.area);
+    if (!outcome.ok) return res.status(areaRefusalStatus(outcome.error)).json({ error: 'Refused', message: outcome.error });
+    return res.status(201).json({ id: outcome.id });
+  } catch (error) {
+    logger.error('Error placing area', { err: error });
+    return res.status(500).json({ error: 'Internal Server Error', message: 'Failed to place the area' });
+  }
+});
+
+/**
+ * DELETE /api/campaigns/:campaignId/maps/:id/areas/:areaId
+ * Erase one spell area (GM only), as area:remove does.
+ */
+router.delete('/:id/areas/:areaId', campaignGM, gmActionLimiter, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const parsed = AreaRemoveEventSchema.safeParse({ mapId: req.params.id, areaId: req.params.areaId });
+    if (!parsed.success) {
+      const message = parsed.error.issues[0]?.message ?? AREA_NOT_FOUND;
+      return res.status(areaRefusalStatus(message)).json({ error: 'Validation Error', message });
+    }
+    const outcome = await removeArea(areaActor(req), parsed.data.mapId, parsed.data.areaId);
+    if (!outcome.ok) return res.status(areaRefusalStatus(outcome.error)).json({ error: 'Refused', message: outcome.error });
+    return res.status(200).json({ message: 'Area erased' });
+  } catch (error) {
+    logger.error('Error erasing area', { err: error });
+    return res.status(500).json({ error: 'Internal Server Error', message: 'Failed to erase the area' });
+  }
+});
+
+/**
+ * DELETE /api/campaigns/:campaignId/maps/:id/areas
+ * Clear every spell area on the map (GM only), as area:clear does.
+ */
+router.delete('/:id/areas', campaignGM, gmActionLimiter, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const parsed = AreaClearEventSchema.safeParse({ mapId: req.params.id });
+    if (!parsed.success) {
+      return res.status(404).json({ error: 'Not Found', message: parsed.error.issues[0]?.message ?? AREA_MAP_NOT_FOUND });
+    }
+    const outcome = await clearAreas(areaActor(req), parsed.data.mapId);
+    if (!outcome.ok) return res.status(areaRefusalStatus(outcome.error)).json({ error: 'Refused', message: outcome.error });
+    return res.status(200).json({ message: 'Areas cleared' });
+  } catch (error) {
+    logger.error('Error clearing areas', { err: error });
+    return res.status(500).json({ error: 'Internal Server Error', message: 'Failed to clear the areas' });
+  }
+});
+
+/**
+ * POST /api/campaigns/:campaignId/maps/:id/exploration/reset
+ * Forget every player's explored memory of the map (GM only), as the
+ * socket's exploration:reset does: its readers are sent an empty
+ * `exploration:state`.
+ */
+router.post('/:id/exploration/reset', campaignGM, gmActionLimiter, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { campaignId, id } = req.params;
+    // Looked up here too, so a missing map is answered before the socket server is needed.
+    const map = await findMapInCampaign(campaignId, id, res, req.campaignMembership!.role);
+    if (!map) return;
+    if (!(await resetExploration(getSocketInstance(), campaignId, id))) {
+      return res.status(404).json({ error: 'Not Found', message: 'Map not found' });
+    }
+    return res.status(200).json({ message: 'Explored areas reset' });
+  } catch (error) {
+    logger.error('Error resetting explored areas', { err: error });
+    return res.status(500).json({ error: 'Internal Server Error', message: 'Failed to reset explored areas' });
   }
 });
 

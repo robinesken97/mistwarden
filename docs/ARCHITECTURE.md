@@ -120,6 +120,7 @@ src/
 │   ├── hashingPerAddress.ts  At most two requests that hash a password running at once from one address
 │   ├── invitationEmailLimiter.ts  How many invitation emails a GM may have the instance send
 │   ├── leftNotesDownloadLimiter.ts  How often a user may download all the notes of a campaign they have left
+│   ├── gmActionLimiter.ts  How many table actions (chat, dice, vibe, atmosphere, areas, explored-memory resets) a GM may send over REST
 │   ├── campaignArchiveLimits.ts  Per-user hourly limits on previewing, importing
 │   │                  and exporting campaign archives, one archive at a time, which the
 │   │                  Universal VTT map export shares (the other HTTP limiters are
