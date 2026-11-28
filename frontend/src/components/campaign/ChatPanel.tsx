@@ -835,7 +835,7 @@ export default function ChatPanel() {
       // The keys, said on hover and to a screen reader rather than in a line under the row.
       title={CHAT_KEYS_HINT}
       aria-description={CHAT_KEYS_HINT}
-      className={`input-cozy flex-1 min-w-0 min-h-10 px-3 py-2 text-sm leading-5 resize-none ${canSend ? '' : 'opacity-50 cursor-not-allowed'}`}
+      className={`input-cozy flex-1 min-w-0 min-h-10 pointer-coarse:min-h-11 px-3 py-2 pointer-coarse:py-2.5 text-sm leading-5 resize-none ${canSend ? '' : 'opacity-50 cursor-not-allowed'}`}
       rows={1}
       maxLength={slashInBox ? MAX_CHAT_MESSAGE_LENGTH + WHISPER_PREFIX_ROOM : MAX_CHAT_MESSAGE_LENGTH}
       // Read-only through the cooldown, not disabled: disabling the
@@ -956,8 +956,9 @@ export default function ChatPanel() {
         aria-relevant="additions"
         className={compact ? 'flex-1 overflow-y-auto px-2 py-1.5 space-y-1.5' : 'flex-1 overflow-y-auto p-4 space-y-3'}
       >
-        {/* Load More Button; on the compact layout with the count and the GM's eraser */}
-        {compact ? (
+        {/* Load More Button; on the compact layout with the count and the GM's
+            eraser, unless the panel's header holds them */}
+        {compact && !wideHeader ? (
           (messages.length > 0 || clearJoinsButton) && (
             <div className="flex items-center gap-2">
               {hasEarlier && loadMoreButton}

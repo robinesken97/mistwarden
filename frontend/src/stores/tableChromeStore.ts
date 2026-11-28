@@ -16,10 +16,13 @@ interface TableChromeState {
   mapmakerSlot: HTMLElement | null;
   /** The open panel's header, where its count and actions go (Chat, Dice), and which tab it shows. */
   panelHeader: { tab: string; el: HTMLElement } | null;
+  /** How much of the map's foot an open dock covers, in CSS px: the map keeps its size and view under it, and its controls stand above it. */
+  mapCover: number;
 }
 
 export const useTableChrome = create<TableChromeState>(() => ({
   asPlayerSlot: null,
   mapmakerSlot: null,
   panelHeader: null,
+  mapCover: 0,
 }));

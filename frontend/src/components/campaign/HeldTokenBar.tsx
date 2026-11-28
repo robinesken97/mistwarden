@@ -34,14 +34,15 @@ export default function HeldTokenBar({ name, onPutBack, top = null, ref }: HeldT
       // As wide as it needs, up to the map's width less a margin each side:
       // placed from the map's middle, it would otherwise stop at the half to
       // its right. A long name is cut short; Put back keeps its one line.
-      className="absolute top-20 left-1/2 -translate-x-1/2 z-40 glass-panel bg-parchment/95 backdrop-blur-xs shadow-lg px-3 py-2 flex items-center gap-3 w-max max-w-[calc(100%-2rem)]"
+      // The pill of the rail's one-time hint, centred at the map's top.
+      className="absolute top-20 left-1/2 -translate-x-1/2 z-40 flex h-11 items-center gap-2 rounded-full border border-brand bg-surface/95 pl-4 pr-1 shadow-lg backdrop-blur-xs w-max max-w-[calc(100%-2rem)]"
       style={top !== null ? { top } : undefined}
       ref={ref}
     >
-      <p className="text-sm text-stone-gray min-w-0 truncate">
+      <p className="text-sm text-ink-muted min-w-0 truncate">
         Holding <span className="font-semibold text-brand-ink">{name}</span>
       </p>
-      <Button variant="secondary" size="sm" className="shrink-0 whitespace-nowrap" onClick={onPutBack}>
+      <Button variant="secondary" size="sm" className="shrink-0 whitespace-nowrap rounded-full!" onClick={onPutBack}>
         Put back
       </Button>
     </div>

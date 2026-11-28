@@ -1,12 +1,12 @@
 // ============================================
 // Campaign Page
 // The game table: the map, the session panels and the Party content, drawn
-// once (components/campaign/tableHosts.tsx) and arranged by one of the
-// page's two arrangements: the desktop's three columns
-// (components/campaign/DesktopTable.tsx) from 1024 px wide, and below that
-// the compact one, the map with a bar of sheets
-// (components/campaign/compact/CompactTable.tsx). Exactly one is mounted,
-// chosen by COMPACT_LAYOUT_QUERY. Everything an arrangement change must keep
+// once (components/campaign/tableHosts.tsx) and arranged by the table
+// (components/campaign/DesktopTable.tsx) in one of four ways: wide from
+// 1024 px (COMPACT_LAYOUT_QUERY), and below it a tablet's, a phone's upright
+// (PHONE_QUERY) or a phone's on its side (SIDEWAYS_QUERY), each with the map
+// under one top bar and its panel tabs in a dock, a column or the bar.
+// Everything an arrangement change must keep
 // stays here: the page's listeners, every window and slide-over and whether
 // it is open, and the token quick editor.
 // ============================================
@@ -16,17 +16,17 @@ import { isCampaignOwner } from '@/utils/campaignRoles';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
-import { COMPACT_LAYOUT_QUERY } from '@/constants/layout';
+import { COMPACT_LAYOUT_QUERY, PHONE_QUERY, SIDEWAYS_QUERY, type TableLayout } from '@/constants/layout';
 import { CampaignProvider, useCampaign } from '@/contexts/CampaignContext';
 import { WebSocketProvider, useWebSocket } from '@/contexts/WebSocketContext';
-import { LayoutProvider, useCompactLayout } from '@/contexts/LayoutContext';
+import { LayoutProvider, useTableLayout } from '@/contexts/LayoutContext';
 import { useGameStore } from '@/stores/gameStore';
 import { useInitiativeSync } from '@/hooks/useInitiativeSync';
 import { usePresenceSync } from '@/hooks/usePresenceSync';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 
 // Campaign components
-import CampaignInfo, { InvitePlayerButton } from '@/components/campaign/CampaignInfo';
+import { InvitePlayerButton } from '@/components/campaign/CampaignInfo';
 import LeaveCampaign from '@/components/campaign/LeaveCampaign';
 import PreparingBanner from '@/components/campaign/PreparingBanner';
 import CampaignRoster from '@/components/campaign/CampaignRoster';
@@ -54,7 +54,6 @@ import ShortcutsPanel from '@/components/campaign/ShortcutsPanel';
 import TableTour from '@/components/campaign/TableTour';
 import SessionPanels from '@/components/campaign/SessionPanels';
 import DesktopTable from '@/components/campaign/DesktopTable';
-import CompactTable from '@/components/campaign/compact/CompactTable';
 import { TableHosts, type TablePart } from '@/components/campaign/tableHosts';
 import { type SessionToolKey } from '@/components/campaign/SessionToolbar';
 import { CampaignStatus } from '@/types';
@@ -144,7 +143,7 @@ function CampaignPageContent() {
   const editToken = (token: Token) => {
     if (viewedMap) setQuickEdit({ token, mapId: viewedMap.id });
   };
-  const compact = useCompactLayout();
+  const layout = useTableLayout();
 
   // SessionToolbar reports which tool was clicked; the open/close state
   // for each slide-over stays here.
@@ -270,13 +269,11 @@ function CampaignPageContent() {
     session: <SessionPanels />,
     party: (
       <div className="space-y-4">
-        {/* On the wide layout the Campaign Info card is in ⋯ › Campaign info;
-            the Party tab keeps its Invite Player or Leave Campaign at the top. */}
-        {compact
-          ? <CampaignInfo onLeft={endTable} />
-          : userRole === 'GM'
-            ? <InvitePlayerButton />
-            : userRole && <LeaveCampaign campaign={campaign} userRole={userRole} onLeft={endTable} />}
+        {/* The Campaign Info card is in ⋯ › Campaign info; the Party tab
+            keeps its Invite Player or Leave Campaign at the top. */}
+        {userRole === 'GM'
+          ? <InvitePlayerButton />
+          : userRole && <LeaveCampaign campaign={campaign} userRole={userRole} onLeft={endTable} />}
         <CampaignRoster />
         {/* Token Roster — GM only */}
         {userRole === 'GM' && (
@@ -295,26 +292,16 @@ function CampaignPageContent() {
       {/* A sheet's Place area places on the map shown (utils/spells.ts). */}
       <SpellAreaCampaign.Provider value={viewedMap && campaign ? campaign.id : null}>
       <TableHosts parts={tableParts}>
-        {compact ? (
-          <CompactTable
-            campaign={campaign}
-            isOwner={isOwner}
-            onOpenTool={(key) => sessionPanelOpeners[key]()}
-            onOpenDocuments={() => setIsDocumentsOpen(true)}
-            onOpenSpells={() => setIsSpellLibraryOpen(true)}
-            onOpenShortcuts={() => setIsShortcutsOpen(true)}
-          />
-        ) : (
-          <DesktopTable
-            campaign={campaign}
-            isOwner={isOwner}
-            onOpenTool={(key) => sessionPanelOpeners[key]()}
-            onOpenDocuments={() => setIsDocumentsOpen(true)}
-            onOpenSpells={() => setIsSpellLibraryOpen(true)}
-            onOpenShortcuts={() => setIsShortcutsOpen(true)}
-            onLeft={endTable}
-          />
-        )}
+        <DesktopTable
+          layout={layout}
+          campaign={campaign}
+          isOwner={isOwner}
+          onOpenTool={(key) => sessionPanelOpeners[key]()}
+          onOpenDocuments={() => setIsDocumentsOpen(true)}
+          onOpenSpells={() => setIsSpellLibraryOpen(true)}
+          onOpenShortcuts={() => setIsShortcutsOpen(true)}
+          onLeft={endTable}
+        />
       </TableHosts>
       </SpellAreaCampaign.Provider>
 
@@ -433,13 +420,16 @@ function CampaignPageContent() {
 // ============================================
 
 export default function CampaignPage() {
-  // The page's one question of the screen's width: below it, the compact
-  // arrangement, on any device, a narrow desktop window included.
+  // The page's questions of the screen: below 1024 px the compact
+  // arrangements, on any device, a narrow desktop window included.
   const compact = useMediaQuery(COMPACT_LAYOUT_QUERY);
+  const sideways = useMediaQuery(SIDEWAYS_QUERY);
+  const phone = useMediaQuery(PHONE_QUERY);
+  const layout: TableLayout = !compact ? 'wide' : sideways ? 'phone-landscape' : phone ? 'phone' : 'tablet';
   return (
     <CampaignProvider>
       <WebSocketProvider>
-        <LayoutProvider compact={compact}>
+        <LayoutProvider compact={compact} layout={layout}>
           <CampaignPageContent />
         </LayoutProvider>
       </WebSocketProvider>

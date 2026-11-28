@@ -2,7 +2,7 @@
  * The browser's Back on the compact layout with a window open over the map
  * and no sheet under it.
  *
- * A row of More, or of a token's action sheet, closes its sheet and opens a
+ * A tile of ⋯, or a row of a token's action sheet, closes its sheet and opens a
  * window: one of the GM's slide-overs, Edit Token, the character sheet. The
  * sheet took its history entry back off as it closed, so the window held
  * none and Back left the campaign page, losing whatever was typed in it. A
@@ -41,7 +41,7 @@ vi.mock('@/contexts/ToastContext', () => ({ useToast: () => ({ showToast: () => 
 vi.mock('@/hooks/queries', () => ({ useServerConfigQuery: () => ({ data: undefined }) }));
 vi.mock('@/services/api', () => ({ api: { getUser: vi.fn(), getCharacter: vi.fn(), updateCharacter: vi.fn() } }));
 
-import CompactTable from '../CompactTable';
+import DesktopTable from '../../DesktopTable';
 
 /** Whether the browser's current history entry is a sheet's. */
 const onSheetEntry = () => (window.history.state as Record<string, unknown> | null)?.cozyvttSheet === true;
@@ -69,7 +69,7 @@ afterEach(async () => {
 
 const campaign = { id: 'c1', name: 'The Sunken Crown', status: CampaignStatus.ACTIVE, ownerId: 'owner', memberships: [], characters: [] } as unknown as Campaign;
 
-/** The page's Map Library slide-over, which More's row asks for. */
+/** The page's Map Library slide-over, which ⋯'s Scenes tile asks for. */
 function MapLibrary({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
     <SlideOver open={open} onClose={onClose}>
@@ -80,19 +80,21 @@ function MapLibrary({ open, onClose }: { open: boolean; onClose: () => void }) {
   );
 }
 
-/** The compact arrangement under the page, with its Map Library, and `party` as the Party content. */
+/** The phone's arrangement under the page, with its Map Library, and `party` as the Party content. */
 function CompactPage({ party = <button type="button">party content</button> }: { party?: ReactNode }) {
   const [maps, setMaps] = useState(false);
   const parts = { map: <div>the map</div>, session: <button type="button">session panels</button>, party };
   return (
-    <LayoutProvider compact>
+    <LayoutProvider compact layout="phone">
       <TableHosts parts={parts}>
-        <CompactTable
+        <DesktopTable
+          layout="phone"
           campaign={campaign}
           isOwner
           onOpenTool={(key: SessionToolKey) => { if (key === 'maps') setMaps(true); }}
           onOpenDocuments={() => undefined}
           onOpenShortcuts={() => undefined}
+          onLeft={() => undefined}
         />
       </TableHosts>
       <MapLibrary open={maps} onClose={() => setMaps(false)} />
@@ -100,8 +102,6 @@ function CompactPage({ party = <button type="button">party content</button> }: {
   );
 }
 
-const bar = () => screen.getByRole('navigation', { name: 'Table' });
-const press = (name: string) => fireEvent.click(within(bar()).getByRole('button', { name: new RegExp(`^${name}`) }));
 /** A sheet, open or not, by its title. */
 const sheet = (title: string) => {
   const found = [...document.querySelectorAll<HTMLElement>('[data-sheet]')].find((el) => el.querySelector('h2')?.textContent === title);
@@ -110,23 +110,22 @@ const sheet = (title: string) => {
 };
 const isOpen = (title: string) => sheet(title).dataset.state === 'open';
 
-/** Opens More and presses its row `label`. The sheet slides in, and its rows have no accessible name until it has begun to. */
+/** Opens ⋯ and presses its tile or row `label`; the sheet closes after the press has gone through. */
 async function pressMoreRow(label: string) {
-  press('More');
-  await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
-  const row = within(sheet('More')).getByText(label).closest('button');
+  fireEvent.click(screen.getByRole('button', { name: 'More' }));
+  const row = within(screen.getByRole('group', { name: 'More' })).getByText(label).closest('button');
   if (!row) throw new Error(`no row ${label}`);
   fireEvent.click(row);
   await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
 }
 
-describe("Back with one of More's windows open", () => {
+describe("Back with one of ⋯'s windows open", () => {
   it('closes the window and stays on the page, and the next Back leaves the page as before', async () => {
     arriveAt('/campaigns/c1');
     render(<CompactPage />);
-    await pressMoreRow('Map Library');
+    await pressMoreRow('Scenes');
     expect(screen.getByRole('dialog', { name: 'Map Library' })).toBeInTheDocument();
-    expect(isOpen('More')).toBe(false);
+    expect(screen.queryByRole('group', { name: 'More' })).toBeNull();
 
     await pressBack();
     expect(window.location.pathname).toBe('/campaigns/c1');
@@ -141,7 +140,7 @@ describe("Back with one of More's windows open", () => {
   it('is taken back off the history when the window closes by its own X, so the next Back leaves the page', async () => {
     arriveAt('/campaigns/c2');
     render(<CompactPage />);
-    await pressMoreRow('Map Library');
+    await pressMoreRow('Scenes');
     expect(onSheetEntry()).toBe(true);
 
     fireEvent.click(within(screen.getByRole('dialog', { name: 'Map Library' })).getByRole('button', { name: 'Close' }));
@@ -154,7 +153,7 @@ describe("Back with one of More's windows open", () => {
   });
 });
 
-describe('Back with a window opened over a sheet', () => {
+describe('Back with a window opened from a panel in the dock', () => {
   /** The Party content, with a button that opens a window over the Party sheet. */
   function PartyWithWindow() {
     const [open, setOpen] = useState(false);
@@ -166,22 +165,17 @@ describe('Back with a window opened over a sheet', () => {
     );
   }
 
-  it('closes the window, then the sheet, then leaves the page', async () => {
+  it('closes the window over the open dock, then leaves the page', async () => {
     arriveAt('/campaigns/c3');
     render(<CompactPage party={<PartyWithWindow />} />);
-    press('Party');
-    await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
-    fireEvent.click(within(sheet('Party')).getByText('Leave Campaign'));
+    fireEvent.click(screen.getByRole('tab', { name: 'Party' }));
+    fireEvent.click(screen.getByText('Leave Campaign'));
     expect(screen.getByRole('dialog', { name: 'Leave this campaign?' })).toBeInTheDocument();
 
     await pressBack();
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Leave this campaign?' })).toBeNull());
-    expect(isOpen('Party')).toBe(true);
-    expect(window.location.pathname).toBe('/campaigns/c3');
-    expect(onSheetEntry()).toBe(true);
-
-    await pressBack();
-    await waitFor(() => expect(isOpen('Party')).toBe(false));
+    // The dock is not a sheet of the history: it stays open, and the entry goes with the window.
+    expect(screen.getByRole('tab', { name: 'Party' })).toHaveAttribute('aria-selected', 'true');
     expect(window.location.pathname).toBe('/campaigns/c3');
     await waitFor(() => expect(onSheetEntry()).toBe(false));
 

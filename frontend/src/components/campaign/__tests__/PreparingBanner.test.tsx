@@ -45,7 +45,11 @@ vi.mock('@/contexts/CampaignContext', () => ({
   }),
   TableKeptMovingError: h.TableKeptMovingError,
 }));
-vi.mock('@/contexts/LayoutContext', () => ({ useCompactLayout: () => h.compact }));
+vi.mock('@/contexts/LayoutContext', () => ({
+  useCompactLayout: () => h.compact,
+  useTableLayout: () => (h.compact ? 'phone' : 'wide'),
+  isPhoneLayout: (layout: string) => layout === 'phone' || layout === 'phone-landscape',
+}));
 vi.mock('@/contexts/ToastContext', () => ({ useToast: () => ({ showToast: h.showToast }) }));
 vi.mock('@/services/map.service', () => ({
   default: { getMap: (...a: unknown[]) => h.getMap(...a), setCurrentMap: (...a: unknown[]) => h.setCurrentMap(...a) },
@@ -182,13 +186,16 @@ describe('on the compact layout', () => {
     expect(screen.getByRole('button', { name: 'Back to the table' })).toHaveTextContent(/^Back$/);
     // The words shown begin the name, so a voice command for them finds it.
     expect(screen.getByRole('button', { name: 'Bring everyone here' })).toHaveTextContent(/^Bring everyone$/);
-    expect(region().className.split(/\s+/)).not.toContain('flex-wrap');
+    // One row: the buttons beside the words.
+    expect(screen.getByRole('button', { name: 'Back to the table' }).parentElement!.className.split(/\s+/)).not.toContain('grid-cols-2');
   });
 
-  it('wraps the names over the buttons upright', () => {
+  it('puts the two ways out upright in a row of their own, two equal buttons under the words', () => {
     render(<PreparingBanner />);
     expect(screen.getByRole('button', { name: 'Back to the table' })).toHaveTextContent('Back to the table');
-    expect(region().className.split(/\s+/)).toContain('flex-wrap');
+    const row = screen.getByRole('button', { name: 'Back to the table' }).parentElement!;
+    expect(row.className.split(/\s+/)).toEqual(expect.arrayContaining(['grid', 'grid-cols-2', 'basis-full', 'order-last']));
+    expect(row).toContainElement(screen.getByRole('button', { name: 'Bring everyone here' }));
   });
 
   it("stays when the phone's Back is refused, and Back still works the next time", async () => {

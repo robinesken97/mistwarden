@@ -1,7 +1,6 @@
 /**
- * The map's chrome on the compact layout: the band's one row and Map
- * controls, the dock at the map's foot, the Draw strip, and the GM's tool
- * stack behind Tools. jsdom evaluates no media query and lays nothing out, so a size
+ * The map's chrome on a phone: the slim rail, the dock at the map's foot,
+ * the Draw strip, and the GM's tool stack behind the GM tools cell. jsdom evaluates no media query and lays nothing out, so a size
  * is checked as the classes that set it, and a place as the one given from
  * the boxes a browser would measure.
  *
@@ -10,10 +9,10 @@
  * sends. Canvas drawing is switched off.
  */
 
-import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import type { CampaignMap, Token } from '@/types';
-import { contact, mouse } from '@/test/pointer';
+import { contact } from '@/test/pointer';
 
 const h = vi.hoisted(() => {
   const listeners = new Set<() => void>();
@@ -116,7 +115,6 @@ vi.mock('@/services/api', () => {
 
 import MapCanvasOnly from '../MapCanvas';
 import { LayoutProvider } from '@/contexts/LayoutContext';
-import { mapControlItems, mapControlsTitle, type MapControlsActions, type MapControlsView } from '../map/mapControlItems';
 import { useGameStore } from '@/stores/gameStore';
 import { useTableChrome } from '@/stores/tableChromeStore';
 
@@ -140,10 +138,10 @@ function mapWith(extra: Partial<CampaignMap> = {}): CampaignMap {
   } as unknown as CampaignMap;
 }
 
-/** The map as the compact layout draws it. */
+/** The map as a phone held upright draws it. */
 function MapCanvas() {
   return (
-    <LayoutProvider compact>
+    <LayoutProvider compact layout="phone">
       <MapCanvasOnly />
     </LayoutProvider>
   );
@@ -166,7 +164,6 @@ function surface(): HTMLCanvasElement {
   return input;
 }
 
-const sentOf = (event: string) => h.sent.filter(([e]) => e === event).map(([, p]) => p);
 
 /** A finger's tap at `at`. */
 function tap(id: number, at: { clientX: number; clientY: number }) {
@@ -178,26 +175,10 @@ function tap(id: number, at: { clientX: number; clientY: number }) {
 
 const classesOf = (el: Element) => el.className.split(/\s+/);
 
-/** A box at `left, top` of `width` by `height`, as getBoundingClientRect gives it. */
-const box = (left: number, top: number, width: number, height: number) =>
-  ({ left, top, width, height, right: left + width, bottom: top + height, x: left, y: top, toJSON: () => ({}) }) as DOMRect;
 
-const toolbar = () => screen.getByRole('group', { name: 'Map tools' });
-const mapContainer = () => screen.getByRole('application', { name: 'Map' }).parentElement!;
-const mapControlsButton = () => screen.getByRole('button', { name: 'More map controls' });
-const mapControlsSheet = () => screen.getByRole('dialog', { name: 'Map controls' });
-
-/** The rows of the Map controls sheet, by their labels, a rule as ---. */
-function sheetRows(): string[] {
-  const page = mapControlsSheet().querySelector<HTMLElement>('[data-action-sheet-page]')!;
-  return Array.from(page.children).map((row) => (row.getAttribute('role') === 'separator' ? '---' : row.textContent!.trim()));
-}
-
-/** Open Map controls and press the row named `label`. */
-function pressRow(label: string) {
-  if (!screen.queryByRole('dialog', { name: 'Map controls' })) fireEvent.click(mapControlsButton());
-  fireEvent.click(within(mapControlsSheet()).getByRole('button', { name: label }));
-}
+const rail = () => screen.getByRole('navigation', { name: 'Map tools' });
+/** The rail's cells, by name, top to bottom. */
+const cells = () => within(rail()).getAllByRole('button').map((b) => b.getAttribute('aria-label'));
 
 beforeAll(() => {
   Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', { value: () => null, configurable: true });
@@ -211,634 +192,87 @@ beforeEach(() => {
   h.set({ userRole: 'GM', currentMap: mapWith() });
 });
 
-describe("the band's one row", () => {
-  it('holds Zoom Out, the zoom, Zoom In, Ping, Draw and Map controls, in that order, and nothing else', () => {
+describe('the phone rail', () => {
+  it('holds the zoom chip, Grid, the tools and the GM tools for the GM: eight cells, no zoom buttons', () => {
     render(<MapCanvas />);
-
-    const names = within(toolbar()).getAllByRole('button').map((b) => b.getAttribute('aria-label') ?? b.textContent!.trim());
-    expect(names).toEqual(['Zoom Out', 'Zoom In', 'Ping', 'Draw', 'More map controls']);
-    expect(toolbar()).toHaveTextContent('100%');
-    for (const name of ['Fit to Screen', 'Toggle Grid', 'Ruler — measure distance', 'AoE Shape — area of effect overlay', /Spirit tokens/]) {
-      expect(screen.queryByRole('button', { name })).toBeNull();
-    }
+    expect(cells()).toEqual(['Fit map', 'Grid', 'Measure', 'Spell area', 'Ping', 'Draw', 'Spirit Layer', 'GM tools']);
+    // The chip shows the zoom; pinching zooms.
+    expect(within(rail()).getByRole('button', { name: 'Fit map' })).toHaveTextContent('%');
+    expect(screen.queryByRole('button', { name: 'Zoom in' })).toBeNull();
   });
 
-  it('is one row across the map, clear of the notch on either side', () => {
-    render(<MapCanvas />);
-
-    const band = toolbar().parentElement!;
-    expect(classesOf(band)).toEqual(expect.arrayContaining([
-      'left-[max(0.5rem,env(safe-area-inset-left))]', 'right-[max(0.5rem,env(safe-area-inset-right))]',
-    ]));
-    expect(classesOf(toolbar())).toContain('w-full');
-    expect(classesOf(toolbar())).not.toContain('flex-wrap');
-  });
-
-  // As the tablet's mock-up has it: as wide as its buttons, More beside Draw.
-  it('is as wide as its buttons from a small tablet up, Map controls beside Draw', () => {
-    render(<MapCanvas />);
-    expect(classesOf(toolbar())).toContain('sm:w-auto');
-    expect(classesOf(mapControlsButton())).toEqual(expect.arrayContaining(['ml-auto', 'sm:ml-0']));
-  });
-
-  it('sizes every button for a finger', () => {
-    render(<MapCanvas />);
-    for (const button of within(toolbar()).getAllByRole('button')) expect(classesOf(button)).toContain('touch-target');
-  });
-
-  it('leaves Ping and Draw out with no map, and Draw out for a player who may not draw', () => {
-    h.set({ currentMap: null });
-    const { unmount } = render(<MapCanvas />);
-    expect(within(toolbar()).queryByRole('button', { name: 'Ping' })).toBeNull();
-    expect(within(toolbar()).queryByRole('button', { name: 'Draw' })).toBeNull();
-    unmount();
-
-    h.set({ userRole: 'PLAYER', currentMap: mapWith({ imageUrl: '' }) });
-    render(<MapCanvas />);
-    expect(within(toolbar()).getByRole('button', { name: 'Ping' })).toBeInTheDocument();
-    expect(within(toolbar()).queryByRole('button', { name: 'Draw' })).toBeNull();
-  });
-
-  it('shows the word More beside the icon, and the icon alone on a screen under 384 pixels wide', () => {
-    render(<MapCanvas />);
-    const word = within(mapControlsButton()).getByText('More');
-    expect(classesOf(word)).toContain('max-[24rem]:sr-only');
-  });
-
-  it('arms Ping and opens Draw as the toolbar does', () => {
-    render(<MapCanvas />);
-    fireEvent.click(screen.getByRole('button', { name: 'Ping' }));
-    expect(screen.getByRole('button', { name: 'Ping' })).toHaveAttribute('aria-pressed', 'true');
-    fireEvent.click(screen.getByRole('button', { name: 'Draw' }));
-    expect(screen.getByRole('button', { name: 'Draw' })).toHaveAttribute('aria-pressed', 'true');
-  });
-});
-
-describe('Map controls', () => {
-  // From the rows the sheet holds for the viewer, as the builder makes them.
-  it('says in its tooltip what it holds for the viewer', () => {
-    const noop = () => undefined;
-    const run: MapControlsActions = {
-      fit: noop, toggleGrid: noop, nextGridColor: noop, toggleRuler: noop, nextRulerColor: noop, toggleAoE: noop, toggleSpiritTokens: noop, toggleTools: noop, togglePaint: noop, togglePlaceFreely: noop,
-    };
-    const view: MapControlsView = {
-      isGM: true, hasMap: true, showGrid: true, gridColor: 'black', showRuler: false, rulerColor: 'amber', showAoE: false,
-      spiritTokensShown: true, toolsShown: false, paint: null, placeFreely: false,
-    };
-    const titleFor = (extra: Partial<MapControlsView>) => mapControlsTitle(mapControlItems({ ...view, ...extra }, run));
-
-    const { unmount } = render(<MapCanvas />);
-    expect(mapControlsButton()).toHaveAttribute('title', titleFor({}));
-    unmount();
-
-    h.set({ currentMap: null });
-    const second = render(<MapCanvas />);
-    expect(mapControlsButton()).toHaveAttribute('title', titleFor({ hasMap: false }));
-    second.unmount();
-
-    h.set({ userRole: 'PLAYER', currentMap: mapWith() });
-    render(<MapCanvas />);
-    expect(mapControlsButton()).toHaveAttribute('title', titleFor({ isGM: false }));
-  });
-
-  it('opens a sheet named Map controls, and says so', () => {
-    render(<MapCanvas />);
-    expect(mapControlsButton()).toHaveAttribute('aria-haspopup', 'dialog');
-    expect(mapControlsButton()).toHaveAttribute('aria-expanded', 'false');
-
-    fireEvent.click(mapControlsButton());
-
-    expect(mapControlsSheet()).toHaveAttribute('aria-modal', 'true');
-    expect(mapControlsButton()).toHaveAttribute('aria-expanded', 'true');
-    fireEvent.click(within(mapControlsSheet()).getByRole('button', { name: 'Cancel' }));
-    expect(screen.queryByRole('dialog', { name: 'Map controls' })).toBeNull();
-  });
-
-  it('holds what the row leaves out, for the GM', () => {
-    render(<MapCanvas />);
-    fireEvent.click(mapControlsButton());
-    expect(sheetRows()).toEqual([
-      'Fit to Screen', 'Hide grid', 'Grid Color: Black', '---', 'Ruler', 'AoE Shape', '---', 'Show tools', 'Place tokens freely', 'Hide spirit tokens',
-    ]);
-  });
-
-  it('holds no spirit tokens for a player, and no ruler or AoE shape with no map', () => {
+  it('holds six cells for a player who may draw', () => {
     h.set({ userRole: 'PLAYER' });
-    const { unmount } = render(<MapCanvas />);
-    fireEvent.click(mapControlsButton());
-    expect(sheetRows()).toEqual(['Fit to Screen', 'Hide grid', 'Grid Color: Black', '---', 'Ruler', 'AoE Shape']);
-    unmount();
-
-    h.set({ currentMap: null });
     render(<MapCanvas />);
-    fireEvent.click(mapControlsButton());
-    expect(sheetRows()).toEqual(['Fit to Screen', 'Hide grid', 'Grid Color: Black']);
+    expect(cells()).toEqual(['Fit map', 'Grid', 'Measure', 'Spell area', 'Ping', 'Draw']);
   });
 
-  it('fits the map to the screen and closes', () => {
+  it('is centred on the map shown above an open dock', () => {
     render(<MapCanvas />);
-    mapContainer().getBoundingClientRect = () => box(0, 0, 400, 600);
-    act(() => { window.dispatchEvent(new Event('resize')); });
-
-    pressRow('Fit to Screen');
-
-    // On the compact layout the map fills the longer side: 90 percent of the
-    // 600 pixels over the map's 1,000, its sides a pan away.
-    expect(toolbar()).toHaveTextContent('54%');
-    expect(screen.queryByRole('dialog', { name: 'Map controls' })).toBeNull();
+    act(() => { useTableChrome.setState({ mapCover: 338 }); });
+    expect(rail().parentElement).toHaveStyle({ bottom: '338px' });
+    expect(classesOf(rail().parentElement!)).toEqual(expect.arrayContaining(['absolute', 'top-0', 'items-center']));
+    act(() => { useTableChrome.setState({ mapCover: 0 }); });
   });
 
-  it('hides and shows the grid, offering its colour while it shows', () => {
+  it('opens the grid popover beside its cell', () => {
     render(<MapCanvas />);
-    pressRow('Hide grid');
-    fireEvent.click(mapControlsButton());
-    expect(sheetRows().slice(0, 3)).toEqual(['Fit to Screen', 'Show grid', '---']);
-
-    pressRow('Show grid');
-    fireEvent.click(mapControlsButton());
-    expect(sheetRows()).toContain('Grid Color: Black');
-  });
-
-  it('goes round the grid colours and the ruler colours with the sheet kept open', () => {
-    render(<MapCanvas />);
-    pressRow('Grid Color: Black');
-    expect(sheetRows()).toContain('Grid Color: White');
-
-    fireEvent.click(within(mapControlsSheet()).getByRole('button', { name: 'Ruler' }));
-    pressRow('Ruler color: Amber');
-    expect(sheetRows()).toContain('Ruler color: Purple');
-    pressRow('Ruler color: Purple');
-    expect(sheetRows()).toContain('Ruler color: Black');
-  });
-
-  it('takes the ruler out and puts it away, closing as it does', () => {
-    render(<MapCanvas />);
-    pressRow('Ruler');
-    expect(screen.queryByRole('dialog', { name: 'Map controls' })).toBeNull();
-
-    fireEvent.click(mapControlsButton());
-    expect(sheetRows()).toEqual(expect.arrayContaining(['Put the ruler away', 'Ruler color: Amber']));
-    pressRow('Put the ruler away');
-    fireEvent.click(mapControlsButton());
-    expect(sheetRows()).toContain('Ruler');
-    expect(sheetRows()).not.toContain('Ruler color: Amber');
-  });
-
-  it('opens the AoE Shape panel and puts it away', () => {
-    render(<MapCanvas />);
-    pressRow('AoE Shape');
-    expect(screen.getByText('AoE Shape', { selector: 'p' })).toBeInTheDocument();
-
-    pressRow('Put the AoE shape away');
-    expect(screen.queryByText('AoE Shape', { selector: 'p' })).toBeNull();
-  });
-
-  it('puts Draw away for the ruler and the AoE shape, as their buttons do', () => {
-    render(<MapCanvas />);
-    fireEvent.click(screen.getByRole('button', { name: 'Draw' }));
-    pressRow('Ruler');
-    expect(screen.getByRole('button', { name: 'Draw' })).toHaveAttribute('aria-pressed', 'false');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Draw' }));
-    pressRow('AoE Shape');
-    expect(screen.getByRole('button', { name: 'Draw' })).toHaveAttribute('aria-pressed', 'false');
-  });
-
-  it('hides and shows the spirit tokens for the GM', () => {
-    render(<MapCanvas />);
-    pressRow('Hide spirit tokens');
-    fireEvent.click(mapControlsButton());
-    expect(sheetRows()).toContain('Show spirit tokens');
-  });
-
-  it('gives the focus back to Map controls as it closes', () => {
-    render(<MapCanvas />);
-    mapControlsButton().focus();
-    fireEvent.click(mapControlsButton());
-    fireEvent.keyDown(document, { key: 'Escape' });
-
-    expect(screen.queryByRole('dialog', { name: 'Map controls' })).toBeNull();
-    expect(mapControlsButton()).toHaveFocus();
-  });
-
-  it('is not on the desktop, whose rail keeps every button', () => {
-    render(<MapCanvasOnly />);
-    expect(screen.queryByRole('button', { name: 'More map controls' })).toBeNull();
-    expect(screen.queryByRole('group', { name: 'Map tools' })).toBeNull();
-    expect(within(screen.getByRole('navigation', { name: 'Map tools' })).getByRole('button', { name: 'Fit map' })).toBeInTheDocument();
-  });
-});
-
-describe('what sits under the band', () => {
-  const observed: ResizeObserverCallback[] = [];
-  class RecordingResizeObserver {
-    constructor(callback: ResizeObserverCallback) { observed.push(callback); }
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  }
-  let realObserver: typeof ResizeObserver;
-
-  beforeEach(() => {
-    observed.length = 0;
-    realObserver = window.ResizeObserver;
-    Object.defineProperty(window, 'ResizeObserver', { value: RecordingResizeObserver, configurable: true });
-  });
-  afterEach(() => {
-    Object.defineProperty(window, 'ResizeObserver', { value: realObserver, configurable: true });
-  });
-
-  /**
-   * The boxes of a map 360 wide at the page's top left corner, the band a
-   * row of 34-pixel buttons, as a mouse has them, 8 from its top; then a
-   * resize, as a browser reports.
-   */
-  function layOut() {
-    const band = toolbar().parentElement!;
-    const place = (el: Element, rect: DOMRect) => { (el as HTMLElement).getBoundingClientRect = () => rect; };
-    place(mapContainer(), box(0, 0, 360, 560));
-    place(band, box(8, 8, 344, 46));
-    place(toolbar(), box(8, 8, 344, 46));
-    Array.from(toolbar().children).forEach((el, i) => place(el, box(14 + i * 40, 14, 34, 34)));
-    act(() => { for (const callback of observed) callback([], {} as ResizeObserver); });
-  }
-
-  // Under one row of a mouse's buttons the AoE panel keeps its place on the
-  // desktop, which on the compact layout is over the band's left end.
-  // Preview's row and the details card in the dock lay over the stack's
-  // last panels, where Lights' Place and Walls' Done and Cancel land.
-  it('stops the GM’s tool stack above the dock, however tall the dock is', () => {
-    h.set({ currentMap: mapWith({ fogEnabled: true }) });
-    render(<MapCanvas />);
-    pressRow('Show tools');
-    const content = document.querySelector<HTMLElement>('[data-map-dock]')!.firstElementChild as HTMLElement;
-    content.getBoundingClientRect = () => box(0, 350, 360, 210);
-    layOut();
-
-    // The map less the stack's top under the band (62) and the dock's 210
-    // with a gap (218), which the style engine folds into one length.
-    expect(screen.getByTitle(/Drag to move the panels/).parentElement!.style.maxHeight.replace(/\s+/g, '')).toBe('max(6rem,100%-280px)');
-  });
-
-  it('starts the AoE panel under the band with a mouse too', () => {
-    render(<MapCanvas />);
-    pressRow('AoE Shape');
-    layOut();
-
-    expect(screen.getByText('AoE Shape', { selector: 'p' }).parentElement!.style.top).toBe('62px');
-  });
-
-  // A finger's hold shows Put back, which goes under the band, not over
-  // its buttons, at the top of the map and so clear of the bar at its foot.
-  it('starts Put back under the band', () => {
-    render(<MapCanvas />);
-    act(() => { useGameStore.getState().setTokens([token('tok-goblin', 'Goblin', 10, 5)]); });
-    tap(1, square(10, 5));
-    layOut();
-
-    expect(screen.getByRole('button', { name: 'Put back' }).parentElement!.style.top).toBe('62px');
-  });
-
-  it('starts the GM’s tool stack under the band, which spans the map', () => {
-    render(<MapCanvas />);
-    layOut();
-
-    expect(screen.getByTitle(/Drag to move the panels/).parentElement!.style.top).toBe('62px');
+    fireEvent.click(within(rail()).getByRole('button', { name: 'Grid' }));
+    expect(screen.getByRole('group', { name: 'Grid' })).toBeInTheDocument();
   });
 });
 
 describe('the dock at the map’s foot', () => {
   const dock = () => document.querySelector<HTMLElement>('[data-map-dock]')!;
-  const card = () => screen.getByText('Goblin').closest('.glass-panel') as HTMLElement;
-  /** The preview's button, by the words it shows with the preview off or on. */
-  const previewButton = () => screen.getByRole('button', { name: /^(Preview Player View|GM View)$/ });
 
-  it('holds the details card a tap shows, across the map’s foot on a phone', () => {
+  it('stands above an open dock', () => {
+    render(<MapCanvas />);
+    act(() => { useTableChrome.setState({ mapCover: 200 }); });
+    expect(dock()).toHaveStyle({ bottom: '200px' });
+    act(() => { useTableChrome.setState({ mapCover: 0 }); });
+  });
+
+  it('shows the details card a tap shows at the map’s bottom left, as wide as its content', () => {
     h.set({ userRole: 'PLAYER' });
     render(<MapCanvas />);
     act(() => { useGameStore.getState().setTokens([token('tok-goblin', 'Goblin', 4, 15)]); });
-
     tap(1, square(4, 15));
-
-    expect(dock()).toContainElement(card());
-    expect(classesOf(card())).toEqual(expect.arrayContaining(['relative', 'w-full', 'sm:w-88']));
-    expect(classesOf(card())).not.toContain('absolute');
-    expect(classesOf(dock())).toEqual(expect.arrayContaining(['absolute', 'inset-0', 'justify-end', 'pointer-events-none']));
-    // Still closed by its own button, which takes the press.
+    const card = screen.getByText('Goblin').closest('.absolute') as HTMLElement;
+    expect(classesOf(card)).toEqual(expect.arrayContaining(['bottom-2', 'left-2', 'w-max']));
     fireEvent.click(screen.getByRole('button', { name: 'Close details' }));
     expect(screen.queryByText('Goblin')).toBeNull();
-  });
-
-  it('keeps the dock clear of a notch on either side', () => {
-    render(<MapCanvas />);
-    expect(classesOf(dock().firstElementChild!.firstElementChild!)).toEqual(expect.arrayContaining([
-      'pl-[max(0.5rem,env(safe-area-inset-left))]', 'pr-[max(0.5rem,env(safe-area-inset-right))]',
-    ]));
-  });
-
-  // The Preview bar sat over the card's top right corner on a phone.
-  it('puts Preview Player View over the card at the right, sized for a finger, and keeps it on the map', () => {
-    h.set({ currentMap: mapWith({ fogEnabled: true }) });
-    render(<MapCanvas />);
-    act(() => { useGameStore.getState().setTokens([token('tok-goblin', 'Goblin', 4, 15)]); });
-    const finger = contact('touch', 1);
-    finger.down(surface(), square(4, 15));
-    finger.move(surface(), square(5, 15));
-    finger.move(surface(), square(6, 15));
-    finger.up(surface(), square(6, 15));
-    finger.leave(surface());
-
-    const controls = previewButton().parentElement!;
-    expect(dock()).toContainElement(controls);
-    expect(controls.compareDocumentPosition(card()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(classesOf(controls)).toEqual(expect.arrayContaining(['self-end', 'pointer-events-auto', '*:min-h-11']));
-    expect(classesOf(controls)).not.toContain('absolute');
-
-    fireEvent.click(previewButton());
-    expect(screen.getByRole('combobox', { name: 'Player or token to preview as' })).toBeInTheDocument();
-    expect(previewButton()).toHaveTextContent('GM View');
-    expect(dock()).toContainElement(screen.getByRole('combobox', { name: 'Player or token to preview as' }));
-  });
-
-  // Preview's controls rose a row as the square under the mouse appeared
-  // below them, and fell as it went, out from under the pointer.
-  it('keeps Preview\'s controls on the row of the square under the mouse, so it coming and going never moves them', () => {
-    h.set({ currentMap: mapWith({ fogEnabled: true }) });
-    render(<MapCanvas />);
-    const row = () => previewButton().parentElement!.parentElement!;
-    const before = row();
-    mouse.move(surface(), square(3, 2));
-    const readout = screen.getByText('(3, 2)').closest('.glass-panel') as HTMLElement;
-    expect(row()).toBe(before);
-    expect(row()).toContainElement(readout);
-    expect(classesOf(row())).toEqual(expect.arrayContaining(['flex', 'justify-between']));
-    expect(classesOf(row())).not.toContain('flex-col');
-    mouse.leave(surface());
-    expect(screen.queryByText('(3, 2)')).toBeNull();
-    expect(row()).toBe(before);
-  });
-
-  it('shows the square under a mouse there while no card does', () => {
-    render(<MapCanvas />);
-    mouse.move(surface(), square(3, 2));
-    expect(dock()).toHaveTextContent('(3, 2)');
-  });
-
-  it('tells a player with no token why the ruler measures nothing, over the card', () => {
-    h.set({ userRole: 'PLAYER' });
-    render(<MapCanvas />);
-    pressRow('Ruler');
-    expect(dock()).toContainElement(screen.getByText('Place your character token on the map to use the ruler'));
-  });
-
-  it('is not on the desktop, whose Preview is As player in the top bar', () => {
-    const slot = document.body.appendChild(document.createElement('div'));
-    useTableChrome.setState({ asPlayerSlot: slot });
-    try {
-      h.set({ currentMap: mapWith({ fogEnabled: true }) });
-      render(<MapCanvasOnly />);
-      expect(document.querySelector('[data-map-dock]')).toBeNull();
-      expect(screen.queryByRole('button', { name: /^(Preview Player View|GM View)$/ })).toBeNull();
-      expect(within(slot).getByRole('button', { name: 'As player' })).toBeInTheDocument();
-    } finally {
-      useTableChrome.setState({ asPlayerSlot: null });
-      slot.remove();
-    }
   });
 });
 
 describe('the Draw strip', () => {
   const dock = () => document.querySelector<HTMLElement>('[data-map-dock]')!;
   const drawingTools = () => screen.getByRole('region', { name: 'Drawing tools' });
-  const drawButton = () => within(toolbar()).getByRole('button', { name: 'Draw' });
-
-  /** A mouse pressed at `from`, moved to `to` with the button held, and let go there. */
-  function stroke(from: { clientX: number; clientY: number }, to: { clientX: number; clientY: number }) {
-    mouse.down(surface(), from);
-    mouse.move(surface(), to, 1);
-    mouse.up(surface(), to);
-  }
 
   it('opens across the map’s foot, last in the dock, and not in the GM’s tool stack', () => {
     render(<MapCanvas />);
-    fireEvent.click(drawButton());
-
+    fireEvent.click(within(rail()).getByRole('button', { name: 'Draw' }));
     expect(dock().firstElementChild!.lastElementChild).toBe(drawingTools());
     expect(screen.getByTitle(/Drag to move the panels/).parentElement).not.toContainElement(drawingTools());
-    expect(screen.queryByRole('dialog')).toBeNull();
-  });
-
-  // The strip's height is a share of the map's, so the dock is the map's
-  // size and the box the share is reckoned from.
-  it('caps its height against the map’s, the dock filling the map', () => {
-    render(<MapCanvas />);
-    fireEvent.click(drawButton());
-    expect(classesOf(dock())).toEqual(expect.arrayContaining(['inset-0', 'flex-col', 'justify-end', '[container-type:size]']));
-    expect(classesOf(drawingTools())).toContain('max-h-[50cqh]');
-  });
-
-  it('opens for a player, who has no tool stack', () => {
-    h.set({ userRole: 'PLAYER' });
-    render(<MapCanvas />);
-    fireEvent.click(drawButton());
-
-    expect(dock()).toContainElement(drawingTools());
-    expect(screen.queryByTitle(/Drag to move the panels/)).toBeNull();
-  });
-
-  it('draws on the map above it with what it sets', () => {
-    render(<MapCanvas />);
-    fireEvent.click(drawButton());
-    fireEvent.click(within(drawingTools()).getByRole('button', { name: 'Rectangle' }));
-    fireEvent.click(within(drawingTools()).getByRole('checkbox', { name: 'Fill shapes' }));
-    fireEvent.click(within(drawingTools()).getByRole('checkbox', { name: 'Snap to grid' }));
-    fireEvent.click(within(drawingTools()).getByRole('button', { name: 'Colour: Red' }));
-    fireEvent.click(within(drawingTools()).getByRole('button', { name: 'Blue' }));
-    fireEvent.click(within(drawingTools()).getByRole('checkbox', { name: 'Only I can see this' }));
-
-    stroke({ clientX: 104, clientY: 96 }, { clientX: 212, clientY: 162 });
-
-    expect(sentOf('drawing:add')).toEqual([expect.objectContaining({
-      mapId: 'map-a',
-      drawing: { kind: 'rect', color: '#3d8bd9', width: 4, audience: 'GM', points: [[100, 100], [200, 150]], fillColor: '#3d8bd9' },
-    })]);
-  });
-
-  it('closes a polygon with its Done, and drops one with its Cancel', () => {
-    render(<MapCanvas />);
-    fireEvent.click(drawButton());
-    fireEvent.click(within(drawingTools()).getByRole('button', { name: 'Polygon' }));
-    for (const [x, y] of [[100, 100], [200, 100], [200, 200]]) {
-      mouse.down(surface(), { clientX: x, clientY: y });
-      mouse.up(surface(), { clientX: x, clientY: y });
-    }
-
-    fireEvent.click(within(drawingTools()).getByRole('button', { name: 'Done' }));
-    expect(sentOf('drawing:add')).toEqual([expect.objectContaining({ drawing: expect.objectContaining({ kind: 'polygon' }) })]);
-    // The tools stay out for the next shape.
-    expect(drawButton()).toHaveAttribute('aria-pressed', 'true');
-
-    mouse.down(surface(), { clientX: 300, clientY: 300 });
-    mouse.up(surface(), { clientX: 300, clientY: 300 });
-    fireEvent.click(within(drawingTools()).getByRole('button', { name: 'Cancel' }));
-    expect(within(drawingTools()).queryByRole('button', { name: 'Cancel' })).toBeNull();
-    expect(sentOf('drawing:add')).toHaveLength(1);
-  });
-
-  it('is put away by its Done, as by Draw', () => {
-    render(<MapCanvas />);
-    fireEvent.click(drawButton());
-    fireEvent.click(within(drawingTools()).getByRole('button', { name: 'Done' }));
-
-    expect(screen.queryByRole('region', { name: 'Drawing tools' })).toBeNull();
-    expect(drawButton()).toHaveAttribute('aria-pressed', 'false');
-
-    fireEvent.click(drawButton());
-    fireEvent.click(drawButton());
-    expect(screen.queryByRole('region', { name: 'Drawing tools' })).toBeNull();
-  });
-
-  // The focused Done went with the strip, and the keys with it.
-  it('gives the focus to Draw in the band as its Done puts it away', () => {
-    render(<MapCanvas />);
-    fireEvent.click(drawButton());
-    const done = within(drawingTools()).getByRole('button', { name: 'Done' });
-    done.focus();
-    fireEvent.click(done);
-
-    expect(drawButton()).toHaveFocus();
-  });
-
-  // Card and strip together left a phone in portrait little map to draw on.
-  it('leaves the details card out of the dock while it is up, and brings it back after', () => {
-    h.set({ userRole: 'PLAYER' });
-    render(<MapCanvas />);
-    act(() => { useGameStore.getState().setTokens([token('tok-goblin', 'Goblin', 4, 15)]); });
-    tap(1, square(4, 15));
-    expect(screen.getByText('Goblin')).toBeInTheDocument();
-
-    fireEvent.click(drawButton());
-    expect(screen.queryByText('Goblin')).toBeNull();
-
-    fireEvent.click(within(drawingTools()).getByRole('button', { name: 'Done' }));
-    expect(screen.getByText('Goblin')).toBeInTheDocument();
-  });
-
-  it('stays in the GM’s tool stack on the desktop', () => {
-    render(<MapCanvasOnly />);
-    fireEvent.click(screen.getByRole('button', { name: 'Draw' }));
-    expect(screen.getByTitle(/Drag to move the panels/).parentElement).toContainElement(drawingTools());
   });
 });
 
-describe('the GM’s tool stack behind Tools', () => {
+describe('the GM’s tool stack behind GM tools', () => {
   const stack = () => screen.getByTitle(/Drag to move the panels/).parentElement!;
-  const wallDrawMode = () => screen.getByRole('button', { name: 'Wall draw mode' });
 
-  /** Show the stack, open its Walls panel and arm the wall line. */
-  function armWalls() {
-    pressRow('Show tools');
-    fireEvent.click(within(stack()).getByRole('button', { name: /^Walls/ }));
-    fireEvent.click(wallDrawMode());
-  }
-
-  it('starts hidden, mounted, and shows on Show tools in Map controls', () => {
+  it('starts hidden and shows on the GM tools cell, which closes it again', () => {
     render(<MapCanvas />);
     expect(stack()).toHaveAttribute('hidden');
-    expect(stack()).not.toBeVisible();
-
-    pressRow('Show tools');
-
+    fireEvent.click(within(rail()).getByRole('button', { name: 'GM tools' }));
     expect(stack()).not.toHaveAttribute('hidden');
     expect(within(stack()).getByRole('button', { name: /^Fog of War/ })).toBeInTheDocument();
-    fireEvent.click(mapControlsButton());
-    expect(sheetRows()).toContain('Hide tools');
-  });
-
-  it('hides on Hide tools in Map controls, and on the stack’s own Hide tools, which gives the focus to Map controls', () => {
-    render(<MapCanvas />);
-    pressRow('Show tools');
-    pressRow('Hide tools');
+    fireEvent.click(within(rail()).getByRole('button', { name: 'GM tools' }));
     expect(stack()).toHaveAttribute('hidden');
-
-    pressRow('Show tools');
-    const hide = within(stack()).getByRole('button', { name: 'Hide tools' });
-    expect(classesOf(hide)).toContain('size-11');
-    hide.focus();
-    fireEvent.click(hide);
-
-    expect(stack()).toHaveAttribute('hidden');
-    expect(mapControlsButton()).toHaveFocus();
-  });
-
-  it('keeps a panel’s folding while hidden', () => {
-    render(<MapCanvas />);
-    pressRow('Show tools');
-    fireEvent.click(within(stack()).getByRole('button', { name: /^Walls/ }));
-    pressRow('Hide tools');
-    pressRow('Show tools');
-
-    expect(within(stack()).getByRole('button', { name: /^Walls/ })).toHaveAttribute('aria-expanded', 'true');
-  });
-
-  // A stack hidden with a tool armed hid its Done and Cancel, and the map
-  // went on taking the presses for walls.
-  it('puts an armed tool away as it hides', () => {
-    render(<MapCanvas />);
-    armWalls();
-    expect(classesOf(surface())).toContain('cursor-crosshair');
-
-    pressRow('Hide tools');
-
-    expect(classesOf(surface())).toContain('cursor-move');
-    expect(stack()).toHaveAttribute('hidden');
-    pressRow('Show tools');
-    expect(classesOf(wallDrawMode())).not.toContain('bg-orange-600/30');
   });
 
   it('takes turns with the Draw strip', () => {
     render(<MapCanvas />);
-    armWalls();
-    fireEvent.click(within(toolbar()).getByRole('button', { name: 'Draw' }));
-
-    expect(stack()).toHaveAttribute('hidden');
-    expect(screen.getByRole('region', { name: 'Drawing tools' })).toBeInTheDocument();
-
-    pressRow('Show tools');
-    expect(stack()).not.toHaveAttribute('hidden');
-    expect(screen.queryByRole('region', { name: 'Drawing tools' })).toBeNull();
-    expect(within(toolbar()).getByRole('button', { name: 'Draw' })).toHaveAttribute('aria-pressed', 'false');
-    // Draw had put the wall tool away.
-    expect(classesOf(wallDrawMode())).not.toContain('bg-orange-600/30');
-    expect(classesOf(surface())).toContain('cursor-move');
-  });
-
-  it('is not offered with no map open, where there is no stack to show', () => {
-    h.set({ currentMap: null });
-    render(<MapCanvas />);
-    fireEvent.click(mapControlsButton());
-    expect(sheetRows()).not.toContain('Show tools');
-    expect(screen.queryByTitle(/Drag to move the panels/)).toBeNull();
-  });
-
-  it('is offered to the GM only', () => {
-    h.set({ userRole: 'PLAYER' });
-    render(<MapCanvas />);
-    fireEvent.click(mapControlsButton());
-    expect(sheetRows()).not.toContain('Show tools');
-    expect(screen.queryByTitle(/Drag to move the panels/)).toBeNull();
-  });
-
-  it('is behind the rail’s GM tools on the desktop, with Hide tools once shown', () => {
-    render(<MapCanvasOnly />);
-    expect(stack()).toHaveAttribute('hidden');
-    const gmTools = within(screen.getByRole('navigation', { name: 'Map tools' })).getByRole('button', { name: 'GM tools' });
-    expect(gmTools).toHaveAttribute('aria-expanded', 'false');
-
-    fireEvent.click(gmTools);
-    expect(stack()).not.toHaveAttribute('hidden');
-    expect(gmTools).toHaveAttribute('aria-expanded', 'true');
-    fireEvent.click(within(stack()).getByRole('button', { name: 'Hide tools' }));
+    fireEvent.click(within(rail()).getByRole('button', { name: 'GM tools' }));
+    fireEvent.click(within(rail()).getByRole('button', { name: 'Draw' }));
     expect(stack()).toHaveAttribute('hidden');
   });
 });

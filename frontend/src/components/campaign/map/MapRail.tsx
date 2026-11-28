@@ -22,7 +22,9 @@ export const RAIL_HINT_KEY = 'mistwarden.railHintSeen';
 
 export interface RailCellProps {
   label: string;
-  icon: LucideIcon;
+  /** Its icon, or `text` in a chip instead (a phone's zoom, whose tap fits the map). */
+  icon?: LucideIcon;
+  text?: string;
   onClick: () => void;
   /** A toggle's state: aria-pressed, and drawn pressed. */
   pressed?: boolean;
@@ -40,7 +42,7 @@ export interface RailCellProps {
   children?: ReactNode;
 }
 
-export function RailCell({ label, icon: Icon, onClick, pressed, expanded, disabled, lit, tour, spirit, buttonRef, onNameHeld, children }: RailCellProps) {
+export function RailCell({ label, icon: Icon, text, onClick, pressed, expanded, disabled, lit, tour, spirit, buttonRef, onNameHeld, children }: RailCellProps) {
   const [named, setNamed] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const held = useRef(false);
@@ -94,7 +96,10 @@ export function RailCell({ label, icon: Icon, onClick, pressed, expanded, disabl
           spirit ? 'text-spirit-ink' : !on && 'text-ink',
         )}
       >
-        <Icon className="w-4 h-4" aria-hidden="true" />
+        {Icon && <Icon className="w-4 h-4" aria-hidden="true" />}
+        {text && (
+          <span aria-hidden="true" className="rounded-full border border-ink/20 px-1.5 text-[0.8125rem] leading-5 text-ink-secondary tabular-nums">{text}</span>
+        )}
       </button>
       {named && !expanded && (
         <span
@@ -166,29 +171,53 @@ export function RailHint({ onDismiss }: { onDismiss: () => void }) {
   );
 }
 
+export interface MapRailProps {
+  view: ReactNode[];
+  tools: ReactNode[];
+  gm: ReactNode[];
+  twoColumns: boolean;
+  hint?: ReactNode;
+  /** A phone's rail: the lines between groups sit inside the gaps, adding no height. */
+  slim?: boolean;
+  /** Centred on the map's right edge (tablet, phone) rather than at its top. */
+  centred?: boolean;
+  /** How much of the map's foot an open dock covers, which a centred rail stays above. */
+  bottom?: number;
+}
+
 /**
  * The rail: the view's cells, the tools' and the GM's layers, in one column
  * with a line between groups, or in two (`twoColumns`): the tools inside,
  * the view and the GM's layers outside.
  */
-export function MapRail({ view, tools, gm, twoColumns, hint }: { view: ReactNode[]; tools: ReactNode[]; gm: ReactNode[]; twoColumns: boolean; hint?: ReactNode }) {
+export function MapRail({ view, tools, gm, twoColumns, hint, slim = false, centred = false, bottom = 0 }: MapRailProps) {
   const groups = [view, tools, gm].map((g) => g.filter(Boolean));
-  const line = (key: string) => <div key={key} className="mx-1.5 h-px shrink-0 bg-brand/20" aria-hidden="true" />;
+  const line = (key: string) => <div key={key} className={cn('mx-1.5 h-px shrink-0 bg-brand/20', slim && '-my-[2.5px]')} aria-hidden="true" />;
   const column = (parts: ReactNode[][], key: string) => (
     <div key={key} className="flex flex-col gap-1">
       {parts.filter((p) => p.length > 0).flatMap((p, i) => (i > 0 ? [line(`${key}-${i}`), ...p] : p))}
     </div>
   );
   const [v, t, g] = groups;
-  return (
+  const rail = (
     <nav
       aria-label="Map tools"
       data-rail-columns={twoColumns ? 2 : 1}
       // In rem as the cells are (gap and padding 4 px, railLayout.ts), so a 4K screen's larger text scales it whole.
-      className="absolute right-2 top-2 z-30 flex gap-1 p-1 rounded-xl border border-ink/15 bg-surface/90 shadow-lg backdrop-blur-xs"
+      className={cn(
+        'z-30 flex gap-1 p-1 rounded-xl border border-ink/15 bg-surface/90 shadow-lg backdrop-blur-xs',
+        centred ? 'relative pointer-events-auto' : 'absolute right-2 top-2',
+      )}
     >
       {hint}
       {twoColumns ? [column([t], 'inner'), column([v, g], 'outer')] : column([v, t, g], 'one')}
     </nav>
+  );
+  if (!centred) return rail;
+  // A box as tall as the map shown above the dock, clear of a phone's notch on the right, the rail centred in it.
+  return (
+    <div className="pointer-events-none absolute top-0 right-[max(0.5rem,env(safe-area-inset-right))] z-30 flex items-center" style={{ bottom }}>
+      {rail}
+    </div>
   );
 }
