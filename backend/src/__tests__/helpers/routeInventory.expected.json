@@ -436,6 +436,26 @@
       ]
     },
     {
+      "method": "POST",
+      "path": "/api/campaigns/practice",
+      "handlers": [
+        "requireAuth",
+        "<anonymous>",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/campaigns/:campaignId/practice/reset",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireGM",
+        "<anonymous>",
+        "<anonymous>"
+      ]
+    },
+    {
       "method": "GET",
       "path": "/api/campaigns/:campaignId",
       "handlers": [
