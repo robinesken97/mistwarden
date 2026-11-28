@@ -127,6 +127,9 @@ function withinCap(held: Held, atNewest: boolean): Held {
   return kept.length === now.messages.length ? now : { ...now, messages: kept, earlier: { kind: 'find' } };
 }
 
+/** How the box sends and breaks lines: its title and its description. */
+const CHAT_KEYS_HINT = 'Press Enter to send, Shift+Enter for new line';
+
 export default function ChatPanel() {
   const { id: campaignId } = useParams<{ id: string }>();
   const { socket, joinedEpoch } = useWebSocket();
@@ -141,7 +144,7 @@ export default function ChatPanel() {
   const compact = useCompactLayout();
   // On the wide layout the panel's header names the chat and takes its count and eraser.
   const panelHeader = useTableChrome((st) => st.panelHeader);
-  const wideHeader = !compact && panelHeader?.tab === 'chat' ? panelHeader.el : null;
+  const wideHeader = panelHeader?.tab === 'chat' ? panelHeader.el : null;
   const onlineUserIds = useOnlineUserIds();
 
   // Everyone in the campaign, by user id, with the name the chat shows for
@@ -785,19 +788,17 @@ export default function ChatPanel() {
     );
   }
 
-  // The composer's parts, which the two arrangements lay out differently.
-  // Each has a key, so a change of arrangement keeps the box and its focus.
-  const toLabel = (
-    <label htmlFor="chat-recipient" key="to-label" className={compact ? 'sr-only' : 'text-xs font-medium text-stone-gray'}>To</label>
-  );
+  // The composer's parts: one row of the recipient, the box and a square
+  // Send, all as tall as one line of the box (40 px, 44 on a touch screen).
   // Who the message goes to, keyed by user id: display names are not unique.
   const toList = (
     <select
       key="to"
       id="chat-recipient"
+      aria-label="Send to"
       value={recipient?.id ?? ''}
       onChange={chooseRecipient}
-      className={`input-cozy min-w-0 text-sm py-1${compact ? ' w-32 px-2.5 shrink-0 min-h-11' : ' flex-1'}`}
+      className="input-cozy w-32 min-w-0 shrink-0 px-3 text-sm"
     >
       <option value="">Everyone</option>
       {recipientGone && recipient && <option value={recipient.id}>{recipient.name} (no longer in the campaign)</option>}
@@ -829,11 +830,13 @@ export default function ChatPanel() {
         setBoxRefusal(null);
       }}
       onKeyDown={handleKeyDown}
-      placeholder={compact ? (recipient ? 'Whisper…' : 'Message…') : recipient ? 'Type a whisper…' : 'Type a message…'}
+      placeholder={recipient ? 'Type a whisper…' : 'Type a message…'}
       aria-label="Chat message"
-      aria-describedby="chat-hint"
-      className={`input-cozy flex-1 text-sm resize-none ${compact ? 'min-w-0 min-h-11 px-2.5' : 'min-h-[60px]'} ${canSend ? '' : 'opacity-50 cursor-not-allowed'}`}
-      rows={compact ? 1 : 2}
+      // The keys, said on hover and to a screen reader rather than in a line under the row.
+      title={CHAT_KEYS_HINT}
+      aria-description={CHAT_KEYS_HINT}
+      className={`input-cozy flex-1 min-w-0 min-h-10 px-3 py-2 text-sm leading-5 resize-none ${canSend ? '' : 'opacity-50 cursor-not-allowed'}`}
+      rows={1}
       maxLength={slashInBox ? MAX_CHAT_MESSAGE_LENGTH + WHISPER_PREFIX_ROOM : MAX_CHAT_MESSAGE_LENGTH}
       // Read-only through the cooldown, not disabled: disabling the
       // box threw keyboard focus to the page after every message.
@@ -845,7 +848,8 @@ export default function ChatPanel() {
     <Button
       key="send"
       type="submit"
-      className={`${compact ? 'px-3 min-h-11 shrink-0' : 'px-4'} py-2 flex items-center gap-2`}
+      iconOnly
+      className="size-10 pointer-coarse:size-11 shrink-0 p-0! inline-flex items-center justify-center"
       disabled={!messageInput.trim() || !canSend}
       aria-label={!canSend ? `Rate limited — wait ${cooldownSeconds} seconds` : 'Send message'}
     >
@@ -895,7 +899,7 @@ export default function ChatPanel() {
   const hasEarlier = earlier.kind !== 'none' && messages.length > 0;
 
   return (
-    <div className="glass-panel h-full flex flex-col">
+    <div className="h-full flex flex-col">
       {/* Chat Header. In the compact layout's sheet, whose heading names the
           chat, the panel's heading is read out only, and the count and the
           GM's eraser go at the top of the log beside Load More, where they
@@ -1008,34 +1012,12 @@ export default function ChatPanel() {
       {/* Input Area */}
       <div className={`${compact ? 'px-3 py-2' : 'p-4'} border-t border-moss-green/20`}>
         <form onSubmit={handleSubmit} className="space-y-2">
-          {/* Who the message goes to (keyed by user id: display names are not
-              unique), the box and Send. The compact layout's Chat sheet puts
-              all three on one row, so the log keeps the room; the parts have
-              keys, so a change of arrangement keeps the box and its focus. */}
-          {/* The compact layout's Chat sheet puts To, the box and Send on one
-              row, so the log keeps the room. */}
-          {compact ? (
-            <>
-              {/* At the foot of the row, so To and Send stay one line as the box grows. */}
-              <div key="compose" className="flex items-end gap-2">
-                {toLabel}
-                {toList}
-                {messageBox}
-                {sendButton}
-              </div>
-            </>
-          ) : (
-            <>
-              <div key="to" className="flex items-center gap-2">
-                {toLabel}
-                {toList}
-              </div>
-              <div key="compose" className="flex gap-2">
-                {messageBox}
-                {sendButton}
-              </div>
-            </>
-          )}
+          {/* At the foot of the row, so the recipient and Send stay one line as the box grows. */}
+          <div className="flex items-end gap-2">
+            {toList}
+            {messageBox}
+            {sendButton}
+          </div>
 
           {goesTo && (
             <p className={`text-xs text-center flex items-center justify-center gap-1 ${goesTo.gone ? 'text-warning-ink' : 'text-accent-ink'}`}>
@@ -1061,11 +1043,6 @@ export default function ChatPanel() {
           {canSend && countedLength >= LENGTH_WARNING_AT && (
             <p className="text-xs text-warning-ink text-center" aria-live="polite">
               {countedLength} of {MAX_CHAT_MESSAGE_LENGTH} characters
-            </p>
-          )}
-          {canSend && countedLength < LENGTH_WARNING_AT && (
-            <p id="chat-hint" className={compact ? 'sr-only' : 'text-xs text-stone-gray text-center pointer-coarse:sr-only'}>
-              Press Enter to send, Shift+Enter for new line
             </p>
           )}
         </form>

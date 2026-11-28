@@ -38,25 +38,26 @@ async function open(compact: boolean) {
 
 const classes = (el: Element) => el.className.split(/\s+/);
 
-it('gives the log the room on the compact layout: the heading for screen readers, a one-line box, the hint not shown', async () => {
+const KEYS = 'Press Enter to send, Shift+Enter for new line';
+
+it('puts the recipient, a one-line box and a square Send on one row, the keys said by the box alone', async () => {
   const box = await open(true);
   expect(classes(screen.getByRole('heading', { name: 'Chat' }))).toContain('sr-only');
   expect(box).toHaveAttribute('rows', '1');
-  expect(classes(box)).not.toContain('min-h-[60px]');
-  expect(classes(screen.getByText('Press Enter to send, Shift+Enter for new line'))).toContain('sr-only');
-  expect(box).toHaveAccessibleDescription('Press Enter to send, Shift+Enter for new line');
-  // One line holds the short form, beside To and Send in a sheet 352 px wide.
-  expect(box).toHaveAttribute('placeholder', 'Message…');
-  // The To list is a finger's height, on one row with the box and Send, and
-  // wide enough to show Everyone whole (about 111 px with its arrow at 16 px
-  // text). The three keep their sides narrow, so in the 352 px sheet of a
-  // phone on its side the box still holds its placeholder on one line.
-  const toList = screen.getByRole('combobox', { name: 'To' });
-  expect(classes(toList)).toEqual(expect.arrayContaining(['min-h-11', 'w-32', 'px-2.5']));
-  expect(classes(box)).toContain('px-2.5');
-  expect(classes(screen.getByRole('button', { name: 'Send message' }))).toContain('px-3');
+  // No hint line under the row: the box's title and description carry it.
+  expect(screen.queryByText(KEYS)).toBeNull();
+  expect(box).toHaveAttribute('title', KEYS);
+  expect(box).toHaveAttribute('aria-description', KEYS);
+  expect(box).toHaveAttribute('placeholder', 'Type a message…');
+  // No "To" label: the list is named Send to; 128 px, Everyone whole beside its chevron.
+  const toList = screen.getByRole('combobox', { name: 'Send to' });
+  expect(classes(toList)).toContain('w-32');
+  const send = screen.getByRole('button', { name: 'Send message' });
+  // Square, as tall as the box's one line: 40 px, 44 on a touch screen.
+  expect(classes(send)).toEqual(expect.arrayContaining(['size-10', 'pointer-coarse:size-11']));
+  expect(classes(box)).toContain('min-h-10');
   expect(toList.parentElement).toBe(box.parentElement);
-  expect(box.parentElement).toContainElement(screen.getByRole('button', { name: 'Send message' }));
+  expect(box.parentElement).toContainElement(send);
 });
 
 it('puts the count and the GM\'s eraser at the top of the log on the compact layout, beside Load More', async () => {
@@ -67,8 +68,8 @@ it('puts the count and the GM\'s eraser at the top of the log on the compact lay
   };
   try {
     await open(true);
-    // No line above the log: the panel's heading is all there is of it.
-    expect(screen.getByRole('heading', { name: 'Chat' }).parentElement).toHaveClass('glass-panel');
+    // No line above the log, and no card inside the panel: its heading is all there is of it.
+    expect(screen.getByRole('heading', { name: 'Chat' }).parentElement).not.toHaveClass('glass-panel');
     const log = screen.getByRole('log', { name: 'Chat messages' });
     expect(classes(log)).toEqual(expect.arrayContaining(['px-2', 'py-1.5', 'space-y-1.5']));
     expect(classes(log)).not.toContain('p-4');
@@ -96,14 +97,13 @@ it('keeps the box, its draft and its focus as the arrangement changes', async ()
   expect(box).toHaveValue('draft');
 });
 
-it('is as it was on the desktop', async () => {
+it('lays the composer out the same on the desktop, under a heading of its own outside the table', async () => {
   const box = await open(false);
   expect(classes(screen.getByRole('heading', { name: 'Chat' }))).not.toContain('sr-only');
-  expect(box).toHaveAttribute('rows', '2');
-  expect(classes(box)).toContain('min-h-[60px]');
-  expect(classes(screen.getByText('Press Enter to send, Shift+Enter for new line'))).not.toContain('sr-only');
+  expect(box).toHaveAttribute('rows', '1');
+  expect(screen.queryByText(KEYS)).toBeNull();
   expect(box).toHaveAttribute('placeholder', 'Type a message…');
-  expect(classes(screen.getByRole('combobox', { name: 'To' }))).not.toContain('min-h-11');
+  expect(screen.getByRole('combobox', { name: 'Send to' }).parentElement).toBe(box.parentElement);
   expect(classes(screen.getByRole('log', { name: 'Chat messages' }))).toEqual(expect.arrayContaining(['p-4', 'space-y-3']));
   expect(classes(screen.getByRole('heading', { name: 'Chat' }).parentElement!)).toContain('p-4');
 });

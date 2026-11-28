@@ -41,7 +41,8 @@ it('has no heading or fold of its own on the compact layout, and shows the round
   expect(screen.getByText('Goblin')).toBeTruthy();
 });
 
-it('keeps its heading and fold on the desktop', () => {
+it('has no heading or fold of its own on the desktop either: the panel\'s header names it', () => {
   render(<InitiativeTracker />);
-  expect(screen.getByRole('button', { name: /Initiative Tracker/ })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: /Initiative Tracker/ })).toBeNull();
+  expect(screen.getByText('Round 3')).toBeTruthy();
 });
