@@ -228,6 +228,26 @@ export interface CreatureTemplate {
   updatedAt: string;
 }
 
+/** What importing a Markdown file of stat blocks did, or would do in a dry run (POST /api/creatures/import-markdown). */
+export interface CreatureImportReport {
+  sourceTag: string;
+  dryRun: boolean;
+  /** The bold Armor Class lines read: each is one row that was imported, updated or refused, or one not read. */
+  armorClassLines: number;
+  counts: { imported: number; updated: number; skipped: number; errors: number };
+  rows: Array<
+    | { line: number; name: string; status: 'imported' | 'updated'; warnings: string[] }
+    | { line: number; name: string; status: 'skipped'; reason: string }
+    | { line: number; name: string; status: 'error'; errors: string[]; warnings: string[] }
+  >;
+}
+
+/** Imported creatures given the shared token picture of their name. */
+export interface CreaturePictureMatches {
+  matched: Array<{ creature: string; sourceTag: string; picture: string; otherPicturesOfTheName: number }>;
+  withoutPicture: number;
+}
+
 export interface TokenHp {
   current: number;
   max:     number;

@@ -58,6 +58,7 @@ import AssetPicker from '@/components/assets/AssetPicker';
 import { extractAssetId } from '@/utils/assetUrl';
 import { cn } from '@/utils/cn';
 import { BackToList, useLibraryFormStep } from './libraryFormStep';
+import CreatureMarkdownImport from './CreatureMarkdownImport';
 
 // ============================================
 // Constants
@@ -546,6 +547,8 @@ export default function CreatureLibrary({ isOpen, onClose }: CreatureLibraryProp
             {seedResult}
           </div>
         )}
+        {/* An administrator's, as the SRD import is. */}
+        {canSeed && <CreatureMarkdownImport onChanged={() => fetchCreatures(true)} />}
       </div>
 
       {/* ── Error ── */}
@@ -830,7 +833,7 @@ function CreatureRow({
               ? 'bg-info/10 text-info-ink'
               : 'bg-moss-green/10 text-brand-ink'
           }`}>
-            {creature.source === 'srd' ? 'SRD' : 'Custom'}
+            {creature.source === 'srd' ? 'SRD' : creature.source.startsWith('custom:') ? creature.source.slice('custom:'.length) : 'Custom'}
           </span>
 
           {/* Room for the favourite star: a finger's width on a touch screen. */}
@@ -878,7 +881,8 @@ function CreatureRow({
               )}
               {isPlacing ? 'Placing...' : 'Place on Map'}
             </button>
-            {creature.source !== 'srd' && (
+            {/* The campaign's own: the SRD's and the server's imported ones are shared, so the server refuses changing them. */}
+            {creature.campaignId !== null && (
               <button
                 onClick={(e) => onEdit(e.currentTarget)}
                 className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-cozy border border-moss-green/20 text-brand-ink hover:bg-moss-green/10 transition-colors"
@@ -894,7 +898,7 @@ function CreatureRow({
             >
               <Copy className="w-3 h-3" /> Duplicate
             </button>
-            {creature.source !== 'srd' && (
+            {creature.campaignId !== null && (
               <button
                 onClick={onDelete}
                 aria-label={`Delete ${creature.name}`}

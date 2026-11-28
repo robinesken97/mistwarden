@@ -71,6 +71,8 @@ import type {
   RosterMember,
   CampaignMembership,
   AssignableCampaignRole,
+  CreatureImportReport,
+  CreaturePictureMatches,
 } from '@/types';
 import { withKnownCreatureChoices, withKnownTemplateChoices } from '@/utils/knownChoices';
 import { saveBlob } from '@/utils/download';
@@ -1339,6 +1341,22 @@ class ApiClient {
   /** `canSeed`: whether the caller may run the SRD import, which only an administrator may. */
   async getSeedStatus(campaignId: string): Promise<{ srdCount: number; customCount: number; seedInProgress: boolean; canSeed: boolean }> {
     const response = await this.client.get(`/api/campaigns/${campaignId}/creatures/seed/status`);
+    return response.data;
+  }
+
+  /** Read a Markdown file's stat blocks and, unless a dry run, store them under the tag. Administrators only. */
+  async importCreatureMarkdown(body: { markdown: string; sourceTag: string; onlyUnderHeading?: string; dryRun?: boolean }): Promise<CreatureImportReport> {
+    const response = await this.client.post('/api/creatures/import-markdown', body);
+    return response.data;
+  }
+
+  async deleteImportedCreatures(sourceTag: string): Promise<{ sourceTag: string; deleted: number }> {
+    const response = await this.client.delete(`/api/creatures/imported/${encodeURIComponent(sourceTag)}`);
+    return response.data;
+  }
+
+  async matchCreatureTokenPictures(sourceTag?: string): Promise<CreaturePictureMatches> {
+    const response = await this.client.post('/api/creatures/match-token-pictures', sourceTag ? { sourceTag } : {});
     return response.data;
   }
 
