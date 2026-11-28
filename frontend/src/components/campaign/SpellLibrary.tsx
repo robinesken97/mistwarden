@@ -1,9 +1,11 @@
 /**
  * SpellLibrary
  * Slide-over listing every spell a campaign may use: the SRD 5.1 spells an
- * administrator imported, the server's own and the campaign's own. Every
- * member reads it; the GM adds, changes and deletes the campaign's spells,
- * an administrator the server's and runs the SRD import. Where two share a
+ * administrator imported, the server's own, the server's imported from
+ * Markdown and the campaign's own. Every member reads it, a player all of an
+ * imported spell but its description; the GM adds, changes and deletes the
+ * campaign's spells, an administrator the server's and runs the SRD and
+ * Markdown imports. Where two share a
  * name both are listed with their source, and the campaign's is the one a
  * sheet's Place area uses (utils/spells.ts resolveSpellByName).
  */
@@ -20,7 +22,8 @@ import { AREA_ELEMENT_STYLES } from './map/layers/drawAreas';
 import SlideOver, { SlideOverClose, SlideOverTitle } from '@/components/ui/SlideOver';
 import NoticeText from '@/components/common/NoticeText';
 import { SRD_ATTRIBUTION, SRD_MODIFIED } from '@/constants/gameContentNotices';
-import { SPELL_SCOPE_LABELS, areaInWords, levelInWords, spellScope, type SpellScopeName } from '@/utils/spells';
+import { IMPORTED_SPELL_PREFIX, SPELL_SCOPE_LABELS, areaInWords, levelInWords, spellScope, type SpellScopeName } from '@/utils/spells';
+import SpellMarkdownImport from './SpellMarkdownImport';
 import type { SpellInput, SpellSummary } from '@/types/spells';
 import { cn } from '@/utils/cn';
 
@@ -170,7 +173,7 @@ function SpellLibraryContent() {
     setDraft({
       id: s.id, scope: spellScope(s) === 'instance' ? 'instance' : 'campaign', name: s.name, level: String(s.level),
       school: s.school ?? '', castingTime: s.castingTime ?? '', range: s.range ?? '', components: s.components ?? '',
-      duration: s.duration ?? '', concentration: s.concentration, ritual: s.ritual, description: full.description,
+      duration: s.duration ?? '', concentration: s.concentration, ritual: s.ritual, description: full.description ?? '',
       shape: s.area?.shape ?? '', sizeFt: String(s.area?.sizeFt ?? 20), widthFt: String(s.area?.widthFt ?? 5), element: s.element,
     });
   }
@@ -219,6 +222,7 @@ function SpellLibraryContent() {
                 </button>
               )}
             </div>
+            {isAdmin && <SpellMarkdownImport onChanged={() => void refresh()} />}
           </div>
 
           <div className="flex-1 overflow-y-auto">
@@ -240,7 +244,9 @@ function SpellLibraryContent() {
                         {levelInWords(s.level)}{s.school ? ` · ${s.school}` : ''}{s.area ? ` · ${areaInWords(s.area)}` : ''}
                       </span>
                     </span>
-                    <span className="text-xs px-2 py-0.5 rounded-full border border-moss-green/30 text-stone-gray shrink-0">{SPELL_SCOPE_LABELS[spellScope(s)]}</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full border border-moss-green/30 text-stone-gray shrink-0">
+                      {spellScope(s) === 'imported' ? s.source.slice(IMPORTED_SPELL_PREFIX.length) : SPELL_SCOPE_LABELS[spellScope(s)]}
+                    </span>
                   </button>
                   {openId === s.id && campaignId && (
                     <SpellDetails campaignId={campaignId} spell={s}>
@@ -290,6 +296,7 @@ function SpellDetails({ campaignId, spell, children }: { campaignId: string; spe
       </dl>
       {full.isLoading && <p className="text-xs text-stone-gray">Loading description...</p>}
       {full.data?.description && <p className="text-xs text-ink whitespace-pre-line">{full.data.description}</p>}
+      {full.data && full.data.description === null && <p className="text-xs text-stone-gray italic">Description available to the GM</p>}
       {children}
     </div>
   );

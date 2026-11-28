@@ -12,6 +12,14 @@ describe('resolveSpellByName', () => {
     expect(resolveSpellByName([srd], 'FIREBALL')?.id).toBe('srd');
   });
 
+  it('picks an imported spell over the SRD\'s, below the campaign\'s and the server\'s own, the first of two tags', () => {
+    const imported = { id: 'imported', name: 'Fireball', source: 'custom:homebrew', campaignId: null };
+    const other = { id: 'other', name: 'Fireball', source: 'custom:notes', campaignId: null };
+    expect(resolveSpellByName([srd, imported, other], 'fireball')?.id).toBe('imported');
+    expect(resolveSpellByName([imported, server], 'fireball')?.id).toBe('server');
+    expect(resolveSpellByName([imported, campaign], 'fireball')?.id).toBe('campaign');
+  });
+
   it('finds nothing for a name no spell has, or none at all', () => {
     expect(resolveSpellByName([srd], 'Fire Bolt')).toBeNull();
     expect(resolveSpellByName([srd], '  ')).toBeNull();

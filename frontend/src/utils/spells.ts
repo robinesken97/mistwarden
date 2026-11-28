@@ -8,26 +8,35 @@ import type { AoEConfig } from '@/components/campaign/map/layers';
 import type { AreaElement } from '@/constants/areaLimits';
 import type { SpellArea, SpellSummary } from '@/types/spells';
 
-/** Whose spell it is, from the most particular: a campaign's own, the server's own, the SRD's. */
-export type SpellScopeName = 'campaign' | 'instance' | 'srd';
+/**
+ * Whose spell it is, from the most particular: a campaign's own, the
+ * server's own, the server's imported from Markdown (source custom:<tag>),
+ * the SRD's.
+ */
+export type SpellScopeName = 'campaign' | 'instance' | 'imported' | 'srd';
+
+export const IMPORTED_SPELL_PREFIX = 'custom:';
 
 export function spellScope(spell: Pick<SpellSummary, 'source' | 'campaignId'>): SpellScopeName {
   if (spell.campaignId) return 'campaign';
-  return spell.source === 'srd' ? 'srd' : 'instance';
+  if (spell.source === 'srd') return 'srd';
+  return spell.source.startsWith(IMPORTED_SPELL_PREFIX) ? 'imported' : 'instance';
 }
 
 export const SPELL_SCOPE_LABELS: Record<SpellScopeName, string> = {
   campaign: 'Campaign',
   instance: 'Server',
+  imported: 'Imported',
   srd: 'SRD 5.1',
 };
 
-const PRECEDENCE: Record<SpellScopeName, number> = { campaign: 0, instance: 1, srd: 2 };
+const PRECEDENCE: Record<SpellScopeName, number> = { campaign: 0, instance: 1, imported: 2, srd: 3 };
 
 /**
  * The spell a name means, matched in any case and ignoring spaces at
  * either end: where several share it, the campaign's own, then the
- * server's, then the SRD's. Null when none has it.
+ * server's, then the server's imported, then the SRD's; among equals the
+ * first listed (the server lists by name, source, id). Null when none has it.
  */
 export function resolveSpellByName<T extends Pick<SpellSummary, 'name' | 'source' | 'campaignId'>>(spells: readonly T[], name: string): T | null {
   const wanted = String(name ?? '').trim().toLowerCase();
