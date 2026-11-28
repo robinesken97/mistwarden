@@ -22,3 +22,12 @@ export async function setTokenFlag(
   await api.updateToken(campaignId, mapId, token.id, patch);
   useGameStore.getState().patchToken(token.id, patch, mapId);
 }
+
+/**
+ * Whether a new NPC token shows its HP bar to players before the GM decides:
+ * friendly and neutral ones do, hostile ones and those without a disposition
+ * (monsters, as a rule) do not. The GM can still switch it per token.
+ */
+export function showHpBarByDefault(disposition: string | null | undefined): boolean {
+  return disposition === 'friendly' || disposition === 'neutral';
+}

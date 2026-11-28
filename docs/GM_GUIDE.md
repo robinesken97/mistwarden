@@ -399,7 +399,7 @@ The Token Manager opens on the form for a new token. Fill in what applies, then 
 - **Token image** — Upload one, pick a token image from your library, or leave it empty for a placeholder
 - **Token Name** — Shown when anyone points at the token
 - **Display Mode** — Pog, Top-Down or Full Art (see below)
-- **Disposition** (Friendly, Neutral or Hostile), **HP Max** (0 means no HP bar; once it is above 0, **Show HP bar to players** appears, ticked by default) and **Initiative** — for creatures
+- **Disposition** (Friendly, Neutral or Hostile), **HP Max** (0 means no HP bar; once it is above 0, **Show HP bar to players** appears, ticked for a friendly or neutral creature and unticked for a hostile one; picking a disposition resets it) and **Initiative** — for creatures
 - **GM Notes** (never shown to players) and **Hidden from players on placement** — for creatures and objects
 - **Size (grid cells)** — Small/Med, Large or Huge
 - **Darkvision** — How far the token sees with no light, in grid squares (0 = none; at the usual 5 ft a square, 12 = 60 ft, and the hint works it out for the map's own scale); not offered for Objects
@@ -636,7 +636,7 @@ Click any creature in the library to expand its details, then click **Place on M
 - The creature's name
 - Its stat block (viewable and editable in the quick editor)
 - Its hit points, taken from the stat block's **HP Max** (creatures with no HP recorded start at 10 — adjust in the quick editor)
-- Its HP bar **shown to players**; untick **Show HP bar to players** in Edit Token to keep its hit points secret
+- Its HP bar **shown to players** only when its disposition is friendly or neutral; a hostile creature, or one with no disposition, keeps its hit points secret until you tick **Show HP bar to players** in Edit Token
 - Its image (if one has been associated)
 - Default disposition from the template (hostile, friendly, or neutral)
 - Display mode from the template (pog, top-down, or full-art)
