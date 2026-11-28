@@ -1,7 +1,16 @@
 // Added for Mistwarden on 2026-11-27.
 // The REST client: session cookie, rate-limit pacing, and retries on 429.
 
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { LOGIN_HINT, type Session } from './config.ts';
+
+/** Requests one tool call may make; a batch that needs more is refused part-way and must be split. */
+export const MAX_REQUESTS_PER_CALL = 100;
+
+/** Per tool call: the requests it has left, and the reads it may reuse. */
+export interface CallScope { left: number; memo: Map<string, Promise<unknown>> }
+export const callScope = new AsyncLocalStorage<CallScope>();
+export const newCallScope = (): CallScope => ({ left: MAX_REQUESTS_PER_CALL, memo: new Map() });
 
 export class ApiError extends Error {
   readonly status: number;
@@ -61,6 +70,10 @@ export class Api {
 
   /** One request, paced by the RateLimit-* headers, retried after a 429. Throws on 401. */
   async request(method: string, path: string, body: RequestBody = {}): Promise<Response> {
+    const scope = callScope.getStore();
+    if (scope && scope.left-- <= 0) {
+      throw new ApiError(0, `Refused: one tool call may make at most ${MAX_REQUESTS_PER_CALL} requests to Mistwarden. Split the batch.`, null);
+    }
     for (let attempt = 0; ; attempt++) {
       const wait = this.pauseUntil - Date.now();
       if (wait > 0) await this.sleep(wait);

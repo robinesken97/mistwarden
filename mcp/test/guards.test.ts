@@ -3,7 +3,9 @@ import { mkdir, mkdtemp, readFile, stat, symlink, writeFile } from 'node:fs/prom
 import os from 'node:os';
 import path from 'node:path';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { assertEditable, assertNewName, GuardError, inMap, Manifest, resolveInRoot } from '../src/guards.ts';
+import {
+  assertBackedUp, assertEditable, assertNewName, assertNotLive, assertPlayable, assertTableAction, GuardError, inMap, Manifest, resolveInRoot,
+} from '../src/guards.ts';
 
 const CAMPAIGN = '11111111-2222-4333-8444-555555555555';
 const MAP = '66666666-7777-4888-9999-000000000000';
@@ -89,5 +91,56 @@ describe('duplicate guard', () => {
     expect(() => assertNewName('map', ' mistvale crypt ', ['Mistvale Crypt'])).toThrow(/already exists/);
     expect(() => assertNewName('map', 'Mistvale Crypt', ['Mistvale Crypt'], true)).not.toThrow();
     expect(() => assertNewName('map', 'Oswin\'s Tower', ['Mistvale Crypt'])).not.toThrow();
+  });
+});
+
+// Mistwarden, 2026-11-28: co-GM mode, the table switch and the backup age.
+const OFF = { allowAnyEdit: false, playerVisible: false, coGm: false };
+
+describe('co-GM mode', () => {
+  it('lets game state through on what the server did not create, but not edits or deletes', async () => {
+    const manifest = await Manifest.load(dir, CAMPAIGN);
+    const foreign = inMap(MAP, 'placed-by-hand');
+    expect(() => assertPlayable(manifest, 'token', foreign, OFF)).toThrow(/MISTWARDEN_MCP_COGM=1/);
+    expect(() => assertPlayable(manifest, 'token', foreign, { ...OFF, coGm: true })).not.toThrow();
+    // Deleting, renaming, replacing stay bound to the manifest.
+    expect(() => assertEditable(manifest, 'token', foreign, false)).toThrow(/not created by this MCP server/);
+    await manifest.add('token', [inMap(MAP, 'own')]);
+    expect(() => assertPlayable(manifest, 'token', inMap(MAP, 'own'), OFF)).not.toThrow();
+  });
+
+  it('allows game state on the map players see, other changes only with the player-visible switch', () => {
+    expect(() => assertNotLive(OFF, MAP, MAP, true)).toThrow(/players currently see/);
+    expect(() => assertNotLive({ ...OFF, coGm: true }, MAP, MAP, true)).not.toThrow();
+    expect(() => assertNotLive({ ...OFF, coGm: true }, MAP, MAP, false)).toThrow(/PLAYER_VISIBLE/);
+    expect(() => assertNotLive({ ...OFF, playerVisible: true }, MAP, MAP, false)).not.toThrow();
+    expect(() => assertNotLive(OFF, null, MAP, false)).not.toThrow();
+  });
+
+  it('gates the table actions behind co-GM or player-visible', () => {
+    expect(() => assertTableAction(OFF, 'chat')).toThrow(/whole table/);
+    expect(() => assertTableAction({ ...OFF, coGm: true }, 'chat')).not.toThrow();
+    expect(() => assertTableAction({ ...OFF, playerVisible: true }, 'chat')).not.toThrow();
+    // The edit override is not a table switch.
+    expect(() => assertTableAction({ ...OFF, allowAnyEdit: true }, 'chat')).toThrow(GuardError);
+  });
+});
+
+describe('backup before deleting', () => {
+  it('refuses without a backup, or with one too old, and remembers it across a restart', async () => {
+    const manifest = await Manifest.load(dir, CAMPAIGN);
+    expect(() => assertBackedUp(manifest, 6)).toThrow(/none made from here yet/);
+    const now = Date.parse('2026-11-28T12:00:00Z');
+    await manifest.recordBackup(new Date(now - 5 * 3_600_000));
+    expect(() => assertBackedUp(manifest, 6, now)).not.toThrow();
+    expect(() => assertBackedUp(manifest, 4, now)).toThrow(/last 4 h/);
+    // A time from the future (a clock that went wrong) does not count.
+    await manifest.recordBackup(new Date(now + 3_600_000));
+    expect(() => assertBackedUp(manifest, 6, now)).toThrow(GuardError);
+    await manifest.recordBackup(new Date(now));
+    await manifest.add('map', [MAP]);
+    const onDisk = JSON.parse(await readFile(manifest.file, 'utf8'));
+    expect(onDisk.lastBackupAt).toBe('2026-11-28T12:00:00.000Z');
+    expect(onDisk.items.map).toEqual([MAP]);
   });
 });
