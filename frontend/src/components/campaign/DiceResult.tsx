@@ -280,7 +280,8 @@ export default function DiceResult({ roll, isCurrentUser, rollerIsGM, dense = fa
                             key={rIdx}
                             className={`
                               font-mono text-xs px-1 rounded
-                              ${!isKept ? 'line-through text-ink-muted' : ''}
+                              ${!isKept ? 'line-through' : ''}
+                              ${!isKept && !isCrit20 && !isCrit1 ? 'text-ink-muted' : ''}
                               ${isCrit20 ? 'bg-success/15 text-success-ink font-bold' : ''}
                               ${isCrit1 ? 'bg-danger/15 text-danger-ink font-bold' : ''}
                             `}
@@ -394,9 +395,11 @@ function groupText(group: DiceRollDetail, signed: boolean): ReactNode {
           {i > 0 && ' '}
           <span
             className={cn(
-              !kept[i] && 'line-through text-ink-muted',
+              !kept[i] && 'line-through',
               group.sides === 20 && face === 20 && 'font-bold text-success-ink',
-              group.sides === 20 && face === 1 && 'font-bold text-danger-ink'
+              group.sides === 20 && face === 1 && 'font-bold text-danger-ink',
+              // A dropped die is muted, unless a crit's colour marks it already.
+              !kept[i] && !(group.sides === 20 && (face === 20 || face === 1)) && 'text-ink-muted'
             )}
           >
             {face}
