@@ -26,6 +26,7 @@ interface MapRow {
   id: string; name: string; width: number; height: number; gridSize: number; feetPerSquare?: number;
   gridType?: string; gridOffsetX?: number; gridOffsetY?: number; snapTokens?: boolean;
   lightingEnabled?: boolean; fogEnabled?: boolean; globalIllumination?: boolean; explorationEnabled?: boolean;
+  gridColor?: string; gridOpacity?: number; gridLineWidth?: number;
   tokens?: TokenRow[]; wallSegments?: WallRow[]; lights?: LightRow[];
 }
 interface Campaign { id: string; name: string; userRole: string; currentMapId: string | null; memberships: Member[]; maps: MapRow[] }
@@ -138,6 +139,9 @@ function tokenDetail(t: TokenRow, map: MapRow, manifest: Manifest) {
   };
 }
 
+/** How the grid is drawn for everyone; older servers send none of it, which is the default look. */
+const gridLookOf = (map: MapRow) => ({ gridColor: map.gridColor ?? '#000000', gridOpacity: map.gridOpacity ?? 0.4, gridLineWidth: map.gridLineWidth ?? 2 });
+
 function fogSummary(fog: FogState) {
   const revealed = fog.revealed.filter(Boolean).length;
   return { revealedCells: revealed, totalCells: fog.revealed.length, columns: fog.fogCols, rows: fog.fogRows };
@@ -202,6 +206,7 @@ export function registerTools(server: McpServer, ctx: Context): string[] {
       pixelWidth: map.width * map.gridSize, pixelHeight: map.height * map.gridSize,
       current: map.id === campaign.currentMapId, createdByThisServer: manifest.has('map', map.id),
       settings: { lightingEnabled: map.lightingEnabled, fogEnabled: map.fogEnabled, globalIllumination: map.globalIllumination, explorationEnabled: map.explorationEnabled },
+      gridLook: gridLookOf(map),
       tokens: (map.tokens ?? []).map((t) => tokenSummary(t, map)),
       wallCounts: byType,
       walls: includeWalls ? walls : walls.filter((w) => w.type !== 'wall' && w.type !== 'window'),
@@ -322,6 +327,9 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
     width: z.number().int().min(1).max(500).optional().describe('Map width in squares.'),
     height: z.number().int().min(1).max(500).optional().describe('Map height in squares.'),
     gridSize: z.number().int().min(10).max(500).optional().describe('Map pixels per square.'),
+    gridColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional().describe('Grid colour for everyone, as #rrggbb (default #000000; #ffffff for white).'),
+    gridOpacity: z.number().min(0.1).max(1).optional().describe('How opaque the grid is, 0.1 to 1 (default 0.4).'),
+    gridLineWidth: z.union([z.literal(1), z.literal(2), z.literal(3)]).optional().describe('Grid line width on screen: 1 thin, 2 medium (default), 3 thick.'),
   }, async ({ campaignId, mapId, ...changes }) => {
     const { campaign, manifest } = await campaignAsGm(ctx, campaignId);
     assertEditable(manifest, 'map', mapId, ctx.settings.allowAnyEdit);
@@ -331,7 +339,34 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
       id: map.id, name: map.name, width: map.width, height: map.height, gridSize: map.gridSize, gridType: map.gridType ?? 'square',
       gridOffsetX: map.gridOffsetX ?? 0, gridOffsetY: map.gridOffsetY ?? 0,
       lightingEnabled: map.lightingEnabled, fogEnabled: map.fogEnabled, globalIllumination: map.globalIllumination, explorationEnabled: map.explorationEnabled, snapTokens: map.snapTokens ?? true,
+      gridLook: gridLookOf(map),
     };
+  });
+
+  // Mistwarden, 2026-11-28: a copy is new and seen by nobody, so it needs no backup and may be made from any map, the one players see too.
+  tool('duplicate_scene', `Copy a map (a scene) within its campaign, GM-only until shown: the same picture, grid and grid look, settings, walls and doors, lights and spell areas, and unless set false its tokens (new ids, everything else kept, riders on their mounts), fog and drawings. Not copied: what players explored, initiative. The copy is not shown to players. Default name "<name> (copy)", or "(copy 2)" and on. Works on any map of the campaign, the one players see too, and changes nothing on it. The copy counts as created by this server; its tokens, walls and lights only where the original's were.`, {
+    campaignId: campaignIdArg, mapId: mapIdArg,
+    name: z.string().min(1).max(200).optional(),
+    tokens: z.boolean().optional().describe('Copy the tokens (default true).'),
+    fog: z.boolean().optional().describe('Copy the revealed fog squares (default true); without, the copy starts all hidden.'),
+    drawings: z.boolean().optional().describe('Copy the drawings (default true).'),
+    allowDuplicate: z.boolean().optional().describe('Allow a name already used by a map in this campaign.'),
+  }, async ({ campaignId, mapId, allowDuplicate, ...options }) => {
+    const { campaign, manifest } = await campaignAsGm(ctx, campaignId);
+    if (options.name !== undefined) assertNewName('map', options.name, campaign.maps.map((m) => m.name), allowDuplicate);
+    const source = await getMap(ctx, campaignId, mapId);
+    const { map } = await ctx.api.json<{ map: MapRow }>('POST', `/api/campaigns/${campaignId}/maps/${mapId}/duplicate`, { json: options });
+    await manifest.add('map', [map.id]);
+    // What this server made on the original it may change on the copy; nothing else.
+    const mine = (kind: 'wall' | 'light', ids: string[]) => ids.filter((i) => manifest.has(kind, inMap(mapId, i))).map((i) => inMap(map.id, i));
+    await manifest.add('wall', mine('wall', (source.wallSegments ?? []).map((w) => w.id)));
+    await manifest.add('light', mine('light', (source.lights ?? []).map((l) => l.id)));
+    const before = source.tokens ?? [];
+    const after = map.tokens ?? [];
+    if (before.length === after.length) {
+      await manifest.add('token', after.filter((_, i) => manifest.has('token', inMap(mapId, before[i].id))).map((t) => inMap(map.id, t.id)));
+    }
+    return { mapId: map.id, name: map.name, tokens: after.length, walls: (map.wallSegments ?? []).length, lights: (map.lights ?? []).length, current: false };
   });
 
   tool('delete_map', `Delete a map with its tokens, walls and lights. Only maps this server created (unless MISTWARDEN_MCP_ALLOW_ANY_EDIT=1); never the map players currently see without MISTWARDEN_MCP_PLAYER_VISIBLE=1. Cannot be undone. ${BACKUP_NEEDED}`, {

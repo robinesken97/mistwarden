@@ -29,6 +29,9 @@ import { toJson } from '../../utils/prisma-json';
 
 jest.setTimeout(20000);
 
+/** The grid look every map starts with, which map:settings:updated carries too. */
+const DEFAULT_LOOK = { gridColor: '#000000', gridOpacity: 0.4, gridLineWidth: 2 };
+
 const app = createTestApp();
 let server: WsTestServer;
 let gmId: string;
@@ -122,7 +125,7 @@ describe('updating the flags', () => {
     expect(res.body.map.fogEnabled).toBe(true);
     expect(res.body.map.globalIllumination).toBe(true);
 
-    expect(await seen).toEqual({ mapId: map.id, lightingEnabled: false, fogEnabled: true, globalIllumination: true, explorationEnabled: false });
+    expect(await seen).toEqual({ mapId: map.id, lightingEnabled: false, fogEnabled: true, globalIllumination: true, explorationEnabled: false, ...DEFAULT_LOOK });
     const stored = await prisma.map.findUniqueOrThrow({ where: { id: map.id }, select: { fogEnabled: true } });
     expect(stored.fogEnabled).toBe(true);
     client.disconnect();
@@ -164,7 +167,48 @@ describe('updating the flags', () => {
     const seen = waitForEvent<{ mapId: string; lightingEnabled: boolean; fogEnabled: boolean; globalIllumination: boolean; explorationEnabled: boolean }>(client, 'map:settings:updated');
     const res = await agent.put(`/api/campaigns/${campaignId}/maps/${map.id}/lighting`).send({ enabled: true });
     expect(res.status).toBe(200);
-    expect(await seen).toEqual({ mapId: map.id, lightingEnabled: true, fogEnabled: false, globalIllumination: false, explorationEnabled: false });
+    expect(await seen).toEqual({ mapId: map.id, lightingEnabled: true, fogEnabled: false, globalIllumination: false, explorationEnabled: false, ...DEFAULT_LOOK });
+    client.disconnect();
+  });
+});
+
+// Mistwarden, 2026-11-28: the grid's look is set by the GM for everyone.
+describe("the grid's look", () => {
+  it('starts as the grid was drawn before it could be set', async () => {
+    const map = await createMap();
+    expect(map).toMatchObject(DEFAULT_LOOK);
+  });
+
+  it.each([
+    ['gridColor', 'white'], ['gridColor', '#fff'], ['gridColor', 7],
+    ['gridOpacity', 0.05], ['gridOpacity', 1.5], ['gridOpacity', '0.5'],
+    ['gridLineWidth', 0], ['gridLineWidth', 4], ['gridLineWidth', 1.5],
+  ])('refuses a %s of %p, changing nothing', async (field, value) => {
+    const map = await createMap();
+    const res = await agent.put(`/api/campaigns/${campaignId}/maps/${map.id}`).send({ [field]: value });
+    expect(res.status).toBe(400);
+    expect(res.body.message).toContain(field);
+    expect(await prisma.map.findUniqueOrThrow({ where: { id: map.id }, select: { gridColor: true, gridOpacity: true, gridLineWidth: true } })).toEqual(DEFAULT_LOOK);
+  });
+
+  it('is stored and sent to every client with the flags, without sending the map again', async () => {
+    const map = await createMap();
+    const client = await server.connectAndAuth(await server.loginAs(playerId), campaignId);
+    const seen = waitForEvent(client, 'map:settings:updated');
+    const quiet = expectNoEvent(client, 'map.changed', 500);
+    const res = await agent.put(`/api/campaigns/${campaignId}/maps/${map.id}`).send({ gridColor: '#FFFFFF', gridOpacity: 0.1, gridLineWidth: 3 });
+    expect(res.status).toBe(200);
+    expect(res.body.map).toMatchObject({ gridColor: '#FFFFFF', gridOpacity: 0.1, gridLineWidth: 3 });
+    expect(await seen).toEqual({
+      mapId: map.id, lightingEnabled: false, fogEnabled: false, globalIllumination: false, explorationEnabled: false,
+      gridColor: '#FFFFFF', gridOpacity: 0.1, gridLineWidth: 3,
+    });
+    await quiet;
+    // A player reads it with the map.
+    const player = request.agent(app);
+    const playerUser = await prisma.user.findUniqueOrThrow({ where: { id: playerId }, select: { email: true } });
+    expect((await player.post('/api/auth/login').send({ email: playerUser.email, password: TEST_PASSWORD })).status).toBe(200);
+    expect((await player.get(`/api/campaigns/${campaignId}/maps/${map.id}`)).body.map).toMatchObject({ gridColor: '#FFFFFF', gridOpacity: 0.1, gridLineWidth: 3 });
     client.disconnect();
   });
 });

@@ -62,11 +62,50 @@ export const FeetPerSquareSchema = z
 /** The colour a map drawn in CozyVTT was made in, as #rrggbb. */
 export const DrawnBackgroundSchema = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 
+// ── How the grid is drawn, the same for everyone at the table ──────────────
+
+/** The grid's colour, as #rrggbb: black (#000000) and white (#ffffff) are the two the map controls offered per device. */
+export const GridColorSchema = z.string('gridColor must be a colour as #rrggbb').regex(/^#[0-9a-fA-F]{6}$/, 'gridColor must be a colour as #rrggbb');
+
+const GRID_OPACITY_MESSAGE = `gridOpacity must be a number from ${MAP_LIMITS.minGridOpacity} to ${MAP_LIMITS.maxGridOpacity}`;
+export const GridOpacitySchema = z
+  .number(GRID_OPACITY_MESSAGE)
+  .finite(GRID_OPACITY_MESSAGE)
+  .min(MAP_LIMITS.minGridOpacity, GRID_OPACITY_MESSAGE)
+  .max(MAP_LIMITS.maxGridOpacity, GRID_OPACITY_MESSAGE);
+
+const GRID_LINE_WIDTH_MESSAGE = `gridLineWidth must be ${MAP_LIMITS.minGridLineWidth} (thin), 2 (medium) or ${MAP_LIMITS.maxGridLineWidth} (thick)`;
+/** On-screen pixels, whatever the zoom. */
+export const GridLineWidthSchema = z
+  .number(GRID_LINE_WIDTH_MESSAGE)
+  .int(GRID_LINE_WIDTH_MESSAGE)
+  .min(MAP_LIMITS.minGridLineWidth, GRID_LINE_WIDTH_MESSAGE)
+  .max(MAP_LIMITS.maxGridLineWidth, GRID_LINE_WIDTH_MESSAGE);
+
 /**
  * What a map name over MAP_LIMITS.maxNameLength answers, on every path that
  * names a map. A campaign archive import shortens one instead.
  */
 export const MAP_NAME_TOO_LONG_MESSAGE = `A map name can be at most ${MAP_LIMITS.maxNameLength} characters.`;
+
+/**
+ * What POST /maps/:id/duplicate takes: a name for the copy (else
+ * "<name> (copy)"), and whether it takes the tokens, the fog and the
+ * drawings, each yes unless sent as false.
+ */
+export const DuplicateMapSchema = z
+  .object({
+    name: z
+      .string('name must be a string')
+      .trim()
+      .min(1, 'Map name must be a non-empty string')
+      .max(MAP_LIMITS.maxNameLength, MAP_NAME_TOO_LONG_MESSAGE)
+      .optional(),
+    tokens: z.boolean('tokens must be a boolean').default(true),
+    fog: z.boolean('fog must be a boolean').default(true),
+    drawings: z.boolean('drawings must be a boolean').default(true),
+  })
+  .strict();
 
 /** What the map routes answer for a picture or spirit layer that is not an asset uploaded as a map picture. */
 export const MAP_IMAGE_NOT_A_MAP_PICTURE_MESSAGE = 'The map image must be a map picture from the asset library.';

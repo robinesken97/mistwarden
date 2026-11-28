@@ -226,6 +226,9 @@ export async function prepareCampaignExport(
       diagonalRule: map.diagonalRule,
       snapTokens: map.snapTokens,
       drawnBackground: map.drawnBackground,
+      gridColor: map.gridColor,
+      gridOpacity: map.gridOpacity,
+      gridLineWidth: map.gridLineWidth,
       tokens,
       // Empty: releases up to 1.5.4 store an archive's annotations and send
       // them to every member of the campaign, so a drawing for the GM alone

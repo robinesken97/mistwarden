@@ -2515,6 +2515,9 @@ paths:
                                 diagonalRule: { type: string, enum: [flat, alternating] }
                                 snapTokens: { type: boolean }
                                 drawnBackground: { type: string, nullable: true }
+                                gridColor: { type: string }
+                                gridOpacity: { type: number }
+                                gridLineWidth: { type: integer, enum: [1, 2, 3] }
                                 baseLayerUrl: { type: string }
                                 spiritLayerUrl: { type: string, nullable: true }
                                 lightingEnabled: { type: boolean }
@@ -4484,7 +4487,9 @@ paths:
         GM only. The server sends the GM's request, the kind of text and the
         campaign's name and game system to the provider configured in its
         environment (AI_PROVIDER, AI_API_KEY, AI_MODEL, AI_BASE_URL) and answers
-        the text. Nothing is saved. 503 when no provider is configured
+        the text. Nothing is saved: the answer is a preview, and the GM keeps
+        the text, edited or not, by saving it as a private note with
+        `POST /api/campaigns/{campaignId}/notes`. 503 when no provider is configured
         (`GET /api/config` says so in `ai.enabled`), 502 when the provider
         declines or fails, 429 after AI_RATE_LIMIT requests a minute.
       operationId: writeWithAi
@@ -8314,6 +8319,9 @@ paths:
                         diagonalRule: { type: string, enum: [flat, alternating] }
                         snapTokens: { type: boolean }
                         drawnBackground: { type: string, nullable: true }
+                        gridColor: { type: string }
+                        gridOpacity: { type: number }
+                        gridLineWidth: { type: integer, enum: [1, 2, 3] }
                         lightingEnabled: { type: boolean }
                         fogEnabled: { type: boolean }
                         globalIllumination: { type: boolean }
@@ -8529,8 +8537,10 @@ paths:
         whole numbers from 1 to 500, `gridSize` a number from 10 to 500,
         `feetPerSquare` from 1 to 100, `diagonalRule` `flat` or
         `alternating`, `gridType` `square`, `hexPointy` or `hexFlat`,
-        `gridOffsetX` and `gridOffsetY` numbers from -500 to 500, and
-        `snapTokens` a boolean. A `width`, `height`, `gridSize` or `feetPerSquare`
+        `gridOffsetX` and `gridOffsetY` numbers from -500 to 500,
+        `snapTokens` a boolean, `gridColor` a colour as `#rrggbb`,
+        `gridOpacity` a number from 0.1 to 1 and `gridLineWidth` 1, 2 or 3.
+        A `width`, `height`, `gridSize` or `feetPerSquare`
         equal to the stored value is accepted as it is, so a map stored
         larger than these limits, before they existed, still saves an edit
         that sends its size back unchanged. `name` is trimmed, must not be
@@ -8543,9 +8553,12 @@ paths:
         square. A request that also makes the map small enough is accepted.
         A flag already on is left alone.
 
-        A request carrying any of the four per-map flags broadcasts
-        `map:settings:updated` with all four, to every member for the map the
-        campaign is showing and to the GM's connections for any other. When
+        A request carrying any of the four per-map flags or of the three
+        grid look fields (`gridColor`, `gridOpacity`, `gridLineWidth`)
+        broadcasts `map:settings:updated` with all seven, to every member for
+        the map the campaign is showing and to the GM's connections for any
+        other. A grid look change sends no `map.changed`: it changes how the
+        grid is drawn, nothing a member is sent. When
         `lightingEnabled` or `globalIllumination` actually changes, since
         those two decide which tokens a player is sent, or anything the map is
         drawn from (`name`, `imageUrl`, `baseLayerUrl`, `width`, `height`,
@@ -8694,6 +8707,18 @@ paths:
                 explorationEnabled:
                   type: boolean
                   description: Remember the areas each player has seen on this map and grey them in when out of sight. Maps from before 1.5.0 have it on; new maps start with it off.
+                gridColor:
+                  type: string
+                  pattern: '^#[0-9a-fA-F]{6}$'
+                  description: The grid's colour for everyone, stored as sent.
+                gridOpacity:
+                  type: number
+                  minimum: 0.1
+                  maximum: 1
+                gridLineWidth:
+                  type: integer
+                  enum: [1, 2, 3]
+                  description: On-screen pixels, whatever the zoom; 1 thin, 2 medium, 3 thick.
       responses:
         '200':
           description: Map updated
@@ -8752,6 +8777,96 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  /api/campaigns/{campaignId}/maps/{id}/duplicate:
+    post:
+      tags:
+        - Maps
+      summary: Duplicate map
+      description: |
+        Copy a map within its campaign (GM only), to prepare a scene from
+        one already built. The copy keeps the same picture and spirit layer
+        picture (the same assets, not new files), the grid (type, size,
+        offset, feet per square, diagonal rule, snapping) and its look
+        (`gridColor`, `gridOpacity`, `gridLineWidth`), `drawnBackground`, the
+        four per-map flags, every wall and door with its state, every light,
+        and every spell area. Unless sent as false it also takes the tokens,
+        the fog (the revealed squares) and the drawings.
+
+        Tokens get new ids and keep everything else: position, size, hit
+        points, stat block, conditions, whether players see them
+        (`visible`), `nameHidden`, `obscured`, icon, carried light, sight,
+        rotation, controller, character and creature. A rider names its
+        mount's new id; one whose mount is not on the map rides nothing.
+        Each token's `initiative` is cleared, and the initiative order is not
+        copied. Drawings and areas keep their author, audience and time,
+        which their order goes by. What players explored on the source is
+        not copied: the copy starts with nobody's explored areas. Without the
+        fog, `fogData` is null, which is all hidden once fog is on.
+
+        The copy is not made the campaign's current map, and nobody is sent
+        anything, as for a map just created: it is the GM's until they show
+        it. With no `name` it is named `<name> (copy)`, or `(copy 2)` and on
+        when that name is taken in the campaign, the source's name shortened
+        so the whole is at most 200 characters. A source holding more
+        tokens, walls or lights than a map may (one stored before the
+        limits) answers 400 (`Limit Exceeded`) and copies nothing; a copy
+        without its tokens may still be made. Counts against the GM's table
+        action limit (120 a minute).
+      operationId: duplicateMap
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CampaignId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                name:
+                  type: string
+                  description: Trimmed, 1 to 200 characters. Default `<name> (copy)`, unique in the campaign.
+                tokens:
+                  type: boolean
+                  default: true
+                fog:
+                  type: boolean
+                  default: true
+                  description: The revealed squares. The `fogEnabled` setting is copied either way.
+                drawings:
+                  type: boolean
+                  default: true
+            example:
+              tokens: true
+              fog: false
+              drawings: false
+      responses:
+        '201':
+          description: The copy, as stored.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  map:
+                    $ref: '#/components/schemas/Map'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
 
   /api/campaigns/{campaignId}/maps/{id}/set-current:
     put:
@@ -10222,7 +10337,7 @@ paths:
         (`fogEnabled`). GM only.
 
         Every request broadcasts `map:settings:updated`, carrying all four
-        per-map flags, to every connected member for the map the campaign is
+        per-map flags and the grid's look, to every connected member for the map the campaign is
         showing and to the GM's connections for any other. When the flag
         actually changes on the map the campaign is showing, each member is
         also sent the map as they can now see it (`map.changed`), so nothing
@@ -15838,6 +15953,19 @@ components:
           type: string
           nullable: true
           description: The colour a map drawn in CozyVTT was made in, as `#rrggbb`, which Mapmaker's eraser paints. Null for a map made from a picture.
+        gridColor:
+          type: string
+          default: '#000000'
+          description: The colour the grid is drawn in for everyone, as `#rrggbb`; the GM sets it. Each member may still hide the grid on their own device.
+        gridOpacity:
+          type: number
+          default: 0.4
+          description: How opaque the grid is drawn, 0.1 to 1.
+        gridLineWidth:
+          type: integer
+          enum: [1, 2, 3]
+          default: 2
+          description: The grid's line width on screen, in pixels whatever the zoom; 1 thin, 2 medium, 3 thick. The three defaults are the look every map had before it could be set.
         tokens:
           type: array
           items:

@@ -1433,6 +1433,17 @@
       ]
     },
     {
+      "method": "POST",
+      "path": "/api/campaigns/:campaignId/maps/:id/duplicate",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireGM",
+        "<anonymous>",
+        "<anonymous>"
+      ]
+    },
+    {
       "method": "PUT",
       "path": "/api/campaigns/:campaignId/maps/:id/set-current",
       "handlers": [

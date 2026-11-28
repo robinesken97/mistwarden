@@ -804,7 +804,7 @@ export function lightRemovalSentTo(
  */
 export const MAP_FIELDS_SENT_TO_EVERYONE = [
   'id', 'campaignId', 'name', 'imageUrl', 'baseLayerUrl', 'width', 'height', 'gridSize', 'gridType', 'gridOffsetX', 'gridOffsetY', 'feetPerSquare', 'diagonalRule', 'snapTokens',
-  'drawnBackground', 'lightingEnabled', 'fogEnabled', 'globalIllumination', 'explorationEnabled', 'createdAt', 'updatedAt',
+  'drawnBackground', 'gridColor', 'gridOpacity', 'gridLineWidth', 'lightingEnabled', 'fogEnabled', 'globalIllumination', 'explorationEnabled', 'createdAt', 'updatedAt',
 ] as const satisfies readonly (keyof MapRow)[];
 
 /** Decided for each recipient by filterMapData; MapFieldsDecided says what each may be. */
@@ -814,10 +814,10 @@ export const MAP_FIELDS_DECIDED_PER_RECIPIENT = [
 
 /**
  * Never sent to a member. This describes the map members are sent
- * (filterMapData, and the selects built from the first list). Four replies to
+ * (filterMapData, and the selects built from the first list). Five replies to
  * the GM alone return the stored row whole:
- * `POST /maps`, `POST /maps/import-uvtt`, `PUT /maps/:id` and
- * `POST /maps/:id/tokens`.
+ * `POST /maps`, `POST /maps/import-uvtt`, `PUT /maps/:id`,
+ * `POST /maps/:id/duplicate` and `POST /maps/:id/tokens`.
  */
 export const MAP_FIELDS_NEVER_SENT = [] as const satisfies readonly (keyof MapRow)[];
 

@@ -160,6 +160,7 @@ const ROWS: Row[] = [
   { route: 'DELETE /api/campaigns/:campaignId/maps/:id/areas/:areaId', limiter: 'gmActionLimiter', limit: GM_ACTIONS_PER_MINUTE, send: (c) => c.agent.delete(`/api/campaigns/${c.campaignId}/maps/${NO_MAP}/areas/${NO_MAP}`) },
   { route: 'DELETE /api/campaigns/:campaignId/maps/:id/areas', limiter: 'gmActionLimiter', limit: GM_ACTIONS_PER_MINUTE, send: (c) => c.agent.delete(`/api/campaigns/${c.campaignId}/maps/${NO_MAP}/areas`) },
   { route: 'POST /api/campaigns/:campaignId/maps/:id/exploration/reset', limiter: 'gmActionLimiter', limit: GM_ACTIONS_PER_MINUTE, send: (c) => c.agent.post(`/api/campaigns/${c.campaignId}/maps/${NO_MAP}/exploration/reset`) },
+  { route: 'POST /api/campaigns/:campaignId/maps/:id/duplicate', limiter: 'gmActionLimiter', limit: GM_ACTIONS_PER_MINUTE, send: (c) => c.agent.post(`/api/campaigns/${c.campaignId}/maps/${NO_MAP}/duplicate`).send({}) },
   // The row's campaign is not a practice one, so each reset is refused (409) and still counts.
   { route: 'POST /api/campaigns/:campaignId/practice/reset', limiter: 'practiceCampaignLimiter', limit: PRACTICE_CAMPAIGN_REQUESTS_PER_HOUR, send: (c) => c.agent.post(`/api/campaigns/${c.campaignId}/practice/reset`) },
   // The first makes the row user's practice campaign, each after opens it; the campaign goes with the row's user.

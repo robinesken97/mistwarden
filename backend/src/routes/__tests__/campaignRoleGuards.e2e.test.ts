@@ -68,6 +68,7 @@ const GM_ONLY = [
   'GET /api/campaigns/:campaignId/maps/:id/export-uvtt',
   'PUT /api/campaigns/:campaignId/maps/:id',
   'DELETE /api/campaigns/:campaignId/maps/:id',
+  'POST /api/campaigns/:campaignId/maps/:id/duplicate',
   'PUT /api/campaigns/:campaignId/maps/:id/set-current',
   'POST /api/campaigns/:campaignId/maps/:id/tokens',
   'POST /api/campaigns/:campaignId/maps/:id/tokens/move',

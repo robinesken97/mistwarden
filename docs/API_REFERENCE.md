@@ -907,7 +907,31 @@ Create a new map (GM only).
 
 `width` and `height` are in grid squares, each a whole number from 1 to 500; anything else answers `400`. `name` may be at most 200 characters once trimmed, or the request answers `400`. `gridSize` (pixels per square, 10 to 500) and `feetPerSquare` (1 to 100) are optional, and a value outside those ranges is replaced with the default (50 and 5). `PUT /api/campaigns/:id/maps/:mapId` applies the same limits but answers `400` instead of using a default; a name or size equal to the one already stored is accepted as it is.
 
+The grid's look is the map's, the same for everyone: `PUT /api/campaigns/:id/maps/:mapId` takes `gridColor` (`#rrggbb`), `gridOpacity` (0.1 to 1) and `gridLineWidth` (1, 2 or 3 on-screen pixels: thin, medium, thick), each answering `400` when outside that. A map starts black at 0.4 and 2 pixels, the look the grid had before it could be set, and so does one from an archive that does not name a look. Every change of one of them, or of a per-map flag, is sent to whoever may read the map as one `map:settings:updated` carrying the four flags and the three look fields.
+
 `imageUrl` and the optional `spiritLayerUrl` may not name an asset of another kind: one that is not a map picture (type `MAP`), whatever folder an address gives, answers `400` with `The map image must be a map picture from the asset library.` or `The spirit layer image must be a map picture from the asset library.` An address naming no existing asset is stored as sent. An asset the caller may not read answers `403` first. `PUT /api/campaigns/:id/maps/:mapId` checks a new picture or spirit layer the same way, and accepts the address already stored, sent back unchanged. A map picture's address may carry a version, `/api/assets/maps/:id?v=<digits>` (up to 16 digits), as a drawn map's picture does after **Save** in Mapmaker; it is stored as sent and names the same asset. Any other query answers `403`.
+
+### `POST /api/campaigns/:id/maps/:mapId/duplicate`
+
+Copy a map within its campaign (GM only), for a new scene built from one you have. The web app will call maps scenes.
+
+**Request** (every field optional):
+```json
+{
+  "name": "Crypt, after the fight",
+  "tokens": true,
+  "fog": false,
+  "drawings": true
+}
+```
+
+**Response** `201`: `{ "map": { ... } }`, the copy as stored.
+
+The copy takes the same picture and spirit layer picture (the same assets), the grid and its look, `drawnBackground`, the four per-map flags, every wall, door and light (with their ids, which are the map's own), and every spell area; unless sent as `false`, it also takes the tokens, the fog's revealed squares and the drawings. Tokens get new ids and keep everything else, hit points, stat block, conditions, `visible`, `nameHidden`, `obscured`, icon, carried light, sight, rotation, controller, character and creature included; a rider names its mount's new id, and one whose mount is not on the map rides nothing. Each token's `initiative` is cleared. Drawings and areas keep their author, audience and creation time. Nobody's explored areas are copied, nor the initiative order. Without `name` the copy is named `<name> (copy)`, or `(copy 2)` and on when that is taken, at most 200 characters. It is not made the current map and nothing is broadcast, as for `POST /api/campaigns/:id/maps`. A source over the token, wall or light limit of a map answers `400` (`Limit Exceeded`). It counts against the GM's limit of 120 table actions a minute.
+
+### Writing help and notes
+
+`POST /api/campaigns/:id/ai/write` (GM only) answers `{ "text": "..." }` and saves nothing: it is a preview. To keep the text, edited or not, save it as a private note with `POST /api/campaigns/:id/notes` (`{ "title": "...", "content": "..." }`), which is what the web app's **Write with AI** does.
 
 ---
 

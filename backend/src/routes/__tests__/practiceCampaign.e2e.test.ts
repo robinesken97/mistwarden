@@ -91,6 +91,8 @@ describe('POST /api/campaigns/practice', () => {
     const map = campaign.maps[0];
     expect(campaign.currentMapId).toBe(map.id);
     expect(map).toMatchObject({ width: 24, height: 18, gridSize: 70, fogEnabled: true, lightingEnabled: true });
+    // The grid as every map from before its look was the map's: black, 0.4, 2 px.
+    expect(map).toMatchObject({ gridColor: '#000000', gridOpacity: 0.4, gridLineWidth: 2 });
     expect(map.imageUrl).toMatch(/^\/api\/assets\/maps\//);
 
     const tokens = map.tokens as Array<Record<string, unknown>>;
@@ -146,6 +148,7 @@ describe('POST /api/campaigns/:campaignId/practice/reset', () => {
     const own = await prisma.character.create({ data: { userId: player.id, campaignId, name: PRACTICE_CHARACTER_NAME, data: { mine: true }, gameSystem: 'FIFTH_EDITION' } });
     await prisma.campaignMembership.update({ where: { userId_campaignId: { userId: player.id, campaignId } }, data: { characterIds: [own.id] } });
     await prisma.mapArea.create({ data: { mapId: before.maps[0].id, shape: 'circle', anchorX: 100, anchorY: 100, sizeFt: 20 } });
+    await prisma.map.update({ where: { id: before.maps[0].id }, data: { gridColor: '#ffffff', gridOpacity: 1, gridLineWidth: 3 } });
     await prisma.personalNote.create({ data: { userId: player.id, campaignId, title: 'Mine', content: '' } });
     await prisma.map.create({ data: { campaignId, name: 'Extra', imageUrl: '', baseLayerUrl: '', width: 5, height: 5, tokens: [], annotations: [] } });
     await prisma.character.update({ where: { id: before.characters[0].id }, data: { data: { characterName: 'Changed' } } });
@@ -159,6 +162,7 @@ describe('POST /api/campaigns/:campaignId/practice/reset', () => {
     expect(after.maps[0].id).toBe(res.body.mapId);
     expect(after.currentMapId).toBe(res.body.mapId);
     expect(after.maps[0].areas).toEqual([]);
+    expect(after.maps[0]).toMatchObject({ gridColor: '#000000', gridOpacity: 0.4, gridLineWidth: 2 });
     expect(after.personalNotes.map((n) => n.title)).toEqual([PRACTICE_NOTE_TITLE]);
     expect(after.galleryPictures).toHaveLength(1);
     expect(getState(campaignId)).toMatchObject({ active: false, combatants: [] });

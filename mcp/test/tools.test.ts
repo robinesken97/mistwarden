@@ -183,3 +183,53 @@ describe('update_character', () => {
     expect((await any.call('update_character', { campaignId: C, characterId: CHAR, updatedAt: at, fields: { hp: 4 } })).isError).toBe(false);
   });
 });
+
+// Mistwarden, 2026-11-28: a copy of a scene, and the grid's look.
+describe('duplicate_scene', () => {
+  const COPY = '77777777-7777-4777-8777-000000000000';
+  const COPIED_TOKEN = 'cccccccc-0000-4000-8000-000000000001';
+  const walls = [{ id: DOOR, x1: 0, y1: 0, x2: 50, y2: 0, type: 'door-closed' }, { id: WALL, x1: 0, y1: 0, x2: 0, y2: 50, type: 'wall' }];
+  const copyRoute = {
+    [`POST /api/campaigns/${C}/maps/${MAP}/duplicate`]: () => ({
+      map: { id: COPY, name: 'Crypt (copy)', width: 10, height: 10, gridSize: 50, tokens: [{ ...token, id: COPIED_TOKEN }], wallSegments: walls, lights: [] },
+    }),
+  };
+
+  it('copies the map players see, with no switch and no backup, and owns on the copy what it owned on the original', async () => {
+    const h = harness({}, copyRoute);
+    const manifest = await Manifest.load(dir, C);
+    await manifest.add('wall', [inMap(MAP, DOOR)]);
+    const r = await h.call('duplicate_scene', { campaignId: C, mapId: MAP, fog: false });
+    expect(r.isError).toBe(false);
+    expect(JSON.parse(r.text)).toMatchObject({ mapId: COPY, name: 'Crypt (copy)', tokens: 1, walls: 2, current: false });
+    expect(h.sent(`POST /api/campaigns/${C}/maps/${MAP}/duplicate`)[0].body).toEqual({ fog: false });
+    expect(manifest.has('map', COPY)).toBe(true);
+    expect(manifest.has('wall', inMap(COPY, DOOR))).toBe(true);
+    expect(manifest.has('wall', inMap(COPY, WALL))).toBe(false);
+    // The rat was not this server's on the original, so it is not on the copy.
+    expect(manifest.has('token', inMap(COPY, COPIED_TOKEN))).toBe(false);
+  });
+
+  it("owns the copy of a token that was this server's", async () => {
+    const h = harness({}, copyRoute);
+    const manifest = await Manifest.load(dir, C);
+    await manifest.add('token', [inMap(MAP, TOKEN)]);
+    expect((await h.call('duplicate_scene', { campaignId: C, mapId: MAP, name: 'Crypt, later' })).isError).toBe(false);
+    expect(h.sent(`POST /api/campaigns/${C}/maps/${MAP}/duplicate`)[0].body).toEqual({ name: 'Crypt, later' });
+    expect(manifest.has('token', inMap(COPY, COPIED_TOKEN))).toBe(true);
+  });
+});
+
+describe('update_map_settings and the grid look', () => {
+  it("sends the look and answers with it", async () => {
+    const look = { gridColor: '#ffffff', gridOpacity: 0.6, gridLineWidth: 1 };
+    const h = harness({ playerVisible: true }, {
+      [`PUT /api/campaigns/${C}/maps/${MAP}`]: (b) => ({ map: { id: MAP, name: 'Crypt', width: 10, height: 10, gridSize: 50, ...b } }),
+    });
+    await (await Manifest.load(dir, C)).add('map', [MAP]);
+    const r = await h.call('update_map_settings', { campaignId: C, mapId: MAP, ...look });
+    expect(r.isError).toBe(false);
+    expect(h.sent(`PUT /api/campaigns/${C}/maps/${MAP}`)[0].body).toEqual(look);
+    expect(JSON.parse(r.text).gridLook).toEqual(look);
+  });
+});

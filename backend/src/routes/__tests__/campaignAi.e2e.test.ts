@@ -110,6 +110,25 @@ describe('writing help through Anthropic', () => {
     expect(JSON.stringify(res.body)).not.toContain(KEY);
   });
 
+  // Mistwarden, 2026-11-28: the answer is a preview. Nothing is kept until
+  // the GM saves the text, edited or not, as a note of their own.
+  it('keeps nothing, and the text the GM saves becomes their private note', async () => {
+    const notes = () => prisma.personalNote.count({ where: { campaignId } });
+    const before = await notes();
+    const res = await write(gm, { kind: 'npc', prompt: 'A tired nobleman' });
+    expect(res.status).toBe(200);
+    expect(await notes()).toBe(before);
+
+    const saved = await gm.post(`/api/campaigns/${campaignId}/notes`).send({ title: 'NPC: A tired nobleman', content: `${res.body.text} He hides a letter.` });
+    expect(saved.status).toBe(201);
+    expect(saved.body.note).toMatchObject({ title: 'NPC: A tired nobleman', content: 'Oswin looks tired. He hides a letter.' });
+    expect(await notes()).toBe(before + 1);
+    // The GM's alone: the player's list does not hold it.
+    const listed = await player.get(`/api/campaigns/${campaignId}/notes`);
+    expect(listed.status).toBe(200);
+    expect(listed.body.notes.map((n: { id: string }) => n.id)).not.toContain(saved.body.note.id);
+  });
+
   it('refuses a player', async () => {
     expect((await write(player, { kind: 'npc', prompt: 'Spoil it' })).status).toBe(403);
     expect(seen).toEqual([]);

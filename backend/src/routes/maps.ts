@@ -55,10 +55,10 @@ import { areasFor, resendAreas, scaleAreas, addArea, removeArea, clearAreas, ARE
 import { AreaAddEventSchema, AreaRemoveEventSchema, AreaClearEventSchema, AREA_SHARE_FULL } from '../validators/areas';
 import { resetExploration } from '../websocket/handlers/exploration';
 import { gmActionLimiter } from '../middleware/gmActionLimiter';
-import type { Map as MapRow, Prisma } from '@prisma/client';
+import { Prisma, type Map as MapRow } from '@prisma/client';
 import { cellOnMap, isHexGrid } from '../utils/tokenCentre';
 import { loadFogState, applyWsFogOperation, broadcastFogState, type Token, broadcastMapData, resendSightAfterChange, fogFits, FogTooLargeError } from '../websocket/shared';
-import { MapSideSchema, GridSizeSchema, GridTypeSchema, GridOffsetSchema, GRID_FRAME_SELECT, FeetPerSquareSchema, DrawnBackgroundSchema, MAP_LIMITS, MAP_NAME_TOO_LONG_MESSAGE, MAP_IMAGE_NOT_A_MAP_PICTURE_MESSAGE, SPIRIT_LAYER_NOT_A_MAP_PICTURE_MESSAGE, dimensionProblem, wallOutsideMap, lightOutsideMap, geometryRegion, WALL_OUTSIDE_MAP_MESSAGE, LIGHT_OUTSIDE_MAP_MESSAGE, GEOMETRY_MARGIN_SQUARES, tooManyTokensMessage } from '../validators/maps';
+import { MapSideSchema, GridSizeSchema, GridTypeSchema, GridOffsetSchema, GRID_FRAME_SELECT, FeetPerSquareSchema, DrawnBackgroundSchema, DuplicateMapSchema, GridColorSchema, GridOpacitySchema, GridLineWidthSchema, MAP_LIMITS, MAP_NAME_TOO_LONG_MESSAGE, MAP_IMAGE_NOT_A_MAP_PICTURE_MESSAGE, SPIRIT_LAYER_NOT_A_MAP_PICTURE_MESSAGE, dimensionProblem, wallOutsideMap, lightOutsideMap, geometryRegion, WALL_OUTSIDE_MAP_MESSAGE, LIGHT_OUTSIDE_MAP_MESSAGE, GEOMETRY_MARGIN_SQUARES, tooManyTokensMessage } from '../validators/maps';
 
 /**
  * The largest UVTT file accepted. The picture travels as base64 text, about
@@ -1008,7 +1008,27 @@ export const MAP_FIELDS_THAT_DO_NOT_RESEND_THE_MAP = {
   updatedAt: 'changes with every edit, and tells a member nothing the edit does not',
   fogEnabled: 'reaches every reader in map:settings:updated, and decides no token',
   explorationEnabled: 'reaches every reader in map:settings:updated, and decides no token',
+  gridColor: 'reaches every reader in map:settings:updated, and only changes how the grid is drawn',
+  gridOpacity: 'reaches every reader in map:settings:updated, and only changes how the grid is drawn',
+  gridLineWidth: 'reaches every reader in map:settings:updated, and only changes how the grid is drawn',
 } as const satisfies Partial<Record<keyof MapRow, string>>;
+
+/**
+ * What map:settings:updated carries: every per-map flag and the grid's look,
+ * as stored, so a client never holds a stale one of them.
+ */
+function mapSettingsSent(map: MapRow) {
+  return {
+    mapId: map.id,
+    lightingEnabled: map.lightingEnabled,
+    fogEnabled: map.fogEnabled,
+    globalIllumination: map.globalIllumination,
+    explorationEnabled: map.explorationEnabled,
+    gridColor: map.gridColor,
+    gridOpacity: map.gridOpacity,
+    gridLineWidth: map.gridLineWidth,
+  };
+}
 
 /**
  * What PUT /maps/:id reads of the map under its lock: the size walls and
@@ -1029,7 +1049,7 @@ const MAP_EDIT_LOCKED_READ = {
 router.put('/:id', campaignGM, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { campaignId, id } = req.params;
-    const { name, width, height, gridSize, gridType, gridOffsetX, gridOffsetY, imageUrl, spiritLayerUrl, feetPerSquare, diagonalRule, lightingEnabled, fogEnabled, globalIllumination, explorationEnabled, snapTokens } = req.body;
+    const { name, width, height, gridSize, gridType, gridOffsetX, gridOffsetY, imageUrl, spiritLayerUrl, feetPerSquare, diagonalRule, lightingEnabled, fogEnabled, globalIllumination, explorationEnabled, snapTokens, gridColor, gridOpacity, gridLineWidth } = req.body;
 
     // Fetch the map to verify it exists and belongs to campaign
     const existingMap = await prisma.map.findUnique({
@@ -1194,6 +1214,15 @@ router.put('/:id', campaignGM, async (req: AuthenticatedRequest, res: Response) 
       updateData.snapTokens = snapTokens;
     }
 
+    // The grid's look, the GM's choice for everyone at the table.
+    const lookProblem = (gridColor === undefined ? null : dimensionProblem(GridColorSchema, gridColor))
+      ?? (gridOpacity === undefined ? null : dimensionProblem(GridOpacitySchema, gridOpacity))
+      ?? (gridLineWidth === undefined ? null : dimensionProblem(GridLineWidthSchema, gridLineWidth));
+    if (lookProblem) return res.status(400).json({ error: 'Validation Error', message: lookProblem });
+    if (gridColor !== undefined) updateData.gridColor = gridColor;
+    if (gridOpacity !== undefined) updateData.gridOpacity = gridOpacity;
+    if (gridLineWidth !== undefined) updateData.gridLineWidth = gridLineWidth;
+
     // Fog and explored areas are one stored cell per grid square, so a map
     // too large for them (only one stored before the size limits can be)
     // may not turn either on. One already on stays on, and its fog requests
@@ -1281,17 +1310,12 @@ router.put('/:id', campaignGM, async (req: AuthenticatedRequest, res: Response) 
       if (moved.areasScaled > 0) await resendAreas(campaignId, id);
     }
 
-    // Any per-map flag change reaches every connected client at once, as one
-    // event carrying all of them, so a client never holds a stale flag.
-    if (updateData.lightingEnabled !== undefined || updateData.fogEnabled !== undefined || updateData.globalIllumination !== undefined || updateData.explorationEnabled !== undefined) {
+    // Any per-map flag or grid look change reaches every connected client at
+    // once, as one event carrying all of them, so a client never holds a stale one.
+    const settingsSent = ['lightingEnabled', 'fogEnabled', 'globalIllumination', 'explorationEnabled', 'gridColor', 'gridOpacity', 'gridLineWidth'] as const;
+    if (settingsSent.some((key) => updateData[key] !== undefined)) {
       try {
-        await tellMapReaders(campaignId, id, 'map:settings:updated', {
-          mapId: id,
-          lightingEnabled: updatedMap.lightingEnabled,
-          fogEnabled: updatedMap.fogEnabled,
-          globalIllumination: updatedMap.globalIllumination,
-          explorationEnabled: updatedMap.explorationEnabled,
-        });
+        await tellMapReaders(campaignId, id, 'map:settings:updated', mapSettingsSent(updatedMap));
       } catch { /* non-fatal */ }
     }
 
@@ -1387,6 +1411,122 @@ router.delete('/:id', campaignGM, async (req: AuthenticatedRequest, res: Respons
       error: 'Internal Server Error',
       message: 'Failed to delete map',
     });
+  }
+});
+
+/**
+ * "<name> (copy)", or "(copy 2)" and on when that is taken in the campaign,
+ * the source's name shortened so the whole fits the name limit.
+ */
+function copyName(source: string, taken: readonly string[]): string {
+  const used = new Set(taken.map((n) => n.trim().toLocaleLowerCase()));
+  for (let n = 1; ; n++) {
+    const suffix = n === 1 ? ' (copy)' : ` (copy ${n})`;
+    const name = `${source.slice(0, MAP_LIMITS.maxNameLength - suffix.length).trimEnd()}${suffix}`;
+    if (!used.has(name.toLocaleLowerCase())) return name;
+  }
+}
+
+/**
+ * A map's tokens with new ids, each else as it was: hit points, stat block,
+ * conditions, visibility, controller, carried light and the rest. A rider
+ * names its mount's new id; one whose mount is not on the map rides nothing.
+ * The initiative a token carries stays with the fight on the source map.
+ */
+function copiedTokens(tokens: readonly Token[]): Token[] {
+  const newIds = new Map(tokens.map((t) => [t.id, randomUUID()]));
+  return tokens.map((t) => ({
+    ...t,
+    id: newIds.get(t.id)!,
+    ...(t.mountedOn ? { mountedOn: newIds.get(t.mountedOn) ?? null } : {}),
+    ...(t.initiative !== undefined ? { initiative: null } : {}),
+  }));
+}
+
+/**
+ * POST /api/campaigns/:campaignId/maps/:id/duplicate
+ * Copy a map within its campaign: picture, grid and its look, settings,
+ * walls and doors, lights and spell areas, and unless sent as false its
+ * tokens (with new ids), fog and drawings. Never what players explored on
+ * it, nor the initiative order. The copy is not made current and nobody is
+ * told of it, as with a map just created.
+ * Requires: GM role
+ */
+router.post('/:id/duplicate', campaignGM, gmActionLimiter, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { campaignId, id } = req.params;
+    const parsed = DuplicateMapSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Validation Error', message: parsed.error.issues[0]?.message ?? 'Invalid request' });
+    }
+    const options = parsed.data;
+
+    // Read and copied under the source's lock, so a token, drawing or area
+    // added meanwhile is either in the copy whole or not at all.
+    const copied = await withMapsLocked([id], async (tx): Promise<LockedEdit<MapRow>> => {
+      const source = await tx.map.findUnique({ where: { id } });
+      if (!source || source.campaignId !== campaignId) return MAP_GONE;
+      const tokens = options.tokens ? copiedTokens(readTokens(source.tokens)) : [];
+      const walls = Array.isArray(source.wallSegments) ? source.wallSegments : [];
+      const lights = Array.isArray(source.lights) ? source.lights : [];
+      // A map stored over a cap before it existed is not copied past it.
+      if (tokens.length > MAP_LIMITS.maxTokens) return { status: 400, error: 'Limit Exceeded', message: tooManyTokensMessage(tokens.length) };
+      if (walls.length > MAX_WALL_SEGMENTS) return { status: 400, error: 'Limit Exceeded', message: TOO_MANY_WALLS_MESSAGE };
+      if (lights.length > MAX_LIGHT_SOURCES) return { status: 400, error: 'Limit Exceeded', message: TOO_MANY_LIGHTS_MESSAGE };
+
+      const name = options.name ?? copyName(source.name, (await tx.map.findMany({ where: { campaignId }, select: { name: true } })).map((m) => m.name));
+      const map = await tx.map.create({
+        data: {
+          campaignId,
+          name,
+          // The same pictures, by reference: the GM could already use them.
+          imageUrl: source.imageUrl,
+          baseLayerUrl: source.baseLayerUrl,
+          spiritLayerUrl: source.spiritLayerUrl,
+          width: source.width,
+          height: source.height,
+          gridSize: source.gridSize,
+          gridType: source.gridType,
+          gridOffsetX: source.gridOffsetX,
+          gridOffsetY: source.gridOffsetY,
+          feetPerSquare: source.feetPerSquare,
+          diagonalRule: source.diagonalRule,
+          snapTokens: source.snapTokens,
+          drawnBackground: source.drawnBackground,
+          gridColor: source.gridColor,
+          gridOpacity: source.gridOpacity,
+          gridLineWidth: source.gridLineWidth,
+          tokens: toJson(tokens),
+          // Read by nothing (filterMapData sends it to nobody).
+          annotations: [],
+          // Wall and light ids are the map's own, so they are kept.
+          wallSegments: toJson(walls),
+          lights: toJson(lights),
+          // Without the fog, the copy starts with fog not yet laid, which is all hidden once fog is on.
+          fogData: options.fog && source.fogData !== null ? toJson(source.fogData) : Prisma.JsonNull,
+          lightingEnabled: source.lightingEnabled,
+          fogEnabled: source.fogEnabled,
+          globalIllumination: source.globalIllumination,
+          explorationEnabled: source.explorationEnabled,
+        },
+      });
+
+      // Drawings and areas keep their author, audience and time, which their order goes by.
+      if (options.drawings) {
+        const drawings = await tx.mapDrawing.findMany({ where: { mapId: id } });
+        await tx.mapDrawing.createMany({
+          data: drawings.map(({ id: _id, mapId: _mapId, points, ...rest }) => ({ ...rest, mapId: map.id, points: toJson(points) })),
+        });
+      }
+      const areas = await tx.mapArea.findMany({ where: { mapId: id } });
+      await tx.mapArea.createMany({ data: areas.map(({ id: _id, mapId: _mapId, ...rest }) => ({ ...rest, mapId: map.id })) });
+      return { done: map };
+    });
+    if (!('done' in copied)) return sendRefusal(res, copied);
+    return res.status(201).json({ map: copied.done });
+  } catch (error) {
+    logger.error('Error duplicating map', { err: error });
+    return res.status(500).json({ error: 'Internal Server Error', message: 'Failed to duplicate map' });
   }
 });
 
@@ -2953,13 +3093,7 @@ router.put('/:id/lighting', campaignGM, async (req: AuthenticatedRequest, res: R
 
     // Broadcast to all clients in this campaign so they don't need to reload
     try {
-      await tellMapReaders(campaignId, id, 'map:settings:updated', {
-        mapId: id,
-        lightingEnabled: updated.lightingEnabled,
-        fogEnabled: updated.fogEnabled,
-        globalIllumination: updated.globalIllumination,
-        explorationEnabled: updated.explorationEnabled,
-      });
+      await tellMapReaders(campaignId, id, 'map:settings:updated', mapSettingsSent(updated));
     } catch {
       // Socket may not be initialized in tests — log and continue
     }

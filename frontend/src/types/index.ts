@@ -914,6 +914,12 @@ export interface CampaignMap {
   snapTokens?: boolean;
   /** The colour a map drawn in CozyVTT was made in, as #rrggbb; null for one made from a picture. */
   drawnBackground: string | null;
+  /** How the GM has the grid drawn for everyone: its colour as #rrggbb. Absent on older payloads means #000000. */
+  gridColor?: string;
+  /** How opaque the grid is, 0.1 to 1. Absent on older payloads means 0.4. */
+  gridOpacity?: number;
+  /** The grid's line width on screen: 1 thin, 2 medium, 3 thick pixels. Absent on older payloads means 2. */
+  gridLineWidth?: 1 | 2 | 3;
   tokens: Token[];
   annotations: Annotation[];
   wallSegments?: import('./walls').WallSegment[];
@@ -1366,6 +1372,17 @@ export interface UpdateMapRequest {
   globalIllumination?: boolean;
   explorationEnabled?: boolean;
   snapTokens?: boolean;
+  gridColor?: string;
+  gridOpacity?: number;
+  gridLineWidth?: 1 | 2 | 3;
+}
+
+/** What POST /maps/:id/duplicate takes; each part is copied unless sent as false. */
+export interface DuplicateMapRequest {
+  name?: string;
+  tokens?: boolean;
+  fog?: boolean;
+  drawings?: boolean;
 }
 
 // Token

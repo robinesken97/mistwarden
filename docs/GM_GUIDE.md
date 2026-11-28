@@ -210,6 +210,12 @@ Under **Grid Settings** in Create Map and Edit Map, **Grid Type** picks **Square
 
 **Grid Offset (px)**, on square and hex maps alike, moves the whole grid by that many map pixels from the picture's top-left corner, to line it up with a grid printed on the picture that starts inside a border. On a square map, fog squares move with the grid. Applying a **Grid detected** suggestion now sets the offset it found as well as the size, and keeps a size between whole pixels (70.4, say) rather than rounding it. The offset is exact when the picture is a whole number of squares wide and high; otherwise the picture is stretched a little differently each way and the lines can drift by up to half a square at the far edge.
 
+### The grid's look
+
+A map stores how its grid is drawn, the same for everyone at the table: a colour (`gridColor`, `#rrggbb`), how opaque it is (`gridOpacity`, 0.1 to 1) and how wide its lines are on screen (`gridLineWidth`, 1 thin, 2 medium or 3 thick pixels, whatever the zoom). Every map starts with the look the grid always had: black at 0.4, 2 pixels. You set it with `PUT /api/campaigns/:id/maps/:mapId` or the MCP server's `update_map_settings`; every member's page is told at once, and it travels with the map in a campaign export and in a copy of the map. Each player keeps only their own **show grid** on or off.
+
+The web app's controls for it, and drawing the grid in the map's look, come in a later release, when maps are called scenes; until then the map controls' grid colour button still switches the grid between black and white on your own screen only.
+
 ### Tokens between squares
 
 **Tokens snap to grid**, under **Grid Settings** in Create Map and Edit Map, is on for every map unless you turn it off.
@@ -368,6 +374,12 @@ While you prepare a map:
 | Another tab, or a handover of the GM seat | Making the map you are preparing active from anywhere ends preparing and shows it with the table. If someone else becomes the GM, or the map is deleted, your screen goes back to the table's map and a message says why; paint not saved on it is offered to you as a picture to download |
 
 A map picture you upload while preparing stays out of your players' Asset Library until the table is on a map using it (see **Prepare ahead** below).
+
+### Duplicating a map
+
+A copy of a map starts a new scene from one already built: the same picture, grid and grid look, settings, walls and doors (open, closed or locked as they are), lights, spell areas, and unless you leave them out its tokens, its fog and its drawings. Tokens get new ids and keep everything else, hidden ones still hidden, a rider still on its mount, a torch still lit. What your players explored on the original is not copied, nor the initiative order or a token's initiative. The copy is named "Crypt (copy)", "Crypt (copy 2)" and so on unless you name it, and it is a prepared map: it is not made active, and your players are sent nothing of it until you switch to it.
+
+For now you make one with `POST /api/campaigns/:id/maps/:mapId/duplicate` (see the [API reference](API_REFERENCE.md)) or the MCP server's `duplicate_scene`; the Map Library's button for it comes with the scenes release.
 
 ### Map Best Practices
 
