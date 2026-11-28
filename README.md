@@ -10,21 +10,35 @@ Mistwarden is a self-hosted, browser-based virtual tabletop for tabletop role-pl
 
 ## Screenshots
 
-<!-- screenshot: map-table -->
-<!-- screenshot: fog-lighting -->
-<!-- screenshot: character-sheet-5e -->
-<!-- screenshot: dice-3d -->
-<!-- screenshot: gallery -->
-<!-- screenshot: tablet-layout -->
+All pictures are taken in the built-in practice campaign, whose map and pictures are drawn for Mistwarden.
 
-TODO, screens to capture (demo content only: self-made or freely licensed maps and tokens, with credit; no licensed maps):
+![The map table: a map with tokens, the initiative tracker beside it](docs/screenshots/map-table.png)
 
-- [ ] `map-table`: a campaign map with tokens, the initiative tracker and the side panels
-- [ ] `fog-lighting`: dynamic lighting with walls, a door, a carried light and explored memory, plus drifting mist
-- [ ] `character-sheet-5e`: the 5E sheet's Overview tab
-- [ ] `dice-3d`: a roll landing on the table, with the Dice panel
-- [ ] `gallery`: the campaign gallery with folders
-- [ ] `tablet-layout`: the compact layout on a tablet or phone (bottom bar, panel as a sheet)
+*The map table with the initiative tracker.*
+
+![Dynamic lighting and fog: the GM's view on the left, the player's view on the right](docs/screenshots/fog-lighting.png)
+
+*Dynamic lighting and fog of war: the GM's view (left) and what a player sees (right).*
+
+![A cone spell area drawn on the map](docs/screenshots/spell-area.png)
+
+*A spell area (a 30 ft cone, fire look) placed on the map.*
+
+![The 5E character sheet, Overview tab](docs/screenshots/character-sheet-5e.png)
+
+*The 5E character sheet, Overview tab.*
+
+![A 3D d20 rolling across the map beside the Dice panel](docs/screenshots/dice-3d.png)
+
+*A 3D d20 mid-roll, with the roll history in the Dice panel.*
+
+![A handout opened from the campaign gallery](docs/screenshots/gallery.png)
+
+*A picture from the campaign gallery, shown as a handout.*
+
+![The compact layout on a tablet held upright, with the bottom bar](docs/screenshots/tablet-layout.png)
+
+*The compact layout on a tablet held upright: map across the screen, bottom bar.*
 
 ## Features
 
@@ -32,9 +46,12 @@ TODO, screens to capture (demo content only: self-made or freely licensed maps a
 - Multiple campaigns on one server, isolated from each other; roles Platform Admin, GM, Player and Spectator.
 - Map canvas with tokens (player, NPC, object), HP bars, conditions, stat blocks, facing and three display modes. Click a token to pick it up, click a square to put it down; arrow keys also move a selected token.
 - Upload maps, import Universal VTT files (`.uvtt`, `.dd2vtt`, `.df2vtt`) with walls, doors and lights, export maps back out, or draw a map in the built-in Mapmaker.
-- Grid auto-detection suggests a grid size and offset for an uploaded map picture.
+- Square or hex grids (point-up or flat-top), a grid offset, and grid auto-detection that suggests a size and offset for an uploaded map picture. Tokens snap to the grid by default; a map can let them rest between squares.
+- Tokens can ride a mount and move with it. A token without a picture is drawn as a symbol for its creature type (from game-icons.net, CC BY 3.0) with a name plate, and the GM can keep a token's name from the table.
+- Spell areas on the map (circle, cone, line, cube, with a fire, cold or similar look), placed by hand or from a spell in the Spell Library, with the tokens they touch listed.
 - GM can prepare another map on their own screen while the table plays, then bring everyone over.
 - Initiative tracker, map pings, drawing tools and a laser pointer, vibe tracker (time-of-day tints), ambient effects and audio, session start/pause/end with recaps.
+- Asset library: upload pictures and sound, or import a ZIP of pictures.
 - Campaign gallery: pictures filed in folders and shown to chosen players.
 - Documents (PDF, text, Markdown), personal notes, whispers and chat.
 - Campaign export/import as `.cozyvtt` archives (the gallery is not part of the export).
@@ -42,14 +59,15 @@ TODO, screens to capture (demo content only: self-made or freely licensed maps a
 ### Vision and fog
 - Fog of war by box, brush or lasso, with rounded edges and drifting mist (the mist can be set still or flat per device).
 - Dynamic lighting: walls, doors and windows with raycast line of sight, lights with presets and colours, global-illumination switch per map.
-- Darkvision per token, with carried lights (a torch or lantern that follows its token).
+- Darkvision per token, with carried lights (a torch or lantern that follows its token); lights update live while you drag them.
 - Explored areas are remembered per player and can be reset.
 - Hidden tokens and fog are filtered on the server; players are not sent what they cannot see.
 
 ### Characters
 - Character sheets for 5th-edition SRD 5.1 rules, with an Overview tab, portrait, accent colours and a darkvision field that updates linked tokens.
 - Sheets for a fantasy d20 system (ORC), a horror d100 system, and free-form JSON sheets.
-- SRD creature library (imported by an admin), custom creatures and token templates.
+- SRD creature library (imported by an admin), custom creatures and token templates. Admins can also import stat blocks written as Markdown (5e style), with a dry run first.
+- Spell Library: the SRD 5.1 spells (an admin imports them from Open5e, with the area read from the spell text), spells you add to a campaign, and spells an admin imports from Markdown. Campaign spells travel with the campaign export.
 - Dice notation (`1d20+5`, `4d6kh3`, advantage/disadvantage), secret rolls, saved rolls, roll history, NPC rolls from stat blocks, and 3D dice animation (a CSS fallback is used where it is not available).
 
 ### Players and devices
@@ -63,10 +81,12 @@ TODO, screens to capture (demo content only: self-made or freely licensed maps a
 ### GM tools
 - Optional writing help for GMs (an NPC, read-aloud text, notes) through an AI provider you configure. Off unless `AI_PROVIDER` is set; the key stays on the server.
 - Admin Panel: users, invitations, settings, activity log, uploaded files, instance backups.
+- Practice campaign: every user can open one small campaign of their own (map, walls, a door, a light, fog, a character, a note) to try the tools on, and reset it to how it was made.
 - Setup wizard guarded by a one-time setup token printed in the backend log.
 
 ### Automation and MCP
 - [MCP server](mcp/README.md) that lets a coding assistant build scenes from your own campaign notes and map pictures on your computer, as the GM, with a manifest of what it created.
+- REST routes for the GM's table actions (chat, dice, vibe, atmosphere, spell areas, resetting explored memory) and for the initiative tracker, which the MCP server uses; see the [API reference](docs/API_REFERENCE.md).
 
 ## Quick start
 
@@ -104,7 +124,7 @@ If `git pull` stops because you edited `docker-compose.yml`, see [Updating after
 Backups:
 
 - Admin Panel, Backups, Create Backup: a ZIP with a database dump and all uploaded files, written to `backend/backups/`. Backups are never deleted automatically.
-- `./backend/scripts/backup.sh` writes a gzip database dump to `./backups/` (30 days kept); restore with `./backend/scripts/restore.sh <file>`. The dump does not contain uploaded files: copy `backend/uploads/` too.
+- `./backend/scripts/backup.sh` writes a gzip database dump and, beside it, an archive of the uploaded files to `./backups/` (`BACKUP_UPLOADS=no` skips the files); `./backend/scripts/restore.sh <dump>` restores both when the archive sits beside the dump.
 - Daily cron example: [Automated Daily Backups](docs/DEPLOYMENT.md#automated-daily-backups-cron).
 
 ## Configuration
@@ -127,7 +147,7 @@ Full reference: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#environment-configuratio
 
 ## MCP server
 
-`mcp/` holds a stdio MCP server that runs on your computer and signs in with your own GM session (it never sees your password). It reads notes and pictures only from one folder you name, acts only on GM campaigns, and by default changes only objects it created itself. Setup, tools and the safety model: [mcp/README.md](mcp/README.md).
+`mcp/` holds a stdio MCP server that runs on your computer and signs in with your own GM session (it never sees your password). It reads notes and pictures only from one folder you name, acts only on GM campaigns, and by default changes only objects it created itself. By default it only creates and changes its own objects, and what it does stays hidden from players; three opt-in switches widen that: `MISTWARDEN_MCP_COGM=1` (co-GM: game state, initiative, chat, dice, sessions), `MISTWARDEN_MCP_PLAYER_VISIBLE=1` (tools that show things to players and changes on the map they see) and `MISTWARDEN_MCP_ALLOW_ANY_EDIT=1` (edit or delete objects it did not create). Deletes need a recent `create_backup`. Tool groups: read, maps, tokens, creatures and spells, spell areas, walls and lights, fog, notes and gallery, characters, dice, local files, instance library import (platform admins), backup, and table tools. Setup, tools and the safety model: [mcp/README.md](mcp/README.md).
 
 Mistwarden's HTTP and WebSocket surfaces are not a public API: they are what the web client calls, are not versioned and can change in any release. Tools built on them, such as the independent [cozyvtt-mcp](https://github.com/yanjingzhaisun/cozyvtt-mcp) bridge, must check compatibility themselves.
 
@@ -138,11 +158,6 @@ Dev stack with hot reload: `docker compose -f docker-compose.dev.yml up`. Detail
 Stack: React 19 + Vite + Tailwind (frontend), Node.js + Express + Prisma + PostgreSQL + Socket.io (backend).
 
 ## Roadmap
-
-In progress, not yet merged:
-
-- Mounting.
-- Hex grids.
 
 Backlog and known issues: [docs/FUTURE_FEATURES.md](docs/FUTURE_FEATURES.md).
 
