@@ -37,11 +37,16 @@ interface ElementStyle {
 const TILE = 64;
 const TAU = Math.PI * 2;
 
-/** A small seeded spread of points, so every page paints the same tile. */
+/**
+ * A small seeded spread of points, so every page paints the same tile, each
+ * with its copies a tile away on every side, so a mark crossing an edge
+ * comes back on the other and the tiles meet without a seam.
+ */
 function spots(n: number, seed: number): Array<[number, number, number]> {
   let s = seed;
   const next = () => ((s = (s * 9301 + 49297) % 233280) / 233280);
-  return Array.from({ length: n }, () => [next(), next(), next()]);
+  const base = Array.from({ length: n }, (): [number, number, number] => [next(), next(), next()]);
+  return base.flatMap(([x, y, k]) => [-1, 0, 1].flatMap((dx) => [-1, 0, 1].map((dy): [number, number, number] => [x + dx, y + dy, k])));
 }
 
 function glow(c: CanvasRenderingContext2D, x: number, y: number, r: number, inner: string, outer: string): void {
@@ -138,9 +143,9 @@ export const AREA_ELEMENT_STYLES: Record<AreaElement, ElementStyle> = {
   poison: {
     name: 'Poison', fill: 'rgba(101, 163, 13, 0.24)', stroke: 'rgba(132, 204, 22, 0.9)', ink: '#f7fee7', motion: 'drift',
     tile(c, s) {
-      spots(5, 67).forEach(([x, y, k], i) => {
-        glow(c, x * s, y * s, 10 + k * 10, i % 2 ? 'rgba(139, 92, 246, 0.45)' : 'rgba(132, 204, 22, 0.45)', 'rgba(0, 0, 0, 0)');
-      });
+      for (const [x, y, k] of spots(5, 67)) {
+        glow(c, x * s, y * s, 10 + k * 10, k > 0.5 ? 'rgba(139, 92, 246, 0.45)' : 'rgba(132, 204, 22, 0.45)', 'rgba(0, 0, 0, 0)');
+      }
     },
   },
   necrotic: {
@@ -205,8 +210,8 @@ export const AREA_ELEMENT_STYLES: Record<AreaElement, ElementStyle> = {
     name: 'Psychic', fill: 'rgba(219, 39, 119, 0.25)', stroke: 'rgba(236, 72, 153, 0.95)', ink: '#fce7f3', motion: 'swirl',
     tile(c, s) {
       c.lineWidth = 1.5;
-      spots(3, 113).forEach(([x, y], i) => {
-        c.strokeStyle = i % 2 ? 'rgba(244, 114, 182, 0.75)' : 'rgba(217, 70, 239, 0.75)';
+      spots(3, 113).forEach(([x, y, k]) => {
+        c.strokeStyle = k > 0.5 ? 'rgba(244, 114, 182, 0.75)' : 'rgba(217, 70, 239, 0.75)';
         c.beginPath();
         for (let t = 0; t < 3 * TAU; t += 0.3) {
           const r = t * 1.3;
