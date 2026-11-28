@@ -57,6 +57,12 @@ Once inside the campaign, click the **Campaign Settings** button (gear icon in t
 
 Campaign Settings and the other side panels, the Map Library, Token Manager, Spirit Layer, Atmosphere, the Creature Library, Token Templates and the token editor, close the same way: press **Escape**, click **Close** (the **×** at the top of the panel, at least 44 pixels square on a phone or a tablet) or click outside the panel. While one is open, Tab moves only among its controls. A window a panel opens, such as **Invite Player**, closes alone on Escape and leaves the panel open.
 
+### The guided tour
+
+The **Tour** button, a signpost in the header (under **More** on a phone or a narrow window), walks you past the tools you run a game with: the map, the grid, fog, walls and doors, lights, tokens and giving one to a player, initiative, spell areas, starting the session and **Display on this device**. It starts only when you press it. Each step rings the control it is about and opens what holds it first, such as the **Session** tab, the folded party column or **More**; a step whose control is not on screen shows its card without a ring. The ring lets presses through, so the control can be used with the tour open. **Next** goes on, **Back** goes back, and **End tour** or **Escape** stops it. The step you are on is kept on this device, so a reload comes back to it.
+
+In a campaign of your own the tour only explains. In your practice campaign each step also asks you to try the thing, with **Done** and **Skip**.
+
 ### Inviting Players
 
 To invite a player to your campaign:

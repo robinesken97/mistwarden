@@ -54,6 +54,7 @@ export default function SessionSidebar() {
             <button
               key={key}
               id={`session-tab-${key}`}
+              data-tour={`tab-${key}`}
               role="tab"
               aria-selected={active}
               aria-controls={`session-tabpanel-${key}`}

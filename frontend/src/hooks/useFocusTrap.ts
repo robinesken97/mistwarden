@@ -117,6 +117,9 @@ export function useFocusTrap(isOpen: boolean, onClose?: () => void, options: Foc
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (openTraps[openTraps.length - 1] !== trap) return;
+      // Mistwarden, 2026-11-28: the guided tour's card over a dialog keeps
+      // its own keys, so its buttons can be reached (TableTour.tsx).
+      if (document.activeElement?.closest('[data-tour-card]')) return;
 
       // Escape closes the modal, and nothing behind it sees the key
       if (e.key === 'Escape') {

@@ -65,6 +65,7 @@ export default function SheetMenuRows({ items, onClose, onOpenSubmenu, chevrons 
                 key={item.id}
                 type="button"
                 title={item.title}
+                data-tour={`menu-${item.id}`}
                 disabled={!opens && item.busy?.active}
                 onClick={() => {
                   if (item.children) onOpenSubmenu?.(item);

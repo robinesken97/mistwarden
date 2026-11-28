@@ -23,7 +23,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   PanelRightClose,
-  PanelRightOpen, Settings, BookOpen, Keyboard, Sparkles } from 'lucide-react';
+  PanelRightOpen, Settings, BookOpen, Keyboard, Signpost, Sparkles } from 'lucide-react';
 import {
   Group,
   Panel,
@@ -34,6 +34,7 @@ import {
 import { useCampaign } from '@/contexts/CampaignContext';
 import SessionSidebar from '@/components/campaign/SessionSidebar';
 import { DisplaySettingsButton } from '@/components/campaign/DisplaySettings';
+import { startTour } from '@/components/campaign/tour/tourSteps';
 import SessionToolbar, { type SessionToolKey } from '@/components/campaign/SessionToolbar';
 import { useTableSlot } from '@/components/campaign/tableHosts';
 import ConnectionStatus from '@/components/ConnectionStatus';
@@ -213,6 +214,10 @@ export default function DesktopTable({
               onClick={onOpenShortcuts}
             />
           </Tooltip>
+          {/* Mistwarden, 2026-11-28: the guided tour, started only from here (TableTour.tsx). */}
+          <Tooltip content="Tour of the table" side="bottom">
+            <Button variant="ghost" iconOnly icon={Signpost} aria-label="Tour" data-tour="tour-button" onClick={startTour} />
+          </Tooltip>
           {/* Mistwarden: how this device draws fog and dice. */}
           <DisplaySettingsButton />
 
@@ -225,6 +230,8 @@ export default function DesktopTable({
                 iconOnly
                 icon={leftCollapsed ? PanelLeftOpen : PanelLeftClose}
                 aria-label={leftCollapsed ? 'Show party panel' : 'Hide party panel'}
+                // The tour unfolds a folded column, and folds it again as it ends.
+                data-tour={leftCollapsed ? 'show-party' : 'hide-party'}
                 onClick={() => togglePanel(leftPanelRef, '20%')}
               />
             </Tooltip>
@@ -234,6 +241,7 @@ export default function DesktopTable({
                 iconOnly
                 icon={rightCollapsed ? PanelRightOpen : PanelRightClose}
                 aria-label={rightCollapsed ? 'Show session panel' : 'Hide session panel'}
+                data-tour={rightCollapsed ? 'show-session' : 'hide-session'}
                 onClick={() => togglePanel(rightPanelRef, '25%')}
               />
             </Tooltip>

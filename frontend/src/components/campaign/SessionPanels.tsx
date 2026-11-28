@@ -82,6 +82,7 @@ export default function SessionPanels() {
     <>
       <div
         id="session-tabpanel-chat"
+        data-tour="panel-chat"
         {...panel('chat')}
         className={cn('absolute inset-0', pad, clipped, activeTab === 'chat' ? 'animate-fade-in' : 'invisible')}
       >
@@ -90,6 +91,7 @@ export default function SessionPanels() {
 
       <div
         id="session-tabpanel-dice"
+        data-tour="panel-dice"
         {...panel('dice')}
         className={cn('absolute inset-0', pad, clipped, activeTab === 'dice' ? 'animate-fade-in' : 'invisible')}
       >
@@ -98,6 +100,7 @@ export default function SessionPanels() {
 
       <div
         id="session-tabpanel-initiative"
+        data-tour="panel-initiative"
         {...panel('initiative')}
         className={cn(
           'absolute inset-0', pad, 'overflow-y-auto',
@@ -128,6 +131,7 @@ export default function SessionPanels() {
 
       <div
         id="session-tabpanel-session"
+        data-tour="panel-session"
         {...panel('session')}
         className={cn(
           'absolute inset-0', pad, 'overflow-y-auto space-y-4',

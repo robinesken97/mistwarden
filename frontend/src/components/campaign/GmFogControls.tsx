@@ -101,7 +101,7 @@ export default function GmFogControls({
   };
 
   return (
-    <div className="flex flex-col gap-0 bg-stone-800/90 rounded-lg border border-warm-amber/20 min-w-[160px] overflow-hidden">
+    <div data-tour="fog" className="flex flex-col gap-0 bg-stone-800/90 rounded-lg border border-warm-amber/20 min-w-[160px] overflow-hidden">
       {/* Header with collapse toggle */}
       <button
         type="button"

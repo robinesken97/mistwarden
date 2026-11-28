@@ -141,6 +141,7 @@ export function DisplaySettingsButton() {
           iconOnly
           icon={MonitorCog}
           aria-label={DISPLAY_SETTINGS_LABEL}
+          data-tour="display"
           aria-expanded={open}
           aria-controls={open ? panelId : undefined}
           onClick={() => setOpen((was) => !was)}
@@ -150,6 +151,7 @@ export function DisplaySettingsButton() {
       {open && (
         <div
           id={panelId}
+          data-tour="display-panel"
           role="group"
           aria-label={DISPLAY_SETTINGS_LABEL}
           className="absolute right-0 top-full z-80 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-cozy border border-ink/10 bg-paper p-3 shadow-xl"

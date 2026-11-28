@@ -304,7 +304,7 @@ export default function TokenRoster({ onEditToken }: TokenRosterProps) {
   if (tokens.length === 0) return null;
 
   return (
-    <div className="glass-panel overflow-hidden">
+    <div data-tour="token-roster" className="glass-panel overflow-hidden">
       {/* Header */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
