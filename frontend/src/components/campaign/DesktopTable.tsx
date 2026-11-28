@@ -31,7 +31,7 @@ import { useTableChrome } from '@/stores/tableChromeStore';
 import { DisplaySettings, DISPLAY_SETTINGS_LABEL } from '@/components/campaign/DisplaySettings';
 import { startTour } from '@/components/campaign/tour/tourSteps';
 import { type SessionToolKey } from '@/components/campaign/SessionToolbar';
-import { useTableSlot } from '@/components/campaign/tableHosts';
+import { partHoldingFocus, useTableSlot } from '@/components/campaign/tableHosts';
 import { WIDE_TABS, WIDE_TAB_LOOKS, unreadBadge, type WideTab } from '@/components/campaign/sessionTabs';
 import CampaignInfo from '@/components/campaign/CampaignInfo';
 import { AI_WRITE_EVENT } from '@/components/campaign/AiWriteDialog';
@@ -111,6 +111,15 @@ export default function DesktopTable({
   // Another page shows the panels again; set directly, so a switch to the
   // compact layout, which sets its own value, does not read the chat as seen.
   useEffect(() => () => useGameStore.setState({ sessionShown: true }), []);
+
+  // Taking over from the compact layout with the keyboard in the session
+  // panels or Party shows that part, so the control stays in sight.
+  useEffect(() => {
+    const part = partHoldingFocus();
+    if ((part === 'session' || part === 'party') && !panel.open) panel.choose({ open: true, party: part === 'party' });
+    // Once, as the layout mounts.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /** Show `tab`, or fold the panel when `tab` is the one open. */
   const selectTab = (tab: WideTab) => {
@@ -287,7 +296,7 @@ export default function DesktopTable({
                 {label}
                 {key === 'chat' && unreadChat > 0 && (
                   <span
-                    className="absolute top-1 right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-brand text-brand-text text-[10px] font-bold flex items-center justify-center"
+                    className="absolute top-1 right-2 min-w-5 h-5 px-1 rounded-full bg-brand text-brand-text text-xs font-bold flex items-center justify-center"
                     aria-label={unreadBadge(unreadChat).label}
                   >
                     {unreadBadge(unreadChat).text}

@@ -1373,7 +1373,7 @@ Maps made before this setting existed have fog on, exactly as they always did.
 
 ### Revealing and Hiding
 
-Open the **Fog of War** panel, one of the GM tool panels, which **GM tools** on the map's rail shows as a card left of the rail (press **GM tools** again or the card's ✕ to hide it; each panel starts folded: click its title to open it, or Tab to the title and press Enter or Space), then pick a mode:
+Open the **Fog of War** panel, one of the GM tool panels, which **GM tools** on the map's rail shows as a card left of the rail (press **GM tools** again or the card's ✕ to hide it; each panel starts folded: click its title to open it, or Tab to the title and press Enter or Space; drag the bar above them to move the card anywhere on the map, with a finger too on a tablet, and double-click the bar, or click **Reset position** on it once it has moved, to put it back beside the rail; a card taller than the room left scrolls), then pick a mode:
 
 - **Reveal** — drag a box over the map to show that area to players
 - **Hide** — drag a box to cover an area back up

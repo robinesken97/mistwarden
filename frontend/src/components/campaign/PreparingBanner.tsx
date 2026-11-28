@@ -165,7 +165,8 @@ export default function PreparingBanner() {
         <div
           role="region"
           aria-label="Preparing a map"
-          className="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 py-2 text-sm text-ink border-b border-[color-mix(in_srgb,var(--color-warning)_45%,transparent)] bg-[color-mix(in_srgb,var(--color-warning)_12%,var(--color-surface))]"
+          // 60 px tall on touch, 56 with a mouse: 8 + the buttons + 8, its 1 px border inside.
+          className="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 pt-2 pb-[7px] text-sm text-ink border-b border-[color-mix(in_srgb,var(--color-warning)_45%,transparent)] bg-[color-mix(in_srgb,var(--color-warning)_12%,var(--color-surface))]"
         >
           <p className="min-w-0 flex-1 truncate">
             Preparing <b className="font-semibold text-warning-ink">{viewedMap.name}</b>.{' '}
