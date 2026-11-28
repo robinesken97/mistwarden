@@ -172,13 +172,16 @@ export default function DashboardPage() {
       {/* Main Content */}
       <main id="main-content" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-8">
-          {/* Quick Links Section */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Quick Links Section: two by two, four in a row on a wide screen.
+              Each card is two rows of the grid (subgrid), its heading and its
+              body, so a heading that wraps lowers every box in its row, and
+              the boxes reach the row's foot. */}
+          <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-4 gap-6">
             {/* Characters Section */}
-            <section className="glass-panel p-6">
-              <div className="flex items-center justify-between gap-3 mb-4">
+            <section className="glass-panel p-6 row-span-2 grid grid-rows-subgrid gap-0">
+              <div className="self-start flex items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="p-2 rounded-lg bg-moss-green/10 md:max-xl:hidden">
+                  <div className="p-2 rounded-lg bg-moss-green/10 md:max-xl:hidden 2xl:hidden">
                     <User className="w-6 h-6 text-brand-ink" />
                   </div>
                   <div className="min-w-0">
@@ -273,10 +276,10 @@ export default function DashboardPage() {
             </section>
 
             {/* Assets Library Section */}
-            <section className="glass-panel p-6">
-              <div className="flex items-center justify-between gap-3 mb-4">
+            <section className="glass-panel p-6 row-span-2 grid grid-rows-subgrid gap-0">
+              <div className="self-start flex items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="p-2 rounded-lg bg-moss-green/10 md:max-xl:hidden">
+                  <div className="p-2 rounded-lg bg-moss-green/10 md:max-xl:hidden 2xl:hidden">
                     <FolderOpen className="w-6 h-6 text-brand-ink" />
                   </div>
                   <div className="min-w-0">
@@ -297,9 +300,9 @@ export default function DashboardPage() {
                 </Button>
               </div>
 
-              <div className="space-y-3 mt-4">
+              <div className="flex-1 flex flex-col mt-4">
                 <div
-                  className="p-4 rounded-lg bg-parchment/50 border border-moss-green/20
+                  className="flex-1 p-4 rounded-lg bg-parchment/50 border border-moss-green/20
                            hover:border-moss-green/40 transition-colors cursor-pointer text-center"
                   onClick={() => navigate('/assets')}
                 >
@@ -315,10 +318,10 @@ export default function DashboardPage() {
             </section>
 
             {/* Documents Section */}
-            <section className="glass-panel p-6">
-              <div className="flex items-center justify-between gap-3 mb-4">
+            <section className="glass-panel p-6 row-span-2 grid grid-rows-subgrid gap-0">
+              <div className="self-start flex items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="p-2 rounded-lg bg-moss-green/10 md:max-xl:hidden">
+                  <div className="p-2 rounded-lg bg-moss-green/10 md:max-xl:hidden 2xl:hidden">
                     <BookOpen className="w-6 h-6 text-brand-ink" />
                   </div>
                   <div className="min-w-0">
@@ -339,9 +342,9 @@ export default function DashboardPage() {
                 </Button>
               </div>
 
-              <div className="space-y-3 mt-4">
+              <div className="flex-1 flex flex-col mt-4">
                 <div
-                  className="p-4 rounded-lg bg-parchment/50 border border-moss-green/20
+                  className="flex-1 p-4 rounded-lg bg-parchment/50 border border-moss-green/20
                            hover:border-moss-green/40 transition-colors cursor-pointer text-center"
                   onClick={() => navigate('/documents')}
                 >
@@ -357,10 +360,10 @@ export default function DashboardPage() {
             </section>
 
             {/* Character Templates Section */}
-            <section className="glass-panel p-6">
-              <div className="flex items-center justify-between gap-3 mb-4">
+            <section className="glass-panel p-6 row-span-2 grid grid-rows-subgrid gap-0">
+              <div className="self-start flex items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="p-2 rounded-lg bg-moss-green/10 md:max-xl:hidden">
+                  <div className="p-2 rounded-lg bg-moss-green/10 md:max-xl:hidden 2xl:hidden">
                     <FileText className="w-6 h-6 text-brand-ink" />
                   </div>
                   <div className="min-w-0">
@@ -379,9 +382,9 @@ export default function DashboardPage() {
                 </Button>
               </div>
 
-              <div className="space-y-3 mt-4">
+              <div className="flex-1 flex flex-col mt-4">
                 <div
-                  className="p-4 rounded-lg bg-parchment/50 border border-moss-green/20
+                  className="flex-1 p-4 rounded-lg bg-parchment/50 border border-moss-green/20
                            hover:border-moss-green/40 transition-colors cursor-pointer text-center"
                   onClick={() => navigate('/character-templates')}
                 >
