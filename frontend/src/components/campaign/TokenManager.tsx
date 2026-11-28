@@ -407,7 +407,7 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
                 <button
                   key={type}
                   onClick={() => { setTokenType(type); setPlaceHidden(type === TokenType.OBJECT); }}
-                  className={`flex-1 py-1.5 text-xs rounded-cozy border transition-all ${
+                  className={`touch-target flex-1 py-1.5 text-xs rounded-cozy border transition-all ${
                     tokenType === type
                       ? 'border-moss-green bg-moss-green/10 text-brand-ink font-semibold'
                       : 'border-moss-green/20 hover:border-moss-green/40 text-stone-gray'
@@ -418,7 +418,7 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
               ))}
             </div>
             {tokenType === TokenType.PLAYER && (
-              <p className="text-[10px] text-stone-gray mt-1">
+              <p className="text-xs text-stone-gray mt-1">
                 A player token stands for a character: the token opens its sheet and rolls with its numbers. For summoned creatures, use NPC type and assign a player as controller.
               </p>
             )}
@@ -471,7 +471,7 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
                 title="Upload a new token image"
-                className="flex items-center gap-1 text-xs text-brand-ink hover:underline disabled:opacity-40 transition-colors"
+                className="touch-target flex items-center gap-1 text-xs text-brand-ink hover:underline disabled:opacity-40 transition-colors"
               >
                 {isUploading ? (
                   <Loader2 className="w-3 h-3 animate-spin" />
@@ -514,7 +514,7 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
                   }`}
                 >
                   <span className="text-lg font-bold text-ink-secondary">?</span>
-                  <span className="absolute bottom-0.5 text-[8px] text-ink-muted">None</span>
+                  <span className="absolute bottom-0.5 text-xs text-ink-muted">None</span>
                 </button>
               }
             />
@@ -549,7 +549,7 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
                   key={mode}
                   onClick={() => setDisplayMode(mode)}
                   title={desc}
-                  className={`flex-1 py-1.5 text-xs rounded-cozy border transition-all ${
+                  className={`touch-target flex-1 py-1.5 text-xs rounded-cozy border transition-all ${
                     displayMode === mode
                       ? 'border-moss-green bg-moss-green/10 text-brand-ink font-semibold'
                       : 'border-moss-green/20 hover:border-moss-green/40 text-stone-gray'
@@ -559,7 +559,7 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
                 </button>
               ))}
             </div>
-            <p className="text-[10px] text-stone-gray mt-1">
+            <p className="text-xs text-stone-gray mt-1">
               {displayMode === 'pog' && 'Classic round token with a colored disposition ring.'}
               {displayMode === 'top-down' && 'Circular crop, ideal for overhead/bird\u2019s-eye art.'}
               {displayMode === 'full-art' && 'Shows full image including transparency — great for standees and monsters.'}
@@ -583,7 +583,7 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
                     <button
                       key={d}
                       onClick={() => { setDisposition(d); setShowHpBar(showHpBarByDefault(d)); }}
-                      className={`flex-1 py-1.5 text-xs rounded-cozy border transition-all ${
+                      className={`touch-target flex-1 py-1.5 text-xs rounded-cozy border transition-all ${
                         disposition === d
                           ? color === 'teal'  ? DISPOSITION_PICKED.friendly
                           : color === 'amber' ? DISPOSITION_PICKED.neutral
@@ -724,7 +724,7 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
               <div className="flex gap-2">
                 <button
                   onClick={() => setTokenLayer(TokenLayer.TOKEN)}
-                  className={`flex-1 py-1.5 text-xs rounded-cozy border transition-all ${
+                  className={`touch-target flex-1 py-1.5 text-xs rounded-cozy border transition-all ${
                     tokenLayer === TokenLayer.TOKEN
                       ? 'border-moss-green bg-moss-green/10 text-brand-ink font-semibold'
                       : 'border-moss-green/20 hover:border-moss-green/40 text-stone-gray'
@@ -734,7 +734,7 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
                 </button>
                 <button
                   onClick={() => setTokenLayer(TokenLayer.SPIRIT)}
-                  className={`flex-1 py-1.5 text-xs rounded-cozy border transition-all ${
+                  className={`touch-target flex-1 py-1.5 text-xs rounded-cozy border transition-all ${
                     tokenLayer === TokenLayer.SPIRIT
                       ? 'border-spirit-purple bg-spirit-purple/10 text-spirit-ink font-semibold'
                       : 'border-moss-green/20 hover:border-moss-green/40 text-stone-gray'
@@ -794,7 +794,7 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
             )}
             {isAdding ? 'Placing…' : 'Place on Map'}
           </Button>
-          <p className="text-[10px] text-stone-gray mt-1.5 text-center">
+          <p className="text-xs text-stone-gray mt-1.5 text-center">
             Token is placed at the map center — drag it into position afterwards.
           </p>
         </section>

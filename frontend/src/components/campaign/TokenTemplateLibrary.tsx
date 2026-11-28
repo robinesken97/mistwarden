@@ -294,7 +294,7 @@ export default function TokenTemplateLibrary({ isOpen, onClose }: TokenTemplateL
           <button
             ref={formCreateButtonRef}
             onClick={(e) => { setEditingTemplate(null); setShowForm(true); formOpened(e.currentTarget); }}
-            className="flex items-center gap-1 text-xs text-brand-ink hover:underline transition-colors"
+            className="touch-target flex items-center gap-1 text-xs text-brand-ink hover:underline transition-colors"
           >
             <Plus className="w-3 h-3" /> New Template
           </button>

@@ -554,7 +554,7 @@ export default function DesktopTable({
         {layout === 'phone-landscape' && tabs}
 
         {!phone && (
-          <TopBarMenu label="Library" icon={LibraryBig} text="Library" tour="library">
+          <TopBarMenu label="Library" icon={LibraryBig} text="Library" tour="library" align={isGM ? 'left' : 'right'}>
             {libraryRows}
           </TopBarMenu>
         )}
