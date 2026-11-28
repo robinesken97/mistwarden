@@ -1168,14 +1168,17 @@ describe('Preview Player View', () => {
   });
   const asPlayerButton = () => within(asPlayerSlot).queryByRole('button', { name: 'As player' });
   const asPlayerList = () => screen.getByRole('group', { name: 'As player' });
-  /** Open As player and press the row named `row`. */
-  function asPlayer(row: string) {
+  /** The list closes a moment after a row's press (TopBarMenu). */
+  const listClosed = () => waitFor(() => expect(screen.queryByRole('group', { name: 'As player' })).toBeNull());
+  /** Open As player, press the row named `row`, and wait for the list to close. */
+  async function asPlayer(row: string) {
     fireEvent.click(asPlayerButton()!);
     fireEvent.click(within(asPlayerList()).getByRole('button', { name: row }));
+    await listClosed();
   }
   /** The preview as the goblin, the one choice, which the old Preview button started with. */
-  function startPreview() {
-    asPlayer('Goblin');
+  async function startPreview() {
+    await asPlayer('Goblin');
     // The preview is on: Goblin is the one previewed, and the way back is offered.
     fireEvent.click(asPlayerButton()!);
     expect(within(asPlayerList()).getByRole('button', { name: 'Goblin' })).toHaveAttribute('aria-pressed', 'true');
@@ -1229,7 +1232,7 @@ describe('Preview Player View', () => {
   });
 
   // So a voice command for the words on a button finds it.
-  it('is named by the words it shows, with the preview off and on', () => {
+  it('is named by the words it shows, with the preview off and on', async () => {
     h.set({ currentMap: mapWith({ fogEnabled: true }) });
     render(<MapCanvas />);
     show(token('tok-goblin', 'Goblin', 0, 19));
@@ -1240,51 +1243,52 @@ describe('Preview Player View', () => {
     expect(asPlayerList()).toHaveTextContent(/^Follow my selectionTokensGoblin$/);
     fireEvent.click(within(asPlayerList()).getByRole('button', { name: 'Goblin' }));
     // A row starts the preview and closes the list.
-    expect(screen.queryByRole('group', { name: 'As player' })).toBeNull();
+    await listClosed();
 
     fireEvent.click(asPlayerButton()!);
     expect(within(asPlayerList()).getByRole('button', { name: 'Goblin' })).toHaveAttribute('aria-pressed', 'true');
     fireEvent.click(within(asPlayerList()).getByRole('button', { name: 'Back to GM view' }));
+    await listClosed();
 
     fireEvent.click(asPlayerButton()!);
     expect(within(asPlayerList()).queryByRole('button', { name: 'Back to GM view' })).toBeNull();
     expect(within(asPlayerList()).getByRole('button', { name: 'Goblin' })).toHaveAttribute('aria-pressed', 'false');
   });
 
-  it('can still be ended after fog and lighting are both turned off', () => {
+  it('can still be ended after fog and lighting are both turned off', async () => {
     h.set({ currentMap: mapWith({ fogEnabled: true }) });
     render(<MapCanvas />);
     show(token('tok-goblin', 'Goblin', 0, 19));
-    startPreview();
+    await startPreview();
 
     fireEvent.click(screen.getByText('Fog of War'));
     fireEvent.click(screen.getByLabelText('Fog of war on this map'));
 
-    asPlayer('Back to GM view');
+    await asPlayer('Back to GM view');
     expect(asPlayerButton()).toBeNull();
   });
 
-  it('still places a light, so the GM sees its effect as the player does', () => {
+  it('still places a light, so the GM sees its effect as the player does', async () => {
     h.set({ currentMap: mapWith({ lightingEnabled: true }) });
     render(<MapCanvas />);
     show(token('tok-goblin', 'Goblin', 0, 19));
     fireEvent.click(screen.getByText('Lights'));
     fireEvent.click(screen.getByText('Place'));
-    startPreview();
+    await startPreview();
 
     click(px(400, 400));
 
     expect(sentOf('light:add')).toHaveLength(1);
   });
 
-  it('does not select or drag a light, since the light markers are hidden', () => {
+  it('does not select or drag a light, since the light markers are hidden', async () => {
     const lamp: LightSource = { id: 'l1', x: 250, y: 250, brightRadius: 4, dimRadius: 8, color: '#ffcc66', enabled: true };
     h.set({ currentMap: mapWith({ lightingEnabled: true, lights: [lamp] }) });
     render(<MapCanvas />);
     show(token('tok-goblin', 'Goblin', 0, 19));
     fireEvent.click(screen.getByText('Lights'));
     fireEvent.click(screen.getByText('Select'));
-    startPreview();
+    await startPreview();
 
     drag(px(255, 250), px(280, 280), px(300, 310));
 

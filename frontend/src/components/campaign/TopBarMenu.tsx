@@ -146,7 +146,10 @@ export default function TopBarMenu({
     const panel = list.current;
     const onClick = (e: MouseEvent) => {
       const row = (e.target as Element).closest('button');
-      if (row && !row.hasAttribute('data-keep-open')) closeRef.current();
+      // After the click has gone through the page: a window the row opens
+      // closes on a click outside it, and a row taken out of the page first
+      // would count as outside.
+      if (row && !row.hasAttribute('data-keep-open')) setTimeout(() => closeRef.current());
     };
     panel?.addEventListener('click', onClick);
     panel?.querySelector<HTMLElement>('button')?.focus({ preventScroll: true });

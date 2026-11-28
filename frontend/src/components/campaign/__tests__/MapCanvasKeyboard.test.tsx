@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, act, createEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor, createEvent } from '@testing-library/react';
 import { TokenLayer, TokenType, type CampaignMap, type Token } from '@/types';
 import { mouse, contact } from '@/test/pointer';
 import { useTableChrome } from '@/stores/tableChromeStore';
@@ -239,9 +239,11 @@ afterEach(() => {
 /** Opens or closes As player's list in the top bar. */
 const asPlayer = () => fireEvent.click(screen.getByRole('button', { name: 'As player' }));
 /** Starts Player Preview as `who`, a row of As player's list. */
-function previewAs(who: string) {
+async function previewAs(who: string) {
   asPlayer();
   fireEvent.click(screen.getByRole('button', { name: who }));
+  // The list closes a moment after the row's click (TopBarMenu).
+  await waitFor(() => expect(screen.queryByRole('group', { name: 'As player' })).toBeNull());
 }
 
 describe('what a click selects', () => {
@@ -366,10 +368,10 @@ describe('selecting in Player Preview', () => {
 
   const previewAsAlice = () => previewAs('Alice');
 
-  it('selects nothing the preview does not draw, by a click or a right-click', () => {
+  it('selects nothing the preview does not draw, by a click or a right-click', async () => {
     render(<MapCanvas />);
     show(alya(), lurker());
-    previewAsAlice();
+    await previewAsAlice();
 
     click(at(3, 10));
     expect(selected()).toBeNull();
@@ -381,10 +383,10 @@ describe('selecting in Player Preview', () => {
     expect(selected()).toBe('tok-a');
   });
 
-  it('picks up only a token the preview draws, and drags the view on any other square', () => {
+  it('picks up only a token the preview draws, and drags the view on any other square', async () => {
     render(<MapCanvas />);
     show(alya(), lurker());
-    previewAsAlice();
+    await previewAsAlice();
 
     click(at(3, 10));
     expect(sentOf('token.move.start')).toEqual([]);
@@ -393,13 +395,13 @@ describe('selecting in Player Preview', () => {
     expect(sentOf('token.move.start')).toEqual([{ tokenId: 'tok-a', mapId: 'map-a' }]);
   });
 
-  it('says nothing of a selected token the preview does not draw', () => {
+  it('says nothing of a selected token the preview does not draw', async () => {
     render(<MapCanvas />);
     show(alya(), lurker());
     act(() => { useGameStore.getState().selectToken('tok-h'); });
     expect(announced()).toBe('Selected Lurker, square 3, 10');
 
-    previewAsAlice();
+    await previewAsAlice();
 
     expect(announced()).toBe('');
   });
@@ -1278,7 +1280,7 @@ describe('a selection the screen does not draw', () => {
     // The GM's fog: everything hidden.
     fire('fog:updated', { mapId: 'map-a', fogState: { fogCols: 20, fogRows: 20, cellPx: 50, revealed: new Array(400).fill(false) } });
     select('tok-goblin');
-    previewAs('Alice');
+    await previewAs('Alice');
 
     press('ArrowRight');
     await act(async () => { press(']'); });
@@ -1411,15 +1413,13 @@ describe('Follow my selection', () => {
     });
   });
 
-  function follow() {
-    previewAs('Follow my selection');
-  }
+  const follow = () => previewAs('Follow my selection');
   const followRow = () => screen.getByRole('button', { name: 'Follow my selection' });
 
-  it('is offered in the picker, and stays chosen as the tokens change', () => {
+  it('is offered in the picker, and stays chosen as the tokens change', async () => {
     render(<MapCanvas />);
     show(alya(), borin());
-    follow();
+    await follow();
     asPlayer();
     expect(followRow()).toHaveAttribute('aria-pressed', 'true');
     asPlayer();
@@ -1430,10 +1430,10 @@ describe('Follow my selection', () => {
     expect(followRow()).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('looks through each token as the selection steps, passing over what that view does not show', () => {
+  it('looks through each token as the selection steps, passing over what that view does not show', async () => {
     render(<MapCanvas />);
     show(alya(), lurker(), borin());
-    follow();
+    await follow();
     select('tok-a');
     expect(memoryAskedFor().slice(-1)).toEqual(['alice']);
 
@@ -1443,13 +1443,13 @@ describe('Follow my selection', () => {
     expect(memoryAskedFor().slice(-1)).toEqual(['bob']);
   });
 
-  it('keeps the last token it followed when the selection is cleared, never the GM view', () => {
+  it('keeps the last token it followed when the selection is cleared, never the GM view', async () => {
     render(<MapCanvas />);
     show(alya(), lurker(), borin());
     mouse.move(surface(), at(3, 10));
     expect(card('Lurker')).toBeInTheDocument();
     mouse.leave(surface());
-    follow();
+    await follow();
     select('tok-b');
     const asked = sentOf('exploration:request').length;
 
@@ -1464,7 +1464,7 @@ describe('Follow my selection', () => {
     expect(screen.getByRole('button', { name: 'Back to GM view' })).toBeInTheDocument();
   });
 
-  it("steps through a split party on a lit map, from nothing selected, and never to what is hidden", () => {
+  it("steps through a split party on a lit map, from nothing selected, and never to what is hidden", async () => {
     // No light and no darkvision: each token sees its own square only.
     h.set({ currentMap: mapNamed('map-a', { lightingEnabled: true, globalIllumination: false, explorationEnabled: true }) });
     render(<MapCanvas />);
@@ -1474,7 +1474,7 @@ describe('Follow my selection', () => {
       token('tok-ghost', 'Ghost', 9, 15, { type: TokenType.PLAYER, visible: false }),
       token('tok-goblin', 'Goblin', 8, 8),
     );
-    follow();
+    await follow();
 
     press('.');
     expect(selected()).toBe('tok-a');
@@ -1484,10 +1484,10 @@ describe('Follow my selection', () => {
     expect(selected()).toBe('tok-a');
   });
 
-  it('before anything is selected, shows a view with no tokens of its own', () => {
+  it('before anything is selected, shows a view with no tokens of its own', async () => {
     render(<MapCanvas />);
     show(alya(), lurker(), borin());
-    follow();
+    await follow();
 
     mouse.move(surface(), at(3, 10));
     expect(card('Lurker')).not.toBeInTheDocument();

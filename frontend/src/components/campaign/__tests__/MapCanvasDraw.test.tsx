@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, act, within } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor, within } from '@testing-library/react';
 import type { CampaignMap, Token } from '@/types';
 import type { Drawing, DrawingAddAck, DrawingAddEvent, DrawingPreview, DrawingPreviewEvent } from '@/types/drawings';
 import { recordDrawing, nextFrame, pictures, type Call } from '@/test/recordingCanvas';
@@ -238,9 +238,11 @@ afterEach(() => {
 });
 
 /** Player Preview as Mara, from As player in the top bar. */
-function previewAsMara() {
+async function previewAsMara() {
   fireEvent.click(screen.getByRole('button', { name: 'As player' }));
   fireEvent.click(screen.getByRole('button', { name: 'Mara' }));
+  // The list closes a moment after the row's click (TopBarMenu).
+  await waitFor(() => expect(screen.queryByRole('group', { name: 'As player' })).toBeNull());
 }
 
 describe('the drawings on the map', () => {
@@ -303,7 +305,7 @@ describe('the drawings on the map', () => {
 
     // The preview shows drawings over its fog, as a player sees them, and
     // none for the GM alone.
-    previewAsMara();
+    await previewAsMara();
     await nextFrame();
     top = composite(layers()[2]);
 
@@ -1168,11 +1170,11 @@ describe('the eraser', () => {
   });
 
   // Player Preview shows what a player is sent: the eraser finds only that.
-  it('passes over a drawing for the GM alone in Preview Player View', () => {
+  it('passes over a drawing for the GM alone in Preview Player View', async () => {
     h.set({ currentMap: mapWith({ fogEnabled: true }), memberships: [{ userId: 'p1', role: 'PLAYER', user: { displayName: 'Mara' } }] });
     render(<MapCanvas />);
     fire('drawings:state', { mapId: 'map-a', drawings: [drawing({ id: 'secret', audience: 'GM', points: [[100, 100], [300, 100]] })] });
-    previewAsMara();
+    await previewAsMara();
     draw('Eraser');
 
     mouse.down(surface(), px(200, 100));

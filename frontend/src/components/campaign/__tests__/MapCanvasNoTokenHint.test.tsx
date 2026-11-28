@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, act, within } from '@testing-library/react';
+import { render, screen, fireEvent, act, within, waitFor } from '@testing-library/react';
 import { TokenLayer, TokenType, type CampaignMap, type Token } from '@/types';
 
 const h = vi.hoisted(() => {
@@ -311,10 +311,12 @@ describe("the GM's Player Preview", () => {
     expect(screen.getByText(ON_THIS_MAP)).toBeInTheDocument();
   });
 
-  it('is gone once the GM goes back to the GM view', () => {
+  it('is gone once the GM goes back to the GM view', async () => {
     render(<MapCanvas />);
     preview();
     expect(screen.getByText(ON_THIS_MAP)).toBeInTheDocument();
+    // The list closes a moment after a row's press (TopBarMenu).
+    await waitFor(() => expect(screen.queryByRole('group', { name: 'As player' })).toBeNull());
     asPlayer('Back to GM view');
     expect(hint()).toBeNull();
   });

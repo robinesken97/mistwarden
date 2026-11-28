@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, act, within } from '@testing-library/react';
+import { render, screen, fireEvent, act, within, waitFor } from '@testing-library/react';
 import { TokenLayer, TokenType, type CampaignMap, type Token } from '@/types';
 import { contact, mouse } from '@/test/pointer';
 import { useTableChrome } from '@/stores/tableChromeStore';
@@ -256,7 +256,7 @@ describe('with a mouse', () => {
   });
 
   // In a preview the screen is the players'.
-  it("shows nothing in Player Preview for a token the preview does not draw", () => {
+  it("shows nothing in Player Preview for a token the preview does not draw", async () => {
     h.set({ currentMap: mapWith({ fogEnabled: true }) });
     render(<MapCanvas />);
     show(goblin({ visible: false }), token('tok-alya', 'Alya', 10, 10, { type: TokenType.PLAYER, controlledBy: 'alice' }));
@@ -266,6 +266,7 @@ describe('with a mouse', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'As player' }));
     fireEvent.click(screen.getByRole('button', { name: 'Alice' }));
+    await waitFor(() => expect(screen.queryByRole('group', { name: 'As player' })).toBeNull());
 
     expect(carried()).toBeNull();
   });

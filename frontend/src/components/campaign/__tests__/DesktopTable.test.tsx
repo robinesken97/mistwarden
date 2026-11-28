@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, within, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, within, cleanup, waitFor } from '@testing-library/react';
 import DesktopTable from '../DesktopTable';
 import { TableHosts } from '../tableHosts';
 import { AI_WRITE_EVENT } from '../AiWriteDialog';
@@ -73,6 +73,8 @@ const openList = (name: string) => {
   fireEvent.click(screen.getByRole('button', { name }));
   return screen.getByRole('group', { name });
 };
+/** A row press closes its list once the click is over (TopBarMenu). */
+const listClosed = (name: string) => waitFor(() => expect(screen.queryByRole('group', { name })).toBeNull());
 const rowNames = (list: HTMLElement) => within(list).getAllByRole('button').map((b) => b.textContent);
 
 beforeEach(() => {
@@ -147,7 +149,7 @@ describe('the tabs and their panel', () => {
 });
 
 describe('the Library list', () => {
-  it("gives the GM the table's libraries, then Spells and Documents", () => {
+  it("gives the GM the table's libraries, then Spells and Documents", async () => {
     const props = renderTable();
     const list = openList('Library');
     expect(rowNames(list)).toEqual(['Scenes', 'Tokens', 'Creatures', 'Token Templates', 'Spells', 'Documents']);
@@ -157,11 +159,11 @@ describe('the Library list', () => {
 
     fireEvent.click(within(list).getByRole('button', { name: 'Creatures' }));
     expect(props.onOpenTool).toHaveBeenCalledWith('creatures');
-    expect(screen.queryByRole('group', { name: 'Library' })).toBeNull();
+    await listClosed('Library');
     expect(screen.getByRole('button', { name: 'Library' })).toHaveAttribute('aria-expanded', 'false');
   });
 
-  it('gives a player Spells and Documents only, each opening its window', () => {
+  it('gives a player Spells and Documents only, each opening its window', async () => {
     state.role = 'PLAYER';
     const props = renderTable();
     const list = openList('Library');
@@ -170,22 +172,25 @@ describe('the Library list', () => {
 
     fireEvent.click(within(list).getByRole('button', { name: 'Spells' }));
     expect(props.onOpenSpells).toHaveBeenCalledTimes(1);
+    await listClosed('Library');
     fireEvent.click(within(openList('Library')).getByRole('button', { name: 'Documents' }));
     expect(props.onOpenDocuments).toHaveBeenCalledTimes(1);
-    expect(screen.queryByRole('group', { name: 'Library' })).toBeNull();
+    await listClosed('Library');
   });
 });
 
 describe('the ⋯ list', () => {
   const everyone = ['Keyboard shortcuts', 'Tour', 'Display on this device', 'Campaign info'];
 
-  it("gives the GM Atmosphere and Campaign Settings first", () => {
+  it("gives the GM Atmosphere and Campaign Settings first", async () => {
     const props = renderTable();
     expect(rowNames(openList('More'))).toEqual(['Atmosphere', 'Campaign Settings', ...everyone]);
     fireEvent.click(screen.getByRole('button', { name: 'Atmosphere' }));
     expect(props.onOpenTool).toHaveBeenCalledWith('atmosphere');
+    await listClosed('More');
     fireEvent.click(within(openList('More')).getByRole('button', { name: 'Campaign Settings' }));
     expect(props.onOpenTool).toHaveBeenCalledWith('settings');
+    await listClosed('More');
     fireEvent.click(within(openList('More')).getByRole('button', { name: 'Keyboard shortcuts' }));
     expect(props.onOpenShortcuts).toHaveBeenCalledTimes(1);
   });
@@ -204,10 +209,10 @@ describe('the ⋯ list', () => {
     expect(props.onOpenTool).toHaveBeenCalledWith('settings');
   });
 
-  it('opens Campaign info in a window, handing it the end-of-table handler', () => {
+  it('opens Campaign info in a window, handing it the end-of-table handler', async () => {
     const props = renderTable();
     fireEvent.click(within(openList('More')).getByRole('button', { name: 'Campaign info' }));
-    expect(screen.queryByRole('group', { name: 'More' })).toBeNull();
+    await listClosed('More');
     expect(within(screen.getByRole('dialog', { name: 'Campaign info' })).getByText('Campaign info card')).toBeTruthy();
     expect(state.infoProps.every((p) => p.onLeft === props.onLeft)).toBe(true);
   });
