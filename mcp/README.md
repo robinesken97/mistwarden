@@ -77,8 +77,8 @@ connected. The same entry by hand, in a project's `.mcp.json`:
 
 "Game state" is what changes while playing: a token's position, hit points,
 conditions, initiative, facing, whether it is visible, its carried light on
-or off; a door opened, closed or locked; a light on or off; fog; spell
-areas; explored areas reset. "Edit" is everything else: names, sizes,
+or off; a door opened, closed or locked; a light on or off; and, as game
+state of their map, fog, spell areas and resetting what was explored. "Edit" is everything else: names, sizes,
 pictures, stat blocks, wall geometry, map settings, and every delete.
 "Table" is what everyone at the table sees without a map: chat, whispers,
 public rolls, initiative, the time of day, atmosphere, campaign settings and
@@ -87,7 +87,7 @@ the session.
 | | no switch | `COGM=1` | `PLAYER_VISIBLE=1` | `ALLOW_ANY_EDIT=1` |
 |---|---|---|---|---|
 | Read anything, secret rolls | yes | yes | yes | yes |
-| Create maps, tokens, walls, lights, notes, areas | yes, not on the map players see | also tokens and areas on that map | also on that map | – |
+| Create maps, tokens, walls, lights, notes | yes, not on the map players see | also tokens on that map | also on that map | – |
 | Game state of what this server created | yes, not on the map players see | also on that map | also on that map | – |
 | Game state of anything else | no | yes, also on the map players see | no | yes, not on the map players see |
 | Edit or delete what this server created | yes, not on the map players see | same | also on that map | – |
