@@ -96,7 +96,7 @@ const PLAIN_ARMOR_CLASS = /^Armor Class:?\s+\d/i;
 const BOLD_START = /^\*{2,3}([^*]+?)\*{2,3}\s*(.*)$/;
 
 /** LaTeX as a converter writes dice and sums: `$3\text{d}8 + 6$` → `3d8 + 6`. */
-function plainLatex(line: string): string {
+export function plainLatex(line: string): string {
   return line.replace(/\$([^$]+)\$/g, (_m, inner: string) =>
     inner
       .replace(/\\text\{([^}]*)\}/g, '$1')

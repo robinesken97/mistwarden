@@ -769,13 +769,25 @@ To customize an SRD creature without modifying the original:
 
 The Spell Library lists the spells a campaign can use, each with its level, school, casting time, range, components, duration and, where it has one, the area it fills: a circle (a sphere seen from above), a cylinder, a cone, a line or a cube, with a look such as fire or cold. Open it with **Spell Library** (the sparkles icon) in the campaign header, or **More → Spell Library** on a phone or a tablet. Every member of the campaign can read it; players cannot change it.
 
-It holds three kinds of spell, each marked in the list:
+It holds four kinds of spell, each marked in the list:
 
 - **SRD 5.1**: the spells of the System Reference Document 5.1, which an administrator imports with **Import SRD spells**, once, for every campaign on the server. The server fetches them from Open5e and reads each spell's area from its own text (a "20-foot-radius sphere", a "line 100 feet long and 5 feet wide"). A spell whose text names no area clearly, such as one that only makes light, gets none; give a campaign spell of the same name an area if you want one. Running the import again adds no spell twice and brings the stored ones up to date. They cannot be edited.
 - **Server**: spells an administrator adds for every campaign on the server.
+- **Imported**, marked with its source tag: spells an administrator imports from Markdown files for every campaign on the server (see below). Players see everything of one but its description, which they are told is available to the GM; you and an administrator read it in full. They cannot be edited, only imported again, and no campaign export carries them.
 - **Campaign**: spells you add with **New spell**, for this campaign only. Open one in the list to **Edit** or **Delete** it. No other campaign sees them, and a campaign export carries them (the SRD's and the server's stay on the server).
 
-Two spells may share a name. Where they do, the campaign's is the one a character sheet uses, then the server's, then the SRD's, so a campaign's own Fireball replaces the SRD's at your table.
+Two spells may share a name. Where they do, the campaign's is the one a character sheet uses, then the server's, then an imported one, then the SRD's, so a campaign's own Fireball replaces the SRD's at your table. Where the one used has no area but one of the same name further down the list has (an imported spell whose text names none, beside the SRD's), **Place area** and **From spell…** place that one's area, and its look if the spell used has none.
+
+**Importing spells from Markdown.** An administrator can add spells to every campaign's library from Markdown files of 5e-style spells, such as your own homebrew notes. Open the Spell Library in any campaign and expand **Import from Markdown**:
+
+1. Pick one or more `.md` files and give a **Source tag** (lower-case letters, digits and dashes, such as `homebrew`).
+2. Click **Dry run**. Nothing is stored; the report lists every heading with its line: **Imported**, **Updated** (one of that tag and name is stored already), **Skipped** with the reason, or **Refused** with each reason, and warnings for what was not read. It also counts the file's **Casting Time** lines, one for each spell imported, updated or refused.
+3. Click **Import** to store them.
+
+What is read: a heading per spell (any level), its level and school in italics (`*3rd-level evocation*`, `*Evocation cantrip*`, with `(ritual)` after the school for a ritual), then the fields with bold labels, `**Casting Time:**`, `**Range:**`, `**Components:**` and `**Duration:**`, one per line or as list items (`- **Range:** 60 feet`). A duration starting with "Concentration" marks the spell as one. Everything after the fields is the description, an "At Higher Levels." paragraph included, up to the next heading or a page marker `<!-- p. 12 -->`; `---` rules are left out and dice written as LaTeX are read as plain text. A name written in capitals is stored in title case. The area and the look are read from the spell's own words as for the SRD spells. A heading with no Casting Time, such as a chapter title, a spell list or a summary, is skipped and listed. Text longer than the library keeps refuses the spell rather than cutting it.
+
+- Importing a file again updates its spells in place. A spell of the same name as an SRD one is kept beside it, and a character sheet uses the imported one
+- **Delete tag** removes every spell imported with the tag typed in the box
 
 **Placing a spell's area.** In the **AoE Shape** panel, **From spell…** searches the library by name and level. Choosing a spell sets the shape and size, the look and the label, and turns on **Place for everyone** where you may place areas; a spell with no area is shown greyed. On a 5E character sheet, a spell whose name the library knows, in any case, has a **Place area** button beside it while the campaign shows a map: it closes the sheet and opens the AoE tool with that spell. A placed area keeps its own copy of the shape, size, look and label, so changing or deleting the spell later changes nothing on the map. Players place areas for everyone only while **Players may draw** is on.
 

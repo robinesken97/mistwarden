@@ -889,7 +889,7 @@ model CreatureTemplate {
 model SpellTemplate {
   id            String      @id @default(uuid())
   name          String
-  /// "srd" for the seeded spells, "custom" for every other
+  /// "srd" for the seeded spells, "custom:<tag>" for one imported from Markdown, "custom" for every other
   source        String      @default("custom")
   gameSystem    GameSystem?
   /// Null for an SRD or instance spell, set for a campaign's own

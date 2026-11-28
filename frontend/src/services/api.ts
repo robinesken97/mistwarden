@@ -5,7 +5,7 @@ import { loadPage } from '@/services/pageLoad';
 import { rememberSignInNotice } from '@/services/signInNotice';
 import { signInPath } from '@/utils/returnTo';
 import type { WallSegment, WallsAdded } from '@/types/walls';
-import type { SpellInput, SpellSeedStatus, SpellSummary, SpellTemplate } from '@/types/spells';
+import type { SpellImportReport, SpellInput, SpellSeedStatus, SpellSummary, SpellTemplate } from '@/types/spells';
 import type {
   User,
   AdminListedUser,
@@ -1407,6 +1407,17 @@ class ApiClient {
 
   async deleteInstanceSpell(spellId: string): Promise<void> {
     await this.client.delete(`/api/spells/${spellId}`);
+  }
+
+  /** Read a Markdown file's spells and, unless a dry run, store them under the tag. Administrators only. */
+  async importSpellMarkdown(body: { markdown: string; sourceTag: string; dryRun?: boolean }): Promise<SpellImportReport> {
+    const response = await this.client.post('/api/spells/import-markdown', body);
+    return response.data;
+  }
+
+  async deleteImportedSpells(sourceTag: string): Promise<{ sourceTag: string; deleted: number }> {
+    const response = await this.client.delete(`/api/spells/imported/${encodeURIComponent(sourceTag)}`);
+    return response.data;
   }
 
   async getSpellSeedStatus(): Promise<SpellSeedStatus> {

@@ -88,7 +88,7 @@ export interface SpellSeedResult {
 }
 
 /** Held while the SRD spells are read and written, by every seed in every process. */
-const SPELL_SEED_LOCK_KEY = 703_118_2027;
+export const SPELL_SEED_LOCK_KEY = 703_118_2027;
 const SEED_WRITE_TIMEOUT_MS = 120_000;
 
 /**

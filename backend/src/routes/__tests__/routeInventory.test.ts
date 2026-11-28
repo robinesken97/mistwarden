@@ -110,6 +110,8 @@ const TESTED: Record<string, string> = {
   'POST /api/creatures/match-token-pictures': 'routes/__tests__/creatureImport.e2e.test.ts',
   'GET /api/spells/seed/status': 'routes/__tests__/spells.e2e.test.ts',
   'POST /api/spells/seed': 'routes/__tests__/spells.e2e.test.ts',
+  'POST /api/spells/import-markdown': 'routes/__tests__/spellImport.e2e.test.ts',
+  'DELETE /api/spells/imported/:sourceTag': 'routes/__tests__/spellImport.e2e.test.ts',
   'POST /api/spells': 'routes/__tests__/spells.e2e.test.ts',
   'PUT /api/spells/:spellId': 'routes/__tests__/spells.e2e.test.ts',
   'DELETE /api/spells/:spellId': 'routes/__tests__/spells.e2e.test.ts',

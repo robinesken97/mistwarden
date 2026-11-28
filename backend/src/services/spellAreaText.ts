@@ -39,8 +39,12 @@ const RULES: Rule[] = [
   { pattern: /\bline (?:of [a-z ]+ )?(\d+) feet long and (\d+) feet wide/gi, area: (m) => ({ shape: 'line', sizeFt: n(m[1]), widthFt: n(m[2]) }) },
   // "a 5-foot-wide, 60-foot-long line" (Sunbeam)
   { pattern: /\b(\d+)-foot-wide, (\d+)-foot-long line/gi, area: (m) => ({ shape: 'line', sizeFt: n(m[2]), widthFt: n(m[1]) }) },
+  // "a 60-foot-long, 10-foot-wide line": length first, as other books write it
+  { pattern: /\b(\d+)-foot-long, (\d+)-foot-wide line/gi, area: (m) => ({ shape: 'line', sizeFt: n(m[1]), widthFt: n(m[2]) }) },
   // "a 10-foot-radius, 40-foot-high cylinder": the radius, never the height
   { pattern: /\b(\d+)-foot[- ]radius,? (\d+)-foot[- ](?:high|tall) cylinder/gi, area: (m) => ({ shape: 'cylinder', sizeFt: n(m[1]) }) },
+  // "a cylinder (40-foot radius, 20 feet tall)": a cylinder, not the sphere its radius alone would read as
+  { pattern: /\bcylinder \((\d+)-foot[- ]radius/gi, area: (m) => ({ shape: 'cylinder', sizeFt: n(m[1]) }) },
   // "a 20-foot-tall cylinder with a 40-foot radius" (Sleet Storm)
   { pattern: /\b(\d+)-foot[- ](?:high|tall) cylinder with a (\d+)-foot radius/gi, area: (m) => ({ shape: 'cylinder', sizeFt: n(m[2]) }) },
   { pattern: /\b(\d+)-foot cone\b/gi, area: (m) => ({ shape: 'cone', sizeFt: n(m[1]) }) },

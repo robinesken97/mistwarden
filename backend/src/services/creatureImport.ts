@@ -29,7 +29,7 @@ export const importSource = (tag: string): string => `${IMPORT_SOURCE_PREFIX}${t
 /** The most a file may hold, in characters: under the request body's 1 MB (bodyParsers.ts). */
 export const MAX_IMPORT_MARKDOWN_LENGTH = 900_000;
 
-const SourceTagSchema = z
+export const SourceTagSchema = z
   .string()
   .trim()
   .toLowerCase()

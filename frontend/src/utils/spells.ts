@@ -8,36 +8,68 @@ import type { AoEConfig } from '@/components/campaign/map/layers';
 import type { AreaElement } from '@/constants/areaLimits';
 import type { SpellArea, SpellSummary } from '@/types/spells';
 
-/** Whose spell it is, from the most particular: a campaign's own, the server's own, the SRD's. */
-export type SpellScopeName = 'campaign' | 'instance' | 'srd';
+/**
+ * Whose spell it is, from the most particular: a campaign's own, the
+ * server's own, the server's imported from Markdown (source custom:<tag>),
+ * the SRD's.
+ */
+export type SpellScopeName = 'campaign' | 'instance' | 'imported' | 'srd';
+
+export const IMPORTED_SPELL_PREFIX = 'custom:';
 
 export function spellScope(spell: Pick<SpellSummary, 'source' | 'campaignId'>): SpellScopeName {
   if (spell.campaignId) return 'campaign';
-  return spell.source === 'srd' ? 'srd' : 'instance';
+  if (spell.source === 'srd') return 'srd';
+  return spell.source.startsWith(IMPORTED_SPELL_PREFIX) ? 'imported' : 'instance';
 }
 
 export const SPELL_SCOPE_LABELS: Record<SpellScopeName, string> = {
   campaign: 'Campaign',
   instance: 'Server',
+  imported: 'Imported',
   srd: 'SRD 5.1',
 };
 
-const PRECEDENCE: Record<SpellScopeName, number> = { campaign: 0, instance: 1, srd: 2 };
+const PRECEDENCE: Record<SpellScopeName, number> = { campaign: 0, instance: 1, imported: 2, srd: 3 };
+
+type Resolvable = Pick<SpellSummary, 'name' | 'source' | 'campaignId'> & Partial<Pick<SpellSummary, 'area' | 'element'>>;
+
+const nameKey = (name: string) => String(name ?? '').trim().toLowerCase();
+const rank = (spell: Resolvable) => PRECEDENCE[spellScope(spell)];
 
 /**
  * The spell a name means, matched in any case and ignoring spaces at
  * either end: where several share it, the campaign's own, then the
- * server's, then the SRD's. Null when none has it.
+ * server's, then the server's imported, then the SRD's; among equals the
+ * first listed (the server lists by name, source, id). Null when none has it.
+ * With no area of its own it takes one from below (withFallbackArea).
  */
-export function resolveSpellByName<T extends Pick<SpellSummary, 'name' | 'source' | 'campaignId'>>(spells: readonly T[], name: string): T | null {
-  const wanted = String(name ?? '').trim().toLowerCase();
+export function resolveSpellByName<T extends Resolvable>(spells: readonly T[], name: string): T | null {
+  const wanted = nameKey(name);
   if (!wanted) return null;
   let best: T | null = null;
   for (const spell of spells) {
-    if (spell.name.trim().toLowerCase() !== wanted) continue;
-    if (!best || PRECEDENCE[spellScope(spell)] < PRECEDENCE[spellScope(best)]) best = spell;
+    if (nameKey(spell.name) !== wanted) continue;
+    if (!best || rank(spell) < rank(best)) best = spell;
   }
-  return best;
+  return best && withFallbackArea(best, spells);
+}
+
+/**
+ * The spell as it is placed: one with no area takes the area of the most
+ * particular spell of its name below it that has one (an imported summary
+ * that names none, over the SRD's that does), and that one's look where it
+ * has none of its own. The stored spells stay as they are.
+ */
+export function withFallbackArea<T extends Resolvable>(spell: T, spells: readonly T[]): T {
+  if (spell.area) return spell;
+  let donor: T | null = null;
+  for (const other of spells) {
+    if (!other.area || nameKey(other.name) !== nameKey(spell.name) || rank(other) <= rank(spell)) continue;
+    if (!donor || rank(other) < rank(donor)) donor = other;
+  }
+  if (!donor) return spell;
+  return { ...spell, area: donor.area, element: spell.element && spell.element !== 'none' ? spell.element : donor.element };
 }
 
 /** "20 ft. sphere", "100 × 5 ft. line": an area in words. */

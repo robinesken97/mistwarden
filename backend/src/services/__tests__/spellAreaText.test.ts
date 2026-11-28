@@ -53,6 +53,8 @@ describe('spellAreaFromText', () => {
 
   it('reads a range written with its area, and leaves out what the map cannot draw', () => {
     expect(spellAreaFromText('Self (15-foot cone)', '')).toEqual({ shape: 'cone', sizeFt: 15 });
+    expect(spellAreaFromText('90 feet', 'Hail fills a cylinder (15-foot radius, 30 feet tall).')).toEqual({ shape: 'cylinder', sizeFt: 15 });
+    expect(spellAreaFromText('Self (40-foot line)', 'A 40-foot-long, 10-foot-wide line of sleet.')).toEqual({ shape: 'line', sizeFt: 40, widthFt: 10 });
     expect(spellAreaFromText('Self', 'a 1000-foot-radius sphere')).toBeNull();
     expect(spellAreaFromText(null, null)).toBeNull();
   });

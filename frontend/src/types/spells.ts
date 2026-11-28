@@ -18,7 +18,7 @@ export interface SpellArea {
 export interface SpellSummary {
   id: string;
   name: string;
-  /** "srd" for the seeded SRD 5.1 spells, "custom" for every other. */
+  /** "srd" for the seeded SRD 5.1 spells, "custom:<tag>" for one imported from Markdown, "custom" for every other. */
   source: string;
   gameSystem: GameSystem | null;
   /** Null for an SRD or instance spell, the campaign's id for its own. */
@@ -37,7 +37,8 @@ export interface SpellSummary {
 
 /** One spell in full. */
 export interface SpellTemplate extends SpellSummary {
-  description: string;
+  /** Null for an imported spell read by anyone but the GM or an administrator. */
+  description: string | null;
   createdById: string | null;
   createdAt: string;
   updatedAt: string;
@@ -57,6 +58,20 @@ export interface SpellInput {
   description?: string;
   area?: SpellArea | null;
   element?: AreaElement;
+}
+
+/** What a Markdown spell import reports, per heading (backend services/spellImport.ts). */
+export interface SpellImportReport {
+  sourceTag: string;
+  dryRun: boolean;
+  /** The bold Casting Time lines read: each is in one row that was imported, updated, refused or not read. */
+  castingTimeLines: number;
+  counts: { imported: number; updated: number; skipped: number; errors: number };
+  rows: Array<
+    | { line: number; name: string; status: 'imported' | 'updated'; warnings: string[] }
+    | { line: number; name: string; status: 'skipped'; reason: string }
+    | { line: number; name: string; status: 'error'; errors: string[]; warnings: string[] }
+  >;
 }
 
 export interface SpellSeedStatus {
