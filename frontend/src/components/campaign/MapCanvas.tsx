@@ -101,6 +101,12 @@ import { useExploredMemory } from './map/useExploredMemory';
 import { useFogStateRequest } from './map/useFogStateRequest';
 import { useWallLightRequest } from './map/useWallLightRequest';
 import { useMapDrawings } from './map/useMapDrawings';
+import { useMapAreas } from './map/useMapAreas';
+import { AREA_ELEMENT_STYLES, areasAnimate, areaStyle, drawAreas } from './map/layers/drawAreas';
+import { aimAngle, areaBounds, areaPath, pointInArea, tokensInArea, type AreaFrame } from './map/aoeGeometry';
+import { animateAreas, ANIMATE_AREAS_EVENT } from './map/areaAnimation';
+import { AREA_ELEMENTS, AREA_LIMITS, type AreaElement } from '@/constants/areaLimits';
+import type { AoEAnchor } from './map/layers';
 import { labelFontSize } from './map/drawingGeometry';
 import { DRAWING_LIMITS } from '@/constants/drawingLimits';
 import { releaseHeldToken, carriedSquare, carriedDistance, heldDrawnAt, carryOffset, type Carrier } from './map/tokenHold';
@@ -491,15 +497,32 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
     window.addEventListener(LIGHTS_FOLLOW_EVENT, read);
     return () => window.removeEventListener(LIGHTS_FOLLOW_EVENT, read);
   }, []);
+  // This device's choice: placed spell areas move (map/areaAnimation.ts).
+  const [areasMoveHere, setAreasMoveHere] = useState(animateAreas);
+  useEffect(() => {
+    const read = () => setAreasMoveHere(animateAreas());
+    window.addEventListener(ANIMATE_AREAS_EVENT, read);
+    return () => window.removeEventListener(ANIMATE_AREAS_EVENT, read);
+  }, []);
+  // The AoE panel's choices for an area placed for everyone.
+  const [areaElement, setAreaElement] = useState<AreaElement>('fire');
+  const [areaLabel, setAreaLabel] = useState('');
+  const [areaGmOnly, setAreaGmOnly] = useState(false);
+  const placeAreaRef = useRef<(anchor: AoEAnchor, aim: { x: number; y: number } | null) => void>(() => {});
+  // The placed area tapped, whose popover lists what it covers.
+  const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
+  const [areaClearArmed, setAreaClearArmed] = useState(false);
 
   // The ruler and the AoE template (map/tools/useMeasureTools.ts).
   const {
     tool: measuring, track: trackMeasure,
     showRuler, showAoE, handleToggleRuler, handleToggleAoE, putRulerAway,
     rulerOrigin, rulerEnd, rulerStartByTouch, rulerColor, setRulerColor,
-    aoeConfig, setAoEConfig, aoeAnchor, setAoEAnchor, aoeAltHeldRef, aoeAimRef, aoeSnap, setAoESnap,
+    aoeConfig, setAoEConfig, aoeAnchor, setAoEAnchor, aoeAltHeldRef, aoeAimRef, aoeSnap, setAoESnap, aoePersist, setAoEPersist,
   } = useMeasureTools({
     isGM, markDirty,
+    // Place for everyone: set below, once the areas are.
+    onPlace: (anchor, aim) => placeAreaRef.current(anchor, aim),
     // Asked at a press, by when all three are known.
     measuresFromToken: () => myToken !== null,
     picksUpAt: (point) => getMovableTokenAtPosition(point.x, point.y) !== null,
@@ -728,11 +751,6 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   // Mistwarden: a player's mist drifts, about ten frames a second, while there is fog to show.
   // A player's fog, or a GM's preview of it: the timer and the drift go together.
   const mistOnScreen = mistDrifts && (!isGM || previewing) && (currentMap?.fogEnabled ?? false);
-  useEffect(() => {
-    if (!mistOnScreen) return;
-    const timer = window.setInterval(() => markDirty('overlay'), 100);
-    return () => window.clearInterval(timer);
-  }, [mistOnScreen, markDirty]);
 
   // The fog grid with where its cells start: the grid's offset (map/coords.ts fogOrigin).
   const fogGrid = useMemo(
@@ -751,6 +769,36 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
     onRefused: (message) => showToast(message, 'error'),
   });
   const [drawingCache] = useState(createDrawingCache);
+
+  // The spell areas on the map (map/useMapAreas.ts), drawn in the same frame
+  // as everyone's: by its feet per square, its grid and its game system's cone.
+  const mapAreas = useMapAreas({
+    socket, mapId: currentMap?.id, joinedEpoch, role: userRole, userId: user?.id, markDirty,
+    onRefused: (message) => showToast(message, 'error'),
+  });
+  const coneRule = campaign?.gameSystem === GameSystem.FANTASY_D20 ? 'quarter-circle' as const : 'width-equals-distance' as const;
+  const areaFrame = useMemo<AreaFrame | null>(
+    () => (currentMap ? { ...gridFrame(currentMap), feetPerSquare: currentMap.feetPerSquare ?? 5, coneRule } : null),
+    [currentMap, coneRule]
+  );
+  const selectedArea = mapAreas.areas.find((a) => a.id === selectedAreaId && (isGM && !previewing ? true : a.audience === 'ALL')) ?? null;
+  // An animated area on the screen moves on the mist's timer, unless this
+  // device holds them still or asks for reduced motion.
+  const areasMoving = useMemo(() => {
+    if (!areasMoveHere || prefersReducedMotion || !areaFrame || canvasSize.width === 0) return false;
+    const { zoom, panOffset } = { zoom: mapControls.zoom, panOffset: mapControls.panOffset };
+    const visible = {
+      minX: -panOffset.x / zoom, minY: -panOffset.y / zoom,
+      maxX: (canvasSize.width - panOffset.x) / zoom, maxY: (canvasSize.height - panOffset.y) / zoom,
+    };
+    return areasAnimate(mapAreas.areas, areaFrame, isGM && !previewing, visible);
+  }, [areasMoveHere, prefersReducedMotion, areaFrame, mapAreas.areas, isGM, previewing, mapControls.zoom, mapControls.panOffset, canvasSize.width, canvasSize.height]);
+  // The mist and moving areas repaint the overlay together, about ten frames a second.
+  useEffect(() => {
+    if (!mistOnScreen && !areasMoving) return;
+    const timer = window.setInterval(() => markDirty('overlay'), 100);
+    return () => window.clearInterval(timer);
+  }, [mistOnScreen, areasMoving, markDirty]);
 
   // Whether this member may draw now (utils/drawingRules.ts, the server's
   // rule), on a map whose picture shows: nothing is drawn on one without it.
@@ -2314,7 +2362,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
             aimMapPx: aoeAimRef.current,
             hoverExact: aoeAltHeldRef.current || !aoeSnap,
             feetPerSquare: currentMap.feetPerSquare ?? 5,
-            coneRule: campaign?.gameSystem === GameSystem.FANTASY_D20 ? 'quarter-circle' : 'width-equals-distance',
+            coneRule,
           }, viewport);
         }
 
@@ -2391,6 +2439,14 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
         : null;
       // Paint's strokes on their way, until the lift paints them into the picture.
       for (const preview of paintStrokes()) drawPaintPreview(ctx, preview);
+      // The spell areas, with the drawings: over the fog and the darkness.
+      if (areaFrame && mapAreas.areas.length > 0) {
+        drawAreas(ctx, {
+          areas: mapAreas.areas, frame: areaFrame, showGmOnly: renderIsGM, visible,
+          now: areasMoving ? performance.now() : null,
+          selectedId: selectedAreaId, highlighted: areaHighlightRef.current,
+        }, viewport);
+      }
       drawMarkupLayer(ctx, { drawings: mapDrawings.drawings, showGmOnly: renderIsGM, visible, cache: drawingCache }, viewport);
       const previewNow = Date.now();
       const ownStroke = drawTool.inProgress();
@@ -2409,7 +2465,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
         drawPings(ctx, { pings, now: Date.now(), reducedMotion: prefersReducedMotion }, viewport);
       }
     });
-  }, [mist, mistOnScreen, currentMap, mapShown, mapControls.zoom, mapControls.panOffset, dpr, campaign?.gameSystem, tokens, lightSources, selectedLightId, lightMode, wallSegments, wallColor, hoveredWallId, selectedWallIds, hoveredDoorId, wallMode, selectedEndpoint, wallInProgress, wallType, brushSize, splitHoverPoint, polygonPoints, showRuler, rulerColor, effectiveRulerOrigin, rulerEnd, rulerStartByTouch, showAoE, aoeConfig, aoeAnchor, aoeSnap, hoverCoords, fogMode, isGM, fogGrid, viewerRevealed, viewerOwn, previewing, ruleFor, ownTokenCells, explorationEnabled, exploringAs, exploredCells, exploredRaster, heldLights, socket, fogDragCurrent, fogShape, fogBrushSquares, fogLasso, wallMarquee, pings, prefersReducedMotion, POLYGON_CLOSE_RADIUS, WALL_ERASE_RADIUS, addExplored, aoeAimRef, aoeAltHeldRef, findWallAtPoint, fogDragAnchorRef, revealOpacityRef, snapPoint, wallBrushPointsRef, wallDragEndpointRef, wallErasedIdsRef, mapDrawings.previews, mapDrawings.drawings, drawingCache, canvasSize.width, canvasSize.height, drawTool, paintStrokes]);
+  }, [mist, mistOnScreen, currentMap, mapShown, mapControls.zoom, mapControls.panOffset, dpr, tokens, lightSources, selectedLightId, lightMode, wallSegments, wallColor, hoveredWallId, selectedWallIds, hoveredDoorId, wallMode, selectedEndpoint, wallInProgress, wallType, brushSize, splitHoverPoint, polygonPoints, showRuler, rulerColor, effectiveRulerOrigin, rulerEnd, rulerStartByTouch, showAoE, aoeConfig, aoeAnchor, aoeSnap, hoverCoords, fogMode, isGM, fogGrid, viewerRevealed, viewerOwn, previewing, ruleFor, ownTokenCells, explorationEnabled, exploringAs, exploredCells, exploredRaster, heldLights, socket, fogDragCurrent, fogShape, fogBrushSquares, fogLasso, wallMarquee, pings, prefersReducedMotion, POLYGON_CLOSE_RADIUS, WALL_ERASE_RADIUS, addExplored, aoeAimRef, aoeAltHeldRef, findWallAtPoint, fogDragAnchorRef, revealOpacityRef, snapPoint, wallBrushPointsRef, wallDragEndpointRef, wallErasedIdsRef, mapDrawings.previews, mapDrawings.drawings, drawingCache, canvasSize.width, canvasSize.height, drawTool, paintStrokes, coneRule, areaFrame, mapAreas.areas, areasMoving, selectedAreaId]);
 
   // ── Layer draw dispatch + dirty-flag scheduling ──────────
   // A single rAF coalesces every repaint request; only the dirty layers
@@ -2526,6 +2582,53 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
     }));
   }, [currentMap, previewing, tokens, tokenView, mapControls.zoom, mapControls.panOffset, ruleFor, viewerOwn, previewControls, previewedPlane, viewerRevealed, gmShowSpiritTokens]);
   const drawnIds = useMemo(() => new Set(drawnTokens.map((t) => t.id)), [drawnTokens]);
+
+  // What the tapped area covers: only tokens this screen draws, never one
+  // the server sent that manual fog keeps off it (drawnTokens), so the list
+  // gives away nothing the map does not show.
+  const areaCovers = useMemo(
+    () => (selectedArea && areaFrame && currentMap
+      ? tokensInArea(drawnTokens, areaPath(selectedArea, areaFrame).outline, gridFrame(currentMap))
+      : []),
+    [selectedArea, areaFrame, currentMap, drawnTokens]
+  );
+  const areaHighlightRef = useRef<Array<{ x: number; y: number; r: number }>>([]);
+  areaHighlightRef.current = currentMap
+    ? areaCovers.map((t) => ({
+      ...tokenCentre(t, gridFrame(currentMap)),
+      r: (Math.max(t.size?.width ?? 1, t.size?.height ?? 1) * currentMap.gridSize) / 2 + 3,
+    }))
+    : [];
+  useEffect(() => markDirty('overlay'), [areaCovers, markDirty]);
+
+  /** The topmost placed area this viewer is shown under a map point, if any. */
+  const areaAt = (point: { x: number; y: number }) => {
+    if (!areaFrame) return null;
+    const shown = mapAreas.areas.filter((a) => (isGM && !previewing) || a.audience === 'ALL');
+    for (let i = shown.length - 1; i >= 0; i--) if (pointInArea(areaPath(shown[i], areaFrame).outline, point)) return shown[i];
+    return null;
+  };
+
+  // Place for everyone: the template as the preview shows it, stored with the panel's element and label.
+  placeAreaRef.current = (anchor, aim) => {
+    if (!currentMap) return;
+    const frame = gridFrame(currentMap);
+    const exact = anchor.exact || isHexGrid(frame);
+    const shape = aoeConfig.shape;
+    const aimed = shape === 'cone' || shape === 'line';
+    mapAreas.place({
+      shape,
+      anchorX: anchor.point.x,
+      anchorY: anchor.point.y,
+      angle: aimed && aim ? aimAngle(anchor.point, exact, aim, frame) : 0,
+      sizeFt: Math.min(AREA_LIMITS.maxSizeFt, aoeConfig.sizeFt),
+      widthFt: shape === 'line' ? Math.min(AREA_LIMITS.maxWidthFt, aoeConfig.widthFt ?? 5) : null,
+      exact,
+      element: areaElement,
+      label: areaLabel.trim() || null,
+      audience: isGM && areaGmOnly ? 'GM' : 'ALL',
+    });
+  };
 
   /**
    * Check if a grid coordinate is within a token's bounds
@@ -2838,7 +2941,11 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
       }
       const press = groundPressRef.current;
       groundPressRef.current = null;
-      if (press?.clears && !press.panned) useGameStore.getState().selectToken(null);
+      if (press?.clears && !press.panned) {
+        useGameStore.getState().selectToken(null);
+        // A tap on empty ground picks the placed area there, or puts the picked one down.
+        setSelectedAreaId(at ? areaAt(at.mapPx)?.id ?? null : null);
+      }
     },
     // The browser, a second finger or the window losing focus took the
     // pointer: a pan stops, and a token a finger was carrying goes back where
@@ -5171,7 +5278,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
 
           {/* Shape selector */}
           <div className="flex flex-wrap gap-1.5">
-            {(['sphere', 'cone', 'line', 'cube'] as AoEShape[]).map((shape) => (
+            {(['sphere', 'cylinder', 'cone', 'line', 'cube'] as AoEShape[]).map((shape) => (
               <button
                 key={shape}
                 onClick={() => setAoEConfig((prev) => ({ ...prev, shape }))}
@@ -5189,7 +5296,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
           {/* Size input */}
           <div className="space-y-1">
             <label className="text-xs font-medium text-stone-gray">
-              {aoeConfig.shape === 'sphere' ? 'Radius' : 'Length'} (ft)
+              {aoeConfig.shape === 'sphere' || aoeConfig.shape === 'cylinder' ? 'Radius' : aoeConfig.shape === 'cube' ? 'Side' : 'Length'} (ft)
             </label>
             <input
               type="number"
@@ -5245,6 +5352,74 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
             <span className="text-xs font-medium text-stone-gray">Snap to grid</span>
           </label>
 
+          {/* Place for everyone: a stored area the whole table sees, in an element's look. */}
+          {mayDraw && (
+            <div className="space-y-2 border-t border-moss-green/20 pt-2">
+              <label className="flex items-center gap-2 cursor-pointer touch-target">
+                <input
+                  type="checkbox"
+                  checked={aoePersist}
+                  onChange={(e) => { setAoEPersist(e.target.checked); setAoEAnchor(null); }}
+                  className="accent-moss-green"
+                />
+                <span className="text-xs font-medium text-stone-gray">Place for everyone</span>
+              </label>
+              {aoePersist && (
+                <>
+                  <div role="group" aria-label="Element" className="flex flex-wrap gap-1">
+                    {AREA_ELEMENTS.map((element) => (
+                      <button
+                        key={element}
+                        type="button"
+                        aria-pressed={areaElement === element}
+                        onClick={() => setAreaElement(element)}
+                        className={`touch-target inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border transition-colors ${
+                          areaElement === element
+                            ? 'bg-moss-green/15 border-moss-green/60 text-brand-ink font-medium'
+                            : 'border-stone-gray/30 text-stone-gray hover:border-moss-green/40 hover:text-brand-ink'
+                        }`}
+                      >
+                        <span aria-hidden="true" className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: AREA_ELEMENT_STYLES[element].stroke }} />
+                        {AREA_ELEMENT_STYLES[element].name}
+                      </button>
+                    ))}
+                  </div>
+                  <input
+                    type="text"
+                    value={areaLabel}
+                    maxLength={AREA_LIMITS.maxLabelLength}
+                    onChange={(e) => setAreaLabel(e.target.value)}
+                    placeholder="Label (optional)"
+                    aria-label="Area label"
+                    className="w-full input-cozy text-sm py-1"
+                  />
+                  {isGM && (
+                    <label className="flex items-center gap-2 cursor-pointer touch-target">
+                      <input type="checkbox" checked={areaGmOnly} onChange={(e) => setAreaGmOnly(e.target.checked)} className="accent-moss-green" />
+                      <span className="text-xs font-medium text-stone-gray">GM only</span>
+                    </label>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+          {/* Clear the placed areas: the GM's every one, a player's own. */}
+          {(isGM ? mapAreas.areas.length > 0 : mapAreas.areas.some((a) => a.authorId === user?.id && mapAreas.mayErase(a))) && (
+            <button
+              type="button"
+              onClick={() => {
+                if (!areaClearArmed) { setAreaClearArmed(true); return; }
+                setAreaClearArmed(false);
+                setSelectedAreaId(null);
+                mapAreas.clear();
+              }}
+              onBlur={() => setAreaClearArmed(false)}
+              className="touch-target text-xs text-stone-gray hover:text-danger-ink transition-colors"
+            >
+              {areaClearArmed ? 'Tap again to clear' : isGM ? 'Clear all areas' : 'Clear my areas'}
+            </button>
+          )}
+
           {/* Clear the anchor */}
           {aoeAnchor && (
             <button
@@ -5256,7 +5431,11 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
           )}
 
           <p className="text-xs text-stone-gray/70">
-            {aoeAnchor ? 'Click map to reposition' : 'Click map to place shape'}
+            {aoePersist
+              ? (aoeConfig.shape === 'cone' || aoeConfig.shape === 'line')
+                ? (aoeAnchor ? 'Click where it points to place it for everyone' : 'Click its square, then where it points')
+                : 'Click the map to place it for everyone'
+              : aoeAnchor ? 'Click map to reposition' : 'Click map to place shape'}
           </p>
           {/* Cone and line pivot about the square you click, so most of the
               time you want them on your token. Alt, or Snap to grid off, is
@@ -5273,6 +5452,60 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
           )}
         </div>
       )}
+
+      {/* The tapped area: what it covers, as this screen draws it, and Delete for who may. */}
+      {selectedArea && areaFrame && (() => {
+        const { origin } = areaPath(selectedArea, areaFrame);
+        const box = areaBounds(areaPath(selectedArea, areaFrame).outline);
+        const sx = Math.max(origin.x, box.minX) * mapControls.zoom + mapControls.panOffset.x;
+        const sy = box.maxY * mapControls.zoom + mapControls.panOffset.y;
+        const style = areaStyle(selectedArea.element);
+        const left = Math.min(Math.max(8, sx), Math.max(8, canvasSize.width - 232));
+        const top = Math.min(Math.max(8, sy + 8), Math.max(8, canvasSize.height - 220));
+        return (
+          <div
+            role="dialog"
+            aria-label="Spell area"
+            className="absolute z-20 w-56 p-3 space-y-2 shadow-xl rounded-xl border border-moss-green/30 bg-parchment/95 backdrop-blur-xs"
+            style={{ left, top }}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-brand-ink truncate">{selectedArea.label ?? `${style.name} ${selectedArea.shape === 'sphere' ? 'circle' : selectedArea.shape}`}</p>
+                <p className="text-xs text-stone-gray">
+                  {selectedArea.shape === 'line' ? `${selectedArea.sizeFt} ft × ${selectedArea.widthFt ?? 5} ft` : `${selectedArea.sizeFt} ft`} · {style.name}
+                  {selectedArea.audience === 'GM' ? ' · GM only' : ''}
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Close"
+                onClick={() => setSelectedAreaId(null)}
+                className="touch-target inline-flex items-center justify-center text-stone-gray hover:text-brand-ink"
+              >
+                ×
+              </button>
+            </div>
+            <p className="text-xs font-medium text-stone-gray">Covers</p>
+            {areaCovers.length > 0 ? (
+              <ul className="text-xs text-brand-ink space-y-0.5 max-h-32 overflow-y-auto">
+                {areaCovers.map((t) => <li key={t.id}>{tokenDisplayName(t)}</li>)}
+              </ul>
+            ) : (
+              <p className="text-xs text-stone-gray/70">No tokens you can see</p>
+            )}
+            {mapAreas.mayErase(selectedArea) && (
+              <button
+                type="button"
+                onClick={() => { mapAreas.erase(selectedArea); setSelectedAreaId(null); }}
+                className="touch-target text-xs text-danger-ink hover:underline"
+              >
+                Delete area
+              </button>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Hover Coordinates, unless the selection's details sit there, and
           how far a held token has come */}

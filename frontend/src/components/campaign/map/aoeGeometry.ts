@@ -27,6 +27,8 @@
  * bottom-left flip is involved.
  */
 
+import { isHexGrid, squareOrigin, tokenCentre, type CentredToken, type GridFrame } from '@/utils/tokenCentre';
+
 export interface Pt {
   x: number;
   y: number;
@@ -147,4 +149,177 @@ export function coneOutline(origin: Pt, angleRad: number, length: number, rule: 
   const px = -Math.sin(angleRad) * (length / 2);
   const py = Math.cos(angleRad) * (length / 2);
   return { kind: 'triangle', points: [origin, { x: fx - px, y: fy - py }, { x: fx + px, y: fy + py }] };
+}
+
+// ── One path for every area: the preview, a placed area, and what it covers ──
+
+/** What places an area: the fields a placed area stores (types/areas.ts), radians for the angle. */
+export interface AreaSpec {
+  shape: string;
+  anchorX: number;
+  anchorY: number;
+  angle: number;
+  sizeFt: number;
+  widthFt: number | null;
+  exact: boolean;
+}
+
+/** The map's grid, its feet per square and its game system's cone. */
+export interface AreaFrame extends GridFrame {
+  feetPerSquare: number;
+  coneRule: ConeRule;
+}
+
+export type AreaOutline =
+  | { kind: 'circle'; centre: Pt; radius: number }
+  | { kind: 'polygon'; points: Pt[] }
+  | { kind: 'sector'; centre: Pt; radius: number; from: number; to: number };
+
+/** Where an area lies, in map pixels from the top-left corner, and the point its label sits over. */
+export interface AreaPath {
+  outline: AreaOutline;
+  origin: Pt;
+}
+
+/**
+ * The point an area turns about, in map pixels: the anchor itself when it
+ * was placed freely or on a hex map, otherwise the centre of the square it
+ * was placed in, counted from the grid's offset.
+ */
+export function areaPivot(anchor: Pt, exact: boolean, frame: GridFrame): Pt {
+  if (exact || isHexGrid(frame)) return { x: anchor.x, y: anchor.y };
+  const o = squareOrigin(frame);
+  return {
+    x: o.x + snapToSquareCentre(anchor.x - o.x, frame.gridSize),
+    y: o.y + snapToSquareCentre(anchor.y - o.y, frame.gridSize),
+  };
+}
+
+/** The angle from an area's pivot to `aim`, in radians, as a cone or line placed there points. */
+export function aimAngle(anchor: Pt, exact: boolean, aim: Pt, frame: GridFrame): number {
+  const p = areaPivot(anchor, exact, frame);
+  return Math.atan2(aim.y - p.y, aim.x - p.x);
+}
+
+/**
+ * Where an area lies on the map. A square grid's offset is taken out, the
+ * area worked out on squares from the corner and put back, so a template
+ * lines up with the squares it is drawn over; hexes are not squares to snap
+ * to, so an area on a hex map sits exactly where it was placed.
+ */
+export function areaPath(spec: AreaSpec, frame: AreaFrame): AreaPath {
+  const hex = isHexGrid(frame);
+  const o = hex ? { x: 0, y: 0 } : squareOrigin(frame);
+  const gs = frame.gridSize;
+  const exact = spec.exact || hex;
+  const anchor = { x: spec.anchorX - o.x, y: spec.anchorY - o.y };
+  const pivot = exact ? anchor : { x: snapToSquareCentre(anchor.x, gs), y: snapToSquareCentre(anchor.y, gs) };
+  const sizeSquares = squaresFor(spec.sizeFt, frame.feetPerSquare);
+  const size = sizeSquares * gs;
+  const width = squaresFor(spec.widthFt ?? 5, frame.feetPerSquare) * gs;
+  const back = (p: Pt): Pt => ({ x: p.x + o.x, y: p.y + o.y });
+  const angle = spec.angle;
+
+  switch (spec.shape) {
+    case 'cube': {
+      // A free-placed cube sits on the pivot; otherwise it covers whole squares.
+      const r = exact ? { x: pivot.x - size / 2, y: pivot.y - size / 2, size } : cubeRect(pivot, gs, sizeSquares);
+      const points = [{ x: r.x, y: r.y }, { x: r.x + r.size, y: r.y }, { x: r.x + r.size, y: r.y + r.size }, { x: r.x, y: r.y + r.size }].map(back);
+      return { outline: { kind: 'polygon', points }, origin: back({ x: r.x + r.size / 2, y: r.y + r.size / 2 }) };
+    }
+    case 'cone':
+    case 'line': {
+      // Out of the anchor square where the aim leaves it, unless placed freely.
+      const from = exact ? pivot : squareExitPoint(pivot, gs, angle);
+      if (spec.shape === 'cone') {
+        const c = coneOutline(from, angle, size, frame.coneRule);
+        return {
+          outline: c.kind === 'sector'
+            ? { kind: 'sector', centre: back(c.centre), radius: c.radius, from: c.from, to: c.to }
+            : { kind: 'polygon', points: c.points.map(back) },
+          origin: back(from),
+        };
+      }
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      const px = -sin * (width / 2);
+      const py = cos * (width / 2);
+      const points = [
+        { x: from.x + px, y: from.y + py },
+        { x: from.x + cos * size + px, y: from.y + sin * size + py },
+        { x: from.x + cos * size - px, y: from.y + sin * size - py },
+        { x: from.x - px, y: from.y - py },
+      ].map(back);
+      return { outline: { kind: 'polygon', points }, origin: back(from) };
+    }
+    default:
+      // A sphere or a cylinder: a circle about the pivot.
+      return { outline: { kind: 'circle', centre: back(pivot), radius: size }, origin: back(pivot) };
+  }
+}
+
+/** Trace an outline as the current path of `ctx`, to fill, stroke or clip. */
+export function traceArea(ctx: Pick<CanvasRenderingContext2D, 'beginPath' | 'arc' | 'moveTo' | 'lineTo' | 'closePath'>, outline: AreaOutline): void {
+  ctx.beginPath();
+  if (outline.kind === 'circle') {
+    ctx.arc(outline.centre.x, outline.centre.y, outline.radius, 0, Math.PI * 2);
+    return;
+  }
+  if (outline.kind === 'sector') {
+    ctx.moveTo(outline.centre.x, outline.centre.y);
+    ctx.arc(outline.centre.x, outline.centre.y, outline.radius, outline.from, outline.to);
+    ctx.closePath();
+    return;
+  }
+  outline.points.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+  ctx.closePath();
+}
+
+/** Whether `p` lies inside an outline, its edge included. */
+export function pointInArea(outline: AreaOutline, p: Pt): boolean {
+  const EPS = 1e-9;
+  if (outline.kind === 'circle') return Math.hypot(p.x - outline.centre.x, p.y - outline.centre.y) <= outline.radius + EPS;
+  if (outline.kind === 'sector') {
+    const dx = p.x - outline.centre.x;
+    const dy = p.y - outline.centre.y;
+    if (Math.hypot(dx, dy) > outline.radius + EPS) return false;
+    if (dx === 0 && dy === 0) return true;
+    const turn = 2 * Math.PI;
+    const span = outline.to - outline.from;
+    const along = (((Math.atan2(dy, dx) - outline.from) % turn) + turn) % turn;
+    return along <= span + EPS || along >= turn - EPS;
+  }
+  // Inside or on an edge of a convex polygon: on one side of every edge.
+  const pts = outline.points;
+  let sign = 0;
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i];
+    const b = pts[(i + 1) % pts.length];
+    const cross = (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
+    if (Math.abs(cross) <= EPS * Math.max(1, Math.hypot(b.x - a.x, b.y - a.y))) continue;
+    const s = Math.sign(cross);
+    if (sign !== 0 && s !== sign) return false;
+    sign = s;
+  }
+  return true;
+}
+
+/** An outline's box, for culling to the screen and placing a popover. */
+export function areaBounds(outline: AreaOutline): { minX: number; minY: number; maxX: number; maxY: number } {
+  if (outline.kind !== 'polygon') {
+    const { centre: c, radius: r } = outline;
+    return { minX: c.x - r, minY: c.y - r, maxX: c.x + r, maxY: c.y + r };
+  }
+  const xs = outline.points.map((p) => p.x);
+  const ys = outline.points.map((p) => p.y);
+  return { minX: Math.min(...xs), minY: Math.min(...ys), maxX: Math.max(...xs), maxY: Math.max(...ys) };
+}
+
+/**
+ * The tokens an area covers: those whose centre lies inside it, wherever the
+ * token stands, between squares or on a hex. Pass only the tokens this
+ * screen draws, so it never names one the viewer cannot see.
+ */
+export function tokensInArea<T extends CentredToken>(tokens: readonly T[], outline: AreaOutline, frame: GridFrame): T[] {
+  return tokens.filter((t) => pointInArea(outline, tokenCentre(t, frame)));
 }

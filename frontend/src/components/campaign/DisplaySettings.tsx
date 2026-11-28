@@ -1,7 +1,8 @@
 // Added for Mistwarden on 2026-11-27.
 /**
  * How this device draws the table: the fog's mist, the dice animation,
- * token names, and whether carried lights follow a token while it is dragged.
+ * token names, whether carried lights follow a token while it is dragged,
+ * and whether spell areas move.
  * Each choice stays on the device that made it (localStorage), so a slow
  * tablet can go flat while the laptop keeps the mist. The desk layout opens
  * it from the header (DisplaySettingsButton), the compact one from More.
@@ -15,6 +16,7 @@ import { DICE_MODES, type DiceMode } from '@/dice/mode';
 import { optionalStorage } from '@/utils/optionalStorage';
 import { DICE_MODE_KEY, diceMode, FOG_MIST_EVENT, FOG_MIST_KEY, FOG_MIST_MODES, fogMistMode, type FogMistMode } from './DiceOverlay';
 import { lightsFollowDrag, setLightsFollowDrag } from './map/lightsFollow';
+import { animateAreas, setAnimateAreas } from './map/areaAnimation';
 import { setTokenNameMode, tokenNameMode, TOKEN_NAME_MODES, type TokenNameMode } from './map/namePlates';
 
 export const DISPLAY_SETTINGS_LABEL = 'Display on this device';
@@ -32,6 +34,7 @@ export function DisplaySettings() {
   const diceId = useId();
   const lightsId = useId();
   const namesId = useId();
+  const areasId = useId();
   return (
     <div className="space-y-3">
       <div>
@@ -85,6 +88,19 @@ export function DisplaySettings() {
           Lights follow while dragging
         </label>
         <p id={`${lightsId}-help`} className="mt-1 text-xs text-ink-muted">A torch a token carries moves with it as it is dragged. Off, the light moves when the token is put down.</p>
+      </div>
+      <div>
+        <label className="flex items-center gap-2 pointer-coarse:min-h-11 text-sm font-semibold text-ink cursor-pointer">
+          <input
+            type="checkbox"
+            aria-describedby={`${areasId}-help`}
+            defaultChecked={animateAreas()}
+            onChange={(e) => setAnimateAreas(e.target.checked)}
+            className="rounded-sm"
+          />
+          Animate spell areas
+        </label>
+        <p id={`${areasId}-help`} className="mt-1 text-xs text-ink-muted">Fire flickers and frost drifts in a placed area. Off, or with reduced motion, they hold still.</p>
       </div>
     </div>
   );

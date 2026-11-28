@@ -8,7 +8,7 @@
 import type { FogState, WallSegment, WallType } from '@/types/walls';
 import { gridDistanceLabel, gridMeasure } from '@/utils/geometry';
 import { viewportFrame, type Viewport } from './types';
-import { cellCentre, isHexGrid, squareOrigin } from '@/utils/tokenCentre';
+import { cellCentre } from '@/utils/tokenCentre';
 import { mapPxToFogCell } from '../coords';
 import { fogRectFromDrag, fogRectToPx, fogRectSize } from '../fogSelection';
 import type { SelectionRect } from '../mapSelection';
@@ -365,7 +365,8 @@ export function drawRuler(
   ctx.restore();
 }
 
-import { cubeRect, snapToSquareCentre, squareExitPoint, squaresFor, coneOutline, type ConeRule } from '../aoeGeometry';
+import { aimAngle, areaPath, traceArea, type AreaSpec, type ConeRule } from '../aoeGeometry';
+import type { GridFrame } from '@/utils/tokenCentre';
 
 export type AoEShape = 'sphere' | 'cylinder' | 'cone' | 'line' | 'cube';
 
@@ -415,148 +416,60 @@ export interface AoEOverlayState {
   coneRule: ConeRule;
 }
 
-/** AoE template: sphere/cylinder/cone/line/cube with a size label. */
+/**
+ * The template the AoE tool shows, as a placed area would store it: the
+ * pinned anchor, or the cursor until one is, and the aim from its pivot.
+ * Null when there is nothing to show.
+ */
+export function aoePreviewSpec(state: AoEOverlayState, frame: GridFrame): AreaSpec | null {
+  // The anchor is the pivot the template turns about. Once pinned it is fixed —
+  // deriving it from the aim is what used to make a rotating cone's apex jump
+  // between a few spots instead of sweeping around its square. Until it is
+  // pinned the cursor stands in for it, so the preview matches what a click
+  // would place, resting pointing right.
+  const placed: AoEAnchor | null =
+    state.anchor ?? (state.hoverMapPx ? { point: state.hoverMapPx, exact: state.hoverExact } : null);
+  if (!placed) return null;
+  const angle = state.anchor && state.aimMapPx ? aimAngle(placed.point, placed.exact, state.aimMapPx, frame) : 0;
+  return {
+    shape: state.config.shape,
+    anchorX: placed.point.x,
+    anchorY: placed.point.y,
+    angle,
+    sizeFt: state.config.sizeFt,
+    widthFt: state.config.shape === 'line' ? state.config.widthFt ?? 5 : null,
+    exact: placed.exact,
+  };
+}
+
+/** The size label an area is drawn with: `20 ft`, or a line's `60 ft × 5 ft`. */
+export function areaSizeLabel(spec: Pick<AreaSpec, 'shape' | 'sizeFt' | 'widthFt'>): string {
+  return spec.shape === 'line' ? `${spec.sizeFt} ft × ${spec.widthFt ?? 5} ft` : `${spec.sizeFt} ft`;
+}
+
+/** AoE template: sphere/cylinder/cone/line/cube with a size label (map/aoeGeometry.ts areaPath). */
 export function drawAoEOverlay(
   ctx: CanvasRenderingContext2D,
   state: AoEOverlayState,
   viewport: Viewport
 ): void {
   const frame = viewportFrame(viewport);
-  // A square grid moved by an offset: the same template drawn on squares
-  // from the corner, shifted with them.
-  const origin = isHexGrid(frame) ? { x: 0, y: 0 } : squareOrigin(frame);
-  if (origin.x !== 0 || origin.y !== 0) {
-    const shift = (p: Pt | null) => (p ? { x: p.x - origin.x, y: p.y - origin.y } : null);
-    ctx.save();
-    ctx.translate(origin.x, origin.y);
-    drawAoEOverlay(ctx, {
-      ...state,
-      anchor: state.anchor ? { ...state.anchor, point: shift(state.anchor.point)! } : null,
-      hoverMapPx: shift(state.hoverMapPx),
-      aimMapPx: shift(state.aimMapPx),
-    }, { ...viewport, gridOffsetX: 0, gridOffsetY: 0 });
-    ctx.restore();
-    return;
-  }
-  const { zoom, gridSize: gs } = viewport;
-  const fps = state.feetPerSquare;
-
-  // The anchor is the pivot the template turns about. Once pinned it is fixed —
-  // deriving it from the aim is what used to make a rotating cone's apex jump
-  // between a few spots instead of sweeping around its square. Until it is
-  // pinned the cursor stands in for it, so the preview matches what a click
-  // would place.
-  const placed: AoEAnchor | null =
-    state.anchor ??
-    (state.hoverMapPx ? { point: state.hoverMapPx, exact: state.hoverExact } : null);
-  if (!placed) return;
-  // Hexes are not squares to snap to: on a hex map a template sits where it is placed.
-  const anchor = isHexGrid(frame) ? { ...placed, exact: true } : placed;
-
-  // A free-placed template pivots about the exact point; otherwise about the
-  // centre of the square it was placed in.
-  const pivot = anchor.exact
-    ? anchor.point
-    : { x: snapToSquareCentre(anchor.point.x, gs), y: snapToSquareCentre(anchor.point.y, gs) };
-
-  const sizeSquares = squaresFor(state.config.sizeFt, fps);
-  const widthSquares = squaresFor(state.config.widthFt ?? 5, fps);
-  const sizeInPx = sizeSquares * gs;
-  const widthInPx = widthSquares * gs;
-
-  // Aim direction, measured from the pivot. Only meaningful once the anchor is
-  // pinned — before that the cursor *is* the anchor, so there is nothing to aim
-  // at and the template rests pointing right.
-  const angle =
-    state.anchor && state.aimMapPx
-      ? Math.atan2(state.aimMapPx.y - pivot.y, state.aimMapPx.x - pivot.x)
-      : 0;
-
-  // The cube's rectangle is computed once and reused for both the outline and
-  // the label anchor below — deriving them separately let the label drift off
-  // the snapped shape by up to half a square. A free-placed cube sits on the
-  // pivot; otherwise it snaps to cover whole squares (see aoeGeometry.ts).
-  let cube: { x: number; y: number; size: number } | null = null;
-  if (state.config.shape === 'cube') {
-    cube = anchor.exact
-      ? { x: pivot.x - sizeInPx / 2, y: pivot.y - sizeInPx / 2, size: sizeInPx }
-      : cubeRect(pivot, gs, sizeSquares);
-  }
-
-  // Sphere and cylinder sit on the pivot itself: a circle never tiles squares
-  // whatever it is centred on, and that placement was not what was reported as
-  // misaligned. Cone and line emerge from the point their aim leaves the
-  // anchor square through, so they sweep around the token rather than through
-  // it — unless placed freely, where the origin is the point itself.
-  const isAimed = state.config.shape === 'cone' || state.config.shape === 'line';
-  let { x: ox, y: oy } = pivot;
-
-  if (cube) {
-    ox = cube.x + cube.size / 2;
-    oy = cube.y + cube.size / 2;
-  } else if (isAimed && !anchor.exact) {
-    ({ x: ox, y: oy } = squareExitPoint(pivot, gs, angle));
-  }
+  const spec = aoePreviewSpec(state, frame);
+  if (!spec) return;
+  const { zoom } = viewport;
+  const { outline, origin } = areaPath(spec, { ...frame, feetPerSquare: state.feetPerSquare, coneRule: state.coneRule });
+  const { x: ox, y: oy } = origin;
 
   ctx.save();
   ctx.fillStyle = 'rgba(147, 51, 234, 0.25)';
   ctx.strokeStyle = 'rgba(147, 51, 234, 0.8)';
   ctx.lineWidth = 2 / zoom;
-
-  ctx.beginPath();
-
-  switch (state.config.shape) {
-    case 'sphere':
-    case 'cylinder':
-      ctx.arc(ox, oy, sizeInPx, 0, Math.PI * 2);
-      break;
-
-    case 'cone': {
-      const outline = coneOutline({ x: ox, y: oy }, angle, sizeInPx, state.coneRule);
-      if (outline.kind === 'sector') {
-        ctx.moveTo(outline.centre.x, outline.centre.y);
-        ctx.arc(outline.centre.x, outline.centre.y, outline.radius, outline.from, outline.to);
-      } else {
-        const [a, b, c] = outline.points;
-        ctx.moveTo(a.x, a.y);
-        ctx.lineTo(b.x, b.y);
-        ctx.lineTo(c.x, c.y);
-      }
-      ctx.closePath();
-      break;
-    }
-
-    case 'line': {
-      const cos = Math.cos(angle);
-      const sin = Math.sin(angle);
-      const perpCos = Math.cos(angle + Math.PI / 2);
-      const perpSin = Math.sin(angle + Math.PI / 2);
-      const hw = widthInPx / 2;
-      ctx.moveTo(ox + perpCos * hw,                        oy + perpSin * hw);
-      ctx.lineTo(ox + cos * sizeInPx + perpCos * hw,       oy + sin * sizeInPx + perpSin * hw);
-      ctx.lineTo(ox + cos * sizeInPx - perpCos * hw,       oy + sin * sizeInPx - perpSin * hw);
-      ctx.lineTo(ox - perpCos * hw,                        oy - perpSin * hw);
-      ctx.closePath();
-      break;
-    }
-
-    case 'cube': {
-      // Axis-aligned and snapped to whole squares. It used to be a rotatable
-      // rectangle anchored at a square centre, which could not line up with the
-      // grid at any angle — a 10 ft cube on a 5 ft grid straddled four squares
-      // instead of covering two.
-      if (cube) ctx.rect(cube.x, cube.y, cube.size, cube.size);
-      break;
-    }
-  }
-
+  traceArea(ctx, outline);
   ctx.fill();
   ctx.stroke();
 
   // Size label
-  const label = state.config.shape === 'line'
-    ? `${state.config.sizeFt} ft × ${state.config.widthFt ?? 5} ft`
-    : `${state.config.sizeFt} ft`;
+  const label = areaSizeLabel(spec);
   const fontSize = Math.max(10, 12 / zoom);
   ctx.font = `bold ${fontSize}px sans-serif`;
   ctx.fillStyle = 'rgba(0,0,0,0.65)';

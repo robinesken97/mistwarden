@@ -60,6 +60,10 @@ import type {
   DrawingPreviewedBroadcast,
   DrawingsStateBroadcast,
 } from '@/types/drawings';
+import type {
+  AreaAddEvent, AreaAddAck, AreaRemoveEvent, AreaClearEvent, AreasRequestEvent,
+  AreaAddedBroadcast, AreaRemovedBroadcast, AreasClearedBroadcast, AreasStateBroadcast,
+} from '@/types/areas';
 
 // ============================================
 // WebSocket Client Configuration
@@ -866,6 +870,45 @@ class SocketClient {
 
   onDrawingsState(callback: EventCallback<DrawingsStateBroadcast>) {
     this.addListener('drawings:state', callback);
+  }
+
+  // ============================================
+  // Spell areas on the map
+  // ============================================
+
+  /** Place an area and wait for the answer; the page's own `area:added` comes first. */
+  addArea(data: AreaAddEvent): Promise<AreaAddAck> {
+    return this.askFor<AreaAddAck>('area:add', data, DRAWING_ANSWER_TIMEOUT_MS, "That area didn't reach the table. Check your connection and try again.");
+  }
+
+  removeArea(data: AreaRemoveEvent): Promise<DoneAck> {
+    return this.askFor<DoneAck>('area:remove', data, DRAWING_ANSWER_TIMEOUT_MS, 'No answer from the server');
+  }
+
+  /** Every area on a map for the GM, a player's own for a player. */
+  clearAreas(data: AreaClearEvent): Promise<DoneAck> {
+    return this.askFor<DoneAck>('area:clear', data, DRAWING_ANSWER_TIMEOUT_MS, 'No answer from the server');
+  }
+
+  /** Ask for a map's areas; `areas:state` answers. */
+  requestAreas(data: AreasRequestEvent) {
+    this.socket?.emit('areas:request', data);
+  }
+
+  onAreaAdded(callback: EventCallback<AreaAddedBroadcast>) {
+    this.addListener('area:added', callback);
+  }
+
+  onAreaRemoved(callback: EventCallback<AreaRemovedBroadcast>) {
+    this.addListener('area:removed', callback);
+  }
+
+  onAreasCleared(callback: EventCallback<AreasClearedBroadcast>) {
+    this.addListener('areas:cleared', callback);
+  }
+
+  onAreasState(callback: EventCallback<AreasStateBroadcast>) {
+    this.addListener('areas:state', callback);
   }
 
   // ============================================
