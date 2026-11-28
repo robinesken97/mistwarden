@@ -1613,6 +1613,24 @@
     },
     {
       "method": "POST",
+      "path": "/api/spells/import-markdown",
+      "handlers": [
+        "requireAuth",
+        "requireAdmin",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/spells/imported/:sourceTag",
+      "handlers": [
+        "requireAuth",
+        "requireAdmin",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "POST",
       "path": "/api/spells",
       "handlers": [
         "requireAuth",

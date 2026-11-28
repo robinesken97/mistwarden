@@ -1,12 +1,14 @@
 /**
- * The instance's Spell Library: the SRD import and the instance's own
- * spells, which every campaign lists (campaignSpells.ts). Platform admins
+ * The instance's Spell Library: the SRD import, the Markdown import by
+ * source tag (services/spellImport.ts) and the instance's own spells, which
+ * every campaign lists (campaignSpells.ts). Platform admins
  * only, as the creature import is: any user can be the GM of a campaign of
  * their own. Mounted at /api/spells.
  *
  * No limiter of its own, as the creature library has none: every write is an
- * administrator's, the import runs one at a time (409 while it does), and
- * the general /api limit (app.ts) covers the rest.
+ * administrator's, the SRD import runs one at a time (409 while it does),
+ * a Markdown import waits its turn behind a lock, and the general /api
+ * limit (app.ts) covers the rest.
  */
 
 import { Router, Response } from 'express';
@@ -16,6 +18,7 @@ import { prisma } from '../config/database';
 import { seedSrdSpells, getSpellSeedStatus } from '../services/spellSeed';
 import { SeedSourceError } from '../services/creatureSeed';
 import { createSpell, updateSpell, deleteSpell, type SpellOutcome } from '../services/spellLibrary';
+import { importSpellMarkdown, deleteImportedSpells } from '../services/spellImport';
 import logger from '../utils/logger';
 
 const router = Router();
@@ -58,15 +61,22 @@ router.post('/seed', adminOnly, async (_req: AuthenticatedRequest, res: Response
 });
 
 /** Send a library write's outcome, or a 500 for what went wrong in the server. */
-export async function sendSpellOutcome(res: Response, write: () => Promise<SpellOutcome>): Promise<void> {
+export async function sendSpellOutcome(res: Response, write: () => Promise<SpellOutcome>, failure = 'Failed to save the spell'): Promise<void> {
   try {
     const outcome = await write();
     res.status(outcome.status).json(outcome.body);
   } catch (error) {
-    logger.error('Error writing a spell:', error);
-    res.status(500).json({ error: 'Internal Server Error', message: 'Failed to save the spell' });
+    logger.error(`${failure}:`, error);
+    res.status(500).json({ error: 'Internal Server Error', message: failure });
   }
 }
+
+// Spells read from Markdown under a source tag (custom:<tag>), with a dry run.
+router.post('/import-markdown', adminOnly, (req: AuthenticatedRequest, res: Response) =>
+  sendSpellOutcome(res, () => importSpellMarkdown(req.body), 'Failed to import the spells'));
+
+router.delete('/imported/:sourceTag', adminOnly, (req: AuthenticatedRequest, res: Response) =>
+  sendSpellOutcome(res, () => deleteImportedSpells(req.params.sourceTag), 'Failed to delete the imported spells'));
 
 // The instance's own spells: no campaign, source custom.
 router.post('/', adminOnly, (req: AuthenticatedRequest, res: Response) =>
