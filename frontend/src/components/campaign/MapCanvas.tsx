@@ -1259,7 +1259,8 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
     if (lastFittedMapIdRef.current === currentMap.id) return;
 
     lastFittedMapIdRef.current = currentMap.id;
-    mapControls.fitToScreen(canvasSize.width, canvasSize.height);
+    // On the compact layout the map fills the screen (fitToScreen's fill).
+    mapControls.fitToScreen(canvasSize.width, canvasSize.height, compact);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mapControls is a new object each render; lastFittedMapIdRef keeps the fit to once per map
   }, [mapShown, currentMap?.id, canvasSize.width, canvasSize.height]);
 
@@ -4269,7 +4270,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   // What the toolbar's buttons do, and on the compact layout the rows of
   // Map controls, which hold the buttons its one row leaves out.
   const mapControlActions: MapControlsActions = {
-    fit: () => mapControls.fitToScreen(canvasSize.width, canvasSize.height),
+    fit: () => mapControls.fitToScreen(canvasSize.width, canvasSize.height, compact),
     toggleGrid: () => setShowGrid((prev) => !prev),
     nextGridColor: () => setGridColor((prev) => (prev === 'black' ? 'white' : 'black')),
     toggleRuler: () => { setDrawKind(null); handleToggleRuler(); },

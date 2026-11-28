@@ -217,3 +217,35 @@ describe('panning by an amount', () => {
     expect(result.current.panOffset).toEqual({ x: 15, y: 5 });
   });
 });
+
+describe('fitting the map', () => {
+  // 20 × 15 squares at 50 px: a 1000 × 750 px map, wider than tall.
+  const fitted = (width: number, height: number, fill?: boolean, config = CONFIG) => {
+    const { result } = renderHook(() => useMapControls({ ...config, minZoom: 0.1, maxZoom: 3 }));
+    act(() => result.current.fitToScreen(width, height, fill));
+    return { zoom: result.current.zoom, pan: result.current.panOffset };
+  };
+
+  it('shows the whole map, centred, by default', () => {
+    expect(fitted(1200, 800).zoom).toBeCloseTo(0.96);
+    // On a phone the whole of a wide map is a strip across its middle.
+    expect(fitted(390, 700).zoom).toBeCloseTo(0.351);
+  });
+
+  it('fills a phone held upright to its height, the middle of the map on screen', () => {
+    const { zoom, pan } = fitted(390, 700, true);
+    expect(zoom).toBeCloseTo(0.84); // 630 of 750 px
+    expect(pan.x).toBeCloseTo((390 - 1000 * 0.84) / 2);
+    expect(pan.y).toBeCloseTo((700 - 750 * 0.84) / 2);
+  });
+
+  it('fills a phone on its side to its width', () => {
+    expect(fitted(844, 300, true).zoom).toBeCloseTo((844 * 0.9) / 1000);
+  });
+
+  it('zooms a long thin map no more than three times its whole-map fit', () => {
+    const corridor = { gridSize: 50, mapWidth: 60, mapHeight: 4 };
+    const whole = fitted(390, 700, false, corridor).zoom;
+    expect(fitted(390, 700, true, corridor).zoom).toBeCloseTo(whole * 3);
+  });
+});

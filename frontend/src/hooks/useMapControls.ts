@@ -39,6 +39,9 @@ interface PanOffset {
   y: number;
 }
 
+/** How far past the whole-map fit a filling fit may zoom (fitToScreen). */
+const FILL_LIMIT = 3;
+
 /**
  * The pan that keeps the map point under the screen point `about` where it
  * is when the zoom is multiplied by `ratio`:
@@ -131,9 +134,14 @@ export function useMapControls(config: MapControlsConfig) {
   /**
    * Fit the entire map within the canvas, centered with a small margin.
    * This is the preferred "reset view" for map switches and the Reset button.
+   * With `fill` (the compact layout) the map fills the canvas's other side
+   * instead, centred, its middle on screen and the rest a pan away: a
+   * landscape map fitted to a phone's width was a fifth of its size, its
+   * tokens 14 px. At most FILL_LIMIT times the whole-map fit, so a long thin
+   * map still shows a third of its length.
    */
   const fitToScreen = useCallback(
-    (canvasWidth: number, canvasHeight: number) => {
+    (canvasWidth: number, canvasHeight: number, fill = false) => {
       if (!canvasWidth || !canvasHeight) return;
 
       const mapWidthPx = mapWidth * gridSize;
@@ -141,12 +149,10 @@ export function useMapControls(config: MapControlsConfig) {
       if (!mapWidthPx || !mapHeightPx) return;
 
       // Scale down to fit entirely inside the canvas with a 5% margin on each side
-      const fitZoom = clampZoom(
-        Math.min(
-          (canvasWidth * 0.9) / mapWidthPx,
-          (canvasHeight * 0.9) / mapHeightPx
-        )
-      );
+      const fitWidth = (canvasWidth * 0.9) / mapWidthPx;
+      const fitHeight = (canvasHeight * 0.9) / mapHeightPx;
+      const whole = Math.min(fitWidth, fitHeight);
+      const fitZoom = clampZoom(fill ? Math.min(Math.max(fitWidth, fitHeight), whole * FILL_LIMIT) : whole);
 
       // Center the scaled map in the canvas
       const panX = (canvasWidth - mapWidthPx * fitZoom) / 2;
