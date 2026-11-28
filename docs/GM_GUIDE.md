@@ -390,6 +390,14 @@ A copy of a map starts a new scene from one already built: the same picture, gri
 
 For now you make one with `POST /api/campaigns/:id/maps/:mapId/duplicate` (see the [API reference](API_REFERENCE.md)) or the MCP server's `duplicate_scene`; the Map Library's button for it comes with the scenes release.
 
+### Scene templates
+
+A scene template is a map you keep to make scenes from: an inn, a crossroads, a cave you use again and again. Save any map as a template (`POST /api/campaigns/:id/maps/:mapId/save-as-template`, or the MCP server's `save_scene_as_template`) and make a scene from it whenever you need one (`.../create-from-template`, or `create_scene_from_template`); both copy as duplicating does, and keep the name, adding "(copy)" only when it is taken. A template is never shown to your players: it cannot be made the active map (making it active is refused), and nothing of it reaches them. Your campaign export keeps your templates as templates.
+
+### Creature size
+
+**Use creature size from stat block** (`useCreatureSize` in the campaign settings, off by default) decides how big a token placed from a creature starts: on, as its stat block says (2×2 for a large creature); off, 1×1. It applies to the Creature Library and to the MCP server's `place_creature`; you can resize any token afterwards. For now you set it with `PUT /api/campaigns/:id` or the MCP server's `update_campaign`.
+
 ### Map Best Practices
 
 - **Resolution matters** — Maps look best at 70–100 pixels per grid square. Going higher increases load time without visible benefit at normal zoom levels.

@@ -233,6 +233,10 @@ model Campaign {
   // Players may draw on the map while the session is live; the GM always may.
   playersMayDraw Boolean @default(true)
 
+  // Mistwarden, 2026-11-28: a token placed from a creature takes the stat
+  // block's size; off, it starts at 1x1.
+  useCreatureSize Boolean @default(false)
+
   // Dice Settings
   // When the GM clears roll history, this records when — rolls older than it
   // are hidden from the panel. A watermark rather than a delete, because every
@@ -572,6 +576,10 @@ model Map {
   gridColor     String @default("#000000")
   gridOpacity   Float  @default(0.4)
   gridLineWidth Int    @default(2)
+
+  // Mistwarden, 2026-11-28: a scene template, a map the GM copies scenes
+  // from. Never the current map, so never sent to a player.
+  isTemplate Boolean @default(false)
 
   // Layers
   baseLayerUrl   String // Main map image

@@ -26,10 +26,10 @@ interface MapRow {
   id: string; name: string; width: number; height: number; gridSize: number; feetPerSquare?: number;
   gridType?: string; gridOffsetX?: number; gridOffsetY?: number; snapTokens?: boolean;
   lightingEnabled?: boolean; fogEnabled?: boolean; globalIllumination?: boolean; explorationEnabled?: boolean;
-  gridColor?: string; gridOpacity?: number; gridLineWidth?: number;
+  gridColor?: string; gridOpacity?: number; gridLineWidth?: number; isTemplate?: boolean;
   tokens?: TokenRow[]; wallSegments?: WallRow[]; lights?: LightRow[];
 }
-interface Campaign { id: string; name: string; userRole: string; currentMapId: string | null; memberships: Member[]; maps: MapRow[] }
+interface Campaign { id: string; name: string; userRole: string; currentMapId: string | null; useCreatureSize?: boolean; memberships: Member[]; maps: MapRow[] }
 interface CarriedLight { brightRadius: number; dimRadius: number; color: string; enabled: boolean }
 interface TokenRow {
   id: string; name: string; position: { x: number; y: number }; size: { width: number; height: number };
@@ -174,20 +174,20 @@ export function registerTools(server: McpServer, ctx: Context): string[] {
     assertUuid(campaignId, 'campaignId');
     const { campaign } = await ctx.api.json<{ campaign: Campaign }>('GET', `/api/campaigns/${campaignId}`);
     return {
-      id: campaign.id, name: campaign.name, role: campaign.userRole, currentMapId: campaign.currentMapId,
+      id: campaign.id, name: campaign.name, role: campaign.userRole, currentMapId: campaign.currentMapId, useCreatureSize: campaign.useCreatureSize ?? false,
       members: campaign.memberships.map((m) => ({ userId: m.userId, role: m.role, name: m.user?.displayName })),
-      maps: campaign.maps.map((m) => ({ id: m.id, name: m.name })),
+      maps: campaign.maps.map((m) => ({ id: m.id, name: m.name, isTemplate: m.isTemplate ?? false })),
     };
   }, true);
 
-  tool('list_maps', 'List the maps of a campaign with size (squares), grid size (map pixels per square), whether players see it now, and whether this server created it.', { campaignId: campaignIdArg }, async ({ campaignId }) => {
+  tool('list_maps', 'List the maps of a campaign with size (squares), grid size (map pixels per square), whether players see it now, whether it is a scene template (isTemplate; never shown to players), and whether this server created it.', { campaignId: campaignIdArg }, async ({ campaignId }) => {
     const { campaign, manifest } = await campaignAsGm(ctx, campaignId);
     const { maps } = await ctx.api.json<{ maps: MapRow[] }>('GET', `/api/campaigns/${campaignId}/maps`);
     return maps.map((m) => ({
       id: m.id, name: m.name, width: m.width, height: m.height, gridSize: m.gridSize,
       gridType: m.gridType ?? 'square', gridOffsetX: m.gridOffsetX ?? 0, gridOffsetY: m.gridOffsetY ?? 0, snapTokens: m.snapTokens ?? true,
       pixelWidth: m.width * m.gridSize, pixelHeight: m.height * m.gridSize,
-      current: m.id === campaign.currentMapId, createdByThisServer: manifest.has('map', m.id),
+      current: m.id === campaign.currentMapId, isTemplate: m.isTemplate ?? false, createdByThisServer: manifest.has('map', m.id),
     }));
   }, true);
 
@@ -204,7 +204,7 @@ export function registerTools(server: McpServer, ctx: Context): string[] {
       id: map.id, name: map.name, width: map.width, height: map.height, gridSize: map.gridSize, feetPerSquare: map.feetPerSquare,
       gridType: map.gridType ?? 'square', gridOffsetX: map.gridOffsetX ?? 0, gridOffsetY: map.gridOffsetY ?? 0, snapTokens: map.snapTokens ?? true,
       pixelWidth: map.width * map.gridSize, pixelHeight: map.height * map.gridSize,
-      current: map.id === campaign.currentMapId, createdByThisServer: manifest.has('map', map.id),
+      current: map.id === campaign.currentMapId, isTemplate: map.isTemplate ?? false, createdByThisServer: manifest.has('map', map.id),
       settings: { lightingEnabled: map.lightingEnabled, fogEnabled: map.fogEnabled, globalIllumination: map.globalIllumination, explorationEnabled: map.explorationEnabled },
       gridLook: gridLookOf(map),
       tokens: (map.tokens ?? []).map((t) => tokenSummary(t, map)),
@@ -343,21 +343,21 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
     };
   });
 
-  // Mistwarden, 2026-11-28: a copy is new and seen by nobody, so it needs no backup and may be made from any map, the one players see too.
-  tool('duplicate_scene', `Copy a map (a scene) within its campaign, GM-only until shown: the same picture, grid and grid look, settings, walls and doors, lights and spell areas, and unless set false its tokens (new ids, everything else kept, riders on their mounts), fog and drawings. Not copied: what players explored, initiative. The copy is not shown to players. Default name "<name> (copy)", or "(copy 2)" and on. Works on any map of the campaign, the one players see too, and changes nothing on it. The copy counts as created by this server; its tokens, walls and lights only where the original's were.`, {
+  const copyOptions = {
     campaignId: campaignIdArg, mapId: mapIdArg,
     name: z.string().min(1).max(200).optional(),
     tokens: z.boolean().optional().describe('Copy the tokens (default true).'),
     fog: z.boolean().optional().describe('Copy the revealed fog squares (default true); without, the copy starts all hidden.'),
     drawings: z.boolean().optional().describe('Copy the drawings (default true).'),
     allowDuplicate: z.boolean().optional().describe('Allow a name already used by a map in this campaign.'),
-  }, async ({ campaignId, mapId, allowDuplicate, ...options }) => {
+  };
+  /** A copy by one of the map copy routes; it owns on the copy what it owned on the original, nothing else. */
+  const copyScene = async ({ campaignId, mapId, allowDuplicate, ...options }: z.infer<z.ZodObject<typeof copyOptions>>, route: 'duplicate' | 'save-as-template' | 'create-from-template') => {
     const { campaign, manifest } = await campaignAsGm(ctx, campaignId);
     if (options.name !== undefined) assertNewName('map', options.name, campaign.maps.map((m) => m.name), allowDuplicate);
     const source = await getMap(ctx, campaignId, mapId);
-    const { map } = await ctx.api.json<{ map: MapRow }>('POST', `/api/campaigns/${campaignId}/maps/${mapId}/duplicate`, { json: options });
+    const { map } = await ctx.api.json<{ map: MapRow }>('POST', `/api/campaigns/${campaignId}/maps/${mapId}/${route}`, { json: options });
     await manifest.add('map', [map.id]);
-    // What this server made on the original it may change on the copy; nothing else.
     const mine = (kind: 'wall' | 'light', ids: string[]) => ids.filter((i) => manifest.has(kind, inMap(mapId, i))).map((i) => inMap(map.id, i));
     await manifest.add('wall', mine('wall', (source.wallSegments ?? []).map((w) => w.id)));
     await manifest.add('light', mine('light', (source.lights ?? []).map((l) => l.id)));
@@ -366,8 +366,18 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
     if (before.length === after.length) {
       await manifest.add('token', after.filter((_, i) => manifest.has('token', inMap(mapId, before[i].id))).map((t) => inMap(map.id, t.id)));
     }
-    return { mapId: map.id, name: map.name, tokens: after.length, walls: (map.wallSegments ?? []).length, lights: (map.lights ?? []).length, current: false };
-  });
+    return { mapId: map.id, name: map.name, isTemplate: map.isTemplate ?? false, tokens: after.length, walls: (map.wallSegments ?? []).length, lights: (map.lights ?? []).length, current: false };
+  };
+
+  // Mistwarden, 2026-11-28: a copy is new and seen by nobody, so it needs no backup and may be made from any map, the one players see too.
+  tool('duplicate_scene', `Copy a map (a scene) within its campaign, GM-only until shown: the same picture, grid and grid look, settings, walls and doors, lights and spell areas, and unless set false its tokens (new ids, everything else kept, riders on their mounts), fog and drawings. Not copied: what players explored, initiative. The copy is not shown to players; the copy of a scene template is a template. Default name "<name> (copy)", or "(copy 2)" and on. Works on any map of the campaign, the one players see too, and changes nothing on it. The copy counts as created by this server; its tokens, walls and lights only where the original's were.`,
+    copyOptions, (a) => copyScene(a, 'duplicate'));
+
+  tool('save_scene_as_template', `Save a map as a scene template: a copy, as duplicate_scene makes it and with its options, kept as a template (isTemplate in list_maps). A template is never shown to players and cannot be made the current map; make scenes from it with create_scene_from_template. Default name: the map's, with " (copy)" only when another template has it. The source is left as it was.`,
+    copyOptions, (a) => copyScene(a, 'save-as-template'));
+
+  tool('create_scene_from_template', `Make an ordinary scene from a scene template (a map with isTemplate in list_maps): a copy, as duplicate_scene makes it and with its options. Not shown to players; the template stays a template. Default name: the template's, with " (copy)" only when another scene has it. A map that is not a template is refused.`,
+    copyOptions, (a) => copyScene(a, 'create-from-template'));
 
   tool('delete_map', `Delete a map with its tokens, walls and lights. Only maps this server created (unless MISTWARDEN_MCP_ALLOW_ANY_EDIT=1); never the map players currently see without MISTWARDEN_MCP_PLAYER_VISIBLE=1. Cannot be undone. ${BACKUP_NEEDED}`, {
     campaignId: campaignIdArg, mapId: mapIdArg,
@@ -732,7 +742,7 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
     for (const w of map.wallSegments ?? []) walls[w.type] = (walls[w.type] ?? 0) + 1;
     return {
       id: map.id, name: map.name, width: map.width, height: map.height, gridSize: map.gridSize, gridType: map.gridType ?? 'square',
-      current: map.id === campaign.currentMapId, createdByThisServer: manifest.has('map', map.id),
+      current: map.id === campaign.currentMapId, isTemplate: map.isTemplate ?? false, createdByThisServer: manifest.has('map', map.id),
       settings: { lightingEnabled: map.lightingEnabled, fogEnabled: map.fogEnabled, globalIllumination: map.globalIllumination, explorationEnabled: map.explorationEnabled, snapTokens: map.snapTokens ?? true },
       tokens: { total: tokens.length, visible: tokens.filter((t) => t.visible).length, hidden: tokens.filter((t) => !t.visible).length },
       wallCounts: walls, lights: (map.lights ?? []).length, areas: areas.length,
@@ -780,7 +790,7 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
     return ctx.api.json('GET', `/api/campaigns/${campaignId}/creatures/${creatureId}`);
   }, true);
 
-  tool('place_creature', `Put a creature on a map as a token, as the creature library does: its picture, size, stat block, full hit points and hit point bar; the symbol comes from the stat block. Hidden from players by default. ${COORDS} Not on the map players currently see unless MISTWARDEN_MCP_COGM=1 or MISTWARDEN_MCP_PLAYER_VISIBLE=1.`, {
+  tool('place_creature', `Put a creature on a map as a token, as the creature library does: its picture, stat block, full hit points and hit point bar, and its size when the campaign's useCreatureSize is on (else 1x1, the default); the symbol comes from the stat block. Hidden from players by default. ${COORDS} Not on the map players currently see unless MISTWARDEN_MCP_COGM=1 or MISTWARDEN_MCP_PLAYER_VISIBLE=1.`, {
     campaignId: campaignIdArg, mapId: mapIdArg, creatureId: id('Creature id (from search_creatures).'),
     ...tokenPosition,
     name: z.string().min(1).max(200).optional().describe('Default: the creature\'s name.'),
@@ -792,7 +802,8 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
     assertNotLive(ctx.settings, campaign.currentMapId, a.mapId, true);
     const map = await getMap(ctx, a.campaignId, a.mapId);
     const c = await ctx.api.json<Creature>('GET', `/api/campaigns/${a.campaignId}/creatures/${a.creatureId}`);
-    const size = c.size ?? { width: 1, height: 1 };
+    // The campaign's "Use creature size from stat block", as the creature library follows it.
+    const size = (campaign.useCreatureSize && c.size) || { width: 1, height: 1 };
     const position = toCell(map, a.x, a.y, a.origin, size.width);
     const hpMax = c.statBlock?.hpMax ?? 10;
     const { token } = await ctx.api.json<{ token: TokenRow }>('POST', `/api/campaigns/${a.campaignId}/maps/${a.mapId}/tokens`, {
@@ -1040,14 +1051,14 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
       if (a.audioAssetId !== undefined) Object.assign(out, await put(`${c(a)}/atmosphere/audio`, { assetId: a.audioAssetId, volume: a.volume, loop: a.loop }));
       return out;
     });
-    table('update_campaign', 'Change the campaign\'s name, description, status (PREPARATION, COMPLETED or ARCHIVED, between sessions only), whether players may draw, the chat cooldown, or the vibe settings (vibeSettings REPLACES the periods: read them first).', {
+    table('update_campaign', 'Change the campaign\'s name, description, status (PREPARATION, COMPLETED or ARCHIVED, between sessions only), whether players may draw, whether a token placed from a creature takes the stat block\'s size (useCreatureSize; off means 1x1), the chat cooldown, or the vibe settings (vibeSettings REPLACES the periods: read them first).', {
       name: z.string().min(1).max(200).optional(), description: z.string().max(5000).nullable().optional(),
-      status: z.enum(['PREPARATION', 'COMPLETED', 'ARCHIVED']).optional(), playersMayDraw: z.boolean().optional(),
+      status: z.enum(['PREPARATION', 'COMPLETED', 'ARCHIVED']).optional(), playersMayDraw: z.boolean().optional(), useCreatureSize: z.boolean().optional(),
       chatCooldownEnabled: z.boolean().optional(), chatCooldownSeconds: z.number().int().min(1).max(300).optional(),
       vibeSettings: z.object({ enabled: z.boolean().optional(), periods: z.array(z.object({ name: z.string(), hue: z.string(), filter: z.string(), audio: z.string().nullable().optional() })).min(1) }).passthrough().optional(),
-    }, async ({ campaignId, name, description, status, playersMayDraw, chatCooldownEnabled, chatCooldownSeconds, vibeSettings }) => {
+    }, async ({ campaignId, name, description, status, playersMayDraw, useCreatureSize, chatCooldownEnabled, chatCooldownSeconds, vibeSettings }) => {
       // Only these fields: no game system, no spirit layer, nothing about members.
-      const { campaign } = await put(`/api/campaigns/${campaignId}`, { name, description, status, playersMayDraw, chatCooldownEnabled, chatCooldownSeconds, vibeSettings });
+      const { campaign } = await put(`/api/campaigns/${campaignId}`, { name, description, status, playersMayDraw, useCreatureSize, chatCooldownEnabled, chatCooldownSeconds, vibeSettings });
       return campaign;
     });
 
@@ -1162,7 +1173,7 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
   // ---- Player-visible (behind MISTWARDEN_MCP_PLAYER_VISIBLE=1) ----
 
   if (ctx.settings.playerVisible) {
-    tool('set_current_map', 'PLAYER-VISIBLE: switch the whole table to this map now.', { campaignId: campaignIdArg, mapId: mapIdArg }, async ({ campaignId, mapId }) => {
+    tool('set_current_map', 'PLAYER-VISIBLE: switch the whole table to this map now. A scene template cannot be the current map (the server refuses it).', { campaignId: campaignIdArg, mapId: mapIdArg }, async ({ campaignId, mapId }) => {
       await campaignAsGm(ctx, campaignId);
       assertUuid(mapId, 'mapId');
       await ctx.api.json('PUT', `/api/campaigns/${campaignId}/maps/${mapId}/set-current`);

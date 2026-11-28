@@ -92,7 +92,7 @@ describe('POST /api/campaigns/practice', () => {
     expect(campaign.currentMapId).toBe(map.id);
     expect(map).toMatchObject({ width: 24, height: 18, gridSize: 70, fogEnabled: true, lightingEnabled: true });
     // The grid as every map from before its look was the map's: black, 0.4, 2 px.
-    expect(map).toMatchObject({ gridColor: '#000000', gridOpacity: 0.4, gridLineWidth: 2 });
+    expect(map).toMatchObject({ gridColor: '#000000', gridOpacity: 0.4, gridLineWidth: 2, isTemplate: false });
     expect(map.imageUrl).toMatch(/^\/api\/assets\/maps\//);
 
     const tokens = map.tokens as Array<Record<string, unknown>>;

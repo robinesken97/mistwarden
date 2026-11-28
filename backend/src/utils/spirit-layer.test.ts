@@ -530,6 +530,7 @@ describe('filterMapData on a whole map', () => {
     gridColor: '#000000',
     gridOpacity: 0.4,
     gridLineWidth: 2,
+    isTemplate: false,
     spiritLayerUrl: '/api/assets/maps/crypt-spirit',
     tokens: [fighter, goblin, assassin, ogre, ghost, wisp, wraith],
     annotations: [{ id: 'note', type: 'circle', position: { x: 1, y: 1 }, color: '#ff0000', text: 'The trap' }],

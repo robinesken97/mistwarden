@@ -604,6 +604,8 @@ export interface Campaign {
   chatCooldownSeconds: number;
   /** Players may draw on the map and point the laser; the GM always may. */
   playersMayDraw: boolean;
+  /** A token placed from a creature takes the stat block's size; off, it starts at 1x1. */
+  useCreatureSize?: boolean;
   /** The user's practice campaign, which its GM can reset; set by the server alone. */
   isPractice?: boolean;
   createdAt: string;
@@ -920,6 +922,8 @@ export interface CampaignMap {
   gridOpacity?: number;
   /** The grid's line width on screen: 1 thin, 2 medium, 3 thick pixels. Absent on older payloads means 2. */
   gridLineWidth?: 1 | 2 | 3;
+  /** A scene template: never the current map, so only the GM is sent one. Absent on older payloads means false. */
+  isTemplate?: boolean;
   tokens: Token[];
   annotations: Annotation[];
   wallSegments?: import('./walls').WallSegment[];

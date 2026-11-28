@@ -262,6 +262,8 @@ export function prepareMap(raw: unknown, ctx: MapContext): PreparedMap | null {
       ...(map.gridColor !== undefined ? { gridColor: map.gridColor } : {}),
       ...(map.gridOpacity !== undefined ? { gridOpacity: map.gridOpacity } : {}),
       ...(map.gridLineWidth !== undefined ? { gridLineWidth: map.gridLineWidth } : {}),
+      // Absent in archives from before scene templates: an ordinary scene.
+      isTemplate: map.isTemplate ?? false,
       tokens: tokens as unknown as Prisma.InputJsonValue,
       // Unused: a map's drawings are rows of MapDrawing.
       annotations: [],

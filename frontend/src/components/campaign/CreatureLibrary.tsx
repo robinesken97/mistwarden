@@ -285,7 +285,8 @@ export default function CreatureLibrary({ isOpen, onClose }: CreatureLibraryProp
         name: creature.name,
         imageUrl: creature.imageUrl || '',
         position,
-        size: creature.size || { width: 1, height: 1 },
+        // The stat block's size only when the campaign says so (Use creature size from stat block).
+        size: (campaign.useCreatureSize && creature.size) || { width: 1, height: 1 },
         type: TokenType.NPC,
         displayMode: creature.displayMode || 'pog',
         disposition: creature.disposition,

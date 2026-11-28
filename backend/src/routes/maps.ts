@@ -1011,6 +1011,7 @@ export const MAP_FIELDS_THAT_DO_NOT_RESEND_THE_MAP = {
   gridColor: 'reaches every reader in map:settings:updated, and only changes how the grid is drawn',
   gridOpacity: 'reaches every reader in map:settings:updated, and only changes how the grid is drawn',
   gridLineWidth: 'reaches every reader in map:settings:updated, and only changes how the grid is drawn',
+  isTemplate: 'set when the map is made, and never changed',
 } as const satisfies Partial<Record<keyof MapRow, string>>;
 
 /**
@@ -1427,6 +1428,12 @@ function copyName(source: string, taken: readonly string[]): string {
   }
 }
 
+/** `source` itself when no name in `taken` is it, else copyName's. */
+function nameOrCopyName(source: string, taken: readonly string[]): string {
+  const key = source.trim().toLocaleLowerCase();
+  return taken.some((n) => n.trim().toLocaleLowerCase() === key) ? copyName(source, taken) : source;
+}
+
 /**
  * A map's tokens with new ids, each else as it was: hit points, stat block,
  * conditions, visibility, controller, carried light and the rest. A rider
@@ -1444,15 +1451,37 @@ function copiedTokens(tokens: readonly Token[]): Token[] {
 }
 
 /**
+ * How a copy is made: plain (`/duplicate`, a template only of a template), as a scene
+ * template, or as a scene from one. A template's or a scene's default name
+ * is the source's, with " (copy)" only when another template, or another
+ * scene, already has it.
+ */
+type CopyKind = 'duplicate' | 'saveAsTemplate' | 'fromTemplate';
+
+/** Not a template: create-scene-from-template copies only a template. */
+export const NOT_A_TEMPLATE_MESSAGE = 'This map is not a scene template; copy it with /duplicate or save it as a template first';
+
+/** The answer to making a template the current map, on every path that would. */
+export const TEMPLATE_NOT_CURRENT_MESSAGE = 'A scene template cannot be the current map; create a scene from it first';
+
+/**
  * POST /api/campaigns/:campaignId/maps/:id/duplicate
  * Copy a map within its campaign: picture, grid and its look, settings,
  * walls and doors, lights and spell areas, and unless sent as false its
  * tokens (with new ids), fog and drawings. Never what players explored on
  * it, nor the initiative order. The copy is not made current and nobody is
- * told of it, as with a map just created.
+ * told of it, as with a map just created. A template's copy is a template.
  * Requires: GM role
+ *
+ * POST /api/campaigns/:campaignId/maps/:id/save-as-template
+ * The same copy, kept as a scene template (Map.isTemplate): never made
+ * current, so never sent to a player.
+ *
+ * POST /api/campaigns/:campaignId/maps/:id/create-from-template
+ * The same copy of a template (409 for a map that is not one), as an
+ * ordinary scene.
  */
-router.post('/:id/duplicate', campaignGM, gmActionLimiter, async (req: AuthenticatedRequest, res: Response) => {
+const copyMapRoute = (kind: CopyKind) => async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { campaignId, id } = req.params;
     const parsed = DuplicateMapSchema.safeParse(req.body ?? {});
@@ -1466,6 +1495,9 @@ router.post('/:id/duplicate', campaignGM, gmActionLimiter, async (req: Authentic
     const copied = await withMapsLocked([id], async (tx): Promise<LockedEdit<MapRow>> => {
       const source = await tx.map.findUnique({ where: { id } });
       if (!source || source.campaignId !== campaignId) return MAP_GONE;
+      if (kind === 'fromTemplate' && !source.isTemplate) return { status: 409, error: 'Conflict', message: NOT_A_TEMPLATE_MESSAGE };
+      // A plain copy is what its source is: a template's copy is a template.
+      const isTemplate = kind === 'saveAsTemplate' || (kind === 'duplicate' && source.isTemplate);
       const tokens = options.tokens ? copiedTokens(readTokens(source.tokens)) : [];
       const walls = Array.isArray(source.wallSegments) ? source.wallSegments : [];
       const lights = Array.isArray(source.lights) ? source.lights : [];
@@ -1474,7 +1506,9 @@ router.post('/:id/duplicate', campaignGM, gmActionLimiter, async (req: Authentic
       if (walls.length > MAX_WALL_SEGMENTS) return { status: 400, error: 'Limit Exceeded', message: TOO_MANY_WALLS_MESSAGE };
       if (lights.length > MAX_LIGHT_SOURCES) return { status: 400, error: 'Limit Exceeded', message: TOO_MANY_LIGHTS_MESSAGE };
 
-      const name = options.name ?? copyName(source.name, (await tx.map.findMany({ where: { campaignId }, select: { name: true } })).map((m) => m.name));
+      const name = options.name ?? (kind === 'duplicate'
+        ? copyName(source.name, (await tx.map.findMany({ where: { campaignId }, select: { name: true } })).map((m) => m.name))
+        : nameOrCopyName(source.name, (await tx.map.findMany({ where: { campaignId, isTemplate }, select: { name: true } })).map((m) => m.name)));
       const map = await tx.map.create({
         data: {
           campaignId,
@@ -1508,6 +1542,7 @@ router.post('/:id/duplicate', campaignGM, gmActionLimiter, async (req: Authentic
           fogEnabled: source.fogEnabled,
           globalIllumination: source.globalIllumination,
           explorationEnabled: source.explorationEnabled,
+          isTemplate,
         },
       });
 
@@ -1525,10 +1560,14 @@ router.post('/:id/duplicate', campaignGM, gmActionLimiter, async (req: Authentic
     if (!('done' in copied)) return sendRefusal(res, copied);
     return res.status(201).json({ map: copied.done });
   } catch (error) {
-    logger.error('Error duplicating map', { err: error });
+    logger.error('Error duplicating map', { err: error, kind });
     return res.status(500).json({ error: 'Internal Server Error', message: 'Failed to duplicate map' });
   }
-});
+};
+
+router.post('/:id/duplicate', campaignGM, gmActionLimiter, copyMapRoute('duplicate'));
+router.post('/:id/save-as-template', campaignGM, gmActionLimiter, copyMapRoute('saveAsTemplate'));
+router.post('/:id/create-from-template', campaignGM, gmActionLimiter, copyMapRoute('fromTemplate'));
 
 /**
  * PUT /api/campaigns/:campaignId/maps/:id/set-current
@@ -1563,7 +1602,9 @@ router.put('/:id/set-current', campaignGM, async (req: AuthenticatedRequest, res
     // unknown map does, where the foreign key's refusal was a 500.
     const updatedCampaign = await prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM "Campaign" WHERE id = ${campaignId} FOR UPDATE`;
-      if (!(await tx.map.findUnique({ where: { id }, select: { id: true } }))) return null;
+      const locked = await tx.map.findUnique({ where: { id }, select: { isTemplate: true } });
+      if (!locked) return null;
+      if (locked.isTemplate) return 'template' as const;
       return tx.campaign.update({
         where: { id: campaignId },
         data: { currentMapId: id },
@@ -1580,6 +1621,9 @@ router.put('/:id/set-current', campaignGM, async (req: AuthenticatedRequest, res
     });
     if (!updatedCampaign) {
       return res.status(404).json({ error: 'Not Found', message: 'Map not found' });
+    }
+    if (updatedCampaign === 'template') {
+      return res.status(409).json({ error: 'Conflict', message: TEMPLATE_NOT_CURRENT_MESSAGE });
     }
     // Strokes under way on the map the table has left are decided again.
     currentMapChanged(campaignId);

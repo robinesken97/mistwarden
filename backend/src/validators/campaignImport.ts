@@ -136,6 +136,8 @@ export const CampaignSettingsSchema = z.object({
   // Absent from archives made before the setting; such a campaign imports
   // with players allowed to draw, as every campaign had at the upgrade.
   playersMayDraw: z.boolean().optional().catch(undefined),
+  // Absent before the setting existed: off, the default.
+  useCreatureSize: z.boolean().optional().catch(undefined),
 }).strip();
 
 // ── Token (within a map) ────────────────────────────────────────────────────
@@ -234,6 +236,8 @@ export const ImportMapSchema = z.object({
   gridColor: GridColorSchema.optional().catch(undefined),
   gridOpacity: GridOpacitySchema.optional().catch(undefined),
   gridLineWidth: GridLineWidthSchema.optional().catch(undefined),
+  // Absent before scene templates, or not a boolean: an ordinary scene.
+  isTemplate: z.boolean().optional().catch(undefined),
   tokens: z.unknown().optional(),
   // The map's drawings, each checked as drawing:add checks one. An export
   // writes them under `drawings` and `annotations` empty (campaignExporter.ts).
