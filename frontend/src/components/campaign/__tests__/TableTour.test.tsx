@@ -42,9 +42,31 @@ describe('TableTour', () => {
     unmount();
     render(tour(true));
     act(() => startTour());
+    // The first step says what the practice campaign is for, and asks for nothing.
+    expect(await screen.findByText(/Nothing here matters/)).toBeInTheDocument();
+    expect(screen.queryByText(/Try it/)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
     expect(await screen.findByText(/Try it/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Done' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Skip' })).toBeInTheDocument();
+  });
+
+  it('folds its step away to one row, and opens it again on the next step', async () => {
+    render(tour());
+    act(() => startTour());
+    fireEvent.click(await screen.findByRole('button', { name: 'Fold the step away' }));
+    expect(screen.queryByRole('button', { name: 'Next' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Show the step' })).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(screen.getByRole('button', { name: 'Show the step' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    expect(await screen.findByRole('dialog', { name: 'The map' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Next' })).toBeInTheDocument();
+  });
+
+  it('leaves the tour of another campaign where it was', () => {
+    saveTour('c2', 'gm', 3);
+    render(tour());
+    expect(JSON.parse(window.localStorage.getItem(TOUR_KEY)!)).toMatchObject({ campaignId: 'c2', step: 3 });
   });
 
   it('keeps its place as it goes on, and puts the card in a corner when its target is not on screen', async () => {

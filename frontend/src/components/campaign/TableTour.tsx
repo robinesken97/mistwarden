@@ -12,7 +12,7 @@
  */
 
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
-import { X } from 'lucide-react';
+import { ChevronDown, ChevronUp, X } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import FloatingLayer from '@/components/ui/FloatingLayer';
 import { useCompactLayout } from '@/contexts/LayoutContext';
@@ -84,12 +84,19 @@ export default function TableTour({ campaignId, kind, practice, live, userId, ro
     return () => window.removeEventListener(TOUR_START_EVENT, start);
   }, []);
 
-  // The place, kept on this device.
+  // The place, kept on this device; forgotten as the tour ends, and not as
+  // another campaign opens with no tour of its own.
   const running = index !== null;
   useEffect(() => {
-    if (index === null) clearTour();
-    else saveTour(campaignId, kind, index);
+    if (index !== null) saveTour(campaignId, kind, index);
   }, [campaignId, kind, index]);
+  const end = () => {
+    clearTour();
+    setIndex(null);
+  };
+  // Folded to its first row, out of the way of what a step asks for; open again on the next step.
+  const [folded, setFolded] = useState(false);
+  useEffect(() => setFolded(false), [index]);
   useEffect(() => {
     if (running) return;
     for (const anchor of unfolded.current) {
@@ -146,7 +153,7 @@ export default function TableTour({ campaignId, kind, practice, live, userId, ro
     const next = { width: card.offsetWidth, height: card.offsetHeight };
     setCardSize((prev) => (prev.width === next.width && prev.height === next.height ? prev : next));
     // Measured again whenever what it holds or where it goes may have changed.
-  }, [step, revealed, box, ownsToken, live, practice]);
+  }, [step, revealed, box, ownsToken, live, practice, folded]);
 
   // Escape ends the tour before a sheet or a dialog under it takes the key.
   useEffect(() => {
@@ -155,6 +162,7 @@ export default function TableTour({ campaignId, kind, practice, live, userId, ro
       if (e.key !== 'Escape') return;
       e.stopPropagation();
       e.preventDefault();
+      clearTour();
       setIndex(null);
     };
     window.addEventListener('keydown', onKey, true);
@@ -164,9 +172,15 @@ export default function TableTour({ campaignId, kind, practice, live, userId, ro
   if (!step || index === null || !revealed) return null;
 
   const note = stepNote(step, { practice, ownsToken, live });
+  // A step that points at nothing, such as the first, has nothing to try.
+  const asks = note?.kind === 'task' && step.targets.length > 0;
   const last = index === steps.length - 1;
-  const next = () => setIndex(last ? null : index + 1);
-  const place = cardPlace(box, step.targets.length > 0, cardSize.height, cardSize.width);
+  const next = () => (last ? end() : setIndex(index + 1));
+  // Folded, it is its two buttons at the screen's left edge, half way down: the
+  // least in the way of a bar, a header or a sheet's own buttons.
+  const place = folded
+    ? { top: Math.max(GAP, window.innerHeight / 2 - cardSize.height / 2), left: GAP }
+    : cardPlace(box, step.targets.length > 0, cardSize.height, cardSize.width);
 
   // On the body, over the sheets and dialogs drawn there (FloatingLayer.tsx).
   return (
@@ -188,16 +202,27 @@ export default function TableTour({ campaignId, kind, practice, live, userId, ro
         aria-labelledby={titleId}
         aria-describedby={bodyId}
         tabIndex={-1}
-        className={`pointer-events-auto absolute w-[min(22rem,calc(100vw-2rem))] card-cozy space-y-2 shadow-2xl outline-hidden focus-visible:ring-2 focus-visible:ring-brand ${place ? '' : 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'}`}
+        className={`pointer-events-auto absolute ${folded ? 'w-auto' : 'w-[min(22rem,calc(100vw-2rem))]'} card-cozy max-h-[calc(100dvh-2rem)] overflow-y-auto space-y-2 shadow-2xl outline-hidden focus-visible:ring-2 focus-visible:ring-brand ${place ? '' : 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'}`}
         style={place ?? undefined}
       >
         <div className="flex items-center gap-2">
-          <p className="flex-1 text-xs font-semibold uppercase tracking-wide text-ink-muted">
+          <p className={folded ? 'sr-only' : 'flex-1 text-xs font-semibold uppercase tracking-wide text-ink-muted'}>
             {kind === 'gm' ? 'GM tour' : 'Player tour'} · Step {index + 1} of {steps.length}
           </p>
           <button
             type="button"
-            onClick={() => setIndex(null)}
+            onClick={() => setFolded(!folded)}
+            aria-label={folded ? 'Show the step' : 'Fold the step away'}
+            aria-expanded={!folded}
+            aria-controls={bodyId}
+            title={folded ? 'Show the step' : 'Fold the step away'}
+            className="inline-flex size-11 shrink-0 items-center justify-center rounded-cozy text-ink-muted hover:bg-ink/10 hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-brand"
+          >
+            {folded ? <ChevronUp className="h-5 w-5" aria-hidden="true" /> : <ChevronDown className="h-5 w-5" aria-hidden="true" />}
+          </button>
+          <button
+            type="button"
+            onClick={end}
             aria-label="End tour"
             title="End tour"
             className="inline-flex size-11 shrink-0 items-center justify-center rounded-cozy text-ink-muted hover:bg-ink/10 hover:text-ink focus:outline-hidden focus-visible:ring-2 focus-visible:ring-brand"
@@ -205,20 +230,20 @@ export default function TableTour({ campaignId, kind, practice, live, userId, ro
             <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
-        <h2 id={titleId} className="font-heading text-lg font-bold text-brand-ink">{step.title}</h2>
-        <div id={bodyId} className="space-y-2 text-sm text-ink">
+        <h2 id={titleId} className={folded ? 'sr-only' : 'font-heading text-lg font-bold text-brand-ink'}>{step.title}</h2>
+        <div id={bodyId} hidden={folded} className="space-y-2 text-sm text-ink">
           <p>{step.body}</p>
           {note && (
             <p className={note.kind === 'task' ? 'alert-info' : 'alert-warning'}>
-              {note.kind === 'task' && <span className="font-semibold">Try it: </span>}
+              {asks && <span className="font-semibold">Try it: </span>}
               {note.text}
             </p>
           )}
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
+        <div hidden={folded} className="flex flex-wrap items-center justify-end gap-2 pt-1">
           {index > 0 && <Button variant="ghost" className="min-h-11" onClick={() => setIndex(index - 1)}>Back</Button>}
-          {note && !last && <Button variant="secondary" className="min-h-11" onClick={next}>Skip</Button>}
-          <Button className="min-h-11" onClick={next}>{last ? 'Finish' : note?.kind === 'task' ? 'Done' : 'Next'}</Button>
+          {(asks || note?.kind === 'hint') && !last && <Button variant="secondary" className="min-h-11" onClick={next}>Skip</Button>}
+          <Button className="min-h-11" onClick={next}>{last ? 'Finish' : asks ? 'Done' : 'Next'}</Button>
         </div>
       </div>
     </div>

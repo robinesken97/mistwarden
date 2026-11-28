@@ -163,3 +163,23 @@ describe('whether any dialog is open', () => {
     expect(isAnyTrapOpen()).toBe(false);
   });
 });
+
+// Mistwarden, 2026-11-28: the guided tour's card (TableTour.tsx) floats over a dialog.
+describe('the guided tour over a dialog', () => {
+  it('leaves Tab to the tour card while the focus is in it', async () => {
+    render(
+      <>
+        <Dialog name="Under" />
+        <div data-tour-card="">
+          <button type="button">Next</button>
+        </div>
+      </>
+    );
+    await nextFrame();
+    const next = screen.getByRole('button', { name: 'Next' });
+    next.focus();
+    const tab = fireEvent.keyDown(next, { key: 'Tab' });
+    expect(tab).toBe(true);
+    expect(next).toHaveFocus();
+  });
+});

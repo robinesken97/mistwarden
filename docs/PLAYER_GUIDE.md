@@ -197,7 +197,7 @@ To open CozyVTT from your phone's home screen like an app, full screen, see [Add
 
 ### The guided tour
 
-**Tour**, the signpost in the header (under **More** on a phone), points at what you play with, one step at a time: your token, the dice, your character sheet and the chat. It starts only when you press it, and opens the tab or panel a step is about. **Next** goes on, **Back** goes back, and **End tour** or **Escape** stops it; a reload comes back to the step you were on. If no token is yours yet, the token step says so: your GM gives you one. In a practice campaign each step also asks you to try the thing.
+**Tour**, the signpost in the header (under **More** on a phone), points at what you play with, one step at a time: your token, the dice, your character sheet and the chat. It starts only when you press it, and opens the tab or panel a step is about. **Next** goes on, **Back** goes back, and **End tour** or **Escape** stops it; the arrow beside **End tour** folds the card out of the way until the next step, and a reload comes back to the step you were on. If no token is yours yet, the token step says so: your GM gives you one. In a practice campaign each step also asks you to try the thing.
 
 ### Rulebooks and Handouts
 

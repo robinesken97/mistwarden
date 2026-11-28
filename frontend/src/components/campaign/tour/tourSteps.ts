@@ -282,9 +282,12 @@ export const pageDom: TourDom = {
     const box = el.getBoundingClientRect();
     if (box.width === 0 || box.height === 0) return false;
     if (getComputedStyle(el).visibility === 'hidden' || el.closest('[inert]')) return false;
-    const x = box.left + box.width / 2;
-    const y = box.top + box.height / 2;
-    if (x < 0 || y < 0 || x > window.innerWidth || y > window.innerHeight) return false;
+    // The middle of the part on screen: a group taller than a short screen still counts.
+    const [left, right] = [Math.max(box.left, 0), Math.min(box.right, window.innerWidth)];
+    const [top, bottom] = [Math.max(box.top, 0), Math.min(box.bottom, window.innerHeight)];
+    if (right <= left || bottom <= top) return false;
+    const x = (left + right) / 2;
+    const y = (top + bottom) / 2;
     // Covered by a sheet or a dialog: the press would land on that. The tour's own card does not count.
     const hit = typeof document.elementFromPoint === 'function' ? document.elementFromPoint(x, y) : null;
     return hit === null || el.contains(hit) || hit.closest('[data-tour-card]') !== null;
