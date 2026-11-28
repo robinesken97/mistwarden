@@ -27,7 +27,7 @@ const api = vi.hoisted(() => ({
 vi.mock('@/services/api', () => ({ api, default: api }));
 
 const imported: SpellSummary = {
-  id: 's1', name: 'Frost Bloom', source: 'custom:homebrew', gameSystem: 'FIFTH_EDITION', campaignId: null, level: 2, school: 'Evocation',
+  id: 's1', name: 'Frost Bloom', source: 'custom:homebrew', gameSystem: null, campaignId: null, level: 2, school: 'Evocation',
   castingTime: '1 action', range: '90 feet', components: 'V, S', duration: 'Instantaneous', concentration: false, ritual: false,
   area: { shape: 'sphere', sizeFt: 10 }, element: 'cold',
 };
