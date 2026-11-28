@@ -6,225 +6,42 @@
 // member as they may see it, see sendInitiativeState).
 // initiative.add / remove / set / roll / reorder / start / next / end /
 // request_state
+//
+// Each checks the socket (ceiling, role, a player's own roll) and calls the
+// operation in services/initiative.ts, which REST calls too.
 // ============================================
 
 import { Server } from 'socket.io';
-import { AuthenticatedSocket, type AuthenticatedFields } from '../auth';
-import { prisma } from '../../config/database';
-import { rollDice, parseDiceExpression, DiceParserError } from '../../utils/dice-parser';
-import {
-  resolveCharacterInitiative,
-  resolveStatBlockInitiative,
-  DEFAULT_INITIATIVE_EXPRESSION,
-} from '../../utils/rules/initiative';
+import { AuthenticatedSocket } from '../auth';
 import logger from '../../utils/logger';
-import { readTokens, toJson } from '../../utils/prisma-json';
-import { withMapsLocked } from '../../utils/mapTokens';
-import { GRID_FRAME_SELECT } from '../../validators/maps';
-import { filterTokensByRole, getSpiritVisibilityBatch, tokensSentTo, type MapTokenSight } from '../../utils/spirit-layer';
-import { canControlToken, canReadMap, canRollDice } from '../../services/permissions';
+import { canControlToken, canRollDice } from '../../services/permissions';
+import { playerHasRolled, markPlayerRolled } from '../initiativeState';
 import {
-  getState as getCombatState,
-  setState as setCombatState,
-  clearState as clearCombatState,
-  sortCombatants,
-  withoutCombatants,
-  projectCombatState,
-  getVersion,
-  startSend,
-  latestSend,
-  playerHasRolled,
-  markPlayerRolled,
-  type CombatantEntry,
-  type CombatantSource,
-  type CombatState,
-} from '../initiativeState';
-import { bestEffort, campaignSockets, getSocketInstance, stillInCampaign } from '../utils';
+  sendInitiativeState,
+  addCombatant,
+  removeCombatant,
+  setInitiative,
+  rollInitiative,
+  reorderCombatants,
+  startCombat,
+  nextTurn,
+  endCombat,
+  type InitiativeActor,
+  type InitiativeOutcome,
+  type Recipient,
+} from '../../services/initiative';
 import { stateRequestAllowed, withinCeiling } from '../shared';
-import { sheetAsRead } from '../../legacy/sheetConversion';
 
-/** What a send needs of a socket; a connected one and a fetched one both have it. */
-type Recipient = Pick<AuthenticatedFields, 'userId' | 'role'> & {
-  emit(event: 'initiative.state', state: CombatState): unknown;
-  emit(event: 'dice.rolled' | 'dice.rolled.secret', roll: Record<string, unknown>): unknown;
-};
-
-/**
- * The sockets in the campaign that are sent `token` at all: every GM's, and
- * a player's when the token stands on the map the campaign is showing and the
- * role filter keeps it for them (visible, on their plane). The dice log entry for a token's roll goes to these and no one
- * else, so a hidden or off-plane combatant the tracker keeps from a player is
- * not announced to them by its roll.
- */
-async function recipientsSentToken(
-  io: Server,
-  campaignId: string,
-  token: ReturnType<typeof readTokens>[number],
-  mapId: string
-): Promise<Recipient[]> {
-  const recipients = (await campaignSockets(io, campaignId)).map((s) => s as unknown as Recipient);
-  const campaign = await prisma.campaign.findUnique({ where: { id: campaignId }, select: { currentMapId: true } });
-  // A token on a map the table is not showing is sent to no player at all.
-  if (campaign?.currentMapId !== mapId) return stillInCampaign(recipients, campaignId).filter((r) => r.role === 'GM');
-  const playerIds = recipients.filter((r) => r.role !== 'GM' && r.userId).map((r) => r.userId as string);
-  const spiritVisibility = await getSpiritVisibilityBatch(campaignId, playerIds);
-  return stillInCampaign(recipients, campaignId).filter((r) => {
-    if (r.role === 'GM') return true;
-    if (!r.userId) return false;
-    return filterTokensByRole([token], r.role ?? 'PLAYER', spiritVisibility.get(r.userId) ?? false, r.userId).length > 0;
-  });
-}
-
-/**
- * A player's or a spectator's copy of the table map's tokens, with a token's
- * character named only where the map sends them that token (tokensSentTo,
- * which the map's own copy asks too): on a lit map, one in their sight, and
- * on any other map, every one the role filter keeps. The order still lists
- * a combatant out of their sight, so its name and picture stay; its
- * character goes, so the order tells them no more than the map does.
- */
-function tokensForOrder(map: MapTokenSight | undefined, role: string, spiritVisible: boolean, userId: string): CombatantSource[] {
-  if (!map) return [];
-  const forRole = filterTokensByRole(readTokens(map.tokens), role, spiritVisible, userId);
-  const sent = new Set(tokensSentTo(map, role, spiritVisible, userId).map((t) => t.id));
-  return forRole.map((t) => (sent.has(t.id) ? t : { ...t, characterId: null }));
-}
-
-/**
- * Send the order to the given sockets, or to every socket in the campaign,
- * each as they may see it. The combatants' tokens are read as they are now,
- * so a name, picture or hit points the GM changes follow the token, and a
- * player's copy goes through the same role filter as the map itself: a hidden
- * token's entry, one on a map the campaign is not showing, and hit points
- * behind a bar the GM keeps off, never reach them, nor the character of a
- * combatant the map does not send them (tokensForOrder). The stored state is the GM's view and is not changed.
- */
-export async function sendInitiativeState(io: Server, campaignId: string, only?: Recipient[]): Promise<void> {
-  const state = getCombatState(campaignId);
-  const version = getVersion(campaignId);
-  // A send to everyone is numbered; a reply to one socket takes the number
-  // of the last send to everyone.
-  const sendNumber = only ? latestSend(campaignId) : startSend(campaignId);
-  // A change that lands while this send is still reading starts its own
-  // send with the newer state or tokens; this one would arrive after it and
-  // show the older, so it is dropped instead. Checked before every emit.
-  const overtaken = () => getVersion(campaignId) !== version || latestSend(campaignId) !== sendNumber;
-  const recipients: Recipient[] = only ?? (await campaignSockets(io, campaignId)).map((s) => s as unknown as Recipient);
-  if (recipients.length === 0 || overtaken()) return;
-
-  // Nothing in the order means nothing to look up: every client asks for
-  // the state when it opens a campaign, and a reply that costs several
-  // queries for an empty list was the most expensive request a member could
-  // repeat.
-  if (state.combatants.length === 0) {
-    const nothing = new Map<string, CombatantSource>();
-    for (const r of stillInCampaign(recipients, campaignId)) {
-      r.emit('initiative.state', projectCombatState(state, nothing, r.role === 'GM'));
-    }
-    return;
-  }
-
-  const mapIds = [...new Set(state.combatants.map((c) => c.mapId))];
-  const [maps, campaign] = await Promise.all([
-    prisma.map.findMany({
-      where: { id: { in: mapIds }, campaignId },
-      select: { id: true, tokens: true, lightingEnabled: true, globalIllumination: true, wallSegments: true, lights: true, ...GRID_FRAME_SELECT },
-    }),
-    prisma.campaign.findUnique({ where: { id: campaignId }, select: { currentMapId: true } }),
-  ]);
-  const tokens = maps.flatMap((m) => readTokens(m.tokens));
-  // A player is sent the map the campaign is showing and no other, so the
-  // order names for them only what stands on it. A combatant on a prepared
-  // map, added there or moved there mid-fight, stays the GM's.
-  const shown = maps.find((m) => m.id === campaign?.currentMapId);
-  const playerIds = recipients.filter((r) => r.role !== 'GM' && r.userId).map((r) => r.userId as string);
-  const spiritVisibility = await getSpiritVisibilityBatch(campaignId, playerIds);
-  if (overtaken()) return;
-  const byId = (list: CombatantSource[]) => new Map(list.map((t) => [t.id, t]));
-
-  const forGM = byId(tokens);
-  for (const r of stillInCampaign(recipients, campaignId)) {
-    if (r.role === 'GM') {
-      r.emit('initiative.state', projectCombatState(state, forGM, true));
-      continue;
-    }
-    if (!r.userId) continue;
-    const forRole = tokensForOrder(shown, r.role ?? 'PLAYER', spiritVisibility.get(r.userId) ?? false, r.userId);
-    r.emit('initiative.state', projectCombatState(state, byId(forRole), false));
-  }
-}
-
-/**
- * Send the order again after something changed, and never let that fail the
- * change: the state or the token is already saved by the time this runs, so
- * a database blip here used to tell the GM "Failed to add to initiative"
- * for an addition that had been made, and a retry was refused as a
- * duplicate. The next change, or a client's request on reconnect, catches
- * everyone up.
- */
-export async function resendInitiativeState(io: Server, campaignId: string): Promise<void> {
-  try {
-    await sendInitiativeState(io, campaignId);
-  } catch (error) {
-    logger.warn('initiative.state fan-out failed; the change stands', { err: error, campaignId });
-  }
-}
-
-/**
- * The same from a REST route, which has no socket server in hand. A member's
- * copy of the order depends on their plane, their role and each token, so
- * the routes that change any of those call this. Skipped while nothing is in
- * the order, unless told otherwise (a deletion that emptied it still has to
- * be sent).
- */
-export async function resendInitiative(campaignId: string, options: { evenWhenEmpty?: boolean } = {}): Promise<void> {
-  if (!options.evenWhenEmpty && getCombatState(campaignId).combatants.length === 0) return;
-  let io: Server;
-  try {
-    io = getSocketInstance();
-  } catch {
-    return;
-  }
-  await resendInitiativeState(io, campaignId);
-}
-
-/**
- * Store a token's initiative on its map, in the list as it is under the map's
- * lock like every other write to a map's tokens. A token no longer on the
- * map is left alone, and the answer is false.
- */
-async function setTokenInitiative(mapId: string, tokenId: string, value: number | null): Promise<boolean> {
-  return withMapsLocked([mapId], async (tx) => {
-    const fresh = await tx.map.findUniqueOrThrow({ where: { id: mapId }, select: { tokens: true } });
-    const tokens = readTokens(fresh.tokens);
-    const index = tokens.findIndex((t) => t.id === tokenId);
-    if (index === -1) return false;
-    tokens[index] = { ...tokens[index], initiative: value };
-    await tx.map.update({ where: { id: mapId }, data: { tokens: toJson(tokens) } });
-    return true;
-  });
-}
-
-/**
- * Whether every member who is not a GM is sent `token`, online or not: it
- * stands on the map the table is showing, and the role filter keeps it for
- * each of them (visible, on their plane). A roll for a token some player is
- * not sent is stored and sent as a secret roll.
- */
-async function sentToEveryPlayer(campaignId: string, token: ReturnType<typeof readTokens>[number], mapId: string): Promise<boolean> {
-  const [campaign, members] = await Promise.all([
-    prisma.campaign.findUnique({ where: { id: campaignId }, select: { currentMapId: true } }),
-    prisma.campaignMembership.findMany({ where: { campaignId, role: { not: 'GM' } }, select: { userId: true, role: true } }),
-  ]);
-  if (campaign?.currentMapId !== mapId) return false;
-  const spiritVisibility = await getSpiritVisibilityBatch(campaignId, members.map((m) => m.userId));
-  return members.every((m) => filterTokensByRole([token], m.role, spiritVisibility.get(m.userId) ?? false, m.userId).length > 0);
-}
+// Routes and tests import the senders from here.
+export { sendInitiativeState, resendInitiativeState, resendInitiative } from '../../services/initiative';
 
 export function registerInitiativeHandlers(io: Server, socket: AuthenticatedSocket): void {
-  /** Send the order to every member, each as they may see it, after a change. */
-  async function broadcastInitiativeState(campaignId: string) {
-    await resendInitiativeState(io, campaignId);
+  /** The socket as the operations' actor, read once the handler has checked it. */
+  const actor = (): InitiativeActor => ({ campaignId: socket.campaignId!, userId: socket.userId!, role: socket.role });
+
+  /** An operation's refusal goes to this socket as `error`. */
+  function answer(outcome: InitiativeOutcome) {
+    if (!outcome.ok) socket.emit('error', { message: outcome.error });
   }
 
   /**
@@ -235,51 +52,7 @@ export function registerInitiativeHandlers(io: Server, socket: AuthenticatedSock
       if (!socket.campaignId) { socket.emit('error', { message: 'Not authenticated to a campaign' }); return; }
       if (!withinCeiling(socket, 'initiative.add')) return;
       if (socket.role !== 'GM') { socket.emit('error', { message: 'Only the GM can modify initiative' }); return; }
-
-      const { tokenId, mapId } = data;
-      if (!tokenId || !mapId) { socket.emit('error', { message: 'tokenId and mapId required' }); return; }
-
-      const map = await prisma.map.findUnique({ where: { id: mapId } });
-      if (!map || map.campaignId !== socket.campaignId) { socket.emit('error', { message: 'Map not found' }); return; }
-
-      const tokens = readTokens(map.tokens);
-      const token = tokens.find((t) => t.id === tokenId);
-      if (!token) { socket.emit('error', { message: 'Token not found' }); return; }
-
-      const state = getCombatState(socket.campaignId);
-
-      // Idempotent — don't add duplicates
-      if (state.combatants.some((c) => c.tokenId === tokenId)) {
-        socket.emit('error', { message: 'Token is already in initiative' });
-        return;
-      }
-
-      const entry: CombatantEntry = {
-        tokenId,
-        mapId,
-        name: token.name,
-        imageUrl: token.imageUrl || '',
-        // Always null, never `token.initiative`.
-        //
-        // A rolled value is persisted onto the map token, and ending combat
-        // clears only the in-memory order — so the number outlives the fight it
-        // was rolled for. Seeding from it meant a token joining a *new* fight
-        // arrived carrying its result from the last one, already placed in the
-        // order before anyone had rolled.
-        //
-        // Joining the order and having a place in it are separate steps: a
-        // combatant sorts to the bottom as "—" until something rolls for it.
-        initiative: null,
-        hp: token.hp ?? null,
-        type: token.type ?? 'npc',
-        disposition: token.disposition ?? null,
-        characterId: token.characterId ?? null,
-      };
-
-      state.combatants = sortCombatants([...state.combatants, entry]);
-      setCombatState(socket.campaignId, state);
-      await broadcastInitiativeState(socket.campaignId);
-      logger.debug('initiative.add', { name: token.name, campaignId: socket.campaignId });
+      answer(await addCombatant(io, actor(), data));
     } catch (error) {
       logger.error('initiative.add failed', { err: error });
       socket.emit('error', { message: 'Failed to add to initiative' });
@@ -294,15 +67,7 @@ export function registerInitiativeHandlers(io: Server, socket: AuthenticatedSock
       if (!socket.campaignId) { socket.emit('error', { message: 'Not authenticated to a campaign' }); return; }
       if (!withinCeiling(socket, 'initiative.remove')) return;
       if (socket.role !== 'GM') { socket.emit('error', { message: 'Only the GM can modify initiative' }); return; }
-
-      const { tokenId } = data;
-      if (!tokenId) { socket.emit('error', { message: 'tokenId required' }); return; }
-
-      // The turn passes on, and an emptied order ends the fight, as when a
-      // combatant's token is deleted (withoutCombatants).
-      const next = withoutCombatants(getCombatState(socket.campaignId), (c) => c.tokenId === tokenId);
-      if (next) setCombatState(socket.campaignId, next);
-      await broadcastInitiativeState(socket.campaignId);
+      answer(await removeCombatant(io, actor(), data));
     } catch (error) {
       logger.error('initiative.remove failed', { err: error });
       socket.emit('error', { message: 'Failed to remove from initiative' });
@@ -317,28 +82,7 @@ export function registerInitiativeHandlers(io: Server, socket: AuthenticatedSock
       if (!socket.campaignId) { socket.emit('error', { message: 'Not authenticated to a campaign' }); return; }
       if (!withinCeiling(socket, 'initiative.set')) return;
       if (socket.role !== 'GM') { socket.emit('error', { message: 'Only the GM can modify initiative' }); return; }
-
-      const { tokenId, mapId, value } = data;
-      if (!tokenId || !mapId) { socket.emit('error', { message: 'tokenId and mapId required' }); return; }
-      if (value !== null && typeof value !== 'number') { socket.emit('error', { message: 'value must be a number or null' }); return; }
-
-      // Persist to DB token record
-      const map = await prisma.map.findUnique({ where: { id: mapId } });
-      if (!map || map.campaignId !== socket.campaignId) { socket.emit('error', { message: 'Map not found' }); return; }
-
-      await setTokenInitiative(mapId, tokenId, value);
-
-      // Update in-memory combat state
-      const state = getCombatState(socket.campaignId);
-      const combatantIndex = state.combatants.findIndex((c) => c.tokenId === tokenId);
-      if (combatantIndex !== -1) {
-        state.combatants[combatantIndex].initiative = value;
-        state.combatants = sortCombatants(state.combatants);
-        setCombatState(socket.campaignId, state);
-      }
-
-      await broadcastInitiativeState(socket.campaignId);
-      logger.debug('initiative.set', { tokenId, value, campaignId: socket.campaignId });
+      answer(await setInitiative(io, actor(), data));
     } catch (error) {
       logger.error('initiative.set failed', { err: error });
       socket.emit('error', { message: 'Failed to set initiative value' });
@@ -376,244 +120,37 @@ export function registerInitiativeHandlers(io: Server, socket: AuthenticatedSock
         return;
       }
 
-      const { tokenId, mapId, expression } = data;
-      if (!tokenId || !mapId) { socket.emit('error', { message: 'tokenId and mapId required' }); return; }
-      if (expression !== undefined && typeof expression !== 'string') {
-        socket.emit('error', { message: 'Invalid expression: it must be text, like 1d20+2' });
-        return;
-      }
-
-      // `expression` is now only a fallback for combatants the server cannot
-      // work initiative out for itself — see the resolution below. Validate it
-      // when one is sent, since it still reaches the dice roller in that case.
-      if (expression !== undefined) {
-        try { parseDiceExpression(expression); } catch (err) {
-          if (err instanceof DiceParserError) { socket.emit('error', { message: `Invalid expression: ${err.message}` }); return; }
-          throw err;
-        }
-      }
-
-      // Fetch token name from DB for logging, with the campaign's current map:
-      // a prepared map is the GM's until they switch to it (canReadMap).
-      const map = await prisma.map.findUnique({ where: { id: mapId }, include: { campaign: { select: { currentMapId: true } } } });
-      if (!map || map.campaignId !== socket.campaignId || !canReadMap(socket.role, mapId, map.campaign.currentMapId)) {
-        socket.emit('error', { message: 'Map not found' });
-        return;
-      }
-
-      const tokens = readTokens(map.tokens);
-      const tokenIndex = tokens.findIndex((t) => t.id === tokenId);
-      if (tokenIndex === -1) { socket.emit('error', { message: 'Token not found' }); return; }
-
-      const token = tokens[tokenIndex];
-      const state = getCombatState(socket.campaignId);
-      const existingIndex = state.combatants.findIndex((c) => c.tokenId === tokenId);
-
-      // Authorize. `controlledBy` is the same ownership field that decides who
-      // may move a token (see handlers/tokens.ts), so a player can roll for
-      // exactly the tokens they can already move.
-      if (socket.role !== 'GM') {
+      // A player's roll is checked where the roll has read the token and the
+      // order, before anything else is awaited (rollInitiative).
+      const campaignId = socket.campaignId;
+      answer(await rollInitiative(io, actor(), data, (token, existingIndex, state) => {
+        // Authorize. `controlledBy` is the same ownership field that decides who
+        // may move a token (see handlers/tokens.ts), so a player can roll for
+        // exactly the tokens they can already move.
+        //
         // The same predicate that decides who may move the token: a spectator
         // never, even one `controlledBy` still names from before a demotion.
         if (!canControlToken(socket.role, token.controlledBy, socket.userId)) {
-          socket.emit('error', {
-            message: socket.role === 'SPECTATOR'
-              ? 'Spectators cannot roll initiative'
-              : 'You can only roll initiative for your own token',
-          });
-          return;
+          return socket.role === 'SPECTATOR'
+            ? 'Spectators cannot roll initiative'
+            : 'You can only roll initiative for your own token';
         }
-        if (existingIndex === -1) {
-          socket.emit('error', { message: 'That token is not in the initiative order yet' });
-          return;
-        }
+        if (existingIndex === -1) return 'That token is not in the initiative order yet';
         // Initiative is rolled to establish the order, not to renegotiate it
         // mid-fight. Re-rolling re-sorts the combatants, and the turn pointer
         // walks the list by position — so a player who rolls their way above the
         // current combatant ends the round early and skips whoever was between
         // them. It would also be spammable until a good number came up. A GM can
         // still re-roll anyone, which is the case where it is a deliberate call.
-        if (state.active) {
-          socket.emit('error', { message: 'Combat has started — ask your GM to change your initiative' });
-          return;
-        }
+        if (state.active) return 'Combat has started — ask your GM to change your initiative';
         // Once each time the token joins the order, recorded now so a second
         // roll sent at the same moment is refused too.
-        if (playerHasRolled(socket.campaignId, tokenId)) {
-          socket.emit('error', { message: 'You have rolled initiative for this fight already. Ask your GM to change it.' });
-          return;
+        if (playerHasRolled(campaignId, token.id)) {
+          return 'You have rolled initiative for this fight already. Ask your GM to change it.';
         }
-        markPlayerRolled(socket.campaignId, tokenId);
-      }
-
-      // Work out what initiative actually means for this combatant.
-      //
-      // The server decides, not the client. It has to: this is the only side
-      // holding the character sheet, and Horror d100 has no initiative roll
-      // at all — combatants are ranked by Dexterity — which a client-supplied
-      // dice expression cannot express. Deciding here also means the tracker's
-      // die and the map menu produce the same number by construction rather
-      // than by both remembering to compute it the same way.
-      let resolution = null as ReturnType<typeof resolveCharacterInitiative>;
-      if (token.characterId) {
-        // Only a character of this campaign. Character ids are visible to
-        // every member of any shared campaign, and anyone can be the GM of a
-        // campaign they create, so a token bound to someone else's character
-        // must not read that sheet.
-        const character = await prisma.character.findFirst({
-          where: { id: token.characterId, campaignId: socket.campaignId },
-          select: { gameSystem: true, data: true },
-        });
-        if (character) {
-          // A sheet still in an older shape is read converted, nothing written.
-          resolution = resolveCharacterInitiative(character.gameSystem, sheetAsRead(character.gameSystem, character.data));
-        }
-      }
-      if (!resolution && token.statBlock) {
-        const campaign = await prisma.campaign.findUnique({
-          where: { id: socket.campaignId },
-          select: { gameSystem: true },
-        });
-        resolution = resolveStatBlockInitiative(campaign?.gameSystem ?? null, token.statBlock);
-      }
-
-      // Nothing system-specific applies (a flexible sheet, a bare NPC token).
-      //
-      // A client-supplied expression is honoured only for the GM, who can set
-      // any initiative value by hand anyway so gains nothing by lying. A player
-      // always gets the default: they may control a token with no sheet and no
-      // stat block (a GM can assign one to them), and without this they could
-      // send `1d20+9999` and hand themselves the top of the order.
-      const fallbackExpression =
-        socket.role === 'GM' && expression ? expression : DEFAULT_INITIATIVE_EXPRESSION;
-
-      let rolledValue: number;
-      let rollResult: ReturnType<typeof rollDice> | null = null;
-      let usedExpression = '';
-
-      if (resolution && resolution.kind === 'fixed') {
-        // No dice. The value *is* the answer.
-        rolledValue = resolution.value;
-      } else {
-        usedExpression = resolution ? resolution.expression : fallbackExpression;
-        try {
-          parseDiceExpression(usedExpression);
-        } catch {
-          // A derived expression that will not parse is a bug on our side, not
-          // the caller's — fall back rather than failing the player's roll.
-          logger.warn('initiative.roll derived an unparseable expression', {
-            usedExpression, campaignId: socket.campaignId,
-          });
-          usedExpression = DEFAULT_INITIATIVE_EXPRESSION;
-        }
-        rollResult = rollDice(usedExpression);
-        rolledValue = rollResult.total;
-      }
-
-      // Persist to token, in the list as it is under the map's lock: the
-      // copy fetched before the character lookups above is stale by now. A
-      // token deleted meanwhile is not rolled for at all: the GM's roll used
-      // to add it to the order anyway.
-      if (!(await setTokenInitiative(mapId, tokenId, rolledValue))) {
-        if (socket.role !== 'GM') markPlayerRolled(socket.campaignId, tokenId, false);
-        socket.emit('error', { message: 'Token not found' });
-        return;
-      }
-
-      // Update in-memory state — add to combatants if not already present.
-      // Only for a GM, and only a token that was not in the order when the
-      // roll began: a player's roll is rejected above unless the token is
-      // already a combatant, and a combatant that has left the order since
-      // stays out.
-      //
-      // The order as it is now, not the copy read before the awaits above:
-      // a concurrent roll re-sorts it, a remove shortens it, and the GM may
-      // have ended the fight, which writing the old copy back would undo.
-      const current = getCombatState(socket.campaignId);
-      const combatantIndex = current.combatants.findIndex((c) => c.tokenId === tokenId);
-      if (combatantIndex !== -1) {
-        current.combatants[combatantIndex].initiative = rolledValue;
-        current.combatants = sortCombatants(current.combatants);
-        setCombatState(socket.campaignId, current);
-      } else if (socket.role === 'GM' && existingIndex === -1) {
-        // The GM's roll adds a token that was not in the order when the roll
-        // began. One that was, and is gone now, was removed meanwhile (or
-        // the fight ended), and stays out.
-        current.combatants.push({
-          tokenId,
-          mapId,
-          name: token.name,
-          imageUrl: token.imageUrl || '',
-          initiative: rolledValue,
-          hp: token.hp ?? null,
-          type: token.type ?? 'npc',
-          disposition: token.disposition ?? null,
-          characterId: token.characterId ?? null,
-        });
-        current.combatants = sortCombatants(current.combatants);
-        setCombatState(socket.campaignId, current);
-      }
-
-      // Store the roll in the dice history and announce it, but only when dice
-      // were actually thrown. A Horror d100 character's initiative is
-      // simply their Dexterity, and a dice-log entry claiming otherwise would
-      // be a lie. The value still reaches everyone through the initiative
-      // broadcast below.
-      const campaignId = socket.campaignId;
-      const roll = rollResult;
-      // The roll is stored and ordered by now: a failure to write its dice
-      // log entry is logged, and the new order below still goes out.
-      if (roll) await bestEffort('initiative.roll dice log', async () => {
-        const user = await prisma.user.findUnique({ where: { id: socket.userId }, select: { displayName: true } });
-        // The server names the token; a name the client sends is not used.
-        // An obscured token is stored and sent under the placeholder, except
-        // to the player who rolled for it, who knows it. So is one whose name
-        // the GM hides (Mistwarden, 2026-11-27).
-        const publicName = token.obscured === true || token.nameHidden === true ? 'Unknown creature' : token.name;
-        // A token some player is not sent makes a secret roll: the roller
-        // and the GM see it, in the history too.
-        const secret = !(await sentToEveryPlayer(campaignId, token, mapId));
-        const stored = await prisma.diceRoll.create({
-          data: {
-            campaignId,
-            userId: socket.userId!,
-            expression: usedExpression,
-            result: rolledValue,
-            breakdown: toJson(roll),
-            characterName: publicName,
-            purpose: `${publicName} Initiative`,
-            secret,
-          },
-        });
-        const rollData = {
-          id: stored.id,
-          userId: socket.userId,
-          userName: user?.displayName ?? 'GM',
-          characterName: publicName,
-          expression: usedExpression,
-          result: rolledValue,
-          breakdown: roll,
-          purpose: `${publicName} Initiative`,
-          timestamp: stored.rolledAt.toISOString(),
-          secret,
-        };
-        const named = { ...rollData, characterName: token.name, purpose: `${token.name} Initiative` };
-        const recipients = await recipientsSentToken(io, campaignId, token, mapId);
-        for (const r of recipients) {
-          const isRoller = r.userId === socket.userId;
-          if (secret && !isRoller && r.role !== 'GM') continue;
-          if (secret && !isRoller) {
-            r.emit('dice.rolled.secret', { ...rollData, originalRoller: socket.userId, isAuditView: true });
-          } else {
-            r.emit('dice.rolled', isRoller ? named : rollData);
-          }
-        }
-      });
-
-      await broadcastInitiativeState(campaignId);
-      logger.debug('initiative.roll', {
-        rolled: !!rollResult, result: rolledValue, name: token.name, campaignId: socket.campaignId,
-      });
+        markPlayerRolled(campaignId, token.id);
+        return null;
+      }));
     } catch (error) {
       logger.error('initiative.roll failed', { err: error });
       socket.emit('error', { message: 'Failed to roll initiative' });
@@ -628,24 +165,7 @@ export function registerInitiativeHandlers(io: Server, socket: AuthenticatedSock
       if (!socket.campaignId) { socket.emit('error', { message: 'Not authenticated to a campaign' }); return; }
       if (!withinCeiling(socket, 'initiative.reorder')) return;
       if (socket.role !== 'GM') { socket.emit('error', { message: 'Only the GM can reorder initiative' }); return; }
-
-      const { orderedTokenIds } = data;
-      if (!Array.isArray(orderedTokenIds)) { socket.emit('error', { message: 'orderedTokenIds must be an array' }); return; }
-
-      const state = getCombatState(socket.campaignId);
-      const combatantMap = new Map(state.combatants.map((c) => [c.tokenId, c]));
-      const reordered: CombatantEntry[] = [];
-      for (const id of orderedTokenIds) {
-        const c = combatantMap.get(id);
-        if (c) reordered.push(c);
-      }
-      // Keep any combatants not in the orderedTokenIds at the end
-      for (const c of state.combatants) {
-        if (!reordered.includes(c)) reordered.push(c);
-      }
-      state.combatants = reordered;
-      setCombatState(socket.campaignId, state);
-      await broadcastInitiativeState(socket.campaignId);
+      answer(await reorderCombatants(io, actor(), data));
     } catch (error) {
       logger.error('initiative.reorder failed', { err: error });
       socket.emit('error', { message: 'Failed to reorder initiative' });
@@ -660,16 +180,7 @@ export function registerInitiativeHandlers(io: Server, socket: AuthenticatedSock
       if (!socket.campaignId) { socket.emit('error', { message: 'Not authenticated to a campaign' }); return; }
       if (!withinCeiling(socket, 'initiative.start')) return;
       if (socket.role !== 'GM') { socket.emit('error', { message: 'Only the GM can start combat' }); return; }
-
-      const state = getCombatState(socket.campaignId);
-      if (state.combatants.length === 0) { socket.emit('error', { message: 'Add combatants before starting combat' }); return; }
-
-      state.active = true;
-      state.round = 1;
-      state.currentTokenId = state.combatants[0].tokenId;
-      setCombatState(socket.campaignId, state);
-      await broadcastInitiativeState(socket.campaignId);
-      logger.info('initiative.start', { campaignId: socket.campaignId, first: state.combatants[0].name });
+      answer(await startCombat(io, actor()));
     } catch (error) {
       logger.error('initiative.start failed', { err: error });
       socket.emit('error', { message: 'Failed to start combat' });
@@ -684,24 +195,7 @@ export function registerInitiativeHandlers(io: Server, socket: AuthenticatedSock
       if (!socket.campaignId) { socket.emit('error', { message: 'Not authenticated to a campaign' }); return; }
       if (!withinCeiling(socket, 'initiative.next')) return;
       if (socket.role !== 'GM') { socket.emit('error', { message: 'Only the GM can advance the turn' }); return; }
-
-      const state = getCombatState(socket.campaignId);
-      if (!state.active || state.combatants.length === 0) { socket.emit('error', { message: 'Combat is not active' }); return; }
-
-      const currentIndex = state.combatants.findIndex((c) => c.tokenId === state.currentTokenId);
-      const nextIndex = currentIndex + 1;
-
-      if (nextIndex >= state.combatants.length) {
-        // Wrap around — new round
-        state.round += 1;
-        state.currentTokenId = state.combatants[0].tokenId;
-      } else {
-        state.currentTokenId = state.combatants[nextIndex].tokenId;
-      }
-
-      setCombatState(socket.campaignId, state);
-      await broadcastInitiativeState(socket.campaignId);
-      logger.debug('initiative.next', { round: state.round, current: state.currentTokenId, campaignId: socket.campaignId });
+      answer(await nextTurn(io, actor()));
     } catch (error) {
       logger.error('initiative.next failed', { err: error });
       socket.emit('error', { message: 'Failed to advance initiative' });
@@ -716,10 +210,7 @@ export function registerInitiativeHandlers(io: Server, socket: AuthenticatedSock
       if (!socket.campaignId) { socket.emit('error', { message: 'Not authenticated to a campaign' }); return; }
       if (!withinCeiling(socket, 'initiative.end')) return;
       if (socket.role !== 'GM') { socket.emit('error', { message: 'Only the GM can end combat' }); return; }
-
-      clearCombatState(socket.campaignId);
-      await broadcastInitiativeState(socket.campaignId);
-      logger.info('initiative.end', { campaignId: socket.campaignId });
+      answer(await endCombat(io, actor()));
     } catch (error) {
       logger.error('initiative.end failed', { err: error });
       socket.emit('error', { message: 'Failed to end combat' });

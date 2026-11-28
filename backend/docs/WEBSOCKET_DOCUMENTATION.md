@@ -1416,8 +1416,8 @@ _Sent to: map readers are every member while the map is the one the campaign is 
 | `chat.system` | The campaign | `utils.ts` |
 | `connected` | The sender | `events.ts` |
 | `dice.historyCleared` | The campaign | `dice.ts` |
-| `dice.rolled` | Members the handler picks; the campaign | `initiative.ts` |
-| `dice.rolled.secret` | Members the handler picks | `initiative.ts` |
+| `dice.rolled` | Members the handler picks; the campaign | `dice.ts` |
+| `dice.rolled.secret` | Members the handler picks | `dice.ts` |
 | `drawing:added` | Map readers, as their role sees it | `drawings.ts` |
 | `drawing:previewed` | Members the handler picks | `drawings.ts` |
 | `drawing:removed` | Map readers, as their role sees it | `drawings.ts` |
