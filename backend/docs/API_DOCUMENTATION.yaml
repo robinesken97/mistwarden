@@ -3936,6 +3936,402 @@ paths:
                 message: Failed to decline invitation
 
   # ============================================
+  # INITIATIVE
+  # ============================================
+
+  /api/campaigns/{campaignId}/initiative:
+    get:
+      tags:
+        - Campaigns
+      summary: The initiative order as the GM sees it
+      description: |
+        The order kept in memory, with every combatant's token as it is now,
+        as `initiative.state` sends it to a GM (GM only). A token deleted since it
+        joined keeps the copy taken then.
+        Shares the GM's table-action limit with the other REST table actions:
+        120 requests a minute per user (429 past it).
+      operationId: getInitiative
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CampaignId'
+      responses:
+        '200':
+          description: The current order.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state:
+                    $ref: '#/components/schemas/InitiativeState'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/campaigns/{campaignId}/initiative/start:
+    post:
+      tags:
+        - Campaigns
+      summary: Start combat
+      description: |
+        Begin combat as the socket's `initiative.start` does (GM only): round 1,
+        the first combatant acting. Every member is sent `initiative.state` as
+        they may see it. 409 while the order is empty.
+        Shares the GM's table-action limit with the other REST table actions:
+        120 requests a minute per user (429 past it).
+      operationId: startInitiative
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CampaignId'
+      responses:
+        '200':
+          description: The order as the GM now sees it.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state:
+                    $ref: '#/components/schemas/InitiativeState'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/campaigns/{campaignId}/initiative/next:
+    post:
+      tags:
+        - Campaigns
+      summary: Pass the turn
+      description: |
+        Pass the turn as the socket's `initiative.next` does (GM only); after the
+        last combatant a new round begins at the top. REST and the socket act on
+        the same order, so turns passed either way follow each other. 409 when
+        combat is not active.
+        Shares the GM's table-action limit with the other REST table actions:
+        120 requests a minute per user (429 past it).
+      operationId: nextInitiativeTurn
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CampaignId'
+      responses:
+        '200':
+          description: The order as the GM now sees it.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state:
+                    $ref: '#/components/schemas/InitiativeState'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/campaigns/{campaignId}/initiative/end:
+    post:
+      tags:
+        - Campaigns
+      summary: End combat
+      description: |
+        End combat and clear the order as the socket's `initiative.end` does (GM
+        only). The tokens keep their stored initiative values.
+        Shares the GM's table-action limit with the other REST table actions:
+        120 requests a minute per user (429 past it).
+      operationId: endInitiative
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CampaignId'
+      responses:
+        '200':
+          description: The order as the GM now sees it.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state:
+                    $ref: '#/components/schemas/InitiativeState'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/campaigns/{campaignId}/initiative/combatants:
+    post:
+      tags:
+        - Campaigns
+      summary: Add a combatant
+      description: |
+        Add a token to the order as the socket's `initiative.add` does (GM only).
+        It joins unrolled and sorts to the bottom until something rolls or sets
+        its initiative. 404 for a map not in the campaign or a token not on it,
+        409 for a token already in the order.
+        Shares the GM's table-action limit with the other REST table actions:
+        120 requests a minute per user (429 past it).
+      operationId: addInitiativeCombatant
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CampaignId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tokenId, mapId]
+              properties:
+                tokenId: { type: string }
+                mapId: { type: string, format: uuid }
+      responses:
+        '201':
+          description: Added.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state:
+                    $ref: '#/components/schemas/InitiativeState'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/campaigns/{campaignId}/initiative/combatants/{tokenId}:
+    put:
+      tags:
+        - Campaigns
+      summary: Set a combatant's initiative
+      description: |
+        Set a combatant's initiative by hand, or clear it with null, as the
+        socket's `initiative.set` does (GM only), on its token and in the order,
+        which is sorted again. The token is looked up on the map it joined from,
+        so only a token in the order can be set here (404 otherwise); the socket
+        can also set one outside it.
+        Shares the GM's table-action limit with the other REST table actions:
+        120 requests a minute per user (429 past it).
+      operationId: setInitiativeValue
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CampaignId'
+        - name: tokenId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [value]
+              properties:
+                value: { type: number, nullable: true }
+      responses:
+        '200':
+          description: The order as the GM now sees it.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state:
+                    $ref: '#/components/schemas/InitiativeState'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    delete:
+      tags:
+        - Campaigns
+      summary: Remove a combatant
+      description: |
+        Take a token out of the order as the socket's `initiative.remove` does
+        (GM only). If it was acting, the turn passes on as Next would; an emptied
+        order ends the fight. 404 when the token is not in the order.
+        Shares the GM's table-action limit with the other REST table actions:
+        120 requests a minute per user (429 past it).
+      operationId: removeInitiativeCombatant
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CampaignId'
+        - name: tokenId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: The order as the GM now sees it.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state:
+                    $ref: '#/components/schemas/InitiativeState'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/campaigns/{campaignId}/initiative/roll:
+    post:
+      tags:
+        - Campaigns
+      summary: Roll initiative for a token
+      description: |
+        Roll initiative as the GM, as the socket's `initiative.roll` does. The
+        server works out what is rolled from the token's character sheet or stat
+        block (a Horror d100 character throws no dice and takes its DEX);
+        `expression` is rolled only when neither applies, and `1d20` without it.
+        A token not yet in the order joins it. Dice thrown are stored in the dice
+        history and sent as `dice.rolled`, as a secret roll (to the GM's sockets
+        only) when some player is not sent the token. 400 for an expression that
+        does not parse, 404 for a map or token that is not there.
+        Shares the GM's table-action limit with the other REST table actions:
+        120 requests a minute per user (429 past it).
+      operationId: rollInitiative
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CampaignId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tokenId, mapId]
+              properties:
+                tokenId: { type: string }
+                mapId: { type: string, format: uuid }
+                expression: { type: string, example: 1d20+2 }
+      responses:
+        '200':
+          description: Rolled.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  value: { type: number, description: The initiative the token now has. }
+                  rolled: { type: boolean, description: Whether dice were thrown. }
+                  state:
+                    $ref: '#/components/schemas/InitiativeState'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/campaigns/{campaignId}/initiative/order:
+    put:
+      tags:
+        - Campaigns
+      summary: Reorder the combatants
+      description: |
+        Put the combatants in this order as the socket's `initiative.reorder`
+        does (GM only). Combatants left out keep their places after those named;
+        an id not in the order is passed over.
+        Shares the GM's table-action limit with the other REST table actions:
+        120 requests a minute per user (429 past it).
+      operationId: reorderInitiative
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CampaignId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tokenIds]
+              properties:
+                tokenIds: { type: array, items: { type: string } }
+      responses:
+        '200':
+          description: The order as the GM now sees it.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state:
+                    $ref: '#/components/schemas/InitiativeState'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  # ============================================
   # MESSAGES
   # ============================================
 
@@ -14489,6 +14885,34 @@ components:
       description: Items per page (max 100)
 
   schemas:
+    InitiativeState:
+      type: object
+      description: The initiative order, as `initiative.state` sends it.
+      properties:
+        active: { type: boolean }
+        round: { type: integer }
+        currentTokenId: { type: string, nullable: true, description: The acting combatant's token. }
+        combatants:
+          type: array
+          description: Highest initiative first, the unrolled last.
+          items:
+            type: object
+            properties:
+              tokenId: { type: string }
+              mapId: { type: string, format: uuid }
+              name: { type: string }
+              imageUrl: { type: string }
+              initiative: { type: number, nullable: true }
+              hp:
+                type: object
+                nullable: true
+                properties:
+                  current: { type: number }
+                  max: { type: number }
+                  temp: { type: number }
+              type: { type: string, enum: [player, npc, object] }
+              disposition: { type: string, nullable: true, enum: [friendly, neutral, hostile] }
+              characterId: { type: string, format: uuid, nullable: true }
     SpellArea:
       type: object
       description: As a MapArea takes it. `sizeFt` is a sphere's or cylinder's radius, a cone's or line's length, a cube's side; `widthFt` a line's only.

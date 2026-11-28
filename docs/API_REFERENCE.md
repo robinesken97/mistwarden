@@ -635,6 +635,15 @@ What the web client sends over the socket, for a script or the MCP bridge that h
 | `DELETE /api/campaigns/:campaignId/maps/:id/areas/:areaId` | | `area:remove` | `200` |
 | `DELETE /api/campaigns/:campaignId/maps/:id/areas` | | `area:clear` | `200` |
 | `POST /api/campaigns/:campaignId/maps/:id/exploration/reset` | | `exploration:reset` | `200`; every player's explored memory of the map is forgotten |
+| `GET /api/campaigns/:campaignId/initiative` | | `initiative.request_state` | `200 { state }`: the order as `initiative.state` sends it to a GM |
+| `POST /api/campaigns/:campaignId/initiative/start` | | `initiative.start` | `200 { state }`; `409` while the order is empty |
+| `POST /api/campaigns/:campaignId/initiative/next` | | `initiative.next` | `200 { state }`; `409` when combat is not active. Turns passed over REST and over the socket follow each other |
+| `POST /api/campaigns/:campaignId/initiative/end` | | `initiative.end` | `200 { state }`, the order cleared |
+| `POST /api/campaigns/:campaignId/initiative/combatants` | `{ tokenId, mapId }` | `initiative.add` | `201 { state }`; `409` for a token already in the order |
+| `DELETE /api/campaigns/:campaignId/initiative/combatants/:tokenId` | | `initiative.remove` | `200 { state }`; `404` for a token not in the order |
+| `PUT /api/campaigns/:campaignId/initiative/combatants/:tokenId` | `{ value }`, a number or `null` | `initiative.set` | `200 { state }`; only a token in the order (`404` otherwise), on the map it joined from |
+| `POST /api/campaigns/:campaignId/initiative/roll` | `{ tokenId, mapId, expression? }` | the GM's `initiative.roll` | `200 { value, rolled, state }`; the server rolls from the sheet or stat block, `expression` only when neither applies; a token not in the order joins it |
+| `PUT /api/campaigns/:campaignId/initiative/order` | `{ tokenIds }` | `initiative.reorder` | `200 { state }`; combatants left out keep their places after those named |
 
 ---
 
@@ -1912,7 +1921,7 @@ authentication is set up on the account, and then has to send a code at every si
 | Campaign import, import preview, campaign export | 20 of each, per user | 1 hour | Every request but one refused for overlapping another; also one of the three at a time per user |
 | Invitation emails (per GM) | 20 invitations that ask for an email | 1 hour | Invitations created with `sendEmail: true` on an instance with SMTP, whether or not the email goes out; a refused invitation is not counted |
 | All the notes of a campaign you have left (per user) | 60 requests | 1 hour | Every request |
-| The GM's table actions over REST: chat, dice, vibe, atmosphere, spell areas, explored-memory reset (per user, all together) | 120 requests | 1 minute | Every request |
+| The GM's table actions over REST: chat, dice, vibe, atmosphere, spell areas, explored-memory reset, initiative (per user, all together) | 120 requests | 1 minute | Every request |
 | General API | 300 requests | 1 minute | Every request |
 | Dice rolls (WebSocket) | 50 rolls, and 200 | 1 second, and 1 minute | Every roll |
 | Chat messages (WebSocket) | 50 messages, and 300 | 1 second, and 1 minute | Every message |

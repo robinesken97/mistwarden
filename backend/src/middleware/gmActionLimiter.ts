@@ -1,6 +1,6 @@
 /**
  * How many table actions one GM may send over REST: chat, dice, the vibe,
- * atmosphere, spell areas and explored-memory resets.
+ * atmosphere, spell areas, explored-memory resets and the initiative tracker.
  *
  * The web client sends these over the socket, where each event has its own
  * ceiling (SOCKET_CEILINGS). Over REST they come from scripts and the MCP
