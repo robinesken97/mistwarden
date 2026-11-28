@@ -581,8 +581,8 @@ select:not([multiple], [size]) {
   }
 }
 
-/* The compact layout's sheets and map (components/campaign/compact/
-   CompactTable.tsx marks them): every control a finger's size, 44 by 44 CSS
+/* The narrow layouts' map and panels (components/campaign/DesktopTable.tsx
+   marks them): every control a finger's size, 44 by 44 CSS
    px, whatever the panel inside was written with for a desktop column and a
    mouse. Outside any layer, so a panel's own height class cannot undo it; a
    switch keeps its drawn pill, and a check box or a radio button is pressed

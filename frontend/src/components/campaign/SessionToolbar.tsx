@@ -35,9 +35,7 @@ export interface ToolDef {
   icon: LucideIcon;
 }
 
-// Grouped by intent: campaign content, scene ambience, configuration. The
-// compact layout's More lists the same tools in the same order
-// (compact/MoreSheet.tsx).
+// Grouped by intent: campaign content, scene ambience, configuration.
 export const TOOL_GROUPS: ToolDef[][] = [
   [
     { key: 'maps', label: 'Map Library', icon: MapIcon },

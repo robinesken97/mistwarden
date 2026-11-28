@@ -88,7 +88,7 @@ export const GM_TOUR: readonly TourStep[] = [
   {
     id: 'grid',
     title: 'The grid',
-    body: 'The Grid button on the map’s right edge opens Toggle Grid, which shows or hides the squares, and their colour. On a small screen both are under More map controls. The square size is the scene’s, in Library › Scenes.',
+    body: 'The Grid button on the map’s right edge opens Toggle Grid, which shows or hides the squares, and their colour. On a phone the Grid button is near the top of the rail too. The square size is the scene’s, in Library › Scenes.',
     task: 'Hide the grid, then show it again.',
     targets: ['grid'],
     openers: MAP,
@@ -144,7 +144,7 @@ export const GM_TOUR: readonly TourStep[] = [
   {
     id: 'area',
     title: 'Spell areas',
-    body: 'Spell area (the lightning on the map’s right edge) lays a circle, cone, line or square over the map for everyone to see; on a small screen it is AoE Shape under More map controls. A spell on a character sheet places its own area.',
+    body: 'Spell area (the lightning on the map’s right edge) lays a circle, cone, line or square over the map for everyone to see, on a phone as on a computer. A spell on a character sheet places its own area.',
     task: 'Turn on Spell area and put a circle on the courtyard.',
     targets: ['aoe'],
     openers: MAP,
