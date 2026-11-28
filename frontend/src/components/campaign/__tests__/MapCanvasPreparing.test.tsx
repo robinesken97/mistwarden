@@ -158,6 +158,7 @@ vi.mock('@/services/api', () => {
 });
 
 import MapCanvas from '../MapCanvas';
+import { choose, gmMode, openGmTab } from '@/test/railCards';
 import { useGameStore } from '@/stores/gameStore';
 import { useTableChrome } from '@/stores/tableChromeStore';
 
@@ -238,20 +239,17 @@ beforeEach(() => {
 /** What the GM does on the map, and the event it sends. */
 const EDITS: Array<[string, string, () => void]> = [
   ['drawing a wall', 'wall:add', () => {
-    fireEvent.click(screen.getByText('Walls'));
-    fireEvent.click(screen.getByLabelText('Wall draw mode'));
+    gmMode('Walls', 'Draw');
     click(px(100, 100));
     click(px(200, 100));
   }],
   ['placing a light', 'light:add', () => {
-    fireEvent.click(screen.getByText(/^Lights/));
-    fireEvent.click(screen.getByText('Place'));
+    gmMode('Lights', 'Place');
     click(px(260, 240));
   }],
   ['revealing fog', 'fog:operation', () => {
     fire('fog:updated', { mapId: 'map-prepared', fogState: { fogCols: 20, fogRows: 20, cellPx: 50, revealed: new Array(400).fill(false) } });
-    fireEvent.click(screen.getByText('Fog of War'));
-    fireEvent.click(screen.getByLabelText('Fog reveal box'));
+    gmMode('Fog', 'Reveal');
     drag(px(60, 60), px(160, 110));
   }],
   ['picking up a token', 'token.move.start', () => { show(token('tok-lich', 0, 19)); click(square(0, 19)); }],
@@ -320,7 +318,7 @@ describe('on a map being prepared', () => {
   it('drawing names the map being prepared, the stroke on its way included', async () => {
     render(<MapCanvas />);
     fireEvent.click(screen.getByRole('button', { name: 'Draw' }));
-    fireEvent.click(within(screen.getByRole('region', { name: 'Drawing tools' })).getByRole('button', { name: 'Pen' }));
+    fireEvent.click(within(screen.getByRole('region', { name: 'Drawing tools' })).getByRole('radio', { name: 'Pen' }));
     mouse.down(surface(), px(100, 100), 0);
     mouse.move(surface(), px(200, 150), 1);
     mouse.move(surface(), px(300, 200), 1);
@@ -352,8 +350,8 @@ describe('on a map being prepared', () => {
   it("switching fog on changes that map and leaves the table's", async () => {
     h.set({ viewedMap: mapOf('map-prepared', { fogEnabled: false }) });
     render(<MapCanvas />);
-    fireEvent.click(screen.getByText('Fog of War'));
-    await act(async () => { fireEvent.click(screen.getByLabelText('Fog of war on this map')); });
+    openGmTab('Fog');
+    await act(async () => { choose('Fog', 'On'); });
     expect(h.updateMapRequest).toHaveBeenCalledWith('campaign-1', 'map-prepared', { fogEnabled: true });
     expect((h.state.viewedMap as CampaignMap).fogEnabled).toBe(true);
     expect(h.state.tableMap).toBe(TABLE);
@@ -362,8 +360,8 @@ describe('on a map being prepared', () => {
 
   it("switching Global Illumination changes that map and leaves the table's", async () => {
     render(<MapCanvas />);
-    fireEvent.click(screen.getByText(/^Lights/));
-    await act(async () => { fireEvent.click(screen.getByLabelText('Global Illumination')); });
+    openGmTab('Lights');
+    await act(async () => { choose('Global light', 'Off'); });
     expect(h.updateMapRequest).toHaveBeenCalledWith('campaign-1', 'map-prepared', { globalIllumination: false });
     expect(h.state.tableMap).toBe(TABLE);
     expect(h.setCurrentMap).not.toHaveBeenCalled();

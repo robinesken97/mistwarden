@@ -142,6 +142,7 @@ vi.mock('@/services/api', () => {
 });
 
 import MapCanvas from '../MapCanvas';
+import { gmMode } from '@/test/railCards';
 import { useGameStore } from '@/stores/gameStore';
 
 function mapNamed(id: string, extra: Partial<CampaignMap> = {}): CampaignMap {
@@ -341,8 +342,7 @@ describe('what a click selects', () => {
     fireEvent.contextMenu(surface(), at(4, 19));
     fireEvent.click(document.body);
 
-    fireEvent.click(screen.getByText('Walls'));
-    fireEvent.click(screen.getByLabelText('Wall draw mode'));
+    gmMode('Walls', 'Draw');
     click(at(0, 19));
 
     expect(sentOf('token.move.start')).toEqual([]);
@@ -463,7 +463,7 @@ describe('an Escape something else on the page used', () => {
     fireEvent.keyDown(document.body, { key: 'Escape' });
 
     expect(screen.queryByPlaceholderText('e.g. 2d6+3')).not.toBeInTheDocument();
-    expect(screen.getByText('AoE Shape')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Spell area' })).toBeInTheDocument();
   });
 
   it('leaves a held token held', () => {
@@ -626,8 +626,7 @@ describe('the arrow keys', () => {
     render(<MapCanvas />);
     show(token('tok-goblin', 'Goblin', 5, 10));
     select('tok-goblin');
-    fireEvent.click(screen.getByText('Walls'));
-    fireEvent.click(screen.getByLabelText('Wall select mode'));
+    gmMode('Walls', 'Select');
     press('a', { ctrlKey: true });
 
     press('ArrowRight');
@@ -1038,10 +1037,10 @@ describe('Escape', () => {
 
     press('Escape');
     expect(sentOf('token.move').slice(-1)[0]).toEqual({ tokenId: 'tok-goblin', mapId: 'map-a', x: 2, y: 18 });
-    expect(screen.getByText('AoE Shape')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Spell area' })).toBeInTheDocument();
 
     press('Escape');
-    expect(screen.queryByText('AoE Shape')).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Spell area' })).not.toBeInTheDocument();
     expect(selected()).toBe('tok-goblin');
 
     press('Escape');

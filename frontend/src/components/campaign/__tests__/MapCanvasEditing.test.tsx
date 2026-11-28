@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import type { CampaignMap } from '@/types';
 import type { WallSegment } from '@/types/walls';
 
@@ -141,6 +141,7 @@ vi.mock('@/services/api', () => {
 });
 
 import MapCanvas from '../MapCanvas';
+import { gmCard, gmMode, openGmTab, radio } from '@/test/railCards';
 import { useGameStore } from '@/stores/gameStore';
 import type { Token } from '@/types';
 
@@ -194,8 +195,7 @@ beforeEach(() => {
 });
 
 function openWallSelect() {
-  fireEvent.click(screen.getByText('Walls'));
-  fireEvent.click(screen.getByLabelText('Wall select mode'));
+  gmMode('Walls', 'Select');
 }
 
 /** A key pressed with nothing focused, as on the map. */
@@ -223,11 +223,11 @@ describe('wall undo after a map switch', () => {
     openWallSelect();
     press('a', { ctrlKey: true });
     press('Delete');
-    expect(screen.getByLabelText('Undo wall edit')).toBeEnabled();
+    expect(within(gmCard()).getByRole('button', { name: 'Undo' })).toBeEnabled();
 
     act(() => { h.set({ currentMap: mapWith('map-b', [wall('b1', 100)]) }); });
 
-    expect(screen.getByLabelText('Undo wall edit')).toBeDisabled();
+    expect(within(gmCard()).getByRole('button', { name: 'Undo' })).toBeDisabled();
   });
 });
 
@@ -256,7 +256,7 @@ describe('wall shortcuts while typing', () => {
     fireEvent.keyDown(chat, { key: 'Delete' });
 
     expect(emittedOf('walls:replace')).toEqual([]);
-    expect(screen.getByText('(2)')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Walls (2)' })).toBeInTheDocument();
     expect(reachedTheBox).toBe(true);
   });
 
@@ -324,7 +324,7 @@ describe('wall shortcuts while typing', () => {
   it('still works with focus on a tool button', () => {
     render(<MapCanvas />);
     openWallSelect();
-    const selectButton = screen.getByLabelText('Wall select mode');
+    const selectButton = radio('Mode', 'Select', gmCard());
     selectButton.focus();
 
     fireEvent.keyDown(selectButton, { key: 'a', ctrlKey: true });
@@ -371,17 +371,19 @@ describe('wall and light events on the GM page', () => {
 
   it('shows walls added or replaced elsewhere, such as through the API', () => {
     render(<MapCanvas />);
+    openGmTab('Walls');
     fire('wall:added', { mapId: 'map-a', segment: wall('a3', 500) });
-    expect(screen.getByText('(3)')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Walls (3)' })).toBeInTheDocument();
 
     fire('walls:replaced', { mapId: 'map-a', segments: [wall('r1', 100)] });
-    expect(screen.getByText('(1)')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Walls (1)' })).toBeInTheDocument();
   });
 
   it('shows a light added elsewhere', () => {
     render(<MapCanvas />);
+    openGmTab('Lights');
     fire('light:added', { mapId: 'map-a', light: { id: 'l1', x: 100, y: 100, brightRadius: 2, dimRadius: 4, color: '#ffcc66', enabled: true } });
-    expect(screen.getByText('(1)')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Lights (1)' })).toBeInTheDocument();
   });
 
   it('skips only the echo of its own edit', () => {
@@ -393,12 +395,12 @@ describe('wall and light events on the GM page', () => {
     expect(typeof deleted.opId).toBe('string');
 
     press('z', { ctrlKey: true });
-    expect(screen.getByText('(2)')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Walls (2)' })).toBeInTheDocument();
 
     // The delete's echo arrives after the undo: it is this page's own, and
     // the walls stay as the undo left them.
     fire('walls:replaced', { mapId: 'map-a', segments: [], opId: deleted.opId });
-    expect(screen.getByText('(2)')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Walls (2)' })).toBeInTheDocument();
   });
 
   it('sends an id with every wall and light edit', () => {
@@ -409,9 +411,9 @@ describe('wall and light events on the GM page', () => {
     press('a', { ctrlKey: true });
     press('ArrowLeft');
     press('Delete');
-    fireEvent.click(screen.getByText('Lights'));
-    fireEvent.click(screen.getByText('Clear All (1)'));
-    fireEvent.click(screen.getByText('Confirm Clear All'));
+    openGmTab('Lights');
+    fireEvent.click(screen.getByText('Clear all (1)'));
+    fireEvent.click(screen.getByText('Confirm clear all?'));
 
     const edits = h.emitted.filter(([event]) => /^(wall|walls|light|lights):(add|remove|update|replace)$/.test(event));
     expect(edits.length).toBeGreaterThan(0);
@@ -424,7 +426,8 @@ describe('wall and light events on the GM page', () => {
     fire('wall:added', { mapId: 'map-a', segment: wall('a3', 500) });
     act(() => { h.set({ userRole: 'GM' }); });
 
-    expect(screen.getByText('(3)')).toBeInTheDocument();
+    openGmTab('Walls');
+    expect(screen.getByRole('tab', { name: 'Walls (3)' })).toBeInTheDocument();
   });
 });
 

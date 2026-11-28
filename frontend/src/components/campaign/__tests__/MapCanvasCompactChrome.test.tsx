@@ -255,27 +255,29 @@ describe('the Draw strip', () => {
     render(<MapCanvas />);
     fireEvent.click(within(rail()).getByRole('button', { name: 'Draw' }));
     expect(dock().firstElementChild!.lastElementChild).toBe(drawingTools());
-    expect(screen.getByTitle(/Drag to move the panels/).parentElement).not.toContainElement(drawingTools());
+    expect(screen.queryByRole('region', { name: 'GM tools' })).toBeNull();
   });
 });
 
-describe('the GM’s tool stack behind GM tools', () => {
-  const stack = () => screen.getByTitle(/Drag to move the panels/).parentElement!;
+describe('the GM tools strip behind GM tools', () => {
+  const dock = () => document.querySelector<HTMLElement>('[data-map-dock]')!;
+  const strip = () => screen.queryByRole('region', { name: 'GM tools' });
 
-  it('starts hidden and shows on the GM tools cell, which closes it again', () => {
+  it('starts away and shows in the dock on the GM tools cell, which puts it away again', () => {
     render(<MapCanvas />);
-    expect(stack()).toHaveAttribute('hidden');
+    expect(strip()).toBeNull();
     fireEvent.click(within(rail()).getByRole('button', { name: 'GM tools' }));
-    expect(stack()).not.toHaveAttribute('hidden');
-    expect(within(stack()).getByRole('button', { name: /^Fog of War/ })).toBeInTheDocument();
+    expect(dock()).toContainElement(strip());
+    expect(within(strip()!).getByRole('tab', { name: 'Fog' })).toBeInTheDocument();
     fireEvent.click(within(rail()).getByRole('button', { name: 'GM tools' }));
-    expect(stack()).toHaveAttribute('hidden');
+    expect(strip()).toBeNull();
   });
 
   it('takes turns with the Draw strip', () => {
     render(<MapCanvas />);
     fireEvent.click(within(rail()).getByRole('button', { name: 'GM tools' }));
     fireEvent.click(within(rail()).getByRole('button', { name: 'Draw' }));
-    expect(stack()).toHaveAttribute('hidden');
+    expect(strip()).toBeNull();
+    expect(screen.getByRole('region', { name: 'Drawing tools' })).toBeInTheDocument();
   });
 });

@@ -1,59 +1,83 @@
 /**
- * The drawing tools' panel on its own: what it offers whom, the controls'
- * size for a finger, and that it fits whatever holds it. jsdom lays nothing
- * out, so the fit is checked as the classes that make it: the panel takes
- * its holder's width and its rows of buttons wrap.
+ * Draw's card body on its own: what it offers whom, and the user's player
+ * colour first among the colours, where drawings and the laser start.
  */
 
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
-import DrawControls, { type DrawControlsProps } from '../DrawControls';
+import DrawControls, { drawColourName, type DrawControlsProps } from '../DrawControls';
 import { DEFAULT_DRAW_SETTINGS } from '../map/tools/useDrawTool';
+import { choose, radio } from '@/test/railCards';
+
+const SKY = '#45a8e0';
 
 function panel(extra: Partial<DrawControlsProps> = {}) {
   const props: DrawControlsProps = {
     kind: 'pen', onKindChange: vi.fn(), settings: DEFAULT_DRAW_SETTINGS, onSettingsChange: vi.fn(), isGM: false,
     polygonCorners: 0, onPolygonDone: vi.fn(), onPolygonCancel: vi.fn(), clearable: 2, onClear: vi.fn(), onClose: vi.fn(),
-    members: [], onClearMember: vi.fn(),
+    members: [], onClearMember: vi.fn(), playerColour: SKY,
     ...extra,
   };
   render(<DrawControls {...props} />);
   return props;
 }
 
-const classes = (el: Element) => el.className.split(/\s+/);
-
 describe('the drawing tools', () => {
-  it('offers the nine tools, the one in use pressed', () => {
+  it('offers the nine tools in a 3 by 3 grid, the one in use chosen', () => {
     const props = panel({ kind: 'arrow' });
 
     const names = ['Pen', 'Line', 'Arrow', 'Rectangle', 'Ellipse', 'Polygon', 'Text label', 'Eraser', 'Laser pointer'];
     for (const name of names) {
-      expect(screen.getByRole('button', { name })).toHaveAttribute('aria-pressed', name === 'Arrow' ? 'true' : 'false');
+      expect(radio('Tool', name)).toHaveAttribute('aria-checked', name === 'Arrow' ? 'true' : 'false');
     }
-    fireEvent.click(screen.getByRole('button', { name: 'Ellipse' }));
+    expect(screen.getByRole('radiogroup', { name: 'Tool' }).style.gridTemplateColumns).toBe('repeat(3, minmax(0, 1fr))');
+    choose('Tool', 'Ellipse');
     expect(props.onKindChange).toHaveBeenCalledWith('ellipse');
   });
 
-  it('offers the eight colours by name and another, and sets the one chosen', () => {
+  it("starts the colours with the user's own, named Your colour", () => {
+    panel({ settings: { ...DEFAULT_DRAW_SETTINGS, color: SKY } });
+    const swatches = screen.getAllByRole('radio').filter((r) => r.closest('[aria-label="Colour"]'));
+    expect(swatches[0]).toHaveAccessibleName('Your colour');
+    expect(swatches[0]).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByText('Your colour', { selector: 'b' })).toBeInTheDocument();
+  });
+
+  it('offers the eight colours by name and any other, and sets the one chosen', () => {
     const props = panel();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Green' }));
+    choose('Colour', 'Green');
     expect(props.onSettingsChange).toHaveBeenCalledWith({ color: '#4caf6e' });
-    expect(screen.getByRole('button', { name: 'Red' })).toHaveAttribute('aria-pressed', 'true');
-    fireEvent.change(screen.getByLabelText('Another colour'), { target: { value: '#123456' } });
+    expect(radio('Colour', 'Red')).toHaveAttribute('aria-checked', 'true');
+    fireEvent.change(screen.getByLabelText('Pick a custom colour'), { target: { value: '#123456' } });
     expect(props.onSettingsChange).toHaveBeenCalledWith({ color: '#123456' });
   });
 
-  it('offers Fill shapes for the closed shapes only, and Snap to grid for every shape', () => {
-    panel({ kind: 'line' });
-    expect(screen.getByRole('checkbox', { name: 'Snap to grid' })).toBeInTheDocument();
-    expect(screen.queryByRole('checkbox', { name: 'Fill shapes' })).not.toBeInTheDocument();
+  it('names the colour chosen: the own, a named one, or Custom', () => {
+    expect(drawColourName(SKY, SKY)).toBe('Your colour');
+    expect(drawColourName('#4CAF6E', SKY)).toBe('Green');
+    expect(drawColourName('#123456', SKY)).toBe('Custom');
   });
 
-  it('offers neither on the pen', () => {
-    panel({ kind: 'pen' });
-    expect(screen.queryByRole('checkbox', { name: 'Snap to grid' })).not.toBeInTheDocument();
+  it('offers Fill for the closed shapes only, and Snap for every shape', () => {
+    panel({ kind: 'line' });
+    expect(screen.getByRole('radiogroup', { name: 'Snap' })).toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup', { name: 'Fill' })).not.toBeInTheDocument();
+  });
+
+  it('sets Fill and Snap from their segments', () => {
+    const props = panel({ kind: 'rect' });
+    choose('Fill', 'Filled');
+    expect(props.onSettingsChange).toHaveBeenCalledWith({ fill: true });
+    choose('Snap', 'Off');
+    expect(props.onSettingsChange).toHaveBeenCalledWith({ snap: false });
+  });
+
+  it('offers neither on the pen, and no width with the laser', () => {
+    panel({ kind: 'laser' });
+    expect(screen.queryByRole('radiogroup', { name: 'Snap' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('slider', { name: 'Width' })).not.toBeInTheDocument();
+    expect(screen.getByRole('radiogroup', { name: 'Colour' })).toBeInTheDocument();
   });
 
   it('offers a polygon’s Done once it has three corners, and Cancel', () => {
@@ -68,7 +92,7 @@ describe('who is offered what', () => {
   it('gives a player Clear mine, at once, and no Only I can see this', () => {
     const props = panel({ isGM: false });
 
-    expect(screen.queryByRole('checkbox', { name: 'Only I can see this' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup', { name: 'Who sees it' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Clear mine' }));
     expect(props.onClear).toHaveBeenCalled();
   });
@@ -83,14 +107,14 @@ describe('who is offered what', () => {
   it('offers the GM no Only I can see this under the laser pointer, and says everyone sees it', () => {
     panel({ isGM: true, kind: 'laser', settings: { ...DEFAULT_DRAW_SETTINGS, gmOnly: true } });
 
-    expect(screen.queryByRole('checkbox', { name: 'Only I can see this' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup', { name: 'Who sees it' })).not.toBeInTheDocument();
     expect(screen.getByText('Everyone sees the laser pointer.')).toBeInTheDocument();
   });
 
   it('gives the GM Only I can see this, and Clear drawings, which asks first and says how many', () => {
     const props = panel({ isGM: true, clearable: 3 });
 
-    expect(screen.getByRole('checkbox', { name: 'Only I can see this' })).toBeInTheDocument();
+    expect(screen.getByRole('radiogroup', { name: 'Who sees it' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Clear drawings' }));
     expect(props.onClear).not.toHaveBeenCalled();
     const dialog = screen.getByRole('dialog');
@@ -129,26 +153,5 @@ describe('clearing one player’s drawings', () => {
     panel({ isGM: false, members });
 
     expect(screen.queryByRole('button', { name: /Clear Mara/ })).not.toBeInTheDocument();
-  });
-});
-
-describe('the panel’s fit', () => {
-  // It sits in the GM's 200-pixel tool stack, a player's corner and, on a
-  // phone, a sheet: it takes the width it is given and wraps its rows.
-  it('takes its holder’s width and wraps its rows of buttons', () => {
-    panel({ isGM: true });
-
-    const section = screen.getByRole('region', { name: 'Drawing tools' });
-    expect(classes(section)).toContain('w-full');
-    expect(classes(screen.getByRole('button', { name: 'Pen' }).parentElement!)).toContain('flex-wrap');
-    expect(classes(screen.getByRole('button', { name: 'Red' }).parentElement!)).toContain('flex-wrap');
-    expect(section.className).not.toMatch(/\b(min-)?w-\[|\bw-(9[6-9]|\d{3,})\b/);
-  });
-
-  it('sizes every control for a finger', () => {
-    panel({ isGM: true, kind: 'rect' });
-
-    for (const button of screen.getAllByRole('button')) expect(classes(button)).toContain('touch-target');
-    for (const box of screen.getAllByRole('checkbox')) expect(classes(box.closest('label')!)).toContain('touch-target');
   });
 });

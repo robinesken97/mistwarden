@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, vi, beforeAll, beforeEach, afterAll } from 'vitest';
-import { render, screen, act, fireEvent } from '@testing-library/react';
+import { render, act } from '@testing-library/react';
 import type { CampaignMap, Token } from '@/types';
 import type { FogOperation } from '@/types/walls';
 import { mouse } from '@/test/pointer';
@@ -126,6 +126,7 @@ vi.mock('@/services/api', () => {
 });
 
 import MapCanvas from '../MapCanvas';
+import { gmMode } from '@/test/railCards';
 import { useGameStore } from '@/stores/gameStore';
 
 /** The largest map, at the smallest grid: 500 by 500 squares of 10 pixels. */
@@ -203,11 +204,10 @@ beforeEach(() => {
 
 describe("the GM's fog box on the largest map", () => {
   /** Open the map with its fog all hidden, and take up a fog box. */
-  function shown(box: 'Fog reveal box' | 'Fog hide box') {
+  function shown(mode: 'Reveal' | 'Hide') {
     render(<MapCanvas />);
     fire('fog:updated', { mapId: MAP_ID, fogState: { fogCols: SIDE, fogRows: SIDE, cellPx: GRID, revealed: new Array<boolean>(CELLS).fill(false) } });
-    fireEvent.click(screen.getByText('Fog of War'));
-    fireEvent.click(screen.getByLabelText(box));
+    gmMode('Fog', mode);
   }
   function drag(from: { clientX: number; clientY: number }, to: { clientX: number; clientY: number }) {
     mouse.down(surface(), from, 0);
@@ -217,7 +217,7 @@ describe("the GM's fog box on the largest map", () => {
   const operations = () => sentOf('fog:operation') as Array<{ mapId: string; operation: FogOperation }>;
 
   it('sends a box of every row but the last in parts, each a message the server reads, together naming each square once', () => {
-    shown('Fog reveal box');
+    shown('Reveal');
     // Columns 0 to 499, rows 0 to 498: 249,500 squares.
     drag(onPage(5, 5), onPage(SIDE * GRID - 5, (SIDE - 1) * GRID - 5));
 
@@ -234,21 +234,21 @@ describe("the GM's fog box on the largest map", () => {
   });
 
   it('sends reveal_all for a box over the whole map', () => {
-    shown('Fog reveal box');
+    shown('Reveal');
     drag(onPage(5, 5), onPage(SIDE * GRID - 5, SIDE * GRID - 5));
 
     expect(operations()).toEqual([{ mapId: MAP_ID, operation: { op: 'reveal_all' } }]);
   });
 
   it('sends hide_all for a hide box over the whole map, from corner to corner either way', () => {
-    shown('Fog hide box');
+    shown('Hide');
     drag(onPage(SIDE * GRID - 5, SIDE * GRID - 5), onPage(-40, -40));
 
     expect(operations()).toEqual([{ mapId: MAP_ID, operation: { op: 'hide_all' } }]);
   });
 
   it('still sends a small box as one operation of its squares', () => {
-    shown('Fog hide box');
+    shown('Hide');
     drag(onPage(5, 5), onPage(15, 5));
 
     expect(operations()).toEqual([{ mapId: MAP_ID, operation: { op: 'hide', cells: [0, 1] } }]);

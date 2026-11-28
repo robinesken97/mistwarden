@@ -10,7 +10,8 @@
  */
 
 import { it, expect, vi, beforeEach } from 'vitest';
-import { fireEvent, render, screen, waitFor, act, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, act } from '@testing-library/react';
+import { radio } from '@/test/railCards';
 import userEvent from '@testing-library/user-event';
 import { useGameStore } from '@/stores/gameStore';
 import { TokenLayer, type Token } from '@/types';
@@ -59,23 +60,24 @@ beforeEach(() => {
 });
 
 it('asks the server to open the veil and leaves the page as it is until the server says so', async () => {
-  render(<SpiritLayerControls isOpen onClose={() => {}} />);
-  await userEvent.click(screen.getByTitle('Open the veil'));
+  render(<SpiritLayerControls spiritTokensShown onSpiritTokensShownChange={() => {}} />);
+  await userEvent.click(radio('Spirit realm', 'Open'));
 
   expect(emitSpiritLayerToggle).toHaveBeenCalledWith({ visible: true });
   expect(updateCampaignSpiritLayer).not.toHaveBeenCalled();
-  expect(screen.getByText('Spirit realm hidden from players')).toBeInTheDocument();
+  expect(radio('Spirit realm', 'Closed')).toHaveAttribute('aria-checked', 'true');
+  // It waits for the server's answer before it can be pressed again.
+  expect(radio('Spirit realm', 'Open')).toBeDisabled();
 });
 
 it('puts the style back when the server refuses it', async () => {
   updateCampaign.mockRejectedValue({ response: { status: 400, data: { message: 'Invalid spirit layer style' } } });
-  render(<SpiritLayerControls isOpen onClose={() => {}} />);
-  const shadow = screen.getByRole('button', { name: /Shadow/ });
-  await userEvent.click(shadow);
+  render(<SpiritLayerControls spiritTokensShown onSpiritTokensShownChange={() => {}} />);
+  const atmosphere = screen.getByRole('combobox', { name: 'Atmosphere' });
+  fireEvent.change(atmosphere, { target: { value: 'shadow' } });
 
   expect(await screen.findByText('Invalid spirit layer style')).toBeInTheDocument();
-  await waitFor(() => expect(screen.getByRole('button', { name: /Wispy/ })).toHaveAttribute('aria-pressed', 'true'));
-  expect(shadow).toHaveAttribute('aria-pressed', 'false');
+  await waitFor(() => expect(atmosphere).toHaveValue('wispy'));
   expect(emitSpiritLayerStyleChange).not.toHaveBeenCalled();
 });
 
@@ -84,25 +86,20 @@ it('puts the style back when the server refuses it', async () => {
 it('keeps a veil opened while a style was being saved', async () => {
   let answer: () => void = () => {};
   updateCampaign.mockReturnValue(new Promise<void>((resolve) => { answer = resolve; }));
-  const { rerender } = render(<SpiritLayerControls isOpen onClose={() => {}} />);
-  await userEvent.click(screen.getByRole('button', { name: /Shadow/ }));
+  const { rerender } = render(<SpiritLayerControls spiritTokensShown onSpiritTokensShownChange={() => {}} />);
+  fireEvent.change(screen.getByRole('combobox', { name: 'Atmosphere' }), { target: { value: 'shadow' } });
 
   veil.open = true;
-  rerender(<SpiritLayerControls isOpen onClose={() => {}} />);
+  rerender(<SpiritLayerControls spiritTokensShown onSpiritTokensShownChange={() => {}} />);
   await act(async () => { answer(); });
   expect(updateCampaignSpiritLayer).toHaveBeenLastCalledWith(true, 'shadow');
 });
 
-it('is announced by name, and Escape and its Close button close it', async () => {
-  const onClose = vi.fn();
-  render(<SpiritLayerControls isOpen onClose={onClose} />);
-  const dialog = screen.getByRole('dialog', { name: 'Spirit Layer' });
-
-  fireEvent.keyDown(dialog, { key: 'Escape' });
-  expect(onClose).toHaveBeenCalledTimes(1);
-
-  fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
-  expect(onClose).toHaveBeenCalledTimes(2);
+it('sets this screen\'s spirit tokens from its two segments', async () => {
+  const onSpiritTokensShownChange = vi.fn();
+  render(<SpiritLayerControls spiritTokensShown onSpiritTokensShownChange={onSpiritTokensShownChange} />);
+  await userEvent.click(radio('Spirit tokens', 'Hidden'));
+  expect(onSpiritTokensShownChange).toHaveBeenCalledWith(false);
 });
 
 // A GM preparing a map shows or hides a spirit token of that map, not of the
@@ -112,7 +109,8 @@ it("toggles a spirit token of the map on screen", async () => {
     id: 'shade', name: 'Shade', imageUrl: '', position: { x: 1, y: 1 }, size: { width: 1, height: 1 },
     layer: TokenLayer.SPIRIT, visible: false, controlledBy: null, rotation: 0, conditions: [], metadata: {},
   } as unknown as Token], 'map-1');
-  render(<SpiritLayerControls isOpen onClose={() => {}} />);
-  await userEvent.click(screen.getByTitle('Show token'));
+  render(<SpiritLayerControls spiritTokensShown onSpiritTokensShownChange={() => {}} />);
+  expect(screen.getByText('Spirits in the realm (1)')).toBeInTheDocument();
+  await userEvent.click(radio('Shade', 'Shown'));
   expect(emitSpiritLayerTokenToggle).toHaveBeenCalledWith('map-1', 'shade', true);
 });

@@ -178,6 +178,7 @@ vi.mock('@/services/api', () => {
 });
 
 import MapCanvas from '../MapCanvas';
+import { gmMode } from '@/test/railCards';
 import { useGameStore } from '@/stores/gameStore';
 import { DRAWN_MAP_TAG } from '@/constants/assetLimits';
 import { MAP_LIMITS, TOO_MANY_WALLS_MESSAGE } from '@/constants/mapLimits';
@@ -1922,8 +1923,7 @@ describe('Paint owns the map', () => {
       what: 'Delete and Backspace delete no wall',
       arrange: () => {
         openGmTools();
-        fireEvent.click(screen.getByText('Walls'));
-        fireEvent.click(screen.getByLabelText('Wall select mode'));
+        gmMode('Walls', 'Select');
         press('a', { ctrlKey: true });
       },
       act: () => {
@@ -1936,8 +1936,7 @@ describe('Paint owns the map', () => {
       what: 'Ctrl+Z undoes no wall change',
       arrange: () => {
         openGmTools();
-        fireEvent.click(screen.getByText('Walls'));
-        fireEvent.click(screen.getByLabelText('Wall select mode'));
+        gmMode('Walls', 'Select');
         press('a', { ctrlKey: true });
         press('Delete');
         expect(sentOf('walls:replace')).toHaveLength(1);
@@ -1975,8 +1974,7 @@ describe('Paint owns the map', () => {
       what: 'a wall tool is put away and draws no wall',
       arrange: () => {
         openGmTools();
-        fireEvent.click(screen.getByText('Walls'));
-        fireEvent.click(screen.getByLabelText('Wall draw mode'));
+        gmMode('Walls', 'Draw');
       },
       act: () => {
         mouse.down(input(), { clientX: 100, clientY: 600 });
@@ -2045,8 +2043,7 @@ describe('Paint owns the map', () => {
     await showMap();
     await paintOn();
     openGmTools();
-    fireEvent.click(screen.getByText('Walls'));
-    fireEvent.click(screen.getByLabelText('Wall draw mode'));
+    gmMode('Walls', 'Draw');
     expect(screen.getByRole('button', { name: 'Mapmaker' })).toHaveAttribute('aria-pressed', 'false');
   });
 

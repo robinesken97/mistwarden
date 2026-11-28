@@ -4768,7 +4768,8 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
         hex={false}
         custom={false}
       />
-      <Help>{rulerNeedsToken ? RULER_NEEDS_TOKEN : isGM ? 'Drag across the map to measure.' : 'Point at a square to measure from your token to it.'}</Help>
+      {/* Without a token a player's note stands at the map's foot instead. */}
+      {!rulerNeedsToken && <Help>{isGM ? 'Drag across the map to measure.' : 'Point at a square to measure from your token to it.'}</Help>}
     </>
   );
   const aoeSizeLabel = aoeConfig.shape === 'sphere' || aoeConfig.shape === 'cylinder' ? 'Radius' : aoeConfig.shape === 'cube' ? 'Side' : 'Length';

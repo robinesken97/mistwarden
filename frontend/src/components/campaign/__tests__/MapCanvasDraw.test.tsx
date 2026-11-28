@@ -157,6 +157,8 @@ vi.mock('@/services/api', () => {
 });
 
 import MapCanvas from '../MapCanvas';
+import { playerColor } from '@/utils/playerColor';
+import { choose, gmMode } from '@/test/railCards';
 import { useGameStore } from '@/stores/gameStore';
 
 function mapWith(extra: Partial<CampaignMap> = {}): CampaignMap {
@@ -507,11 +509,13 @@ function token(id: string, name: string, x: number, y: number, extra: Partial<To
   } as unknown as Token;
 }
 
+/** Where the user's drawings start: their player colour (useAuth's 'me'). */
+const MY_COLOUR = playerColor('me');
 const drawButton = () => screen.queryByRole('button', { name: 'Draw' });
 /** Open Draw from the toolbar and choose a tool from its panel. */
 function draw(tool: string) {
   if (!screen.queryByRole('region', { name: 'Drawing tools' })) fireEvent.click(drawButton()!);
-  fireEvent.click(within(screen.getByRole('region', { name: 'Drawing tools' })).getByRole('button', { name: tool }));
+  fireEvent.click(within(screen.getByRole('region', { name: 'Drawing tools' })).getByRole('radio', { name: tool }));
 }
 
 /** A mouse pressed at `from`, moved through `to` with the button held, and let go at the last. */
@@ -582,7 +586,7 @@ describe('the Draw button', () => {
 
     fireEvent.click(drawButton()!);
     const panel = screen.getByRole('region', { name: 'Drawing tools' });
-    expect(within(panel).getByRole('button', { name: 'Pen' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(panel).getByRole('radio', { name: 'Pen' })).toHaveAttribute('aria-checked', 'true');
     expect(drawButton()).toHaveAttribute('aria-pressed', 'true');
 
     fireEvent.click(drawButton()!);
@@ -601,10 +605,9 @@ describe('the Draw button', () => {
     expect(screen.queryByRole('region', { name: 'Drawing tools' })).not.toBeInTheDocument();
 
     fireEvent.click(drawButton()!);
-    expect(screen.queryByText('AoE Shape')).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Spell area' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'GM tools' }));
-    fireEvent.click(screen.getByText('Walls'));
-    fireEvent.click(screen.getByLabelText('Wall draw mode'));
+    gmMode('Walls', 'Draw');
     expect(screen.queryByRole('region', { name: 'Drawing tools' })).not.toBeInTheDocument();
   });
 });
@@ -614,7 +617,7 @@ describe('the Draw button', () => {
 // and Clear mine for their own.
 describe('the eraser while drawing is off', () => {
   const mine = () => drawing({ id: 'mine', authorId: 'me', points: [[100, 100], [300, 100]] });
-  const panelTools = () => within(screen.getByRole('region', { name: 'Drawing tools' })).queryAllByRole('button', { pressed: true });
+  const panelTools = () => within(within(screen.getByRole('region', { name: 'Drawing tools' })).getByRole('radiogroup', { name: 'Tool' })).queryAllByRole('radio');
 
   it.each([
     ['Players may draw is off', { playersMayDraw: false }],
@@ -626,8 +629,8 @@ describe('the eraser while drawing is off', () => {
 
     fireEvent.click(drawButton()!);
     const panel = screen.getByRole('region', { name: 'Drawing tools' });
-    expect(within(panel).queryByRole('button', { name: 'Pen' })).not.toBeInTheDocument();
-    expect(within(panel).getByRole('button', { name: 'Eraser' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(panel).queryByRole('radio', { name: 'Pen' })).not.toBeInTheDocument();
+    expect(within(panel).getByRole('radio', { name: 'Eraser' })).toHaveAttribute('aria-checked', 'true');
     expect(within(panel).getByRole('button', { name: 'Clear mine' })).toBeEnabled();
     expect(panelTools().map((b) => b.getAttribute('aria-label'))).toEqual(['Eraser']);
 
@@ -643,7 +646,7 @@ describe('the eraser while drawing is off', () => {
     draw('Pen');
 
     act(() => { h.set({ playersMayDraw: false }); });
-    expect(within(screen.getByRole('region', { name: 'Drawing tools' })).getByRole('button', { name: 'Eraser' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(screen.getByRole('region', { name: 'Drawing tools' })).getByRole('radio', { name: 'Eraser' })).toHaveAttribute('aria-checked', 'true');
     stroke(px(500, 500), px(600, 520));
     expect(added()).toEqual([]);
 
@@ -677,7 +680,7 @@ describe('each kind of drawing', () => {
 
     expect(added()).toHaveLength(1);
     const [add] = added();
-    expect(add).toMatchObject({ mapId: 'map-a', drawing: { kind: 'pen', color: '#d94f3d', width: 4, audience: 'ALL', points: [[100, 100], [200, 100], [200, 200]] } });
+    expect(add).toMatchObject({ mapId: 'map-a', drawing: { kind: 'pen', color: MY_COLOUR, width: 4, audience: 'ALL', points: [[100, 100], [200, 100], [200, 200]] } });
     expect(add.previewId).toBe(frames()[0].preview.previewId);
   });
 
@@ -717,16 +720,16 @@ describe('each kind of drawing', () => {
 
     stroke(px(100, 100), px(160, 130), px(240, 180));
 
-    expect(added().map((a) => a.drawing)).toEqual([{ kind, color: '#d94f3d', width: 4, audience: 'ALL', points: [[100, 100], [240, 180]] }]);
+    expect(added().map((a) => a.drawing)).toEqual([{ kind, color: MY_COLOUR, width: 4, audience: 'ALL', points: [[100, 100], [240, 180]] }]);
   });
 
-  it('stores a rectangle filled with its colour when Fill is ticked, its corners on the grid with Snap to grid', () => {
+  it('stores a rectangle filled with its colour with Fill on Filled, its corners on the grid with Snap on Grid', () => {
     render(<MapCanvas />);
     draw('Rectangle');
     const panel = screen.getByRole('region', { name: 'Drawing tools' });
-    fireEvent.click(within(panel).getByRole('checkbox', { name: 'Fill shapes' }));
-    fireEvent.click(within(panel).getByRole('checkbox', { name: 'Snap to grid' }));
-    fireEvent.click(within(panel).getByRole('button', { name: 'Blue' }));
+    choose('Fill', 'Filled', panel);
+    choose('Snap', 'Grid', panel);
+    choose('Colour', 'Blue', panel);
 
     // To the nearest corner or middle of a square, 25 pixels apart.
     stroke(px(104, 96), px(212, 162));
@@ -738,7 +741,7 @@ describe('each kind of drawing', () => {
   it('snaps to the nearest corner or middle of a square, never the middle of a side', () => {
     render(<MapCanvas />);
     draw('Line');
-    fireEvent.click(within(screen.getByRole('region', { name: 'Drawing tools' })).getByRole('checkbox', { name: 'Snap to grid' }));
+    choose('Snap', 'Grid', screen.getByRole('region', { name: 'Drawing tools' }));
 
     // (125, 102) lies by the middle of a side, (125, 100); the square's middle is nearer than a corner.
     stroke(px(125, 102), px(240, 190));
@@ -776,7 +779,7 @@ describe('each kind of drawing', () => {
       mouse.down(surface(), px(104, 103));
       mouse.up(surface(), px(104, 103));
 
-      expect(added().map((a) => a.drawing)).toEqual([{ kind: 'polygon', color: '#d94f3d', width: 4, audience: 'ALL', points: [[100, 100], [300, 100], [200, 250]], fillColor: null }]);
+      expect(added().map((a) => a.drawing)).toEqual([{ kind: 'polygon', color: MY_COLOUR, width: 4, audience: 'ALL', points: [[100, 100], [300, 100], [200, 250]], fillColor: null }]);
     });
 
     it('is closed by Done, which waits for its third corner, and dropped by Cancel', () => {
@@ -831,7 +834,7 @@ describe('each kind of drawing', () => {
       fireEvent.change(box, { target: { value: 'Ambush  ' } });
       fireEvent.keyDown(box, { key: 'Enter' });
 
-      expect(added().map((a) => a.drawing)).toEqual([{ kind: 'text', color: '#d94f3d', width: 4, audience: 'ALL', points: [[140, 160]], text: 'Ambush' }]);
+      expect(added().map((a) => a.drawing)).toEqual([{ kind: 'text', color: MY_COLOUR, width: 4, audience: 'ALL', points: [[140, 160]], text: 'Ambush' }]);
       expect(screen.queryByRole('textbox', { name: 'Label' })).not.toBeInTheDocument();
     });
 
@@ -913,10 +916,10 @@ describe('each kind of drawing', () => {
 });
 
 describe('a drawing for the GM alone', () => {
-  it('is what the GM draws with Only I can see this ticked', () => {
+  it('is what the GM draws with Who sees it on Only me', () => {
     render(<MapCanvas />);
     draw('Line');
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Only I can see this' }));
+    choose('Who sees it', 'Only me');
 
     stroke(px(100, 100), px(200, 100));
 
@@ -929,7 +932,7 @@ describe('a drawing for the GM alone', () => {
     render(<MapCanvas />);
     draw('Line');
 
-    expect(screen.queryByRole('checkbox', { name: 'Only I can see this' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup', { name: 'Who sees it' })).not.toBeInTheDocument();
   });
 });
 
@@ -1114,12 +1117,12 @@ describe('the laser pointer', () => {
     expect(ends()).toEqual([]);
   });
 
-  it('goes to everyone though Only I can see this was ticked for the pen', () => {
+  it('goes to everyone though Only me was chosen for the pen', () => {
     render(<MapCanvas />);
     draw('Pen');
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Only I can see this' }));
+    choose('Who sees it', 'Only me');
     draw('Laser pointer');
-    expect(screen.queryByRole('checkbox', { name: 'Only I can see this' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup', { name: 'Who sees it' })).not.toBeInTheDocument();
 
     stroke(px(100, 100), px(200, 150));
 

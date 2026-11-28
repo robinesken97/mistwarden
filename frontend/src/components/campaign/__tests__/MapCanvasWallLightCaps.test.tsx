@@ -118,6 +118,7 @@ vi.mock('@/services/api', () => {
 });
 
 import MapCanvas from '../MapCanvas';
+import { gmMode } from '@/test/railCards';
 import { useGameStore } from '@/stores/gameStore';
 
 const seg = (id: string, x1: number, y1: number, x2: number, y2: number): WallSegment => ({ id, x1, y1, x2, y2, type: 'wall' });
@@ -161,23 +162,22 @@ function answerLast(event: string, reply: unknown) {
   act(() => { last.answer?.(reply); });
 }
 /** Choose a wall tool, opening the Walls panel first if it is folded. */
-function wallTool(label: string) {
-  if (!screen.queryByLabelText(label)) fireEvent.click(screen.getByText('Walls'));
-  fireEvent.click(screen.getByLabelText(label));
+function wallTool(mode: string) {
+  gmMode('Walls', mode);
 }
 /**
  * The walls the page holds, read from the list it sends when the select
  * tool moves WALL_A down by 50 pixels.
  */
 function heldWalls(): WallSegment[] {
-  wallTool('Wall select mode');
+  wallTool('Select');
   drag(px(150, 100), px(150, 150));
   const moved = sentOf('walls:replace');
   const last = moved[moved.length - 1];
   if (!last) throw new Error('no walls:replace was sent');
   return (last.payload as { segments: WallSegment[] }).segments;
 }
-const lightsShown = () => screen.getByText('Lights').parentElement?.textContent ?? '';
+const lightsShown = () => screen.getByRole('tab', { name: /^Lights/ }).textContent ?? '';
 
 beforeAll(() => {
   Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', { value: () => null, configurable: true });
@@ -199,7 +199,7 @@ describe('the wall tools on a map of 5,000 walls', () => {
 
   it('draw no further wall, send none, and say why', () => {
     render(<MapCanvas />);
-    wallTool('Wall draw mode');
+    wallTool('Draw');
 
     click(px(500, 500));
     click(px(600, 500));
@@ -211,8 +211,8 @@ describe('the wall tools on a map of 5,000 walls', () => {
 
   it('draw no door along a wall that would make more, and leave the wall whole', () => {
     render(<MapCanvas />);
-    wallTool('Wall draw mode');
-    fireEvent.click(screen.getByLabelText('Wall type: Door'));
+    wallTool('Draw');
+    fireEvent.change(screen.getByRole('combobox', { name: 'Draw type' }), { target: { value: 'door-closed' } });
 
     click(px(100, 100));
     click(px(150, 100));
@@ -225,7 +225,7 @@ describe('the wall tools on a map of 5,000 walls', () => {
 
   it('split no wall in two', () => {
     render(<MapCanvas />);
-    wallTool('Wall split mode');
+    wallTool('Split');
 
     click(px(140, 103));
 
@@ -236,7 +236,7 @@ describe('the wall tools on a map of 5,000 walls', () => {
 
   it('close no polygon', () => {
     render(<MapCanvas />);
-    wallTool('Polygon wall mode');
+    wallTool('Polygon');
 
     click(px(500, 500));
     click(px(700, 500));
@@ -260,8 +260,7 @@ describe('the light tool on a map of 200 lights', () => {
   it('places no further light, sends none, and says why', () => {
     h.set({ currentMap: mapWith({ lights: Array.from({ length: MAP_LIMITS.maxLightSources }, (_, i) => lamp(i)) }) });
     render(<MapCanvas />);
-    fireEvent.click(screen.getByText('Lights'));
-    fireEvent.click(screen.getByText('Place'));
+    gmMode('Lights', 'Place');
 
     click(px(260, 240));
 
@@ -276,7 +275,7 @@ describe('the light tool on a map of 200 lights', () => {
 describe('a wall or light the server refuses', () => {
   it('takes back a drawn wall, keeps it out of redo, and says why', () => {
     render(<MapCanvas />);
-    wallTool('Wall draw mode');
+    wallTool('Draw');
     click(px(500, 500));
     click(px(600, 500));
     const drawn = (sentOf('wall:add')[0].payload as { segment: WallSegment }).segment;
@@ -293,7 +292,7 @@ describe('a wall or light the server refuses', () => {
 
   it('keeps a wall the server stores', () => {
     render(<MapCanvas />);
-    wallTool('Wall draw mode');
+    wallTool('Draw');
     click(px(500, 500));
     click(px(600, 500));
     const drawn = (sentOf('wall:add')[0].payload as { segment: WallSegment }).segment;
@@ -305,7 +304,7 @@ describe('a wall or light the server refuses', () => {
 
   it('takes back a polygon, and says why', () => {
     render(<MapCanvas />);
-    wallTool('Polygon wall mode');
+    wallTool('Polygon');
     click(px(500, 500));
     click(px(700, 500));
     click(px(700, 700));
@@ -320,8 +319,7 @@ describe('a wall or light the server refuses', () => {
   it('takes back a placed light, and says why', () => {
     h.set({ currentMap: mapWith({ lights: [lamp(1)] }) });
     render(<MapCanvas />);
-    fireEvent.click(screen.getByText('Lights'));
-    fireEvent.click(screen.getByText('Place'));
+    gmMode('Lights', 'Place');
     click(px(260, 240));
     expect(lightsShown()).toContain('(2)');
 
@@ -348,7 +346,7 @@ describe('a wall or light the server never answers', () => {
 
   it('takes back a drawn wall once the answer is overdue, and says so', () => {
     render(<MapCanvas />);
-    wallTool('Wall draw mode');
+    wallTool('Draw');
     unanswered(() => {
       click(px(500, 500));
       click(px(600, 500));
@@ -361,8 +359,7 @@ describe('a wall or light the server never answers', () => {
   it('takes back a placed light once the answer is overdue, and a late answer changes nothing', () => {
     h.set({ currentMap: mapWith({ lights: [lamp(1)] }) });
     render(<MapCanvas />);
-    fireEvent.click(screen.getByText('Lights'));
-    fireEvent.click(screen.getByText('Place'));
+    gmMode('Lights', 'Place');
     unanswered(() => click(px(260, 240)));
 
     expect(screen.getByText(NO_ANSWER_MESSAGE)).toBeInTheDocument();
@@ -377,7 +374,7 @@ describe('a wall or light the server never answers', () => {
 describe('a refusal and the lists the page sent after it', () => {
   /** Draw one wall from (500, 500) to (600, 500), and the wall sent. */
   function drawWall(): WallSegment {
-    wallTool('Wall draw mode');
+    wallTool('Draw');
     click(px(500, 500));
     click(px(600, 500));
     fireEvent.keyDown(document.body, { key: 'Escape' });
@@ -385,7 +382,7 @@ describe('a refusal and the lists the page sent after it', () => {
   }
   /** Close a triangle with the polygon tool, which sends the page's whole list. */
   function closePolygon() {
-    wallTool('Polygon wall mode');
+    wallTool('Polygon');
     click(px(300, 300));
     click(px(400, 300));
     click(px(400, 400));
@@ -437,7 +434,7 @@ describe('a refusal and the lists the page sent after it', () => {
 
   it('puts a refused move back where it began', () => {
     render(<MapCanvas />);
-    wallTool('Wall select mode');
+    wallTool('Select');
     drag(px(150, 100), px(150, 150));
 
     answerLast('walls:replace', { ok: false, error: 'A wall is outside the map' });

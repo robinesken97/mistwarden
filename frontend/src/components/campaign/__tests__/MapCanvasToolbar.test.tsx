@@ -128,6 +128,8 @@ vi.mock('@/services/api', () => {
 });
 
 import MapCanvas from '../MapCanvas';
+import mapService from '@/services/map.service';
+import { choose, radio } from '@/test/railCards';
 import { useGameStore } from '@/stores/gameStore';
 
 function mapWith(extra: Partial<CampaignMap> = {}): CampaignMap {
@@ -211,11 +213,12 @@ describe("the rail's names", () => {
       render(<MapCanvas />);
       fireEvent.click(within(rail()).getByRole('button', { name: 'Measure' }));
 
-      expect(railNames()).toEqual([
-        'Zoom out', 'Zoom in', 'Fit map', 'Grid', 'Measure', 'Ruler color: Amber', 'Spell area', 'Ping', 'Draw', 'Spirit Layer', 'GM tools',
+      // The Measure card beside its cell is not the rail's: its Close has a title of its own.
+      const cells = within(rail()).getAllByRole('button').filter((b) => !b.closest('section'));
+      expect(cells.map((b) => b.getAttribute('aria-label'))).toEqual([
+        'Zoom out', 'Zoom in', 'Fit map', 'Grid', 'Measure', 'Spell area', 'Ping', 'Draw', 'Spirit Layer', 'GM tools',
       ]);
-      for (const button of within(rail()).getAllByRole('button')) {
-        if (button.getAttribute('aria-label') === 'Ruler color: Amber') continue;
+      for (const button of cells) {
         expect(button).not.toHaveAttribute('title');
         // A mouse resting on it shows its name after a moment.
         fireEvent.pointerOver(button, { pointerType: 'mouse' });
@@ -225,9 +228,11 @@ describe("the rail's names", () => {
         expect(screen.queryByRole('tooltip')).toBeNull();
       }
 
-      expect(within(openPopover('Grid')).getAllByRole('button').map((b) => b.textContent)).toEqual(['Toggle Grid', 'Grid Color: Black', 'Place tokens freely']);
+      expect(within(openPopover('Grid')).getAllByRole('radiogroup').map((g) => g.getAttribute('aria-label')))
+        .toEqual(['Grid', 'Place freely', 'Line colour', 'Line width', 'Snap tokens']);
       fireEvent.keyDown(document, { key: 'Escape' });
-      expect(within(openPopover('Spirit Layer')).getByRole('button', { name: 'Spirit tokens shown, click to hide' })).toBeInTheDocument();
+      fireEvent.click(within(rail()).getByRole('button', { name: 'Spirit Layer' }));
+      expect(radio('Spirit tokens', 'Shown')).toBeChecked();
     } finally {
       vi.useRealTimers();
     }
@@ -255,27 +260,20 @@ describe("the rail's names", () => {
     }
   });
 
-  it('names a button by what it shows now', () => {
+  it('shows what a control is set to now', () => {
     render(<MapCanvas />);
     const grid = openPopover('Grid');
-    fireEvent.click(within(grid).getByRole('button', { name: 'Grid Color: Black' }));
-    // A row keeps its popover open.
-    expect(within(grid).getByRole('button', { name: 'Grid Color: White' })).toBeInTheDocument();
+    choose('Line colour', 'Light', grid);
+    // The scene's grid takes the colour, and a swatch keeps its popover open.
+    expect(vi.mocked(mapService.updateMap)).toHaveBeenCalledWith(expect.anything(), 'map-a', { gridColor: '#ffffff' });
+    expect(screen.getByRole('group', { name: 'Grid' })).toBe(grid);
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByRole('group', { name: 'Grid' })).toBeNull();
 
-    const spirit = openPopover('Spirit Layer');
-    fireEvent.click(within(spirit).getByRole('button', { name: 'Spirit tokens shown, click to hide' }));
-    expect(within(spirit).getByRole('button', { name: 'Spirit tokens hidden — click to show' })).toHaveAttribute('aria-pressed', 'false');
-  });
-
-  it('offers the GM the Spirit Layer settings from its popover', () => {
-    const onOpenSpiritLayer = vi.fn();
-    render(<MapCanvas onOpenSpiritLayer={onOpenSpiritLayer} />);
-    fireEvent.click(within(openPopover('Spirit Layer')).getByRole('button', { name: 'Spirit Layer settings' }));
-
-    expect(onOpenSpiritLayer).toHaveBeenCalledOnce();
-    expect(screen.queryByRole('group', { name: 'Spirit Layer' })).toBeNull();
+    fireEvent.click(within(rail()).getByRole('button', { name: 'Spirit Layer' }));
+    const spirit = screen.getByRole('region', { name: 'Spirit Layer' });
+    choose('Spirit tokens', 'Hidden', spirit);
+    expect(radio('Spirit tokens', 'Hidden', spirit)).toBeChecked();
   });
 
   // Toggle Grid is a row now, its state its pressed state; a press outside closes the popover.
@@ -283,10 +281,9 @@ describe("the rail's names", () => {
     render(<MapCanvas />);
     const grid = openPopover('Grid');
     expect(within(rail()).getByRole('button', { name: 'Grid' })).toHaveAttribute('aria-expanded', 'true');
-    fireEvent.click(within(grid).getByRole('button', { name: 'Toggle Grid' }));
+    choose('Grid', 'Hidden', grid);
 
-    expect(within(grid).getByRole('button', { name: 'Toggle Grid' })).toHaveAttribute('aria-pressed', 'false');
-    expect(within(grid).queryByRole('button', { name: /^Grid Color/ })).toBeNull();
+    expect(radio('Grid', 'Hidden', grid)).toBeChecked();
     fireEvent.pointerDown(document.body);
     expect(screen.queryByRole('group', { name: 'Grid' })).toBeNull();
   });
@@ -309,19 +306,20 @@ describe("the rail's size", () => {
 });
 
 // Its shape buttons were about 26 pixels tall and its presets about 22.
-describe("the AoE Shape panel's size", () => {
-  it('sizes its buttons and its Snap to grid box for a finger', () => {
+describe("the Spell area card's size", () => {
+  it('sizes its buttons and its Snap segments for a finger', () => {
     render(<MapCanvas />);
     fireEvent.click(screen.getByRole('button', { name: 'Spell area' }));
-    // A placement, so the panel offers × Clear placement.
+    // A placement, so the card offers Clear placement.
     const canvas = document.querySelector('canvas[class*="cursor-"]')!;
     mouse.down(canvas, { clientX: 125, clientY: 125 });
     mouse.up(canvas, { clientX: 125, clientY: 125 });
 
-    for (const name of ['Circle', 'Cone', 'Line', 'Cube', '10 ft', '15 ft', '20 ft', '30 ft', '60 ft', '× Clear placement']) {
-      expect(classesOf(screen.getByRole('button', { name }))).toContain('touch-target');
+    const card = screen.getByRole('region', { name: 'Spell area' });
+    for (const name of ['10 ft', '15 ft', '20 ft', '30 ft', '60 ft', 'Clear placement']) {
+      expect(classesOf(within(card).getByRole('button', { name }))).toContain('pointer-coarse:h-11');
     }
-    expect(classesOf(screen.getByRole('checkbox', { name: 'Snap to grid' }).closest('label')!)).toContain('touch-target');
+    for (const name of ['Grid', 'Off']) expect(classesOf(radio('Snap', name, card))).toContain('pointer-coarse:h-11');
   });
 });
 
@@ -544,10 +542,7 @@ describe('what sits at the map’s top', () => {
     });
   }
 
-  const aoePanel = () => screen.getByText('AoE Shape').parentElement!;
   const putBackBar = () => screen.getByRole('button', { name: 'Put back' }).parentElement!;
-  const toolStack = () => screen.getByTitle(/Drag to move the panels/).parentElement!;
-  const openAoE = () => fireEvent.click(screen.getByRole('button', { name: 'Spell area' }));
   const showGmTools = () => fireEvent.click(within(rail()).getByRole('button', { name: 'GM tools' }));
 
   /** The GM holds the goblin with a tap of a finger, so the Put back bar shows. */
@@ -559,18 +554,24 @@ describe('what sits at the map’s top', () => {
     finger.leave(surface());
   }
 
-  // No toolbar on the map's top: the AoE panel starts 8 pixels under it,
-  // and the tool stack left of the rail, 8 from it.
-  it('starts the AoE panel at the map’s top, and the tool stack beside the rail', () => {
+  // No toolbar on the map's top: the GM tools card starts 8 pixels under it,
+  // left of the rail, 8 from the rail's edge.
+  it('starts the GM tools card at the map’s top, beside the rail', () => {
     render(<MapCanvas />);
-    openAoE();
     showGmTools();
+    const card = screen.getByRole('region', { name: 'GM tools' });
+    const area = card.closest<HTMLElement>('[data-rail-area]')!;
+    const column = card.parentElement!.parentElement!;
+    const cell = column.parentElement!;
+    area.getBoundingClientRect = () => box(0, 0, 792, 800);
+    rail().getBoundingClientRect = () => box(742, 300, 50, 400);
+    cell.getBoundingClientRect = () => box(747, 650, 40, 40);
     layOut();
 
-    expect(aoePanel().style.top).toBe('8px');
-    expect(toolStack().style.top).toBe('8px');
-    // 8, the rail's 50 (a 40 px cell, padding and border), 8.
-    expect(toolStack().style.right).toBe('66px');
+    // 8 under the map's top, from the cell it opens from.
+    expect(column.style.top).toBe('-642px');
+    // Its right edge 8 left of the rail's left edge, from the cell's right: 787 - 742 + 8.
+    expect(column.style.right).toBe('53px');
   });
 
   it('starts Put back 8 pixels under the map’s top', () => {
@@ -581,44 +582,16 @@ describe('what sits at the map’s top', () => {
     expect(putBackBar().style.top).toBe('8px');
   });
 
-  // Both started at the top, Put back over the AoE panel's shape buttons.
-  it('starts the AoE panel under Put back while a token is held, and back at the top after', () => {
-    render(<MapCanvas />);
-    holdByTap();
-    openAoE();
-    layOut(800, 62);
-
-    expect(putBackBar().style.top).toBe('8px');
-    expect(aoePanel().style.top).toBe('78px');
-
-    fireEvent.click(screen.getByRole('button', { name: 'Put back' }));
-    expect(aoePanel().style.top).toBe('8px');
-  });
-
-  // Moved down, the panel ran past the map's foot on a short tablet, and the
-  // map's column scrolled.
-  it('keeps a moved AoE panel within the map, scrolling inside', () => {
-    render(<MapCanvas />);
-    holdByTap();
-    openAoE();
-    layOut(800, 62);
-
-    expect(aoePanel().style.maxHeight).toContain('78px');
-    expect(aoePanel().style.overflowY).toBe('auto');
-  });
-
-  // A touch screen's 44-pixel cells make the rail wider, and two columns wider still.
-  it('keeps the tool stack beside the rail on a touch screen, in one column and in two', () => {
+  // A touch screen's 44-pixel cells make the rail taller; on a short map it takes two columns.
+  it('puts the rail in two columns on a short touch screen, the GM tools card open', () => {
     coarsePointer();
     render(<MapCanvas />);
     showGmTools();
     layOut(800);
-    // 8, the rail's 54, 8.
-    expect(toolStack().style.right).toBe('70px');
+    expect(rail()).toHaveAttribute('data-rail-columns', '1');
 
     layOut(500);
     expect(rail()).toHaveAttribute('data-rail-columns', '2');
-    // 8, the rail's 102 (two cells, the gap between, padding and border), 8.
-    expect(toolStack().style.right).toBe('118px');
+    expect(screen.getByRole('region', { name: 'GM tools' })).toBeInTheDocument();
   });
 });

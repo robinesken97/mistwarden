@@ -140,6 +140,7 @@ vi.mock('@/services/api', () => {
 });
 
 import MapCanvas from '../MapCanvas';
+import { choose, gmCard, gmMode, openGmTab, radio } from '@/test/railCards';
 import { useGameStore } from '@/stores/gameStore';
 import { useTableChrome } from '@/stores/tableChromeStore';
 import mapService from '@/services/map.service';
@@ -229,14 +230,13 @@ function show(...tokens: Token[]) {
   act(() => { useGameStore.getState().setTokens(tokens); });
 }
 
-function wallTool(label: string) {
-  fireEvent.click(screen.getByText('Walls'));
-  fireEvent.click(screen.getByLabelText(label));
+function wallTool(mode: string) {
+  gmMode('Walls', mode);
 }
 
 const readout = () => screen.queryByText(/^\(-?\d+, -?\d+\)$/)?.textContent ?? null;
-const rulerOn = () => screen.queryByTitle(/^Ruler color:/) !== null;
-const aoeOn = () => screen.queryByText('AoE Shape') !== null;
+const rulerOn = () => screen.getByRole('button', { name: 'Measure' }).getAttribute('aria-pressed') === 'true';
+const aoeOn = () => screen.getByRole('button', { name: 'Spell area' }).getAttribute('aria-pressed') === 'true';
 
 beforeAll(() => {
   Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', { value: () => null, configurable: true });
@@ -256,7 +256,7 @@ beforeEach(() => {
 describe('the wall draw tool', () => {
   it('sends a wall for each click after the first, snapped to the grid', () => {
     render(<MapCanvas />);
-    wallTool('Wall draw mode');
+    wallTool('Draw');
 
     click(px(102, 98));
     expect(sentOf('wall:add')).toEqual([]);
@@ -271,7 +271,7 @@ describe('the wall draw tool', () => {
 
   it('ends the line on a double-click, so the next click starts a new one', () => {
     render(<MapCanvas />);
-    wallTool('Wall draw mode');
+    wallTool('Draw');
 
     click(px(100, 300));
     click(px(200, 300));
@@ -285,7 +285,7 @@ describe('the wall draw tool', () => {
   // ended a line already ended.
   it('starts a new line at a quick third click on the corner a double-click ended on', () => {
     render(<MapCanvas />);
-    wallTool('Wall draw mode');
+    wallTool('Draw');
 
     click(px(100, 300));
     click(px(200, 300));
@@ -302,7 +302,7 @@ describe('the wall draw tool', () => {
   // A pointer event's own click count is always 0; the page counts them.
   it('takes a second click more than 4 pixels from the first as a click of its own', () => {
     render(<MapCanvas />);
-    wallTool('Wall draw mode');
+    wallTool('Draw');
 
     click(px(100, 300));
     click(px(200, 300));
@@ -313,7 +313,7 @@ describe('the wall draw tool', () => {
 
   it('takes a second click more than half a second after the first as a click of its own', () => {
     render(<MapCanvas />);
-    wallTool('Wall draw mode');
+    wallTool('Draw');
     vi.useFakeTimers({ toFake: ['Date'] });
     try {
       click(px(100, 300));
@@ -329,7 +329,7 @@ describe('the wall draw tool', () => {
 
   it('drops a half-drawn line on the first Escape and puts the tool away on the second', () => {
     render(<MapCanvas />);
-    wallTool('Wall draw mode');
+    wallTool('Draw');
 
     click(px(100, 300));
     press('Escape');
@@ -348,9 +348,9 @@ describe('the wall draw tool', () => {
   // and Draw chosen again carried on from its point.
   it('drops a half-drawn line when another wall tool is chosen, so the first Escape there clears the selection', () => {
     render(<MapCanvas />);
-    wallTool('Wall draw mode');
+    wallTool('Draw');
     click(px(100, 300));
-    fireEvent.click(screen.getByLabelText('Wall select mode'));
+    fireEvent.click(radio('Mode', 'Select', gmCard()));
 
     click(px(150, 100));
     press('Escape');
@@ -361,34 +361,32 @@ describe('the wall draw tool', () => {
 
   it('starts a new line when Draw is chosen again, after another wall tool or a light tool', () => {
     render(<MapCanvas />);
-    wallTool('Wall draw mode');
+    wallTool('Draw');
     click(px(100, 300));
-    fireEvent.click(screen.getByLabelText('Wall select mode'));
-    fireEvent.click(screen.getByLabelText('Wall draw mode'));
+    fireEvent.click(radio('Mode', 'Select', gmCard()));
+    fireEvent.click(radio('Mode', 'Draw', gmCard()));
     click(px(200, 300));
     expect(sentOf('wall:add')).toEqual([]);
 
-    fireEvent.click(screen.getByText('Lights'));
-    fireEvent.click(screen.getByText('Place'));
-    fireEvent.click(screen.getByLabelText('Wall draw mode'));
+    gmMode('Lights', 'Place');
+    gmMode('Walls', 'Draw');
     click(px(300, 300));
     expect(sentOf('wall:add')).toEqual([]);
   });
 
   it("leaves the panel's Undo off in another tool when there is nothing to undo", () => {
     render(<MapCanvas />);
-    wallTool('Wall draw mode');
+    wallTool('Draw');
     click(px(100, 300));
-    fireEvent.click(screen.getByLabelText('Wall select mode'));
+    fireEvent.click(radio('Mode', 'Select', gmCard()));
 
-    expect(screen.getByLabelText('Undo wall edit')).toBeDisabled();
+    expect(within(gmCard()).getByRole('button', { name: 'Undo' })).toBeDisabled();
   });
 
   it('turns a door drawn along a wall into a section of that wall', () => {
     render(<MapCanvas />);
-    fireEvent.click(screen.getByText('Walls'));
-    fireEvent.click(screen.getByLabelText('Wall draw mode'));
-    fireEvent.click(screen.getByLabelText('Wall type: Door'));
+    gmMode('Walls', 'Draw');
+    fireEvent.change(screen.getByRole('combobox', { name: 'Draw type' }), { target: { value: 'door-closed' } });
 
     click(px(100, 100));
     click(px(150, 100));
@@ -404,7 +402,7 @@ describe('the wall draw tool', () => {
 describe('the polygon tool', () => {
   it('sends the closed shape as one replace on a double-click', () => {
     render(<MapCanvas />);
-    wallTool('Polygon wall mode');
+    wallTool('Polygon');
 
     click(px(500, 500));
     click(px(700, 500));
@@ -423,7 +421,7 @@ describe('the polygon tool', () => {
   // it away, as Done, which waits for three, never does.
   it('keeps a shape of under three corners through a double-click, adding no corner', () => {
     render(<MapCanvas />);
-    wallTool('Polygon wall mode');
+    wallTool('Polygon');
 
     click(px(500, 500));
     click(px(700, 500));
@@ -440,7 +438,7 @@ describe('the polygon tool', () => {
 
   it('closes the shape on a click beside its first corner', () => {
     render(<MapCanvas />);
-    wallTool('Polygon wall mode');
+    wallTool('Polygon');
 
     click(px(500, 500));
     click(px(700, 500));
@@ -452,7 +450,7 @@ describe('the polygon tool', () => {
 
   it('takes back the last corner on Ctrl+Z, and the whole shape on Escape', () => {
     render(<MapCanvas />);
-    wallTool('Polygon wall mode');
+    wallTool('Polygon');
 
     click(px(500, 500));
     click(px(700, 500));
@@ -492,7 +490,7 @@ describe('the polygon tool on a page where the map does not start at the corner'
 
   it('closes the shape on a click beside its first corner', () => {
     render(<MapCanvas />);
-    wallTool('Polygon wall mode');
+    wallTool('Polygon');
 
     click(onPage(500, 500));
     click(onPage(700, 500));
@@ -510,7 +508,7 @@ describe('the polygon tool on a page where the map does not start at the corner'
 describe('the split tool', () => {
   it('cuts a wall in two where it is clicked', () => {
     render(<MapCanvas />);
-    wallTool('Wall split mode');
+    wallTool('Split');
 
     click(px(140, 103));
 
@@ -523,7 +521,7 @@ describe('the split tool', () => {
 
   it('does not cut within 10 pixels of an end', () => {
     render(<MapCanvas />);
-    wallTool('Wall split mode');
+    wallTool('Split');
 
     click(px(195, 100));
 
@@ -534,7 +532,7 @@ describe('the split tool', () => {
 describe('the erase tool', () => {
   it('removes every wall the stroke passes over, in one replace', () => {
     render(<MapCanvas />);
-    wallTool('Wall erase mode');
+    wallTool('Erase');
 
     drag(px(150, 110), px(250, 110), px(350, 110));
 
@@ -544,7 +542,7 @@ describe('the erase tool', () => {
 
   it('sends nothing for a stroke that touches no wall', () => {
     render(<MapCanvas />);
-    wallTool('Wall erase mode');
+    wallTool('Erase');
 
     drag(px(150, 500), px(350, 500));
 
@@ -555,7 +553,7 @@ describe('the erase tool', () => {
 describe('the brush tool', () => {
   it('turns a stroke into walls, simplified, in one replace', () => {
     render(<MapCanvas />);
-    wallTool('Brush wall mode');
+    wallTool('Brush');
 
     drag(px(100, 300), px(150, 300), px(200, 300), px(250, 300), px(300, 300));
 
@@ -566,7 +564,7 @@ describe('the brush tool', () => {
 describe('the wall select tool', () => {
   it('moves a wall dragged from its middle, in one replace', () => {
     render(<MapCanvas />);
-    wallTool('Wall select mode');
+    wallTool('Select');
 
     drag(px(150, 100), px(150, 120), px(150, 150));
 
@@ -577,7 +575,7 @@ describe('the wall select tool', () => {
   it('moves the end of every wall that shares a dragged corner', () => {
     h.set({ currentMap: mapWith({ wallSegments: [WALL_A, seg('a3', 200, 100, 200, 300)] }) });
     render(<MapCanvas />);
-    wallTool('Wall select mode');
+    wallTool('Select');
 
     drag(px(200, 100), px(220, 100), px(250, 100));
 
@@ -589,7 +587,7 @@ describe('the wall select tool', () => {
 
   it('selects what a box touches, and Delete removes it', () => {
     render(<MapCanvas />);
-    wallTool('Wall select mode');
+    wallTool('Select');
 
     drag(px(250, 50), px(350, 120), px(450, 150));
     press('Delete');
@@ -599,7 +597,7 @@ describe('the wall select tool', () => {
 
   it('adds to the selection with Shift, and nudges it with the arrow keys', () => {
     render(<MapCanvas />);
-    wallTool('Wall select mode');
+    wallTool('Select');
 
     click(px(150, 100));
     click(px(350, 100), { shiftKey: true });
@@ -610,7 +608,7 @@ describe('the wall select tool', () => {
 
   it('drops the selection on the first Escape and keeps the tool', () => {
     render(<MapCanvas />);
-    wallTool('Wall select mode');
+    wallTool('Select');
 
     click(px(150, 100));
     press('Escape');
@@ -630,7 +628,7 @@ describe("the Walls panel's buttons, which do what a key or a double-click does"
 
   it('Done finishes a line as a double-click does, and shows only while one is being drawn', () => {
     render(<MapCanvas />);
-    wallTool('Wall draw mode');
+    wallTool('Draw');
     expect(button('Done')).toBeNull();
 
     click(px(100, 300));
@@ -649,14 +647,14 @@ describe("the Walls panel's buttons, which do what a key or a double-click does"
     Object.defineProperty(Element.prototype, 'scrollIntoView', { value: intoView, configurable: true, writable: true });
     try {
       render(<MapCanvas />);
-      wallTool('Wall draw mode');
+      wallTool('Draw');
       click(px(100, 300));
       expect(intoView.mock.contexts).toEqual([button('Done')!.parentElement]);
       expect(intoView).toHaveBeenLastCalledWith({ block: 'nearest' });
       click(px(200, 300));
       expect(intoView).toHaveBeenCalledTimes(1);
 
-      fireEvent.click(screen.getByLabelText('Polygon wall mode'));
+      fireEvent.click(radio('Mode', 'Polygon', gmCard()));
       click(px(500, 500));
       expect(intoView).toHaveBeenCalledTimes(2);
       expect(intoView.mock.contexts[1]).toBe(button('Cancel')!.parentElement);
@@ -669,7 +667,7 @@ describe("the Walls panel's buttons, which do what a key or a double-click does"
 
   it('Done closes a polygon as a double-click does, once it has three corners', () => {
     render(<MapCanvas />);
-    wallTool('Polygon wall mode');
+    wallTool('Polygon');
 
     click(px(500, 500));
     click(px(700, 500));
@@ -687,7 +685,7 @@ describe("the Walls panel's buttons, which do what a key or a double-click does"
 
   it('Cancel drops a polygon as Escape does, and keeps the tool', () => {
     render(<MapCanvas />);
-    wallTool('Polygon wall mode');
+    wallTool('Polygon');
 
     click(px(100, 500));
     click(px(300, 500));
@@ -709,12 +707,12 @@ describe("the Walls panel's buttons, which do what a key or a double-click does"
 
   it('Undo takes back the last corner first, as Ctrl+Z does', () => {
     render(<MapCanvas />);
-    wallTool('Polygon wall mode');
+    wallTool('Polygon');
 
     click(px(500, 500));
     click(px(700, 500));
     click(px(900, 500));
-    fireEvent.click(screen.getByLabelText('Undo wall edit'));
+    fireEvent.click(within(gmCard()).getByRole('button', { name: 'Undo' }));
     click(px(700, 700));
     click(px(700, 700));
 
@@ -727,25 +725,25 @@ describe("the Walls panel's buttons, which do what a key or a double-click does"
 
   it('Undo drops a half-drawn line, then undoes the last edit, as Ctrl+Z does', () => {
     render(<MapCanvas />);
-    wallTool('Wall draw mode');
-    expect(screen.getByLabelText('Undo wall edit')).toBeDisabled();
+    wallTool('Draw');
+    expect(within(gmCard()).getByRole('button', { name: 'Undo' })).toBeDisabled();
 
     click(px(100, 300));
-    fireEvent.click(screen.getByLabelText('Undo wall edit'));
+    fireEvent.click(within(gmCard()).getByRole('button', { name: 'Undo' }));
     click(px(200, 300));
     expect(sentOf('wall:add')).toEqual([]);
 
     click(px(300, 300));
     fireEvent.click(button('Done')!);
     expect(sentOf('wall:add')).toHaveLength(1);
-    fireEvent.click(screen.getByLabelText('Undo wall edit'));
+    fireEvent.click(within(gmCard()).getByRole('button', { name: 'Undo' }));
     expect(lastWalls()).toEqual([WALL_A, WALL_B]);
   });
 
   it('Delete removes a selection of mixed types, as the Delete key does, and says how many', () => {
     h.set({ currentMap: mapWith({ wallSegments: [WALL_A, seg('d1', 300, 100, 400, 100, 'door-closed')] }) });
     render(<MapCanvas />);
-    wallTool('Wall select mode');
+    wallTool('Select');
 
     press('a', { ctrlKey: true });
     const del = screen.getByRole('button', { name: 'Delete 2 segments' });
@@ -757,10 +755,10 @@ describe("the Walls panel's buttons, which do what a key or a double-click does"
 
   it('Add to selection adds a clicked wall as Shift does, and keeps the selection through a box', () => {
     render(<MapCanvas />);
-    wallTool('Wall select mode');
+    wallTool('Select');
 
     click(px(150, 100));
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Add to selection' }));
+    choose('Add to selection', 'On');
     click(px(350, 100));
     press('ArrowDown');
     expect(lastWalls()).toEqual([{ ...WALL_A, y1: 101, y2: 101 }, { ...WALL_B, y1: 101, y2: 101 }]);
@@ -774,10 +772,10 @@ describe("the Walls panel's buttons, which do what a key or a double-click does"
 
   it('Add to selection takes a clicked wall back out, as Shift does', () => {
     render(<MapCanvas />);
-    wallTool('Wall select mode');
+    wallTool('Select');
 
     click(px(150, 100));
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Add to selection' }));
+    choose('Add to selection', 'On');
     click(px(350, 100));
     click(px(150, 100));
     press('Delete');
@@ -791,8 +789,7 @@ describe('the light tools', () => {
 
   it('places a light with the panel settings where the map is clicked', () => {
     render(<MapCanvas />);
-    fireEvent.click(screen.getByText('Lights'));
-    fireEvent.click(screen.getByText('Place'));
+    gmMode('Lights', 'Place');
 
     click(px(260, 240));
 
@@ -805,8 +802,7 @@ describe('the light tools', () => {
   it('moves a light dragged with the select tool, sending it once on release', () => {
     h.set({ currentMap: mapWith({ lights: [lamp] }) });
     render(<MapCanvas />);
-    fireEvent.click(screen.getByText('Lights'));
-    fireEvent.click(screen.getByText('Select'));
+    gmMode('Lights', 'Select');
 
     drag(px(255, 250), px(280, 280), px(300, 310));
 
@@ -819,8 +815,7 @@ describe('the light tools', () => {
   // chosen, so Escape read the tool as it had been before: none.
   it('puts the tool away on Escape', () => {
     render(<MapCanvas />);
-    fireEvent.click(screen.getByText('Lights'));
-    fireEvent.click(screen.getByText('Place'));
+    gmMode('Lights', 'Place');
 
     press('Escape');
     click(px(260, 240));
@@ -836,10 +831,9 @@ describe('the light tools', () => {
     render(<MapCanvas />);
     const atMount = keyListeners();
 
-    wallTool('Wall draw mode');
+    wallTool('Draw');
     click(px(100, 300));
-    fireEvent.click(screen.getByText('Lights'));
-    fireEvent.click(screen.getByText('Place'));
+    gmMode('Lights', 'Place');
     press('Escape');
 
     expect(keyListeners()).toBe(atMount);
@@ -850,16 +844,15 @@ describe('the light tools', () => {
 describe('the fog box tools', () => {
   const fogState = { fogCols: 20, fogRows: 20, cellPx: 50, revealed: new Array(400).fill(false) };
 
-  function fogTool(label: string) {
+  function fogTool(mode: 'Reveal' | 'Hide') {
     h.set({ currentMap: mapWith({ fogEnabled: true }) });
     render(<MapCanvas />);
     fire('fog:updated', { mapId: 'map-a', fogState });
-    fireEvent.click(screen.getByText('Fog of War'));
-    fireEvent.click(screen.getByLabelText(label));
+    gmMode('Fog', mode);
   }
 
   it('reveals every square the box covers, in one operation', () => {
-    fogTool('Fog reveal box');
+    fogTool('Reveal');
 
     drag(px(60, 60), px(120, 90), px(160, 110));
 
@@ -871,7 +864,7 @@ describe('the fog box tools', () => {
   });
 
   it('hides with the hide box', () => {
-    fogTool('Fog hide box');
+    fogTool('Hide');
 
     drag(px(60, 60), px(70, 70));
 
@@ -881,7 +874,7 @@ describe('the fog box tools', () => {
   // The right button pans under the wall and light tools; under a fog box tool
   // the move went to the box, so the map stayed where it was.
   it('pans with the right button, sending nothing', () => {
-    fogTool('Fog reveal box');
+    fogTool('Reveal');
 
     mouse.down(surface(), { clientX: 500, clientY: 500 }, 2);
     mouse.move(surface(), { clientX: 550, clientY: 500 }, 2);
@@ -895,7 +888,7 @@ describe('the fog box tools', () => {
   // Two buttons held at once send one pointerdown and one pointerup; the
   // second button's press and release arrive as moves.
   it('drops a box when the right button is pressed during it, and pans instead', () => {
-    fogTool('Fog reveal box');
+    fogTool('Reveal');
 
     down(px(60, 60));
     move(px(160, 110));
@@ -910,7 +903,7 @@ describe('the fog box tools', () => {
   });
 
   it('abandons a box when the browser cancels the pointer', () => {
-    fogTool('Fog reveal box');
+    fogTool('Reveal');
 
     down(px(60, 60));
     move(px(160, 110));
@@ -921,7 +914,7 @@ describe('the fog box tools', () => {
   });
 
   it('abandons a box on Escape', () => {
-    fogTool('Fog reveal box');
+    fogTool('Reveal');
 
     down(px(60, 60));
     move(px(160, 110));
@@ -967,7 +960,7 @@ describe('doors with no tool up', () => {
   it('are not toggled while a wall tool is up', () => {
     h.set({ currentMap: mapWith({ wallSegments: [door] }) });
     render(<MapCanvas />);
-    wallTool('Wall select mode');
+    wallTool('Select');
 
     click(px(150, 104));
 
@@ -1030,23 +1023,12 @@ describe('the ruler and the AoE template', () => {
     expect(sentOf('token.move.end')).toEqual([]);
   });
 
-  it('stay armed while a wall is half-drawn: Escape drops the wall first', () => {
-    render(<MapCanvas />);
-    fireEvent.click(screen.getByRole('button', { name: 'Spell area' }));
-    wallTool('Wall draw mode');
-    click(px(100, 300));
-
-    press('Escape');
-    expect(aoeOn()).toBe(true);
-    click(px(200, 300));
-    expect(sentOf('wall:add')).toEqual([]);
-  });
 });
 
 describe('the right button', () => {
   it('pans while a GM tool is up', () => {
     render(<MapCanvas />);
-    wallTool('Wall draw mode');
+    wallTool('Draw');
 
     mouse.down(surface(), { clientX: 500, clientY: 500 }, 2);
     mouse.move(surface(), { clientX: 550, clientY: 500 }, 2);
@@ -1058,7 +1040,7 @@ describe('the right button', () => {
 
   it('stops panning when it is let go, even with the left button let go last', () => {
     render(<MapCanvas />);
-    wallTool('Wall select mode');
+    wallTool('Select');
 
     mouse.down(surface(), { clientX: 500, clientY: 500 }, 2);
     mouse.chord(surface(), { clientX: 500, clientY: 500 }, 0, 3);
@@ -1072,7 +1054,7 @@ describe('the right button', () => {
   it('opens no token menu while a wall tool is up', () => {
     render(<MapCanvas />);
     show(token('tok-goblin', 'Goblin', 0, 19));
-    wallTool('Wall draw mode');
+    wallTool('Draw');
 
     fireEvent.contextMenu(surface(), square(0, 19));
 
@@ -1085,8 +1067,7 @@ describe('the right button', () => {
     render(<MapCanvas />);
     show(token('tok-goblin', 'Goblin', 0, 19));
     fire('fog:updated', { mapId: 'map-a', fogState: { fogCols: 20, fogRows: 20, cellPx: 50, revealed: new Array(400).fill(false) } });
-    fireEvent.click(screen.getByText('Fog of War'));
-    fireEvent.click(screen.getByLabelText('Fog reveal box'));
+    gmMode('Fog', 'Reveal');
 
     fireEvent.contextMenu(surface(), square(0, 19));
 
@@ -1097,8 +1078,7 @@ describe('the right button', () => {
     h.set({ currentMap: mapWith({ wallSegments: [seg('d1', 100, 100, 200, 100, 'door-closed')] }) });
     render(<MapCanvas />);
     show(token('tok-goblin', 'Goblin', 0, 19));
-    fireEvent.click(screen.getByText('Lights'));
-    fireEvent.click(screen.getByText('Place'));
+    gmMode('Lights', 'Place');
 
     fireEvent.contextMenu(surface(), square(0, 19));
     fireEvent.contextMenu(surface(), px(150, 104));
@@ -1111,9 +1091,8 @@ describe('the right button', () => {
 describe('switching tools', () => {
   it('puts the wall tool away when the light tool is chosen', () => {
     render(<MapCanvas />);
-    wallTool('Wall draw mode');
-    fireEvent.click(screen.getByText('Lights'));
-    fireEvent.click(screen.getByText('Place'));
+    wallTool('Draw');
+    gmMode('Lights', 'Place');
 
     click(px(100, 300));
     click(px(200, 300));
@@ -1127,12 +1106,11 @@ describe('switching tools', () => {
     h.set({ currentMap: mapWith({ fogEnabled: true }) });
     render(<MapCanvas />);
     fire('fog:updated', { mapId: 'map-a', fogState: { fogCols: 20, fogRows: 20, cellPx: 50, revealed: new Array(400).fill(false) } });
-    wallTool('Wall draw mode');
+    wallTool('Draw');
     click(px(100, 300));
 
-    fireEvent.click(screen.getByText('Fog of War'));
-    fireEvent.click(screen.getByLabelText('Fog reveal box'));
-    fireEvent.click(screen.getByLabelText('Wall draw mode'));
+    gmMode('Fog', 'Reveal');
+    gmMode('Walls', 'Draw');
     click(px(200, 300));
 
     expect(sentOf('wall:add')).toEqual([]);
@@ -1143,12 +1121,12 @@ describe("the GM's spirit token button", () => {
   it('says what a click will do', () => {
     render(<MapCanvas />);
     fireEvent.click(screen.getByRole('button', { name: 'Spirit Layer' }));
-    const popover = () => screen.getByRole('group', { name: 'Spirit Layer' });
+    expect(radio('Spirit tokens', 'Shown')).toBeChecked();
 
-    fireEvent.click(within(popover()).getByRole('button', { name: 'Spirit tokens shown, click to hide' }));
+    choose('Spirit tokens', 'Hidden');
 
-    // A row keeps the popover open, so the new words show at once.
-    expect(within(popover()).getByRole('button', { name: 'Spirit tokens hidden — click to show' })).toHaveAttribute('aria-pressed', 'false');
+    // The card stays open, so the new state shows at once.
+    expect(within(screen.getByRole('region', { name: 'Spirit Layer' })).getByRole('radio', { name: 'Hidden' })).toBeChecked();
   });
 });
 
@@ -1261,8 +1239,8 @@ describe('Preview Player View', () => {
     show(token('tok-goblin', 'Goblin', 0, 19));
     await startPreview();
 
-    fireEvent.click(screen.getByText('Fog of War'));
-    fireEvent.click(screen.getByLabelText('Fog of war on this map'));
+    openGmTab('Fog');
+    choose('Fog', 'Off');
 
     await asPlayer('Back to GM view');
     expect(asPlayerButton()).toBeNull();
@@ -1272,8 +1250,7 @@ describe('Preview Player View', () => {
     h.set({ currentMap: mapWith({ lightingEnabled: true }) });
     render(<MapCanvas />);
     show(token('tok-goblin', 'Goblin', 0, 19));
-    fireEvent.click(screen.getByText('Lights'));
-    fireEvent.click(screen.getByText('Place'));
+    gmMode('Lights', 'Place');
     await startPreview();
 
     click(px(400, 400));
@@ -1286,8 +1263,7 @@ describe('Preview Player View', () => {
     h.set({ currentMap: mapWith({ lightingEnabled: true, lights: [lamp] }) });
     render(<MapCanvas />);
     show(token('tok-goblin', 'Goblin', 0, 19));
-    fireEvent.click(screen.getByText('Lights'));
-    fireEvent.click(screen.getByText('Select'));
+    gmMode('Lights', 'Select');
     await startPreview();
 
     drag(px(255, 250), px(280, 280), px(300, 310));
@@ -1405,7 +1381,7 @@ describe('letting go of the mouse outside the map', () => {
 
   it('finishes an erase stroke', () => {
     render(<MapCanvas />);
-    wallTool('Wall erase mode');
+    wallTool('Erase');
 
     down(px(150, 110));
     move(px(350, 110));
@@ -1420,7 +1396,7 @@ describe('letting go of the mouse outside the map', () => {
 
   it('finishes a brush stroke', () => {
     render(<MapCanvas />);
-    wallTool('Brush wall mode');
+    wallTool('Brush');
 
     down(px(100, 300));
     move(px(200, 300));
@@ -1456,7 +1432,7 @@ describe('letting go of the mouse outside the map', () => {
   // under the pointer no longer showed it could be picked.
   it('ends a right-button pan', () => {
     render(<MapCanvas />);
-    wallTool('Wall select mode');
+    wallTool('Select');
 
     mouse.down(surface(), { clientX: 500, clientY: 500 }, 2);
     mouse.leave(surface(), 2);
@@ -1468,7 +1444,7 @@ describe('letting go of the mouse outside the map', () => {
 
   it('ends a right-button pan when the right button is let go out there before the left', () => {
     render(<MapCanvas />);
-    wallTool('Wall select mode');
+    wallTool('Select');
 
     mouse.down(surface(), { clientX: 500, clientY: 500 }, 2);
     mouse.chord(surface(), { clientX: 500, clientY: 500 }, 0, 3);
@@ -1500,7 +1476,7 @@ describe('switching maps', () => {
 
   it('drops a half-drawn wall', () => {
     render(<MapCanvas />);
-    wallTool('Wall draw mode');
+    wallTool('Draw');
     click(px(100, 300));
 
     switchMap();
@@ -1511,7 +1487,7 @@ describe('switching maps', () => {
 
   it('drops the corners of a half-drawn polygon', () => {
     render(<MapCanvas />);
-    wallTool('Polygon wall mode');
+    wallTool('Polygon');
     click(px(500, 500));
     click(px(700, 500));
 
@@ -1524,7 +1500,7 @@ describe('switching maps', () => {
 
   it('drops the wall selection', () => {
     render(<MapCanvas />);
-    wallTool('Wall select mode');
+    wallTool('Select');
     press('a', { ctrlKey: true });
 
     switchMap();
@@ -1617,7 +1593,7 @@ describe("a player's door toggle during the GM's wall drag", () => {
   it('survives the drop of a moved selection', () => {
     h.set({ currentMap: mapWith({ wallSegments: [WALL_A, door] }) });
     render(<MapCanvas />);
-    wallTool('Wall select mode');
+    wallTool('Select');
 
     down(px(150, 100));
     move(px(150, 120));
@@ -1634,7 +1610,7 @@ describe("a player's door toggle during the GM's wall drag", () => {
   it('moves with the selection when it lands after the last move', () => {
     h.set({ currentMap: mapWith({ wallSegments: [WALL_A, door] }) });
     render(<MapCanvas />);
-    wallTool('Wall select mode');
+    wallTool('Select');
     drag(px(50, 50), px(650, 550));
 
     down(px(150, 100));
@@ -1648,7 +1624,7 @@ describe("a player's door toggle during the GM's wall drag", () => {
   it('keeps a dragged door endpoint where it was dropped when it lands after the last move', () => {
     h.set({ currentMap: mapWith({ wallSegments: [WALL_A, door] }) });
     render(<MapCanvas />);
-    wallTool('Wall select mode');
+    wallTool('Select');
 
     down(px(600, 500));
     move(px(650, 500));
@@ -1661,7 +1637,7 @@ describe("a player's door toggle during the GM's wall drag", () => {
   it("survives the undo of an endpoint drag", () => {
     h.set({ currentMap: mapWith({ wallSegments: [WALL_A, door] }) });
     render(<MapCanvas />);
-    wallTool('Wall select mode');
+    wallTool('Select');
 
     down(px(200, 100));
     move(px(220, 100));
@@ -1734,12 +1710,11 @@ describe('the Global Illumination switch', () => {
     h.set({ currentMap: mapWith({ lightingEnabled: true, globalIllumination: true }) });
     vi.mocked(mapService.updateMap).mockRejectedValueOnce({ response: { status: 429, data: { message: 'Too many requests, please slow down' } } });
     render(<MapCanvas />);
-    fireEvent.click(screen.getByText(/^Lights/));
-    const toggle = screen.getByLabelText('Global Illumination') as HTMLInputElement;
-    await act(async () => { fireEvent.click(toggle); });
+    openGmTab('Lights');
+    await act(async () => { choose('Global light', 'Off'); });
 
     expect(await screen.findByText('Too many requests, please slow down')).toBeTruthy();
-    expect((screen.getByLabelText('Global Illumination') as HTMLInputElement).checked).toBe(true);
+    expect(radio('Global light', 'On')).toBeChecked();
   });
 });
 

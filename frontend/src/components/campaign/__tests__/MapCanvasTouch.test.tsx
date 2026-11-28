@@ -137,6 +137,7 @@ vi.mock('@/services/api', () => {
 });
 
 import MapCanvas from '../MapCanvas';
+import { choose, gmCard, gmMode, radio } from '@/test/railCards';
 import CharacterContextMenu from '../CharacterContextMenu';
 import { useGameStore } from '@/stores/gameStore';
 import { useTableChrome } from '@/stores/tableChromeStore';
@@ -203,9 +204,8 @@ function fire(event: string, payload: unknown) {
   });
 }
 
-function wallTool(label: string) {
-  fireEvent.click(screen.getByText('Walls'));
-  fireEvent.click(screen.getByLabelText(label));
+function wallTool(mode: string) {
+  gmMode('Walls', mode);
 }
 
 const readout = () => screen.queryByText(/^\(-?\d+, -?\d+\)$/)?.textContent ?? null;
@@ -940,8 +940,7 @@ describe('a long-press', () => {
     render(<MapCanvas />);
     show(goblin());
     fire('fog:updated', { mapId: 'map-a', fogState: { fogCols: 20, fogRows: 20, cellPx: 50, revealed: new Array(400).fill(false) } });
-    fireEvent.click(screen.getByText('Fog of War'));
-    fireEvent.click(screen.getByLabelText('Fog reveal box'));
+    gmMode('Fog', 'Reveal');
 
     const finger = contact('touch', 1);
     finger.down(surface(), px(60, 60));
@@ -1062,8 +1061,7 @@ describe('a long-press', () => {
       h.set({ currentMap: mapWith({ fogEnabled: true }) });
       render(<MapCanvas />);
       fire('fog:updated', { mapId: 'map-a', fogState: { fogCols: 20, fogRows: 20, cellPx: 50, revealed: new Array(400).fill(false) } });
-      fireEvent.click(screen.getByText('Fog of War'));
-      fireEvent.click(screen.getByLabelText('Fog reveal box'));
+      gmMode('Fog', 'Reveal');
 
       const finger = contact('touch', 1);
       finger.down(surface(), px(60, 60));
@@ -1306,7 +1304,7 @@ describe('a double tap', () => {
   /** Open Draw from the toolbar and choose a tool from its panel. */
   function draw(tool: string) {
     if (!screen.queryByRole('region', { name: 'Drawing tools' })) fireEvent.click(screen.getByRole('button', { name: 'Draw' }));
-    fireEvent.click(within(screen.getByRole('region', { name: 'Drawing tools' })).getByRole('button', { name: tool }));
+    fireEvent.click(within(screen.getByRole('region', { name: 'Drawing tools' })).getByRole('radio', { name: tool }));
   }
   const fogState = { fogCols: 20, fogRows: 20, cellPx: 50, revealed: new Array(400).fill(false) };
 
@@ -1390,19 +1388,16 @@ describe('a double tap', () => {
   // do there: the ruler of a player with no token, the fog box before the
   // fog has arrived, the light tool's Select on empty ground.
   it.each<[string, () => void, Partial<CampaignMap>?]>([
-    ['the wall tool', () => wallTool('Wall draw mode')],
+    ['the wall tool', () => wallTool('Draw')],
     ['a fog box', () => {
       fire('fog:updated', { mapId: 'map-a', fogState });
-      fireEvent.click(screen.getByText('Fog of War'));
-      fireEvent.click(screen.getByLabelText('Fog reveal box'));
+      gmMode('Fog', 'Reveal');
     }, { fogEnabled: true }],
     ['a fog box chosen before the fog has arrived', () => {
-      fireEvent.click(screen.getByText('Fog of War'));
-      fireEvent.click(screen.getByLabelText('Fog reveal box'));
+      gmMode('Fog', 'Reveal');
     }, { fogEnabled: true }],
     ["the light tool's Select", () => {
-      fireEvent.click(screen.getByText('Lights'));
-      fireEvent.click(screen.getByText('Select'));
+      gmMode('Lights', 'Select');
     }],
     ['the pen', () => draw('Pen')],
     ['the eraser', () => draw('Eraser')],
@@ -1967,9 +1962,11 @@ describe('the details of the selected token', () => {
       expect(card()).not.toBeNull();
 
       fireEvent.click(screen.getByRole('button', { name: 'Spirit Layer' }));
-      fireEvent.click(within(screen.getByRole('group', { name: 'Spirit Layer' })).getByRole('button', { name: 'Spirit tokens shown, click to hide' }));
+      choose('Spirit tokens', 'Hidden');
 
-      expect(card()).toBeNull();
+      // The Spirit Layer card names the spirit tokens too; the details are what must go.
+      const spiritCard = screen.getByRole('region', { name: 'Spirit Layer' });
+      expect(screen.queryAllByText('Dire Wolf').filter((el) => !spiritCard.contains(el))).toEqual([]);
     });
 
     it('show nothing for a hidden creature in Player Preview', () => {
@@ -2139,8 +2136,7 @@ describe('one finger', () => {
     h.set({ currentMap: mapWith({ fogEnabled: true }) });
     render(<MapCanvas />);
     fire('fog:updated', { mapId: 'map-a', fogState: { fogCols: 20, fogRows: 20, cellPx: 50, revealed: new Array(400).fill(false) } });
-    fireEvent.click(screen.getByText('Fog of War'));
-    fireEvent.click(screen.getByLabelText('Fog reveal box'));
+    gmMode('Fog', 'Reveal');
 
     swipe(1, px(60, 60), px(120, 90), px(160, 110));
 
@@ -2157,8 +2153,7 @@ describe('one finger', () => {
     h.set({ currentMap: mapWith({ fogEnabled: true }) });
     render(<MapCanvas />);
     fire('fog:updated', { mapId: 'map-a', fogState: { fogCols: 20, fogRows: 20, cellPx: 50, revealed: new Array(400).fill(false) } });
-    fireEvent.click(screen.getByText('Fog of War'));
-    fireEvent.click(screen.getByLabelText('Fog reveal box'));
+    gmMode('Fog', 'Reveal');
     mouse.move(surface(), px(510, 510), 0);
     mouse.leave(surface());
 
@@ -2169,7 +2164,7 @@ describe('one finger', () => {
 
   it('ends a wall line with a double tap', () => {
     render(<MapCanvas />);
-    wallTool('Wall draw mode');
+    wallTool('Draw');
 
     tap(1, px(100, 300));
     tap(2, px(200, 300));
@@ -2183,7 +2178,7 @@ describe('one finger', () => {
   // mouse's 4, and the second added a wall of no length there.
   it('ends a wall line with two taps on its last corner a fingertip apart', () => {
     render(<MapCanvas />);
-    wallTool('Wall draw mode');
+    wallTool('Draw');
 
     tap(1, px(100, 300));
     tap(2, px(200, 300));
@@ -2197,7 +2192,7 @@ describe('one finger', () => {
 
   it('closes a wall polygon with two taps on its last corner a fingertip apart', () => {
     render(<MapCanvas />);
-    wallTool('Polygon wall mode');
+    wallTool('Polygon');
 
     tap(1, px(100, 100));
     tap(2, px(300, 100));
@@ -2212,7 +2207,7 @@ describe('one finger', () => {
   it('adds a wall for a quick tap on the next corner where a square is a fingertip across or more', () => {
     h.set({ currentMap: mapWith({ gridSize: 20 }) });
     render(<MapCanvas />);
-    wallTool('Wall draw mode');
+    wallTool('Draw');
 
     tap(1, px(100, 300));
     tap(2, px(120, 300));
@@ -2229,7 +2224,7 @@ describe('one finger', () => {
   it('ends a line with a double tap a fingertip apart where a square is smaller than a fingertip', () => {
     h.set({ currentMap: mapWith({ gridSize: 10 }) });
     render(<MapCanvas />);
-    wallTool('Wall draw mode');
+    wallTool('Draw');
 
     tap(1, px(100, 300));
     tap(2, px(200, 300));
@@ -2243,8 +2238,8 @@ describe('one finger', () => {
 
   it('with Snap to grid off, ends a line with taps up to 20 pixels apart and not 21', () => {
     render(<MapCanvas />);
-    wallTool('Wall draw mode');
-    fireEvent.click(screen.getByLabelText('Snap wall points to grid'));
+    wallTool('Draw');
+    choose('Snap', 'Off', gmCard());
 
     tap(1, px(100, 300));
     tap(2, px(203, 300));
@@ -2264,7 +2259,7 @@ describe('one finger', () => {
   it('starts a new line at a quick third tap where a square is smaller than a fingertip', () => {
     h.set({ currentMap: mapWith({ gridSize: 10 }) });
     render(<MapCanvas />);
-    wallTool('Wall draw mode');
+    wallTool('Draw');
 
     tap(1, px(100, 300));
     tap(2, px(200, 300));
@@ -2280,8 +2275,8 @@ describe('one finger', () => {
 
   it('with Snap to grid off, starts a new line at a quick third tap', () => {
     render(<MapCanvas />);
-    wallTool('Wall draw mode');
-    fireEvent.click(screen.getByLabelText('Snap wall points to grid'));
+    wallTool('Draw');
+    choose('Snap', 'Off', gmCard());
 
     tap(1, px(100, 300));
     tap(2, px(200, 300));
@@ -2298,7 +2293,7 @@ describe('one finger', () => {
   it('counts the taps after a double tap from one again, so a fourth ends the line the third began', () => {
     h.set({ currentMap: mapWith({ gridSize: 10 }) });
     render(<MapCanvas />);
-    wallTool('Wall draw mode');
+    wallTool('Draw');
 
     tap(1, px(100, 300));
     tap(2, px(200, 300));
@@ -2319,8 +2314,8 @@ describe('one finger', () => {
   ])('keeps a polygon of under three corners through a double tap %s', (_where, map, snapOff) => {
     h.set({ currentMap: mapWith(map) });
     render(<MapCanvas />);
-    wallTool('Polygon wall mode');
-    if (snapOff) fireEvent.click(screen.getByLabelText('Snap wall points to grid'));
+    wallTool('Polygon');
+    if (snapOff) choose('Snap', 'Off', gmCard());
 
     tap(1, px(100, 100));
     tap(2, px(108, 104));
@@ -2337,7 +2332,7 @@ describe('one finger', () => {
   it('starts a new polygon at a quick third tap after a double tap closed one', () => {
     h.set({ currentMap: mapWith({ gridSize: 10 }) });
     render(<MapCanvas />);
-    wallTool('Polygon wall mode');
+    wallTool('Polygon');
 
     tap(1, px(100, 100));
     tap(2, px(300, 100));
@@ -2357,7 +2352,7 @@ describe('one finger', () => {
 
   it('leaves a mouse its 4 pixels: two clicks 12 pixels apart do not end the line', () => {
     render(<MapCanvas />);
-    wallTool('Wall draw mode');
+    wallTool('Draw');
 
     for (const at of [px(100, 300), px(200, 300), px(210, 306), px(400, 400)]) {
       mouse.down(surface(), at);
@@ -2388,7 +2383,7 @@ describe('a finger dragging a wall', () => {
     const WALL_B = seg('a2', 300, 100, 400, 100);
     h.set({ currentMap: mapWith({ wallSegments: [WALL_A, WALL_B] }) });
     render(<MapCanvas />);
-    wallTool('Wall select mode');
+    wallTool('Select');
     mouse.down(surface(), px(350, 100));
     mouse.up(surface(), px(350, 100));
 
@@ -2417,7 +2412,7 @@ describe('a second finger', () => {
 
   it('cancels a brush stroke: nothing is sent', () => {
     render(<MapCanvas />);
-    wallTool('Brush wall mode');
+    wallTool('Brush');
 
     const first = contact('touch', 1);
     first.down(surface(), px(100, 300));
@@ -2432,7 +2427,7 @@ describe('a second finger', () => {
   it('puts a dragged wall back where it was', () => {
     h.set({ currentMap: mapWith({ wallSegments: [WALL_A] }) });
     render(<MapCanvas />);
-    wallTool('Wall select mode');
+    wallTool('Select');
 
     const first = contact('touch', 1);
     first.down(surface(), px(150, 100));
@@ -2453,8 +2448,7 @@ describe('a second finger', () => {
     const lamp: LightSource = { id: 'l1', x: 250, y: 250, brightRadius: 4, dimRadius: 8, color: '#ffcc66', enabled: true };
     h.set({ currentMap: mapWith({ lights: [lamp] }) });
     render(<MapCanvas />);
-    fireEvent.click(screen.getByText('Lights'));
-    fireEvent.click(screen.getByText('Select'));
+    gmMode('Lights', 'Select');
 
     // Pressed off the light's centre, so putting it back at the press would show.
     const first = contact('touch', 1);
@@ -2476,8 +2470,7 @@ describe('a pen', () => {
     const lamp: LightSource = { id: 'l1', x: 250, y: 250, brightRadius: 4, dimRadius: 8, color: '#ffcc66', enabled: true };
     h.set({ currentMap: mapWith({ lights: [lamp] }) });
     render(<MapCanvas />);
-    fireEvent.click(screen.getByText('Lights'));
-    fireEvent.click(screen.getByText('Select'));
+    gmMode('Lights', 'Select');
 
     const pen = contact('pen', 5);
     pen.down(surface(), px(250, 250));
@@ -2489,7 +2482,7 @@ describe('a pen', () => {
 
   it('keeps its stroke while a palm rests on the glass, and the palm does not pan', () => {
     render(<MapCanvas />);
-    wallTool('Brush wall mode');
+    wallTool('Brush');
 
     const pen = contact('pen', 5);
     const palm = contact('touch', 1, false);
@@ -2512,7 +2505,7 @@ describe('a pen', () => {
   it('does nothing with its eraser end', () => {
     h.set({ currentMap: mapWith({ wallSegments: [WALL_A] }) });
     render(<MapCanvas />);
-    wallTool('Wall erase mode');
+    wallTool('Erase');
 
     const pen = contact('pen', 5);
     pen.down(surface(), px(150, 100), { button: 5, buttons: 32 });
@@ -2529,13 +2522,13 @@ describe('choosing another GM tool', () => {
   it("drops a finger's drag under way, putting a moved wall back", () => {
     h.set({ currentMap: mapWith({ wallSegments: [WALL_A] }) });
     render(<MapCanvas />);
-    wallTool('Wall select mode');
+    wallTool('Select');
 
     const finger = contact('touch', 1);
     finger.down(surface(), px(150, 100));
     finger.move(surface(), px(150, 130));
     finger.move(surface(), px(150, 150));
-    fireEvent.click(screen.getByLabelText('Wall draw mode'));
+    fireEvent.click(radio('Mode', 'Draw', gmCard()));
     finger.move(surface(), px(150, 170));
     finger.up(surface(), px(150, 170));
 
@@ -2569,7 +2562,7 @@ describe('the square under the pointer', () => {
 describe('the window losing focus', () => {
   it("drops a finger's stroke under way", () => {
     render(<MapCanvas />);
-    wallTool('Brush wall mode');
+    wallTool('Brush');
 
     const finger = contact('touch', 1);
     finger.down(surface(), px(100, 300));
@@ -2599,7 +2592,7 @@ describe('the wall tool with no hover', () => {
     render(<MapCanvas />);
     pictures.find((p) => p.src === '/api/assets/maps/x')!.load();
     await nextFrame();
-    wallTool('Polygon wall mode');
+    wallTool('Polygon');
     await nextFrame();
 
     tap(1, px(100, 100));
@@ -2614,11 +2607,11 @@ describe('the wall tool with no hover', () => {
     render(<MapCanvas />);
     pictures.find((p) => p.src === '/api/assets/maps/x')!.load();
     await nextFrame();
-    wallTool('Wall draw mode');
+    wallTool('Draw');
     await nextFrame();
     const { strokes } = recordPaint(overlay().getContext('2d')!);
 
-    fireEvent.click(screen.getByLabelText('Wall color: Red'));
+    choose('Colour', 'Red', gmCard());
     await nextFrame();
 
     expect(strokes).toContain('rgba(239,68,68,0.9)');
@@ -2657,9 +2650,9 @@ describe('the AoE template by touch', () => {
     mouse.up(surface(), px(110, 110));
     mouse.leave(surface());
     const byAlt = circles(await drawn('arc'));
-    fireEvent.click(screen.getByText('× Clear placement'));
+    fireEvent.click(screen.getByRole('button', { name: 'Clear placement' }));
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'Snap to grid' }));
+    choose('Snap', 'Off', screen.getByRole('region', { name: 'Spell area' }));
     tap(1, px(110, 110));
 
     expect(byAlt).toEqual([[110, 110]]);
@@ -2672,12 +2665,12 @@ describe('the AoE template by touch', () => {
       addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {}, dispatchEvent: () => false,
     }));
     await shown();
-    fireEvent.click(screen.getByText('Cone'));
-    expect(screen.getByText('Untick Snap to grid to place it freely, off the grid')).toBeInTheDocument();
+    fireEvent.change(screen.getByRole('combobox', { name: 'Shape' }), { target: { value: 'cone' } });
+    expect(screen.getByText(/Snap Off places it freely, off the grid\./)).toBeInTheDocument();
 
     tap(1, px(125, 125));
 
-    expect(screen.getByText('Drag from its square to aim it')).toBeInTheDocument();
+    expect(screen.getByText(/Drag from its square to aim it\./)).toBeInTheDocument();
   });
 
   // A finger has no hover to aim with: a drag sets the cone's square where it
@@ -2687,7 +2680,7 @@ describe('the AoE template by touch', () => {
     ['west', -75, (x: number) => x < 100],
   ])('aims a cone by the drag, %s, and keeps the aim after the lift', async (_way, toX, onThatSide) => {
     await shown();
-    fireEvent.click(screen.getByText('Cone'));
+    fireEvent.change(screen.getByRole('combobox', { name: 'Shape' }), { target: { value: 'cone' } });
 
     swipe(1, px(125, 125), px(125 + (toX - 125) / 2, 125), px(toX, 125));
 
@@ -2773,7 +2766,7 @@ describe('the ruler by touch', () => {
     tap(1, square(0, 19));
 
     expect(sentOf('token.move.start')).toHaveLength(1);
-    expect(screen.queryByTitle(/^Ruler color:/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Measure' })).toHaveAttribute('aria-pressed', 'false');
   });
 
   it("draws no start with a mouse once the pointer has left the map, as before", async () => {

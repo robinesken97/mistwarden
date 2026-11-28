@@ -12,6 +12,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ts from 'typescript';
 import GmLightControls from '../GmLightControls';
+import { choose, radio } from '@/test/railCards';
 
 function renderPanel(over: Partial<{ lightCount: number; lightingEnabled: boolean; globalIllumination: boolean }> = {}) {
   const onGlobalIlluminationChange = vi.fn();
@@ -27,11 +28,10 @@ function renderPanel(over: Partial<{ lightCount: number; lightingEnabled: boolea
       {...over}
     />
   );
-  fireEvent.click(screen.getByText(/^Lights/)); // the panel starts folded
   return { onGlobalIlluminationChange };
 }
 
-const WARNING = /No lights placed and Global Illumination is off/;
+const WARNING = /No lights placed and Global light is off/;
 
 describe('GmLightControls', () => {
   it('warns when lighting is on, Global Illumination is off and there are no lights', () => {
@@ -52,19 +52,28 @@ describe('GmLightControls', () => {
   it('does not warn while dynamic lighting is off, and disables the switch', () => {
     renderPanel({ lightingEnabled: false });
     expect(screen.queryByText(WARNING)).toBeNull();
-    expect((screen.getByLabelText('Global Illumination') as HTMLInputElement).disabled).toBe(true);
+    expect(radio('Global light', 'On')).toBeDisabled();
   });
 
-  // As Edit Map, the guides and the panel's own warning spell it.
-  it('names the switch Global Illumination, on the screen and for a screen reader', () => {
-    renderPanel();
-    expect(screen.getByRole('checkbox', { name: 'Global Illumination' }).closest('label')).toHaveTextContent(/^Global Illumination$/);
-  });
-
-  it('reports the switch being ticked', () => {
+  it('reports the switch being turned on', () => {
     const { onGlobalIlluminationChange } = renderPanel();
-    fireEvent.click(screen.getByLabelText('Global Illumination'));
+    choose('Global light', 'On');
     expect(onGlobalIlluminationChange).toHaveBeenCalledWith(true);
+  });
+
+  it('names the preset the radii match, or Custom', () => {
+    render(<GmLightControls lightMode="light-place" onLightModeChange={vi.fn()} lightCount={0} onClearAll={vi.fn()}
+      placementDefaults={{ brightRadius: 4, dimRadius: 9, color: '#ffcc66' }} />);
+    expect(screen.getByRole('combobox', { name: 'Preset' })).toHaveValue('Custom');
+  });
+
+  it('sets both radii from a preset', () => {
+    const onDefaultsChange = vi.fn();
+    render(<GmLightControls lightMode="light-place" onLightModeChange={vi.fn()} lightCount={0} onClearAll={vi.fn()}
+      onDefaultsChange={onDefaultsChange} placementDefaults={{ brightRadius: 4, dimRadius: 8, color: '#ffcc66' }} />);
+    expect(screen.getByRole('combobox', { name: 'Preset' })).toHaveValue('Torch');
+    fireEvent.change(screen.getByRole('combobox', { name: 'Preset' }), { target: { value: 'Lantern' } });
+    expect(onDefaultsChange).toHaveBeenCalledWith({ brightRadius: 6, dimRadius: 12, color: '#ffcc66' });
   });
 });
 
@@ -83,8 +92,7 @@ describe('the light colour box', () => {
         placementDefaults={{ brightRadius: 4, dimRadius: 8, color: '#ffcc66' }}
       />
     );
-    fireEvent.click(screen.getByText(/^Lights/));
-    return { onDefaultsChange, box: screen.getByPlaceholderText('#ffcc66') as HTMLInputElement };
+    return { onDefaultsChange, box: screen.getByRole('textbox', { name: 'Custom colour hex code' }) as HTMLInputElement };
   }
 
   it('takes a colour typed one key at a time', async () => {
@@ -110,22 +118,6 @@ describe('the light colour box', () => {
     fireEvent.blur(box);
     expect(box.value).toBe('#ffcc66');
     expect(onDefaultsChange).not.toHaveBeenCalled();
-  });
-});
-
-// The title that folds the panel was a clickable box, out of reach of Tab and
-// silent about whether the panel was open.
-describe('the Lights title', () => {
-  it('is a button that says whether the panel is open, and folds it', () => {
-    render(<GmLightControls lightMode={null} onLightModeChange={vi.fn()} lightCount={2} onClearAll={vi.fn()} lightingEnabled />);
-    // A space between the word and the count, which read as "Lights(2)".
-    const title = screen.getByRole('button', { name: 'Lights (2)' });
-    expect(title).toHaveAttribute('aria-expanded', 'false');
-
-    fireEvent.click(title);
-
-    expect(title).toHaveAttribute('aria-expanded', 'true');
-    expect(document.getElementById(title.getAttribute('aria-controls') ?? '')).not.toBeNull();
   });
 });
 
