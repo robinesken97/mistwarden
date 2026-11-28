@@ -882,7 +882,7 @@ function CreatureRow({
               {isPlacing ? 'Placing...' : 'Place on Map'}
             </button>
             {/* The campaign's own: the SRD's and the server's imported ones are shared, so the server refuses changing them. */}
-            {creature.campaignId !== null && (
+            {creature.source !== 'srd' && creature.campaignId !== null && (
               <button
                 onClick={(e) => onEdit(e.currentTarget)}
                 className="flex items-center gap-1 px-3 py-1.5 text-xs rounded-cozy border border-moss-green/20 text-brand-ink hover:bg-moss-green/10 transition-colors"
@@ -898,7 +898,7 @@ function CreatureRow({
             >
               <Copy className="w-3 h-3" /> Duplicate
             </button>
-            {creature.campaignId !== null && (
+            {creature.source !== 'srd' && creature.campaignId !== null && (
               <button
                 onClick={onDelete}
                 aria-label={`Delete ${creature.name}`}
