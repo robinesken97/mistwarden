@@ -49,22 +49,15 @@ test('creates a campaign and opens its table, with a live connection through the
   const socket = await live;
   expect(socket.isClosed()).toBe(false);
 
-  // On a phone the table is the compact layout: the map, and a bar along
-  // the bottom whose buttons open the panels as sheets over it. Chat opens
-  // the chat, and the page fits the screen with it open; the session rail's
-  // hidden tab names once sat 200 pixels past the edge, so a phone's page
-  // scrolled sideways.
+  // Every layout has the Chat tab: on a phone in a dock at the foot, which
+  // opens the chat over the map's foot, and the page fits the screen with it
+  // open; the session rail's hidden tab names once sat 200 pixels past the
+  // edge, so a phone's page scrolled sideways.
+  await page.getByRole('tab', { name: /^Chat/ }).click();
+  await expect(page.getByRole('textbox', { name: 'Chat message' })).toBeVisible();
   if (await onPhone(page)) {
-    const bar = page.getByRole('navigation', { name: 'Table' });
-    await expect(bar).toBeVisible();
-    await expect(page.locator('[data-panel]')).toHaveCount(0);
-    await bar.getByRole('button', { name: /^Chat/ }).click();
-    await expect(page.getByRole('dialog', { name: 'Chat' })).toBeVisible();
-    await expect(page.getByRole('textbox', { name: 'Chat message' })).toBeVisible();
+    await expect(page.locator('#wide-panel')).toHaveAttribute('data-dock-size', 'mid');
     expect(await sidewaysOverflow(page)).toBeLessThanOrEqual(0);
-  } else {
-    await expect(page.getByRole('navigation', { name: 'Table' })).toHaveCount(0);
-    await expect(page.getByRole('tab', { name: 'Chat' })).toBeVisible();
   }
 });
 
