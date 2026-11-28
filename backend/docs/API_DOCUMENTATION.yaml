@@ -10172,6 +10172,197 @@ paths:
                 message: api.open5e.com did not answer within 15 seconds. Nothing was imported; check that this server can reach it, then try again.
 
   # ============================================
+  # IMPORTED CREATURES (Mistwarden)
+  # ============================================
+
+  /api/creatures/import-markdown:
+    post:
+      tags: [Creatures]
+      summary: Import 5e-style stat blocks from a Markdown file
+      description: |
+        Read the stat blocks of one Markdown file and store them with no
+        campaign, which every campaign's GM lists (players never read the
+        Creature Library), under `source` `custom:<sourceTag>`. **Platform
+        admins only.** No campaign archive carries them.
+
+        A stat block is a `### Name` heading with a bold `**Armor Class**`
+        field (or `- **Armor Class:**`), the six scores as a `| STR | ... |`
+        table, traits and actions as `**Name.** text`, and sections as a bold
+        line or `####` heading. A block ends at the next heading, a page
+        marker `<!-- p. N -->`, a `---` rule or a lair section. A heading
+        with no Armor Class, a `##` block in the older one-line format, and an
+        Armor Class outside a heading are skipped and listed; a block the
+        library would refuse is listed with each reason, never cut.
+
+        A creature of the tag and name (case and punctuation aside) already
+        stored is updated in place, keeping its id, picture and favourites.
+        One of an SRD creature's name is a creature of its own; the library
+        lists it before the SRD's. `dryRun` reports the same and writes
+        nothing. With `onlyUnderHeading`, only the blocks under that heading,
+        to the next heading of its level, are read; 400 when the file has no
+        such heading. One import at a time, under a lock.
+      operationId: importCreatureMarkdown
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [markdown, sourceTag]
+              properties:
+                markdown:
+                  type: string
+                  maxLength: 900000
+                sourceTag:
+                  type: string
+                  pattern: '^[a-z0-9][a-z0-9-]{0,31}$'
+                  description: Read in lower case.
+                onlyUnderHeading:
+                  type: string
+                  maxLength: 200
+                  description: A heading's text, with or without its `#`s.
+                dryRun:
+                  type: boolean
+      responses:
+        '200':
+          description: What was imported, or would be in a dry run
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sourceTag:
+                    type: string
+                  dryRun:
+                    type: boolean
+                  armorClassLines:
+                    type: integer
+                    description: Bold Armor Class lines read; each is one imported, updated or refused row, or one skipped as outside a heading.
+                  counts:
+                    type: object
+                    properties:
+                      imported: { type: integer }
+                      updated: { type: integer }
+                      skipped: { type: integer }
+                      errors: { type: integer }
+                  rows:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        line:
+                          type: integer
+                          description: The block's heading line in the file.
+                        name:
+                          type: string
+                        status:
+                          type: string
+                          enum: [imported, updated, skipped, error]
+                        reason:
+                          type: string
+                          description: Why a block was skipped.
+                        errors:
+                          type: array
+                          items: { type: string }
+                          description: Why a block was refused.
+                        warnings:
+                          type: array
+                          items: { type: string }
+                          description: What a stored stat block has no place for and left out, such as the description after its last action.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/creatures/imported/{sourceTag}:
+    delete:
+      tags: [Creatures]
+      summary: Delete the creatures imported under a source tag
+      description: |
+        **Platform admins only.** Deletes every creature with no campaign whose
+        source is `custom:<sourceTag>`, and their favourites. Tokens already
+        placed keep their stat blocks.
+      operationId: deleteImportedCreatures
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: sourceTag
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sourceTag:
+                    type: string
+                  deleted:
+                    type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/creatures/match-token-pictures:
+    post:
+      tags: [Creatures]
+      summary: Give imported creatures the token picture of their name
+      description: |
+        **Platform admins only.** Each imported creature (of `sourceTag`, or of
+        every tag) with no picture gets the global token picture whose name is
+        the creature's, case, spaces and punctuation aside; where several are,
+        the oldest. Personal and campaign pictures are not used: every
+        campaign's GM places these creatures. A creature with none keeps the
+        symbol of its type. Safe to run again after uploading more.
+      operationId: matchCreatureTokenPictures
+      security:
+        - cookieAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sourceTag:
+                  type: string
+      responses:
+        '200':
+          description: The creatures given a picture
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  matched:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        creature: { type: string }
+                        sourceTag: { type: string }
+                        picture: { type: string }
+                        otherPicturesOfTheName: { type: integer }
+                  withoutPicture:
+                    type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  # ============================================
   # SPELL LIBRARY ENDPOINTS (Mistwarden)
   # ============================================
 
