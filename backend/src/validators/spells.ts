@@ -12,8 +12,10 @@ import { AREA_ELEMENT_REFUSAL, AREA_SHAPE_REFUSAL, AREA_SIZE_REFUSAL, AREA_WIDTH
 
 export const SPELL_LIMITS = {
   maxNameLength: 100,
-  /** School, casting time, range, components, duration. */
+  /** School, casting time, range, duration. */
   maxShortLength: 300,
+  /** With the material, which in the SRD runs to over 300 characters (Clone). */
+  maxComponentsLength: 1000,
   /** The SRD's longest description is under 7,000 characters. */
   maxDescriptionLength: 20_000,
 } as const;
@@ -29,9 +31,9 @@ export const SpellAreaSchema = z
   }, { error: "A spell's area is a shape and a size in feet, or none" })
   .refine((a) => a.shape === 'line' || a.widthFt === undefined, { error: AREA_WIDTH_ON_SHAPE_REFUSAL });
 
-const short = (what: string) =>
+const short = (what: string, max: number = SPELL_LIMITS.maxShortLength) =>
   z.string({ error: `A spell's ${what} is text` }).trim()
-    .max(SPELL_LIMITS.maxShortLength, { error: `A spell's ${what} is at most ${SPELL_LIMITS.maxShortLength} characters` })
+    .max(max, { error: `A spell's ${what} is at most ${max} characters` })
     .transform((s) => (s === '' ? null : s)).nullable().optional();
 
 const spellFields = {
@@ -40,7 +42,7 @@ const spellFields = {
   school: short('school'),
   castingTime: short('casting time'),
   range: short('range'),
-  components: short('components'),
+  components: short('components', SPELL_LIMITS.maxComponentsLength),
   duration: short('duration'),
   concentration: z.boolean().optional(),
   ritual: z.boolean().optional(),
