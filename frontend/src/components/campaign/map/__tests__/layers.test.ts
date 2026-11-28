@@ -10,7 +10,7 @@
 
 import { TOKEN_HUES, hueColour } from '@/utils/tokenColours';
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { drawGrid } from '../layers/drawGrid';
+import { drawGrid, gridLookOf, gridStroke, GRID_LOOK_DEFAULT } from '../layers/drawGrid';
 import { cellCentre, cellOnMap } from '@/utils/tokenCentre';
 import { drawFog } from '../layers/drawFog';
 import { drawTokens, placeholderColor, type TokenDrawState } from '../layers/drawTokens';
@@ -157,10 +157,30 @@ const fakeImage = {} as HTMLImageElement;
 
 // ── Tests ────────────────────────────────────────────────────────────────────
 
+describe('grid look', () => {
+  it('draws a map saved before the look as every grid was: black at 40 %, 2 px', () => {
+    expect(gridLookOf({})).toEqual({ color: '#000000', opacity: 0.4, lineWidth: 2 });
+    expect(gridStroke(gridLookOf({}), 1)).toEqual({ strokeStyle: 'rgba(0, 0, 0, 0.4)', lineWidth: 2 });
+  });
+
+  it("strokes in the scene's colour and opacity, its width kept on screen whatever the zoom", () => {
+    const look = gridLookOf({ gridColor: '#38bdf8', gridOpacity: 0.6, gridLineWidth: 3 });
+    expect(gridStroke(look, 2)).toEqual({ strokeStyle: 'rgba(56, 189, 248, 0.6)', lineWidth: 1.5 });
+    expect(gridStroke({ ...look, lineWidth: 1 }, 0.5).lineWidth).toBe(2);
+  });
+
+  it('sets the stroke on the context it draws with', () => {
+    const ctx = makeMockCtx();
+    drawGrid(ctx, { color: '#ffffff', opacity: 1, lineWidth: 1 }, viewport3x3);
+    expect(ctx.strokeStyle).toBe('rgba(255, 255, 255, 1)');
+    expect(ctx.lineWidth).toBe(1 / viewport3x3.zoom);
+  });
+});
+
 describe('drawGrid', () => {
   it('draws one line per grid boundary (N+1 vertical + N+1 horizontal), stroked once', () => {
     const ctx = makeMockCtx();
-    drawGrid(ctx, { gridColor: 'black' }, viewport3x3);
+    drawGrid(ctx, GRID_LOOK_DEFAULT, viewport3x3);
     // 3×3 map → 4 vertical + 4 horizontal lines
     expect(count(ctx, 'moveTo')).toBe(8);
     expect(count(ctx, 'lineTo')).toBe(8);
@@ -169,7 +189,7 @@ describe('drawGrid', () => {
 
   it('moves the lines by the offset, within the frame', () => {
     const ctx = makeMockCtx();
-    drawGrid(ctx, { gridColor: 'black' }, { ...viewport3x3, gridOffsetX: 10, gridOffsetY: 40 });
+    drawGrid(ctx, GRID_LOOK_DEFAULT, { ...viewport3x3, gridOffsetX: 10, gridOffsetY: 40 });
     const starts = ctx.calls.filter((c) => c.method === 'moveTo').map((c) => c.args as [number, number]);
     // x lines at 10, 60, 110; y lines at -10 (outside), 40, 90, 140
     expect(starts.filter(([, y]) => y === 0).map(([x]) => x)).toEqual([10, 60, 110]);
@@ -178,7 +198,7 @@ describe('drawGrid', () => {
 
   it('draws only the lines on screen', () => {
     const ctx = makeMockCtx();
-    drawGrid(ctx, { gridColor: 'black', visible: { minX: 60, minY: -20, maxX: 140, maxY: 40 } }, viewport3x3);
+    drawGrid(ctx, { ...GRID_LOOK_DEFAULT, visible: { minX: 60, minY: -20, maxX: 140, maxY: 40 } }, viewport3x3);
     const starts = ctx.calls.filter((c) => c.method === 'moveTo').map((c) => c.args as [number, number]);
     expect(starts).toEqual([[100, 0], [60, 0]]);
   });
@@ -188,7 +208,7 @@ describe('drawGrid', () => {
   it.each(['hexPointy', 'hexFlat'])('draws each edge of a %s grid once', (gridType) => {
     const ctx = makeMockCtx();
     const viewport: Viewport = { ...viewport3x3, mapWidth: 6, mapHeight: 5, gridType, gridOffsetX: 7, gridOffsetY: -3 };
-    drawGrid(ctx, { gridColor: 'black' }, viewport);
+    drawGrid(ctx, GRID_LOOK_DEFAULT, viewport);
     expect(count(ctx, 'clip')).toBe(1);
     expect(count(ctx, 'stroke')).toBe(1);
     const key = (a: number[], b: number[]) => [a, b].map((p) => p.map((n) => n.toFixed(3)).join(',')).sort().join('|');

@@ -1,31 +1,29 @@
 /**
  * DrawControls
- * The drawing tools' panel: the tool, its colour, width, fill and snap,
- * whether the GM's drawing is for the GM alone, a polygon's Done and Cancel,
- * and clearing. It sets no place of its own, so whatever holds it places it:
- * the GM's tool stack, or the corner a player's panel opens in. On the
- * compact layout the same controls are DrawStrip's, a strip across the
- * map's foot; the two share the tools, the colours, the hints and the
- * questions before a clear, written once here.
+ * Draw's card body: the tool, its colour (the user's player colour first),
+ * width, fill and snap, who sees the GM's drawing, a polygon's Done and
+ * Cancel, and clearing. It sets no place of its own: MapCanvas puts it in a
+ * card beside the rail, or on a phone in a strip across the map's foot.
  */
 
-import { useState, type ComponentType } from 'react';
-import { ArrowUpRight, Circle, Crosshair, Eraser, Minus, Pencil, Pentagon, Square, Type, X } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowUpRight, Circle, Crosshair, Eraser, Minus, Pencil, Pentagon, Square, Type, type LucideIcon } from 'lucide-react';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { DRAWING_LIMITS } from '@/constants/drawingLimits';
 import { DRAW_TOOL_KINDS, type DrawSettings, type DrawToolKind } from './map/tools/useDrawTool';
+import { ButtonRow, CardButton, ColourGrid, Help, Seg, Sep, Slider, type SegOption, type Swatch } from './map/cardParts';
 
 /** Each tool's name, as its button is called, and its icon. */
-export const TOOLS: Record<DrawToolKind, { label: string; icon: ComponentType<{ className?: string }> }> = {
-  pen: { label: 'Pen', icon: Pencil },
-  line: { label: 'Line', icon: Minus },
-  arrow: { label: 'Arrow', icon: ArrowUpRight },
-  rect: { label: 'Rectangle', icon: Square },
-  ellipse: { label: 'Ellipse', icon: Circle },
-  polygon: { label: 'Polygon', icon: Pentagon },
-  text: { label: 'Text label', icon: Type },
-  eraser: { label: 'Eraser', icon: Eraser },
-  laser: { label: 'Laser pointer', icon: Crosshair },
+export const TOOLS: Record<DrawToolKind, { label: string; short: string; icon: LucideIcon }> = {
+  pen: { label: 'Pen', short: 'Pen', icon: Pencil },
+  line: { label: 'Line', short: 'Line', icon: Minus },
+  arrow: { label: 'Arrow', short: 'Arrow', icon: ArrowUpRight },
+  rect: { label: 'Rectangle', short: 'Rectangle', icon: Square },
+  ellipse: { label: 'Ellipse', short: 'Ellipse', icon: Circle },
+  polygon: { label: 'Polygon', short: 'Polygon', icon: Pentagon },
+  text: { label: 'Text label', short: 'Text', icon: Type },
+  eraser: { label: 'Eraser', short: 'Eraser', icon: Eraser },
+  laser: { label: 'Laser pointer', short: 'Laser', icon: Crosshair },
 };
 
 /** The named colours, by DRAWING_LIMITS.namedColors' order. */
@@ -79,14 +77,14 @@ export interface DrawControlsProps {
   members: MemberDrawings[];
   onClearMember: (authorId: string) => void;
   onClose: () => void;
+  /** The user's player colour (utils/playerColor.ts), the first swatch and where new drawings and the laser start. */
+  playerColour: string;
 }
 
 /** "Mara's drawings", or for someone who has left, saying so. */
 export const drawingsOf = (member: MemberDrawings) => (member.name === null ? 'the drawings of someone who has left' : `${member.name}'s drawings`);
 const howMany = (count: number) => (count === 1 ? '1 drawing' : `${count} drawings`);
 
-/** Whether the colour is one of the named eight, or another one picked. */
-export const isNamedColour = (colour: string) => (DRAWING_LIMITS.namedColors as readonly string[]).includes(colour);
 
 /** What the GM is asked before a clear: about every drawing on the map, or one member's. */
 export type ClearAsking = 'all' | MemberDrawings | null;
@@ -133,185 +131,88 @@ export function ClearDrawingsDialogs({ asking, onAnswered, clearable, onClear, o
   );
 }
 
-const toolButton = (on: boolean) =>
-  `touch-target inline-flex items-center justify-center w-8 h-8 rounded border transition-colors ${
-    on ? 'bg-amber-400/30 text-amber-200 border-amber-400/60' : 'bg-stone-700/60 text-stone-300 border-stone-600/50 hover:bg-stone-700'
-  }`;
+const FILLS: SegOption<boolean>[] = [{ value: false, label: 'Outline' }, { value: true, label: 'Filled' }];
+const SNAPS: SegOption<boolean>[] = [{ value: true, label: 'Grid' }, { value: false, label: 'Off' }];
+const AUDIENCES: SegOption<boolean>[] = [{ value: false, label: 'Everyone' }, { value: true, label: 'Only me' }];
 
+/** The colour's name at the caption's right: the user's own, a named one, or Custom. */
+export function drawColourName(colour: string, playerColour: string): string {
+  const c = colour.toLowerCase();
+  if (c === playerColour.toLowerCase()) return 'Your colour';
+  const named = (DRAWING_LIMITS.namedColors as readonly string[]).indexOf(c);
+  return named >= 0 ? COLOUR_NAMES[named] : 'Custom';
+}
+
+/** The swatches: the user's player colour first, then the eight named. */
+export const drawSwatches = (playerColour: string): Swatch[] => [
+  { name: 'Your colour', value: playerColour, me: true },
+  ...DRAWING_LIMITS.namedColors.map((value, i) => ({ name: COLOUR_NAMES[i], value })),
+];
+
+/** Draw's card body (the rail's pencil; on a phone the same body as a strip). */
 export default function DrawControls({
-  kind, onKindChange, settings, onSettingsChange, isGM, onlyErase = false, polygonCorners, onPolygonDone, onPolygonCancel, clearable, onClear, members, onClearMember, onClose,
+  kind, onKindChange, settings, onSettingsChange, isGM, onlyErase = false, polygonCorners, onPolygonDone, onPolygonCancel, clearable, onClear, members, onClearMember, playerColour,
 }: DrawControlsProps) {
   const [asking, setAsking] = useState<ClearAsking>(null);
-  const custom = !isNamedColour(settings.color);
+  const tools: SegOption<DrawToolKind>[] = DRAW_TOOL_KINDS.filter((tool) => !onlyErase || tool === 'eraser')
+    .map((tool) => ({ value: tool, label: TOOLS[tool].short, icon: TOOLS[tool].icon, title: TOOLS[tool].label }));
 
   return (
-    <section
-      aria-label="Drawing tools"
-      className="flex flex-col gap-2 p-2 bg-stone-800 rounded-lg border border-amber-400/20 w-full text-stone-300"
-    >
-      <div className="flex items-center justify-between">
-        <h2 className="text-xs text-amber-300 font-medium uppercase tracking-wide">Draw</h2>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Put the drawing tools away"
-          title="Put the drawing tools away"
-          className="touch-target inline-flex items-center justify-center w-6 h-6 rounded-sm text-stone-400 hover:text-stone-100 hover:bg-stone-700"
-        >
-          <X className="w-3.5 h-3.5" />
-        </button>
-      </div>
-
-      <div className="flex flex-wrap gap-1">
-        {DRAW_TOOL_KINDS.filter((tool) => !onlyErase || tool === 'eraser').map((tool) => {
-          const { label, icon: Icon } = TOOLS[tool];
-          return (
-            <button
-              key={tool}
-              type="button"
-              aria-label={label}
-              aria-pressed={kind === tool}
-              title={label}
-              onClick={() => onKindChange(tool)}
-              className={toolButton(kind === tool)}
-            >
-              <Icon className="w-4 h-4" />
-            </button>
-          );
-        })}
-      </div>
-      <p className="text-[11px] leading-snug text-stone-400">
+    <>
+      <Seg label="Tool" options={tools} value={kind} onChange={(v) => v && onKindChange(v)} columns={onlyErase ? 1 : 3} tools />
+      <Help>
         {onlyErase && 'Drawing is off for now. '}
         {HINTS[kind]}
         {kind === 'eraser' && !isGM && ' You can erase only your own.'}
-      </p>
+      </Help>
 
       {kind === 'polygon' && polygonCorners > 0 && (
-        <div className="flex gap-1">
-          <button
-            type="button"
-            onClick={onPolygonDone}
-            disabled={polygonCorners < 3}
-            className="touch-target flex-1 text-[11px] py-1 rounded border bg-amber-400/20 text-amber-200 border-amber-400/50 disabled:opacity-40"
-          >
-            Done
-          </button>
-          <button
-            type="button"
-            onClick={onPolygonCancel}
-            className="touch-target flex-1 text-[11px] py-1 rounded border bg-stone-700/60 text-stone-300 border-stone-600/50"
-          >
-            Cancel
-          </button>
-        </div>
+        <ButtonRow>
+          <CardButton onClick={onPolygonDone} disabled={polygonCorners < 3} pressed>Done</CardButton>
+          <CardButton onClick={onPolygonCancel}>Cancel</CardButton>
+        </ButtonRow>
       )}
 
       {kind !== 'eraser' && (
-        <>
-          <div>
-            <span className="text-[10px] text-stone-400 block mb-1">Colour</span>
-            <div className="flex flex-wrap gap-1">
-              {DRAWING_LIMITS.namedColors.map((colour, i) => (
-                <button
-                  key={colour}
-                  type="button"
-                  aria-label={COLOUR_NAMES[i]}
-                  aria-pressed={settings.color === colour}
-                  title={COLOUR_NAMES[i]}
-                  onClick={() => onSettingsChange({ color: colour })}
-                  className="touch-target inline-flex items-center justify-center w-6 h-6"
-                >
-                  <span
-                    className={`block w-5 h-5 rounded-full border-2 ${settings.color === colour ? 'border-amber-300 scale-110' : 'border-stone-500'}`}
-                    style={{ backgroundColor: colour }}
-                  />
-                </button>
-              ))}
-              <label className={`touch-target inline-flex items-center justify-center w-6 h-6 rounded-full ${custom ? 'ring-2 ring-amber-300' : ''}`} title="Another colour">
-                <input
-                  type="color"
-                  aria-label="Another colour"
-                  value={settings.color}
-                  onChange={(e) => {
-                    const colour = e.target.value.toLowerCase();
-                    if (/^#[0-9a-f]{6}$/.test(colour)) onSettingsChange({ color: colour });
-                  }}
-                  className="w-5 h-5 cursor-pointer border-0 bg-transparent p-0"
-                />
-              </label>
-            </div>
-          </div>
-
-          {kind !== 'laser' && (
-            <label className="flex flex-col gap-0.5">
-              <span className="flex justify-between text-[10px] text-stone-400">
-                <span>Width</span>
-                <span>{settings.width}{kind === 'text' ? ` (letters ${settings.width * 4} px tall)` : ''}</span>
-              </span>
-              <input
-                type="range"
-                aria-label="Width"
-                min={DRAWING_LIMITS.minWidth}
-                max={DRAWING_LIMITS.maxWidth}
-                step={1}
-                value={settings.width}
-                onChange={(e) => onSettingsChange({ width: Number(e.target.value) })}
-                className="w-full accent-amber-400 touch-target"
-              />
-            </label>
-          )}
-        </>
+        <ColourGrid
+          label="Colour"
+          swatches={drawSwatches(playerColour)}
+          value={settings.color}
+          valueName={drawColourName(settings.color, playerColour)}
+          onChange={(color) => onSettingsChange({ color })}
+        />
       )}
-
-      {SHAPES.has(kind) && (
-        <div className="flex flex-col gap-1">
-          {FILLABLE.has(kind) && (
-            <label className="touch-target flex items-center gap-2 text-[11px] cursor-pointer select-none">
-              <input type="checkbox" checked={settings.fill} onChange={(e) => onSettingsChange({ fill: e.target.checked })} className="accent-amber-400" />
-              Fill shapes
-            </label>
-          )}
-          <label className="touch-target flex items-center gap-2 text-[11px] cursor-pointer select-none">
-            <input type="checkbox" checked={settings.snap} onChange={(e) => onSettingsChange({ snap: e.target.checked })} className="accent-amber-400" />
-            Snap to grid
-          </label>
-        </div>
+      {kind !== 'eraser' && kind !== 'laser' && (
+        <Slider
+          label="Width"
+          valueText={kind === 'text' ? `${settings.width} (letters ${settings.width * 4} px)` : String(settings.width)}
+          min={DRAWING_LIMITS.minWidth}
+          max={DRAWING_LIMITS.maxWidth}
+          step={1}
+          value={settings.width}
+          onChange={(width) => onSettingsChange({ width })}
+        />
       )}
+      {FILLABLE.has(kind) && <Seg label="Fill" options={FILLS} value={settings.fill} onChange={(v) => v !== null && onSettingsChange({ fill: v })} />}
+      {SHAPES.has(kind) && <Seg label="Snap" options={SNAPS} value={settings.snap} onChange={(v) => v !== null && onSettingsChange({ snap: v })} />}
 
-      {/* The laser pointer goes to everyone, so the box is not offered with it. */}
+      {/* The laser pointer goes to everyone, so who sees it is not asked. */}
       {isGM && kind !== 'eraser' && kind !== 'laser' && (
-        <label className="touch-target flex items-center gap-2 text-[11px] cursor-pointer select-none">
-          <input type="checkbox" checked={settings.gmOnly} onChange={(e) => onSettingsChange({ gmOnly: e.target.checked })} className="accent-amber-400" />
-          Only I can see this
-        </label>
+        <Seg label="Who sees it" options={AUDIENCES} value={settings.gmOnly} onChange={(v) => v !== null && onSettingsChange({ gmOnly: v })} />
       )}
-      {isGM && kind === 'laser' && <p className="text-[11px] text-stone-400">Everyone sees the laser pointer.</p>}
+      {isGM && kind === 'laser' && <Help>Everyone sees the laser pointer.</Help>}
 
-      <button
-        type="button"
-        onClick={() => (isGM ? setAsking('all') : onClear())}
-        disabled={clearable === 0}
-        className="touch-target text-[11px] py-1 rounded border bg-red-900/30 text-red-300 border-red-700/40 hover:bg-red-900/50 disabled:opacity-40"
-      >
+      <Sep />
+      <CardButton onClick={() => (isGM ? setAsking('all') : onClear())} disabled={clearable === 0} danger>
         {isGM ? 'Clear drawings' : 'Clear mine'}
-      </button>
-      {isGM && members.length > 0 && (
-        <div className="flex flex-col gap-1">
-          <p className="text-[11px] text-stone-400">Or one member's:</p>
-          {members.map((member) => (
-            <button
-              key={member.authorId}
-              type="button"
-              onClick={() => setAsking(member)}
-              className="touch-target text-[11px] text-left px-2 py-1 rounded border bg-red-900/20 text-red-300 border-red-700/30 hover:bg-red-900/40"
-            >
-              {`Clear ${drawingsOf(member)} (${member.count})`}
-            </button>
-          ))}
-        </div>
-      )}
+      </CardButton>
+      {isGM && members.map((member) => (
+        <CardButton key={member.authorId} onClick={() => setAsking(member)} danger>
+          {`Clear ${drawingsOf(member)} (${member.count})`}
+        </CardButton>
+      ))}
 
       <ClearDrawingsDialogs asking={asking} onAnswered={() => setAsking(null)} clearable={clearable} onClear={onClear} onClearMember={onClearMember} />
-    </section>
+    </>
   );
 }

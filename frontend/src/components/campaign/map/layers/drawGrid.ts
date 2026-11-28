@@ -12,8 +12,35 @@
 import { cellAt, cellCentre, isHexGrid, squareOrigin } from '@/utils/tokenCentre';
 import { mapSizePx, viewportFrame, type Viewport } from './types';
 
-export interface GridDrawState {
-  gridColor: 'black' | 'white';
+/** How the GM has the grid drawn for everyone on the scene (the map's gridColor, gridOpacity, gridLineWidth). */
+export interface GridLook {
+  /** #rrggbb */
+  color: string;
+  /** 0.1 to 1 */
+  opacity: number;
+  /** On-screen pixels whatever the zoom: 1 thin, 2 medium, 3 thick. */
+  lineWidth: number;
+}
+
+/** A map saved before the grid had a look of its own is drawn as every grid was: black at 40 %, 2 px. */
+export const GRID_LOOK_DEFAULT: GridLook = { color: '#000000', opacity: 0.4, lineWidth: 2 };
+
+/** The map's grid look, its absent fields (older payloads) as the default. */
+export const gridLookOf = (map: { gridColor?: string; gridOpacity?: number; gridLineWidth?: number }): GridLook => ({
+  color: map.gridColor ?? GRID_LOOK_DEFAULT.color,
+  opacity: map.gridOpacity ?? GRID_LOOK_DEFAULT.opacity,
+  lineWidth: map.gridLineWidth ?? GRID_LOOK_DEFAULT.lineWidth,
+});
+
+/** The stroke a grid look draws with at a zoom: its colour at its opacity, its width kept on screen. */
+export function gridStroke(look: GridLook, zoom: number): { strokeStyle: string; lineWidth: number } {
+  const hex = /^#([0-9a-f]{6})$/i.exec(look.color)?.[1] ?? '000000';
+  const [r, g, b] = [0, 2, 4].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  const a = Math.min(1, Math.max(0, look.opacity));
+  return { strokeStyle: `rgba(${r}, ${g}, ${b}, ${a})`, lineWidth: look.lineWidth / zoom };
+}
+
+export interface GridDrawState extends GridLook {
   /** The part of the map on screen, in map pixels; null or absent draws the whole frame. */
   visible?: { minX: number; minY: number; maxX: number; maxY: number } | null;
 }
@@ -36,8 +63,9 @@ export function drawGrid(
   const maxY = Math.min(mapHeightPx, v?.maxY ?? mapHeightPx);
   if (minX > maxX || minY > maxY) return;
 
-  ctx.strokeStyle = state.gridColor === 'black' ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.6)';
-  ctx.lineWidth = 2 / viewport.zoom; // constant on-screen width regardless of zoom
+  const stroke = gridStroke(state, viewport.zoom);
+  ctx.strokeStyle = stroke.strokeStyle;
+  ctx.lineWidth = stroke.lineWidth; // constant on-screen width regardless of zoom
   ctx.beginPath();
 
   if (!isHexGrid(frame)) {

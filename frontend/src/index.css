@@ -732,3 +732,46 @@ select:not([multiple], [size]) {
     background-color: color-mix(in srgb, var(--color-accent) 22%, transparent);
   }
 }
+
+/* The rail cards' slider (map/cardParts.tsx): a 4 px track filled in the
+   brand colour up to the thumb (--fill), a 20 px thumb, the whole 40 or 44 px
+   row its hit area. Drawn by us, as Safari 17 draws no filled part itself. */
+.card-slider {
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  margin: 0;
+}
+.card-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--color-brand) var(--fill), color-mix(in srgb, var(--color-ink) 15%, transparent) var(--fill));
+}
+.card-slider::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, var(--color-brand) var(--fill), color-mix(in srgb, var(--color-ink) 15%, transparent) var(--fill));
+}
+.card-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  margin-top: -8px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--color-brand-ink);
+  box-shadow: 0 1px 3px var(--color-canvas);
+}
+.card-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--color-brand-ink);
+  box-shadow: 0 1px 3px var(--color-canvas);
+}
+.card-slider:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+  border-radius: 8px;
+}

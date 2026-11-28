@@ -1,6 +1,6 @@
 /**
  * GmLightControls
- * GM-only light source placement and editing controls panel.
+ * GM tools' Lights tab.
  * Supports placing lights with pre-configured defaults (including 5E presets),
  * selecting/editing/moving properties, toggling, and deleting.
  *
@@ -9,9 +9,10 @@
  * TTRPG light mechanics.
  */
 
-import { useState, useRef, useCallback, useEffect, useId } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import type { LightSource } from '@/types/walls';
-import { useCoarsePointer } from '@/hooks/useMediaQuery';
+import { Binary, CardButton, CardSelect, ColourGrid, GroupHeading, Help, Seg, Sep, Slider, type SegOption } from './map/cardParts';
+import { presetNameOf } from './map/mapControlItems';
 
 export type LightToolMode = 'light-place' | 'light-select' | null;
 
@@ -49,10 +50,15 @@ export const LIGHT_COLOR_PRESETS = [
   { label: 'Moonlight', value: '#aabbdd' },
 ];
 
+const MODES: SegOption<Exclude<LightToolMode, null>>[] = [
+  { value: 'light-place', label: 'Place' },
+  { value: 'light-select', label: 'Select' },
+];
+const SWATCHES = LIGHT_COLOR_PRESETS.map((c) => ({ name: c.label, value: c.value }));
+
 interface GmLightControlsProps {
   lightMode: LightToolMode;
   onLightModeChange: (mode: LightToolMode) => void;
-  onCollapse?: () => void;
   lightCount: number;
   onClearAll: () => void;
   selectedLight?: LightSource | null;
@@ -102,7 +108,6 @@ export default function GmLightControls({
   selectedLight = null,
   onSelectedLightChange,
   onDeleteSelected,
-  onCollapse,
   lightingEnabled = false,
   globalIllumination = true,
   onGlobalIlluminationChange,
@@ -110,12 +115,6 @@ export default function GmLightControls({
   placementDefaults = DEFAULT_PLACEMENT,
 }: GmLightControlsProps) {
   const [confirmClear, setConfirmClear] = useState(false);
-  // Folded away to begin with, like the other map tools: a GM arriving at the
-  // table wants to see the map, not three open panels over it.
-  const [collapsed, setCollapsed] = useState(true);
-  const bodyId = useId();
-  // A finger's size for every control where the pointer is coarse, as in the compact layout's map (index.css).
-  const coarsePointer = useCoarsePointer();
 
   const handleClearAll = () => {
     if (!confirmClear) { setConfirmClear(true); return; }
@@ -123,9 +122,6 @@ export default function GmLightControls({
     onClearAll();
   };
 
-  const toggleMode = (mode: LightToolMode) => {
-    onLightModeChange(lightMode === mode ? null : mode);
-  };
 
   // Debounced version of onSelectedLightChange for slider drags — prevents
   // raycasting on every input tick (fixes the freezing issue).
@@ -139,14 +135,9 @@ export default function GmLightControls({
   const [localBright, setLocalBright] = useState<number | null>(null);
   const [localDim, setLocalDim] = useState<number | null>(null);
 
-  // The colour box as typed. Only a complete colour is applied, so the box
-  // holds what is typed until then; it showed the colour in use instead,
-  // which undid every key.
-  const [colourDraft, setColourDraft] = useState<string | null>(null);
 
   // Sync local overrides when selected light changes externally
   useEffect(() => {
-    setColourDraft(null);
     setLocalBright(null);
     setLocalDim(null);
   }, [selectedLight?.id]);
@@ -180,280 +171,79 @@ export default function GmLightControls({
     : placementDefaults.dimRadius;
   const displayColor = isEditing ? selectedLight.color : placementDefaults.color;
 
+  const applyPreset = (label: string) => {
+    const p = LIGHT_PRESETS.find((x) => x.label === label);
+    if (!p) return;
+    if (isEditing) updateSelected({ brightRadius: p.bright, dimRadius: p.dim });
+    else updateDefaults({ brightRadius: p.bright, dimRadius: p.dim });
+  };
+  const preset = presetNameOf(LIGHT_PRESETS, displayBright, displayDim);
+  const setColour = (color: string) => (isEditing ? updateSelected({ color }) : updateDefaults({ color }));
+
   return (
-    <div data-tour="lights" className={`flex flex-col gap-0 bg-stone-800 rounded-lg border border-warm-amber/20 min-w-[200px] overflow-hidden${coarsePointer ? ' finger-controls' : ''}`}>
-      {/* Header with collapse toggle */}
-      <button
-        type="button"
-        aria-expanded={!collapsed}
-        aria-controls={bodyId}
-        className="touch-target w-full flex items-center justify-between px-3 py-3 cursor-pointer hover:bg-stone-700/50 select-none"
-        onClick={() => {
-          const next = !collapsed;
-          setCollapsed(next);
-          if (next) onCollapse?.();
-        }}
-      >
-        <span className="text-xs text-amber-300 font-semibold uppercase tracking-wider">
-          Lights
-          {lightCount > 0 && (
-            <>{' '}<span className="text-stone-400 normal-case">({lightCount})</span></>
-          )}
-        </span>
-        <span className="text-stone-400 text-xs" aria-hidden="true">{collapsed ? '▶' : '▼'}</span>
-      </button>
-
-      {!collapsed && (
-        <div id={bodyId} className="flex flex-col gap-2 p-2 pt-1">
-          {/* Warning when lighting is off */}
-          {!lightingEnabled && (
-            <div className="text-xs text-amber-300 bg-amber-400/5 rounded-sm px-1.5 py-1 border border-amber-400/10">
-              Dynamic lighting is off. Enable it in Edit Map for lights to affect player visibility.
-            </div>
-          )}
-
-          {/* Global Illumination: everything in line of sight counts as lit.
-              Off, lights and darkvision decide, which is when lights matter. */}
-          {onGlobalIlluminationChange && (
-            <label className="flex items-center gap-2 px-0.5 text-xs text-stone-300 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                className="w-3.5 h-3.5 accent-amber-400"
-                checked={globalIllumination}
-                disabled={!lightingEnabled}
-                onChange={(e) => onGlobalIlluminationChange(e.target.checked)}
-                aria-label="Global Illumination"
-              />
-              Global Illumination
-            </label>
-          )}
-          {lightingEnabled && !globalIllumination && lightCount === 0 && (
-            <div className="text-xs text-amber-300 bg-amber-400/5 rounded-sm px-1.5 py-1 border border-amber-400/10">
-              No lights placed and Global Illumination is off: players see only their darkvision.
-            </div>
-          )}
-
-          {/* Mode buttons */}
-          <div className="flex gap-1">
-            <button
-              type="button"
-              onClick={() => toggleMode('light-place')}
-              className={`flex-1 text-xs py-1.5 rounded transition-colors ${
-                lightMode === 'light-place'
-                  ? 'bg-amber-400/30 text-amber-300 border border-amber-400/50'
-                  : 'bg-stone-700/60 text-stone-300 border border-stone-600/50 hover:bg-stone-700'
-              }`}
-              title="Click on map to place a light source"
-            >
-              Place
-            </button>
-            <button
-              type="button"
-              onClick={() => toggleMode('light-select')}
-              className={`flex-1 text-xs py-1.5 rounded transition-colors ${
-                lightMode === 'light-select'
-                  ? 'bg-amber-400/30 text-amber-300 border border-amber-400/50'
-                  : 'bg-stone-700/60 text-stone-300 border border-stone-600/50 hover:bg-stone-700'
-              }`}
-              title="Click a light source to select and edit it; drag to move"
-            >
-              Select
-            </button>
-          </div>
-
-          {/* Light property editor — shows for BOTH place mode (defaults) and select mode (editing) */}
-          {lightMode && (
-            <div className="flex flex-col gap-2 bg-stone-700/40 rounded-sm p-2 border border-stone-600/40">
-              <div className="text-xs text-stone-400 uppercase tracking-wide">
-                {isEditing ? 'Edit Light' : 'New Light Settings'}
-              </div>
-
-              {/* Enabled toggle — only for selected light */}
-              {isEditing && (
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={selectedLight.enabled}
-                    onChange={(e) => updateSelected({ enabled: e.target.checked })}
-                    className="rounded-sm accent-amber-400"
-                  />
-                  <span className="text-xs text-stone-300">
-                    {selectedLight.enabled ? 'Enabled' : 'Disabled (extinguished)'}
-                  </span>
-                </label>
-              )}
-
-              {/* Preset buttons */}
-              <div>
-                <span className="text-xs text-stone-400 block mb-1">Presets</span>
-                <div className="flex flex-wrap gap-1">
-                  {LIGHT_PRESETS.map((p) => {
-                    const isActive = displayBright === p.bright && displayDim === p.dim;
-                    return (
-                      <button
-                        key={p.label}
-                        type="button"
-                        onClick={() => {
-                          if (isEditing) {
-                            updateSelected({ brightRadius: p.bright, dimRadius: p.dim });
-                          } else {
-                            updateDefaults({ brightRadius: p.bright, dimRadius: p.dim });
-                          }
-                        }}
-                        className={`text-xs px-1.5 py-0.5 rounded transition-colors ${
-                          isActive
-                            ? 'bg-amber-400/25 text-amber-300 border border-amber-400/40'
-                            : 'bg-stone-700/60 text-stone-400 border border-stone-600/40 hover:text-stone-300 hover:bg-stone-700'
-                        }`}
-                        title={`Bright: ${p.bright} sq, Dim: ${p.dim} sq`}
-                      >
-                        {p.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Bright radius slider */}
-              <div>
-                <div className="flex justify-between mb-0.5">
-                  <span className="text-xs text-stone-400">Bright</span>
-                  <span className="text-xs text-stone-300">{displayBright.toFixed(1)} sq</span>
-                </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={50}
-                  step={0.5}
-                  value={displayBright}
-                  onChange={(e) => {
-                    const v = Number(e.target.value);
-                    // Clamp dim to stay >= bright
-                    if (isEditing) {
-                      const newDim = Math.max(v, localDim ?? selectedLight.dimRadius);
-                      updateSelectedSlider({ brightRadius: v, dimRadius: newDim });
-                    } else {
-                      const newDim = Math.max(v, placementDefaults.dimRadius);
-                      updateDefaults({ brightRadius: v, dimRadius: newDim });
-                    }
-                  }}
-                  className="w-full h-1 accent-amber-400"
-                />
-              </div>
-
-              {/* Dim radius slider */}
-              <div>
-                <div className="flex justify-between mb-0.5">
-                  <span className="text-xs text-stone-400">Dim</span>
-                  <span className="text-xs text-stone-300">{displayDim.toFixed(1)} sq</span>
-                </div>
-                <input
-                  type="range"
-                  min={0.5}
-                  max={50}
-                  step={0.5}
-                  value={displayDim}
-                  onChange={(e) => {
-                    const v = Number(e.target.value);
-                    // Clamp bright to stay <= dim
-                    if (isEditing) {
-                      const newBright = Math.min(v, localBright ?? selectedLight.brightRadius);
-                      updateSelectedSlider({ dimRadius: v, brightRadius: newBright });
-                    } else {
-                      const newBright = Math.min(v, placementDefaults.brightRadius);
-                      updateDefaults({ dimRadius: v, brightRadius: newBright });
-                    }
-                  }}
-                  className="w-full h-1 accent-amber-400"
-                />
-              </div>
-
-              {/* Color presets */}
-              <div>
-                <span className="text-xs text-stone-400 block mb-1">Color</span>
-                <div className="flex flex-wrap gap-1">
-                  {LIGHT_COLOR_PRESETS.map((c) => (
-                    <button
-                      key={c.value}
-                      type="button"
-                      onClick={() => {
-                        if (isEditing) updateSelected({ color: c.value });
-                        else updateDefaults({ color: c.value });
-                      }}
-                      className={`w-5 h-5 rounded-full border-2 transition-transform ${
-                        displayColor === c.value
-                          ? 'border-stone-100 scale-110'
-                          : 'border-stone-600 hover:border-stone-400'
-                      }`}
-                      style={{ backgroundColor: c.value }}
-                      title={c.label}
-                    />
-                  ))}
-                </div>
-                {/* Custom hex input */}
-                <div className="flex items-center gap-1.5 mt-1.5">
-                  <input
-                    type="color"
-                    value={displayColor}
-                    onChange={(e) => {
-                      if (isEditing) updateSelected({ color: e.target.value });
-                      else updateDefaults({ color: e.target.value });
-                    }}
-                    className="touch-target w-5 h-5 rounded-sm cursor-pointer border-0 bg-transparent"
-                    title="Pick custom color"
-                  />
-                  <input
-                    type="text"
-                    value={colourDraft ?? displayColor}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setColourDraft(v);
-                      const hex = /^#?([0-9a-fA-F]{6})$/.exec(v.trim());
-                      if (hex) {
-                        const colour = `#${hex[1].toLowerCase()}`;
-                        if (isEditing) updateSelected({ color: colour });
-                        else updateDefaults({ color: colour });
-                      }
-                    }}
-                    onBlur={() => setColourDraft(null)}
-                    aria-label="Light colour"
-                    className="flex-1 text-xs bg-stone-800 border border-stone-600 rounded-sm px-1.5 py-0.5 text-stone-300 font-mono"
-                    maxLength={7}
-                    placeholder="#ffcc66"
-                  />
-                </div>
-              </div>
-
-              {/* Delete button — only for selected light */}
-              {isEditing && (
-                <button
-                  type="button"
-                  onClick={onDeleteSelected}
-                  className="text-xs py-1 rounded-sm bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25 transition-colors"
-                >
-                  Delete Light
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Clear all */}
-          {lightCount > 0 && (
-            <button
-              type="button"
-              onClick={handleClearAll}
-              onBlur={() => setConfirmClear(false)}
-              className={`text-xs py-1 rounded transition-colors ${
-                confirmClear
-                  ? 'bg-red-500/20 text-red-400 border border-red-500/40'
-                  : 'bg-stone-700/60 text-stone-400 border border-stone-600/40 hover:text-stone-300'
-              }`}
-            >
-              {confirmClear ? 'Confirm Clear All' : `Clear All (${lightCount})`}
-            </button>
-          )}
-        </div>
+    <>
+      {onGlobalIlluminationChange && (<>
+        <GroupHeading>For everyone on this scene</GroupHeading>
+        {/* Global light: everything in line of sight counts as lit. Off, lights and darkvision decide, which is when lights matter. */}
+        <Binary label="Global light" value={globalIllumination} disabled={!lightingEnabled} onChange={onGlobalIlluminationChange} />
+      </>)}
+      {!lightingEnabled && (
+        <Help>Dynamic lighting is off. Turn it on in the scene&apos;s settings for lights to change what players see.</Help>
       )}
-    </div>
+      {lightingEnabled && !globalIllumination && lightCount === 0 && (
+        <Help>No lights placed and Global light is off: players see only their darkvision.</Help>
+      )}
+      <Sep />
+      <Seg label="Mode" options={MODES} value={lightMode} onChange={onLightModeChange} deselect />
+      {lightMode && (
+        <Help>{lightMode === 'light-place' ? 'Click the map to place a light.' : 'Click a light to change it; drag it to move it.'}</Help>
+      )}
+
+      {/* The light's settings: the chosen one's in Select, the next one's in Place. */}
+      {lightMode && (<>
+        {isEditing && (
+          <Binary label="This light" off="Out" on="Lit" value={selectedLight.enabled} onChange={(enabled) => updateSelected({ enabled })} />
+        )}
+        <CardSelect label="Preset" value={preset} onChange={applyPreset}>
+          {LIGHT_PRESETS.map((p) => <option key={p.label} value={p.label}>{p.label}</option>)}
+          {preset === 'Custom' && <option value="Custom">Custom</option>}
+        </CardSelect>
+        <Slider
+          label="Bright light"
+          valueText={`${displayBright.toFixed(1)} sq`}
+          min={0}
+          max={50}
+          step={0.5}
+          value={displayBright}
+          onChange={(v) => {
+            // Dim stays at least as far as bright.
+            if (isEditing) updateSelectedSlider({ brightRadius: v, dimRadius: Math.max(v, localDim ?? selectedLight.dimRadius) });
+            else updateDefaults({ brightRadius: v, dimRadius: Math.max(v, placementDefaults.dimRadius) });
+          }}
+        />
+        <Slider
+          label="Dim light"
+          valueText={`${displayDim.toFixed(1)} sq`}
+          min={0.5}
+          max={50}
+          step={0.5}
+          value={displayDim}
+          onChange={(v) => {
+            // Bright stays at most as far as dim.
+            if (isEditing) updateSelectedSlider({ dimRadius: v, brightRadius: Math.min(v, localBright ?? selectedLight.brightRadius) });
+            else updateDefaults({ dimRadius: v, brightRadius: Math.min(v, placementDefaults.brightRadius) });
+          }}
+        />
+        <ColourGrid label="Colour" swatches={SWATCHES} value={displayColor} onChange={setColour} />
+        {isEditing && <CardButton onClick={() => onDeleteSelected?.()} danger>Delete light</CardButton>}
+      </>)}
+
+      {lightCount > 0 && (<>
+        <Sep />
+        <CardButton onClick={handleClearAll} onBlur={() => setConfirmClear(false)} danger>
+          {confirmClear ? 'Confirm clear all?' : `Clear all (${lightCount})`}
+        </CardButton>
+      </>)}
+    </>
   );
 }

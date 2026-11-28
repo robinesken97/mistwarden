@@ -12,7 +12,7 @@
 
 import { useEffect, useRef } from 'react';
 import { effectiveDpr } from './map/layerCanvas';
-import { drawGrid } from './map/layers/drawGrid';
+import { drawGrid, GRID_LOOK_DEFAULT } from './map/layers/drawGrid';
 
 const PREVIEW_PX = 280;
 
@@ -99,7 +99,7 @@ export default function MapGridPreview({
       cx.clip();
       cx.translate(offsetX, offsetY);
       cx.scale(scale, scale);
-      drawGrid(cx, { gridColor: 'black' }, {
+      drawGrid(cx, GRID_LOOK_DEFAULT, {
         zoom: scale * 2, panOffset: { x: 0, y: 0 }, gridSize, mapWidth: width, mapHeight: height, gridType, gridOffsetX, gridOffsetY,
       });
       cx.restore();

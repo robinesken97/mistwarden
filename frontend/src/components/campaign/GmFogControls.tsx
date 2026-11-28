@@ -1,15 +1,15 @@
 /**
  * GmFogControls
- * GM-only fog of war controls panel.
+ * GM tools' Fog tab.
  * Carries the per-map switch: with fog on, the GM reveals or hides regions
  * by dragging a box over the map (the selection snaps to whole grid squares)
  * plus bulk reveal/hide actions; with fog off the panel says so and offers
  * nothing that would change what players see.
  */
 
-import { useId, useState } from 'react';
-import { Eye, EyeOff, Square, Paintbrush, Lasso } from 'lucide-react';
+import { useState } from 'react';
 import type { FogShape } from '@/components/campaign/map/tools/useFogTool';
+import { Binary, ButtonRow, CardButton, GroupHeading, Help, Seg, Sep, type SegOption } from './map/cardParts';
 
 export type FogToolMode = 'fog-reveal' | 'fog-hide' | null;
 
@@ -32,34 +32,39 @@ interface GmFogControlsProps {
    * no explored memory to forget (lighting off, or the setting off).
    */
   onResetExploration?: () => void;
-  /**
-   * Called when the panel is folded away, so the tool it holds can be put
-   * down with it. Leaving a fog tool armed behind a closed panel means the
-   * next drag on the map reveals or hides ground with nothing on screen
-   * saying why.
-   */
-  onCollapse?: () => void;
 }
 
-/**
- * A Confirm? state's pulse: a ring round the button, so its label keeps its
- * contrast through the pulse (GmFogControls.test.tsx). Its colour is the fill's.
- */
-function ConfirmPulse({ ring }: { ring: 'ring-lime-300' | 'ring-warning' }) {
-  return <span aria-hidden="true" className={`absolute inset-0 rounded ring-2 ${ring} animate-pulse pointer-events-none`} />;
+const SHAPES: SegOption<FogShape>[] = [
+  { value: 'box', label: 'Box' },
+  { value: 'brush', label: 'Brush' },
+  { value: 'lasso', label: 'Lasso' },
+];
+/** The brush's radius in squares. */
+const BRUSH_SIZES: SegOption<number>[] = [
+  { value: 0.5, label: 'Small' },
+  { value: 1, label: 'Medium' },
+  { value: 2, label: 'Large' },
+];
+const MODES: SegOption<'fog-reveal' | 'fog-hide'>[] = [
+  { value: 'fog-reveal', label: 'Reveal' },
+  { value: 'fog-hide', label: 'Hide' },
+];
+
+/** A button asked twice: its first press turns it into Confirm?, a press elsewhere puts that back. */
+function useAskTwice(run: () => void) {
+  const [asking, setAsking] = useState(false);
+  return {
+    asking,
+    press: () => {
+      if (!asking) { setAsking(true); return; }
+      setAsking(false);
+      run();
+    },
+    reset: () => setAsking(false),
+  };
 }
 
-const SHAPES: Array<{ shape: FogShape; label: string; icon: typeof Square }> = [
-  { shape: 'box', label: 'Box', icon: Square },
-  { shape: 'brush', label: 'Brush', icon: Paintbrush },
-  { shape: 'lasso', label: 'Lasso', icon: Lasso },
-];
-const BRUSH_SIZES: Array<{ squares: number; label: string }> = [
-  { squares: 0.5, label: 'S' },
-  { squares: 1, label: 'M' },
-  { squares: 2, label: 'L' },
-];
-
+/** GM tools' Fog tab (the card's body; MapCanvas puts the armed tool down when the tab or card closes). */
 export default function GmFogControls({
   fogMode,
   onFogModeChange,
@@ -72,222 +77,79 @@ export default function GmFogControls({
   fogEnabled,
   onFogEnabledChange,
   onResetExploration,
-  onCollapse,
 }: GmFogControlsProps) {
-  const [confirmRevealAll, setConfirmRevealAll] = useState(false);
-  const [confirmHideAll, setConfirmHideAll] = useState(false);
-  const [confirmReset, setConfirmReset] = useState(false);
-
-  const handleResetExploration = () => {
-    if (!confirmReset) { setConfirmReset(true); return; }
-    setConfirmReset(false);
-    onResetExploration?.();
-  };
-  // Folded away to begin with, like the other map tools: a GM arriving at the
-  // table wants to see the map, not three open panels over it.
-  const [collapsed, setCollapsed] = useState(true);
-  const bodyId = useId();
-
-  const handleRevealAll = () => {
-    if (!confirmRevealAll) { setConfirmRevealAll(true); return; }
-    setConfirmRevealAll(false);
-    onRevealAll();
-  };
-
-  const handleHideAll = () => {
-    if (!confirmHideAll) { setConfirmHideAll(true); return; }
-    setConfirmHideAll(false);
-    onHideAll();
-  };
+  const revealAll = useAskTwice(onRevealAll);
+  const hideAll = useAskTwice(onHideAll);
+  const reset = useAskTwice(() => onResetExploration?.());
+  const verb = fogMode === 'fog-reveal' ? 'reveal' : 'hide';
 
   return (
-    <div data-tour="fog" className="flex flex-col gap-0 bg-stone-800 rounded-lg border border-warm-amber/20 min-w-[160px] overflow-hidden">
-      {/* Header with collapse toggle */}
-      <button
-        type="button"
-        aria-expanded={!collapsed}
-        aria-controls={bodyId}
-        className="touch-target w-full flex items-center justify-between px-3 py-3 cursor-pointer hover:bg-stone-700/50 select-none"
-        onClick={() => {
-          const next = !collapsed;
-          setCollapsed(next);
-          if (next) onCollapse?.();
+    <>
+      <GroupHeading>For everyone on this scene</GroupHeading>
+      {/* Off puts an armed tool down first: a reveal box dragged with fog off would change nothing players can see. */}
+      <Binary
+        label="Fog"
+        value={fogEnabled}
+        onChange={(next) => {
+          if (!next) onFogModeChange(null);
+          onFogEnabledChange(next);
         }}
-      >
-        <span className="text-xs text-amber-300 font-semibold uppercase tracking-wider">Fog of War</span>
-        <span className="text-stone-400 text-xs" aria-hidden="true">{collapsed ? '▶' : '▼'}</span>
-      </button>
-    {!collapsed && (
-      <div id={bodyId} className="flex flex-col gap-2 p-2 pt-1">
-
-      {/* The per-map switch. Off puts an armed tool down first: a reveal box
-          dragged with fog off would change nothing players can see. */}
-      <label className="touch-target flex items-center gap-2 px-1 py-0.5 text-xs text-stone-300 cursor-pointer select-none">
-        <input
-          type="checkbox"
-          className="w-3.5 h-3.5 accent-lime-500"
-          checked={fogEnabled}
-          onChange={(e) => {
-            const next = e.target.checked;
-            if (!next) onFogModeChange(null);
-            onFogEnabledChange(next);
-          }}
-          aria-label="Fog of war on this map"
-        />
-        Fog of war on this map
-      </label>
-
+      />
       {!fogEnabled && (
-        <p className="px-1 text-xs leading-snug text-stone-400">
+        <Help>
           Fog is off. Players see the whole map (dynamic lighting still applies).
           What you had revealed is kept for when you turn it back on.
-        </p>
+        </Help>
       )}
 
       {fogEnabled && (<>
-      {/* Mode toggle */}
-      <div className="flex gap-1">
-        <button
-          onClick={() => onFogModeChange(fogMode === 'fog-reveal' ? null : 'fog-reveal')}
-          className={`touch-target flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
-            fogMode === 'fog-reveal'
-              ? 'bg-lime-600/30 text-lime-400 border border-lime-500/50'
-              : 'bg-stone-700/50 text-stone-300 border border-stone-600/50 hover:bg-stone-700'
-          }`}
-          title="Reveal — drag a box over the map to reveal it to players"
-          aria-label="Fog reveal box"
-        >
-          <Eye className="w-3.5 h-3.5" />
-          Reveal
-        </button>
-        <button
-          onClick={() => onFogModeChange(fogMode === 'fog-hide' ? null : 'fog-hide')}
-          className={`touch-target flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded text-xs font-medium transition-colors ${
-            fogMode === 'fog-hide'
-              ? 'bg-warning/30 text-warning-ink border border-warning/50'
-              : 'bg-stone-700/50 text-stone-300 border border-stone-600/50 hover:bg-stone-700'
-          }`}
-          title="Hide — drag a box over the map to hide it from players"
-          aria-label="Fog hide box"
-        >
-          <EyeOff className="w-3.5 h-3.5" />
-          Hide
-        </button>
-      </div>
-
-      {/* Mistwarden: the shape a drag makes */}
-      {onFogShapeChange && (
-        <div className="flex gap-1" role="group" aria-label="Fog shape">
-          {SHAPES.map(({ shape, label, icon: Icon }) => (
-            <button
-              key={shape}
-              type="button"
-              aria-pressed={fogShape === shape}
-              onClick={() => onFogShapeChange(shape)}
-              // Icon over label: three side by side leave a label about 55 px, too tight for icon and Lasso in a row.
-              className={`touch-target flex-1 basis-0 min-w-0 flex flex-col items-center justify-center gap-0.5 px-1 py-1 rounded text-xs font-medium border transition-colors ${
-                fogShape === shape ? 'bg-stone-600/60 text-stone-100 border-stone-400/60' : 'bg-stone-800/40 text-stone-400 border-stone-700/50 hover:bg-stone-700/60'
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5 shrink-0" />
-              {label}
-            </button>
-          ))}
-        </div>
-      )}
-      {onBrushSquaresChange && fogShape === 'brush' && (
-        <div className="flex items-center gap-1" role="group" aria-label="Brush size">
-          <span className="px-1 text-xs text-stone-400">Size</span>
-          {BRUSH_SIZES.map(({ squares, label }) => (
-            <button
-              key={label}
-              type="button"
-              aria-pressed={brushSquares === squares}
-              aria-label={`Brush size ${label}`}
-              onClick={() => onBrushSquaresChange(squares)}
-              className={`touch-target min-w-8 px-2 py-0.5 rounded text-xs font-medium border ${
-                brushSquares === squares ? 'bg-stone-600/60 text-stone-100 border-stone-400/60' : 'bg-stone-800/40 text-stone-400 border-stone-700/50 hover:bg-stone-700/60'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* How-to hint — only while a mode is armed */}
-      {fogMode && (
-        <p className="px-1 text-xs leading-snug text-stone-400">
-          {fogShape === 'brush'
-            ? <>Paint over the map to {fogMode === 'fog-reveal' ? 'reveal' : 'hide'} what the brush touches.</>
-            : fogShape === 'lasso'
-              ? <>Draw round an area; letting go {fogMode === 'fog-reveal' ? 'reveals' : 'hides'} what is inside.</>
-              : <>Drag a box over the map. The selection snaps to whole squares —
-                click a single square to {fogMode === 'fog-reveal' ? 'reveal' : 'hide'} just that one.</>}
-          <span className="block mt-0.5 text-stone-400">Esc or right-drag cancels.</span>
-        </p>
-      )}
-
-      {/* Bulk actions */}
-      <div className="flex gap-1 pt-1 border-t border-stone-700/50">
-        {/* Each Confirm? state takes dark text on its light fill, readable
-            in every theme, and pulses a ring round it, never its label. */}
-        <button
-          onClick={handleRevealAll}
-          className={`touch-target relative flex-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
-            confirmRevealAll
-              ? 'bg-lime-500 text-stone-900'
-              : 'bg-stone-700/50 text-stone-300 border border-stone-600/50 hover:bg-lime-700/30 hover:text-lime-400'
-          }`}
-          title={confirmRevealAll ? 'Click again to confirm: reveal entire map' : 'Reveal all — show entire map to players'}
-          aria-label="Reveal entire map"
-          onBlur={() => setConfirmRevealAll(false)}
-        >
-          {confirmRevealAll && <ConfirmPulse ring="ring-lime-300" />}
-          {confirmRevealAll ? 'Confirm?' : 'Reveal all'}
-        </button>
-        <button
-          onClick={handleHideAll}
-          className={`touch-target relative flex-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
-            confirmHideAll
-              ? 'bg-warning text-stone-900'
-              : 'bg-stone-700/50 text-stone-300 border border-stone-600/50 hover:bg-warning/30 hover:text-warning-ink'
-          }`}
-          title={confirmHideAll ? 'Click again to confirm: hide entire map' : 'Hide all — cover entire map with fog'}
-          aria-label="Hide entire map"
-          onBlur={() => setConfirmHideAll(false)}
-        >
-          {confirmHideAll && <ConfirmPulse ring="ring-warning" />}
-          {confirmHideAll ? 'Confirm?' : 'Hide all'}
-        </button>
-      </div>
+        <Sep />
+        {/* Disarm: a press on the chosen mode again. */}
+        <Seg label="Mode" options={MODES} value={fogMode} onChange={onFogModeChange} deselect />
+        {onFogShapeChange && <Seg label="Shape" options={SHAPES} value={fogShape} onChange={(v) => v && onFogShapeChange(v)} />}
+        {onBrushSquaresChange && fogShape === 'brush' && (
+          <Seg label="Brush size" options={BRUSH_SIZES} value={brushSquares} onChange={(v) => v !== null && onBrushSquaresChange(v)} />
+        )}
+        {fogMode && (
+          <Help>
+            {fogShape === 'brush'
+              ? <>Paint over the map to {verb} what the brush touches.</>
+              : fogShape === 'lasso'
+                ? <>Draw round an area; letting go {fogMode === 'fog-reveal' ? 'reveals' : 'hides'} what is inside.</>
+                : <>Drag a box over the map. The selection snaps to whole squares; click a single square to {verb} just that one.</>}
+            {' '}Esc or right-drag cancels.
+          </Help>
+        )}
+        <Sep />
+        <ButtonRow>
+          <CardButton
+            onClick={revealAll.press}
+            onBlur={revealAll.reset}
+            title={revealAll.asking ? 'Press again to confirm: reveal the entire map' : 'Reveal all: show the entire map to players'}
+          >
+            {revealAll.asking ? 'Confirm?' : 'Reveal all'}
+          </CardButton>
+          <CardButton
+            onClick={hideAll.press}
+            onBlur={hideAll.reset}
+            title={hideAll.asking ? 'Press again to confirm: hide the entire map' : 'Hide all: cover the entire map with fog'}
+          >
+            {hideAll.asking ? 'Confirm?' : 'Hide all'}
+          </CardButton>
+        </ButtonRow>
       </>)}
 
       {/* Explored memory is separate from fog: it is what players' own
           vision has uncovered on a lit map, and only the GM can forget it. */}
       {onResetExploration && (
-        <div className="pt-1 border-t border-stone-700/50">
-          <button
-            onClick={handleResetExploration}
-            className={`touch-target relative w-full px-2 py-1 rounded text-xs font-medium transition-colors ${
-              confirmReset
-                ? 'bg-warning text-stone-900'
-                : 'bg-stone-700/50 text-stone-300 border border-stone-600/50 hover:bg-warning/30 hover:text-warning-ink'
-            }`}
-            title={confirmReset ? 'Click again to confirm: forget what every player has seen' : 'Reset explored areas: players forget what they have seen of this map'}
-            aria-label="Reset explored areas"
-            onBlur={() => setConfirmReset(false)}
-          >
-            {confirmReset && <ConfirmPulse ring="ring-warning" />}
-            {confirmReset ? 'Confirm?' : 'Reset explored areas'}
-          </button>
-          <p className="px-1 mt-1 text-xs leading-snug text-stone-400">
-            Forgets what every player has seen of this map. Their view now is unchanged.
-          </p>
-        </div>
+        <CardButton
+          onClick={reset.press}
+          onBlur={reset.reset}
+          title={reset.asking ? 'Press again to confirm: forget what every player has seen' : 'Reset explored areas: players forget what they have seen of this map; their view now is unchanged'}
+        >
+          {reset.asking ? 'Confirm?' : 'Reset explored areas'}
+        </CardButton>
       )}
-    </div>
-    )}
-    </div>
+    </>
   );
 }

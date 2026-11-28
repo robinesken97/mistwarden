@@ -1,17 +1,17 @@
 // ============================================
 // SpiritLayerControls
-// GM slide-over panel for spirit layer management
+// The Spirit Layer card beside the map's rail (GM): this screen's view,
+// the campaign's veil and atmosphere, the scene's spirit tokens
 // Spirit Layer Implementation
 // ============================================
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Eye, EyeOff, Ghost, Layers, Loader2 } from 'lucide-react';
 import { useCampaign } from '@/contexts/CampaignContext';
 import { useTokenListIgnoringMovement } from '@/stores/gameStore';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import campaignService from '@/services/campaign.service';
 import type { Token } from '@/types';
-import SlideOver, { SlideOverClose, SlideOverTitle } from '@/components/ui/SlideOver';
+import { Binary, Caption, ColourGrid, GroupHeading, Help, Seg, Sep } from './map/cardParts';
 import { parseSpiritStyle } from '@/utils/styleAllowlists';
 import { apiErrorMessage } from '@/utils/errors';
 
@@ -99,11 +99,13 @@ function encodeStyle(styleId: SpiritStyleId, customColor: string, customEffect: 
 // ============================================
 
 interface SpiritLayerControlsProps {
-  isOpen: boolean;
-  onClose: () => void;
+  /** Spirit tokens drawn on this screen (the GM's own view). */
+  spiritTokensShown: boolean;
+  onSpiritTokensShownChange: (shown: boolean) => void;
 }
 
-export default function SpiritLayerControls({ isOpen, onClose }: SpiritLayerControlsProps) {
+/** The Spirit Layer card's body (the rail's ghost cell). */
+export default function SpiritLayerControls({ spiritTokensShown, onSpiritTokensShownChange }: SpiritLayerControlsProps) {
   const { campaign, viewedMap, updateCampaignSpiritLayer, gmViewBothPlanes, setGmViewBothPlanes } = useCampaign();
   // Lists spirit tokens by name — no need to re-render on token movement.
   const tokens = useTokenListIgnoringMovement();
@@ -202,9 +204,13 @@ export default function SpiritLayerControls({ isOpen, onClose }: SpiritLayerCont
     void saveStyle(encodeStyle(styleId, customColor, customEffect), 'Failed to save style');
   };
 
+  // The picker reports every move: shown at once, saved once it rests.
+  const colourSave = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (colourSave.current) clearTimeout(colourSave.current); }, []);
   const handleCustomColorChange = (color: string) => {
     setCustomColor(color);
-    void saveStyle(encodeStyle('custom', color, customEffect), 'Failed to save colour');
+    if (colourSave.current) clearTimeout(colourSave.current);
+    colourSave.current = setTimeout(() => { void saveStyle(encodeStyle('custom', color, customEffect), 'Failed to save colour'); }, 400);
   };
 
   const handleCustomEffectChange = (effect: CustomEffectId) => {
@@ -241,269 +247,65 @@ export default function SpiritLayerControls({ isOpen, onClose }: SpiritLayerCont
   // Render
   // ============================================
 
+  const style = SPIRIT_STYLES.find((st) => st.id === selectedStyle) ?? SPIRIT_STYLES[0];
+  const swatchOf = (id: SpiritStyleId) => (id === 'custom' ? customColor : SPIRIT_STYLES.find((st) => st.id === id)?.previewColor);
+
   return (
-    <SlideOver
-      open={isOpen}
-      onClose={onClose}
-      className="max-w-sm bg-paper-white shadow-2xl overflow-y-auto flex flex-col"
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-moss-green/20 bg-parchment/60 sticky top-0 z-10">
-        <div className="flex items-center gap-2">
-          <Ghost className="w-5 h-5 text-spirit-ink" />
-          <SlideOverTitle className="text-lg font-bold text-brand-ink">Spirit Layer</SlideOverTitle>
-        </div>
-        <SlideOverClose className="btn-secondary p-1.5" iconClassName="w-4 h-4" title="Close" />
+    <>
+      {errorMsg && <p role="alert" className="m-0 rounded-xl border border-danger/20 bg-danger/10 px-3 py-2 text-sm text-danger-ink">{errorMsg}</p>}
+
+      <GroupHeading>Only on your screen</GroupHeading>
+      <Binary label="Planes" off="Active" on="Both" value={gmViewBothPlanes} onChange={setGmViewBothPlanes} />
+      <Binary label="Spirit tokens" off="Hidden" on="Shown" value={spiritTokensShown} onChange={onSpiritTokensShownChange} />
+
+      <Sep />
+      <GroupHeading>For everyone in this campaign</GroupHeading>
+      {/* The server opens or closes the veil; the control waits for its answer. */}
+      <Binary label="Spirit realm" off="Closed" on="Open" value={enabled} disabled={isTogglingLayer} onChange={(open) => { if (open !== enabled) handleToggleLayer(); }} />
+      <Help>Open lets players cross into the spirit realm. You always see into it.</Help>
+      <Caption value={isSavingStyle ? 'Saving…' : undefined}>Atmosphere</Caption>
+      <div className="relative shrink-0">
+        <i aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 rounded-full border border-ink/30" style={{ background: swatchOf(selectedStyle) }} />
+        <select aria-label="Atmosphere" value={selectedStyle} onChange={(e) => handleStyleSelect(e.target.value as SpiritStyleId)} className="input-cozy w-full pl-9 text-sm">
+          {SPIRIT_STYLES.map((st) => <option key={st.id} value={st.id}>{st.label}</option>)}
+        </select>
       </div>
+      <Help>{style.description}</Help>
+      {selectedStyle === 'custom' && (<>
+        <ColourGrid label="Hue" swatches={[]} value={customColor} onChange={handleCustomColorChange} />
+        <Seg
+          label="Effect"
+          options={CUSTOM_EFFECTS.map((eff) => ({ value: eff.id, label: eff.label, title: eff.description }))}
+          value={customEffect}
+          onChange={(v) => v && handleCustomEffectChange(v)}
+          columns={2}
+        />
+      </>)}
 
-      {/* Body */}
-      <div className="flex-1 overflow-y-auto p-5 space-y-6">
-        {/* Error */}
-        {errorMsg && (
-          <div className="px-4 py-3 bg-danger/10 border border-danger/20 text-danger-ink text-sm rounded-cozy">
-            {errorMsg}
-          </div>
-        )}
-
-        {/* Section 1: Spirit Realm Access Toggle */}
-        <section>
-          <h3 className="text-sm font-semibold text-stone-gray uppercase tracking-wide mb-3">
-            Spirit Realm Access
-          </h3>
-          <div className="glass-panel p-4 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-charcoal">
-                {enabled
-                  ? 'Spirit realm revealed to all players'
-                  : 'Spirit realm hidden from players'}
-              </p>
-              <p className="text-xs text-stone-gray mt-0.5">
-                As GM you always see into the spirit realm.
-                Enable to let players cross into the ethereal plane.
-              </p>
-            </div>
-            <button
-              onClick={handleToggleLayer}
-              disabled={isTogglingLayer}
-              className={`relative flex items-center gap-2 px-4 py-2 rounded-cozy font-medium text-sm transition-colors ${
-                enabled
-                  ? 'bg-spirit/15 border border-spirit/40 text-spirit-ink hover:bg-spirit/25'
-                  : 'bg-transparent border border-brand text-brand-ink hover:bg-brand hover:text-brand-text focus:outline-hidden focus:ring-2 focus:ring-brand focus:ring-offset-2'
-              }`}
-              title={enabled ? 'Close the veil' : 'Open the veil'}
-            >
-              {isTogglingLayer ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : enabled ? (
-                <Eye className="w-4 h-4" />
-              ) : (
-                <EyeOff className="w-4 h-4" />
-              )}
-              {enabled ? 'Open' : 'Closed'}
-            </button>
-          </div>
-
-          {/* GM View Mode toggle */}
-          <div className="glass-panel p-4 flex items-center justify-between mt-3">
-            <div>
-              <p className="text-sm font-medium text-charcoal">GM View Mode</p>
-              <p className="text-xs text-stone-gray mt-0.5">
-                {gmViewBothPlanes
-                  ? 'Seeing both planes at once (may be confusing)'
-                  : 'Seeing only the active plane (cleaner view)'}
-              </p>
-            </div>
-            <button
-              onClick={() => setGmViewBothPlanes(!gmViewBothPlanes)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-cozy font-medium text-sm transition-colors ${
-                gmViewBothPlanes
-                  ? 'bg-spirit-purple/15 text-spirit-ink hover:bg-spirit-purple/30'
-                  : 'bg-transparent border border-brand text-brand-ink hover:bg-brand hover:text-brand-text focus:outline-hidden focus:ring-2 focus:ring-brand focus:ring-offset-2'
-              }`}
-              title={gmViewBothPlanes ? 'Switch to single-plane view' : 'Switch to dual-plane view'}
-            >
-              <Layers className="w-4 h-4" />
-              {gmViewBothPlanes ? 'Dual Plane' : 'Single Plane'}
-            </button>
-          </div>
-        </section>
-
-        {/* Section 2: Style Selector — the atmosphere of the spirit realm */}
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-stone-gray uppercase tracking-wide">
-              Realm Atmosphere
-            </h3>
-            {isSavingStyle && (
-              <Loader2 className="w-4 h-4 text-stone-gray animate-spin" />
-            )}
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {SPIRIT_STYLES.map((style) => {
-              const isSelected = selectedStyle === style.id;
-              return (
-                <button
-                  key={style.id}
-                  onClick={() => handleStyleSelect(style.id as SpiritStyleId)}
-                  aria-pressed={isSelected}
-                  className={`text-left p-3 rounded-cozy border-2 transition-all ${
-                    isSelected
-                      ? 'border-spirit-purple bg-spirit-purple/10'
-                      : 'border-moss-green/20 hover:border-moss-green/40 bg-parchment/40'
-                  }`}
-                >
-                  {/* Colour preview swatch */}
-                  <div
-                    className="w-full h-8 rounded-sm mb-2"
-                    style={{
-                      background:
-                        style.id === 'custom'
-                          ? customColor
-                          : style.previewColor,
-                    }}
-                  />
-                  <p className="text-xs font-semibold text-charcoal">{style.label}</p>
-                  <p className="text-[10px] text-stone-gray leading-tight mt-0.5">
-                    {style.description}
-                  </p>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Custom colour + effect pickers */}
-          {selectedStyle === 'custom' && (
-            <div className="mt-3 space-y-2">
-              {/* Colour picker */}
-              <div className="glass-panel p-3 flex items-center gap-3">
-                <label className="text-sm text-stone-gray font-medium" htmlFor="spirit-hue">
-                  Hue
-                </label>
-                <input
-                  id="spirit-hue"
-                  type="color"
-                  value={customColor}
-                  onChange={(e) => setCustomColor(e.target.value)}
-                  onBlur={(e) => handleCustomColorChange(e.target.value)}
-                  className="w-10 h-8 rounded-sm cursor-pointer border-none bg-transparent"
-                />
-                <span className="text-xs text-stone-gray font-mono">{customColor}</span>
-              </div>
-
-              {/* Effect type picker */}
-              <div className="glass-panel p-3 space-y-2">
-                <p className="text-xs font-semibold text-stone-gray uppercase tracking-wide">
-                  Effect
-                </p>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {CUSTOM_EFFECTS.map((eff) => (
-                    <button
-                      key={eff.id}
-                      onClick={() => handleCustomEffectChange(eff.id)}
-                      className={`p-2 rounded-cozy border transition-all text-center ${
-                        customEffect === eff.id
-                          ? 'border-spirit-purple bg-spirit-purple/10 text-spirit-ink'
-                          : 'border-moss-green/20 hover:border-moss-green/40 bg-parchment/40 text-stone-gray'
-                      }`}
-                    >
-                      <p className="text-[11px] font-semibold">{eff.label}</p>
-                      <p className="text-[9px] leading-tight mt-0.5">{eff.description}</p>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-        </section>
-
-        {/* Section 3: Entities in the Spirit Realm */}
-        <section>
-          <h3 className="text-sm font-semibold text-stone-gray uppercase tracking-wide mb-1">
-            Spirits in the Realm
-            {spiritTokens.length > 0 && (
-              <span className="ml-2 text-xs font-normal text-stone-gray normal-case">
-                ({spiritTokens.length} present)
-              </span>
-            )}
-          </h3>
-          <p className="text-[11px] text-stone-gray mb-3">
-            Tokens on the spirit layer. Right-click any token on the map
-            to send it to the spirit realm or return it to the material plane.
-          </p>
-
-          {!viewedMap ? (
-            <p className="text-sm text-stone-gray italic">No map loaded.</p>
-          ) : spiritTokens.length === 0 ? (
-            <p className="text-sm text-stone-gray italic">
-              No tokens are in the spirit realm on this map.
-              Right-click a token and choose "Send to Spirit Realm" to move one here.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {spiritTokens.map((token) => {
-                const isToggling = tokenTogglingIds.has(token.id);
-                return (
-                  <div
-                    key={token.id}
-                    className="glass-panel flex items-center justify-between p-3"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      {/* Token avatar */}
-                      {token.imageUrl ? (
-                        <img
-                          src={token.imageUrl}
-                          alt={token.name}
-                          className="w-8 h-8 rounded-full object-cover shrink-0 border border-spirit-purple/30"
-                        />
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-spirit-purple/20 flex items-center justify-center shrink-0">
-                          <Ghost className="w-4 h-4 text-spirit-ink" />
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-charcoal truncate">
-                          {token.name}
-                        </p>
-                        <p className="text-[10px] text-stone-gray">
-                          ({Math.round(token.position.x)}, {Math.round(token.position.y)})
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleTokenVisibilityToggle(token)}
-                      disabled={isToggling}
-                      className={`shrink-0 p-2 rounded-cozy transition-colors ${
-                        token.visible
-                          ? 'text-brand-ink hover:bg-moss-green/10'
-                          : 'text-stone-gray hover:bg-stone-gray/10'
-                      }`}
-                      title={token.visible ? 'Hide token' : 'Show token'}
-                    >
-                      {isToggling ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : token.visible ? (
-                        <Eye className="w-4 h-4" />
-                      ) : (
-                        <EyeOff className="w-4 h-4" />
-                      )}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
-        {/* Info note */}
-        <div className="glass-panel px-4 py-3 bg-spirit-purple/5 border-spirit-purple/20 rounded-cozy">
-          <p className="text-xs text-stone-gray leading-relaxed">
-            The spirit realm image overlay is set per map in the Map Library.
-            Move tokens between the spirit realm and material plane by right-clicking
-            them on the canvas. Tokens in the spirit realm are invisible to players
-            who cannot see the spirit realm.
-          </p>
+      <Sep />
+      <GroupHeading>For everyone on this scene</GroupHeading>
+      {!viewedMap ? (
+        <Help>No scene is loaded.</Help>
+      ) : spiritTokens.length === 0 ? (
+        <Help>No tokens are in the spirit realm on this scene.</Help>
+      ) : (<>
+        <Caption>{`Spirits in the realm (${spiritTokens.length})`}</Caption>
+        {/* Its own scroll, at most 3 rows tall, so the card stays shorter than the map. */}
+        <div role="group" aria-label="Spirits in the realm" tabIndex={0} className="flex max-h-[12.25rem] pointer-coarse:max-h-[14.5rem] shrink-0 flex-col gap-2 overflow-y-auto overscroll-contain rounded-xl border border-ink/10 p-2 focus-visible:outline-2 focus-visible:outline-brand">
+          {spiritTokens.map((token) => (
+            <Binary
+              key={token.id}
+              label={token.name}
+              off="Hidden"
+              on="Shown"
+              value={token.visible}
+              disabled={tokenTogglingIds.has(token.id)}
+              onChange={(shown) => { if (shown !== token.visible) void handleTokenVisibilityToggle(token); }}
+            />
+          ))}
         </div>
-      </div>
-    </SlideOver>
+      </>)}
+      <Help>Send a token here from its menu: Send to Spirit Realm.</Help>
+    </>
   );
 }

@@ -5,8 +5,8 @@
 // HTML Canvas-based map viewer with zoom/pan controls
 // ============================================
 
-import { useEffect, useEffectEvent, useId, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { ZoomIn, ZoomOut, Maximize2, Grid3x3, Palette, Ghost, Ruler, Zap, MapPin, Pencil, Paintbrush, Eye, Move, Layers, ScanEye, Settings2 } from 'lucide-react';
+import { useEffect, useEffectEvent, useId, useLayoutEffect, useRef, useState, useCallback, useMemo, type ReactNode } from 'react';
+import { ZoomIn, ZoomOut, Maximize2, Grid3x3, Ghost, Ruler, Zap, MapPin, Pencil, Paintbrush, Eye, Layers, ScanEye, ChevronRight } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { useTableChrome } from '@/stores/tableChromeStore';
 import TopBarMenu, { MenuHeading, MenuRow, MenuSeparator } from './TopBarMenu';
@@ -69,6 +69,7 @@ import {
   type LightingComposite,
   type Viewport,
   gridFrame,
+  gridLookOf,
   viewportGrid,
   viewportFrame,
 } from './map/layers';
@@ -140,7 +141,8 @@ import { ROTATION_STEP, turned } from '@/utils/tokenRotation';
 import { createTokenTurns } from './map/tokenTurns';
 import { tokenMenuHasItems, tokenMenuItems, type TokenMenuActions, type TokenMenuView } from './map/tokenMenuItems';
 import { doorMenuItems } from './map/doorMenuItems';
-import { gridColorLabel, rulerColorLabel, type MapControlsActions } from './map/mapControlItems';
+import { GRID_SWATCHES, GRID_WIDTHS, placeFreelyShown, RULER_COLOURS, shownRailCard, type MapControlsActions, type RailCardKey } from './map/mapControlItems';
+import { BesideRail, Binary, Caption, CardButton, CardSelect, CardTabs, ColourGrid, GroupHeading, Help, RailCard, Seg, Sep, Slider } from './map/cardParts';
 import { tokenCopyRequest, clampTokenPosition, copyController, mayPlaceFreely } from '@/utils/tokenCopy';
 import { apiErrorMessage, errorSummary } from '@/utils/errors';
 import { useRenderLoop, type MapLayer } from './map/useRenderLoop';
@@ -162,7 +164,8 @@ import GmWallControls, { type WallToolMode } from '@/components/campaign/GmWallC
 import GmLightControls, { type LightToolMode } from '@/components/campaign/GmLightControls';
 import GmToolPanelContainer from '@/components/campaign/GmToolPanelContainer';
 import DrawControls, { type DrawControlsProps, type MemberDrawings } from '@/components/campaign/DrawControls';
-import DrawStrip from '@/components/campaign/DrawStrip';
+import SpiritLayerControls from '@/components/campaign/SpiritLayerControls';
+import EditMapModal from '@/components/campaign/EditMapModal';
 import PaintControls from '@/components/campaign/PaintControls';
 import PaintStrip from '@/components/campaign/PaintStrip';
 import { PaintLeaveQuestion, PaintLeftoverQuestion, PaintSaveQuestion } from '@/components/campaign/PaintQuestions';
@@ -184,7 +187,7 @@ import { anyMenuShown, menuOpened, menuShown, whenMenuOpens } from '@/components
 import '@/styles/spirit-effects.css';
 import { mapImageState, pictureFor, PICTURE_DECODE_WAIT_MS, type LoadedPicture } from './map/mapImageState';
 import { useTokenImages } from './map/useTokenImages';
-import { useTopBand, useMeasuredBottom, useMeasuredHeight, BAND_GAP } from './map/toolbarLayout';
+import { useTopBand, useMeasuredHeight, BAND_GAP } from './map/toolbarLayout';
 import { playedGameSystem } from '@/constants/game-systems';
 
 /** Returns the accent color for the spirit layer style string. Used for spirit token ring. */
@@ -199,6 +202,8 @@ function getSpiritAccentColor(style: string | null | undefined): string {
 
 /** What the ruler says to a player with no token of theirs on the map. */
 const RULER_NEEDS_TOKEN = 'Place your character token on the map to use the ruler';
+/** Snapping as two segments, the grid first. */
+const GRID_OR_OFF = [{ value: true, label: 'Grid' }, { value: false, label: 'Off' }];
 
 /**
  * What a lit map says to a player who controls no token on the plane they
@@ -234,15 +239,13 @@ interface MapCanvasProps {
   onEditToken?: (token: Token) => void;
   /** The ? key: the page shows the keyboard shortcuts window, which it holds. */
   onShowShortcuts?: () => void;
-  /** The GM's Spirit Layer slide-over, which the page holds; offered by the rail's Spirit Layer cell. */
-  onOpenSpiritLayer?: () => void;
 }
 
-export default function MapCanvas({ onEditToken, onShowShortcuts, onOpenSpiritLayer }: MapCanvasProps) {
+export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasProps) {
   // `currentMap` here is the map this page shows (viewedMap): the table's,
   // or one the GM is preparing. Every emit, request and filter below is for
   // it; the table's own map is the context's to follow (receiveTableMap).
-  const { viewedMap: currentMap, isPreparing, receiveTableMap, updateMap, registerViewedMapGuard, userRole, campaign, updateCampaignSpiritLayer, gmViewBothPlanes, playerSpiritVisible, setPlayerSpiritVisible, activeVibeEffect, updateVibe, activeAtmosphereEffect } = useCampaign();
+  const { viewedMap: currentMap, isPreparing, receiveTableMap, updateMap, upsertCampaignMap, registerViewedMapGuard, userRole, campaign, updateCampaignSpiritLayer, gmViewBothPlanes, playerSpiritVisible, setPlayerSpiritVisible, activeVibeEffect, updateVibe, activeAtmosphereEffect } = useCampaign();
   const characterHpCache = useCharacterHp();
   // Live token state comes from the game store, not the campaign context —
   // socket handlers write there directly (outside React), and this
@@ -310,7 +313,6 @@ export default function MapCanvas({ onEditToken, onShowShortcuts, onOpenSpiritLa
 
   // State
   const [showGrid, setShowGrid] = useState(true);
-  const [gridColor, setGridColor] = useState<'black' | 'white'>('black');
   const [hoverCoords, setHoverCoords] = useState<{ x: number; y: number } | null>(null);
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
   // The screen's pixel ratio, as the browser reports it. It changes with the
@@ -392,6 +394,10 @@ export default function MapCanvas({ onEditToken, onShowShortcuts, onOpenSpiritLa
   const [pingArmed, setPingArmed] = useState(false);
   /** On the compact layout: Tools is on, and the GM's tool stack shows. */
   const [toolsShown, setToolsShown] = useState(false);
+  // GM tools' tab while no tool of theirs is armed (an armed tool shows its own).
+  const [gmTab, setGmTab] = useState<'fog' | 'walls' | 'lights'>('fog');
+  // Edit scene, opened at the grid from the grid popover's Grid settings….
+  const [gridSettingsOpen, setGridSettingsOpen] = useState(false);
   const drawButtonRef = useRef<HTMLButtonElement>(null);
   // The wide layout's rail: which cell's popover is open, its GM tools cell,
   // the one-time hint on a touch screen, and where the top bar takes the
@@ -597,7 +603,11 @@ export default function MapCanvas({ onEditToken, onShowShortcuts, onOpenSpiritLa
   }, []);
   // The draw tool, null while Draw is put away, and how the next drawing looks.
   const [drawKind, setDrawKind] = useState<DrawToolKind | null>(null);
-  const [drawSettings, setDrawSettings] = useState<DrawSettings>(DEFAULT_DRAW_SETTINGS);
+  // The colour '' until one is picked: new drawings and the laser start in
+  // the user's player colour, the one their pings have (utils/playerColor.ts).
+  const [drawSettings, setDrawSettings] = useState<DrawSettings>({ ...DEFAULT_DRAW_SETTINGS, color: '' });
+  const playerColour = playerColor(user?.id ?? '');
+  const drawLook: DrawSettings = drawSettings.color ? drawSettings : { ...drawSettings, color: playerColour };
 
   // Right-mouse button panning while a GM tool is active (left-click is reserved for tools)
   const rightPanActiveRef = useRef(false);
@@ -835,7 +845,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts, onOpenSpiritLa
     [mapDrawings.drawings, isGM, previewing],
   );
   const drawTool = useDrawTool({
-    kind: drawKind, setKind: setDrawKind, settings: drawSettings, mapId: currentMap?.id, gridSize: currentMap?.gridSize ?? 50,
+    kind: drawKind, setKind: setDrawKind, settings: drawLook, mapId: currentMap?.id, gridSize: currentMap?.gridSize ?? 50,
     role: userRole, userId: user?.id, drawnDrawings: drawingsShown, mapControls, markDirty, drawings: mapDrawings,
     hoverAt: () => hoverMapPxRef.current, hint: (message) => showToast(message, 'info'),
   });
@@ -1690,14 +1700,18 @@ export default function MapCanvas({ onEditToken, onShowShortcuts, onOpenSpiritLa
     // in Edit Map or a control panel reaches every client at once.
     // Only the flags change, on the map as it is now: spreading the map this
     // listener captured put back a picture or grid size edited since.
-    const handleSettingsUpdated = (data: { mapId: string; lightingEnabled: boolean; fogEnabled: boolean; globalIllumination: boolean; explorationEnabled: boolean }) => {
-      // The table's map or the one being prepared, whichever it names.
+    const handleSettingsUpdated = (data: { mapId: string; lightingEnabled: boolean; fogEnabled: boolean; globalIllumination: boolean; explorationEnabled: boolean } & Pick<CampaignMap, 'gridColor' | 'gridOpacity' | 'gridLineWidth'>) => {
+      // The table's map or the one being prepared, whichever it names. The
+      // grid's look is absent from an older server's payload: kept as it is.
       updateMap(data.mapId, (latest) => ({
         ...latest,
         lightingEnabled: data.lightingEnabled,
         fogEnabled: data.fogEnabled,
         globalIllumination: data.globalIllumination,
         explorationEnabled: data.explorationEnabled,
+        gridColor: data.gridColor ?? latest.gridColor,
+        gridOpacity: data.gridOpacity ?? latest.gridOpacity,
+        gridLineWidth: data.gridLineWidth ?? latest.gridLineWidth,
       }));
     };
 
@@ -2100,7 +2114,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts, onOpenSpiritLa
 
       // 2. Grid overlay
       if (showGrid) {
-        drawGrid(ctx, { gridColor, visible }, viewport);
+        drawGrid(ctx, { ...gridLookOf(currentMap), visible }, viewport);
       }
 
       // 3. The GM's translucent fog, under the spirit layer and tokens so they
@@ -2128,7 +2142,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts, onOpenSpiritLa
         }, viewport);
       }
     });
-  }, [mist, currentMap, terrainSource, paint.on, mapControls.panOffset, mapControls.zoom, dpr, userRole, campaign?.spiritLayerEnabled, playerSpiritVisible, gmViewBothPlanes, showGrid, gridColor, effectiveFogState, previewing, previewedPlane, spiritLayerImage, spiritLayerOpacity, isGM, revealOpacityRef, canvasSize.width, canvasSize.height, mapDrawings.drawings, drawingCache]);
+  }, [mist, currentMap, terrainSource, paint.on, mapControls.panOffset, mapControls.zoom, dpr, userRole, campaign?.spiritLayerEnabled, playerSpiritVisible, gmViewBothPlanes, showGrid, effectiveFogState, previewing, previewedPlane, spiritLayerImage, spiritLayerOpacity, isGM, revealOpacityRef, canvasSize.width, canvasSize.height, mapDrawings.drawings, drawingCache]);
 
   /**
    * Draw the TOKENS layer (middle canvas): every token + the drag ghost.
@@ -2512,7 +2526,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts, onOpenSpiritLa
   // Terrain-only content.
   useEffect(() => {
     markDirty('terrain');
-  }, [markDirty, showGrid, gridColor, effectiveFogState, previewing, previewedPlane, spiritLayerImage, spiritLayerOpacity, mapDrawings.drawings]);
+  }, [markDirty, showGrid, currentMap?.gridColor, currentMap?.gridOpacity, currentMap?.gridLineWidth, effectiveFogState, previewing, previewedPlane, spiritLayerImage, spiritLayerOpacity, mapDrawings.drawings]);
 
   // Spirit flags affect the base/spirit images (terrain) and spirit-token
   // alpha (tokens).
@@ -4281,23 +4295,20 @@ export default function MapCanvas({ onEditToken, onShowShortcuts, onOpenSpiritLa
     ? `Selected ${tokenDisplayName(selectedToken)}, square ${Math.round(selectedToken.position.x)}, ${Math.round(selectedToken.position.y)}`
     : '';
 
-  // The toolbar buttons that say what they show now: the tooltip and the
-  // name a screen reader hears.
-  const gridColorName = gridColorLabel(gridColor);
-  const rulerColorName = rulerColorLabel(rulerColor);
-  const spiritTokensLabel = gmShowSpiritTokens ? 'Spirit tokens shown, click to hide' : 'Spirit tokens hidden — click to show';
-  // What the rail's cells and popovers do.
+  /** Opening one of the rail's cards puts the others away, so one card shows beside the rail. */
+  const putRailCardsAway = (keep: RailCardKey) => {
+    if (keep !== 'draw') setDrawKind(null);
+    if (keep !== 'measure' && keep !== 'aoe') putRulerAway();
+    if (keep !== 'gm' && stackShown) hideTools();
+    if (keep !== 'spirit') setRailPopover((open) => (open === 'spirit' ? null : open));
+  };
+  // What the rail's cells do.
   const mapControlActions: MapControlsActions = {
     fit: () => mapControls.fitToScreen(canvasSize.width, canvasSize.height, fillFit, fitFocus()),
-    toggleGrid: () => setShowGrid((prev) => !prev),
-    nextGridColor: () => setGridColor((prev) => (prev === 'black' ? 'white' : 'black')),
-    toggleRuler: () => { setDrawKind(null); handleToggleRuler(); },
-    nextRulerColor: () => setRulerColor((prev) => prev === 'amber' ? 'purple' : prev === 'purple' ? 'black' : 'amber'),
-    toggleAoE: () => { setDrawKind(null); handleToggleAoE(); },
-    toggleSpiritTokens: () => setGmShowSpiritTokens((prev) => !prev),
+    toggleRuler: () => { if (!showRuler) putRailCardsAway('measure'); handleToggleRuler(); },
+    toggleAoE: () => { if (!showAoE) putRailCardsAway('aoe'); handleToggleAoE(); },
     toggleTools: () => (stackShown ? hideTools() : showTools()),
     togglePaint: () => togglePaint(),
-    togglePlaceFreely: () => setPlaceFreely((on) => !on),
   };
 
   // A sheet's Place area (utils/spells.ts): the AoE tool opens, filled from the spell.
@@ -4312,18 +4323,10 @@ export default function MapCanvas({ onEditToken, onShowShortcuts, onOpenSpiritLa
     return () => window.removeEventListener(PLACE_SPELL_AREA_EVENT, place);
   }, []);
   // Place freely is offered to the GM on a square map whose tokens snap; elsewhere the map decides alone.
-  const placeFreelyOffered = isGM && !!currentMap && currentMap.snapTokens !== false && !isHexGrid(gridFrame(currentMap));
-  const placeFreelyLabel = placeFreely ? 'Place freely: on — tokens you move stop between squares' : 'Place freely: off — hold Alt, or press to stop tokens between squares';
-  // Where the Put back bar starts: null keeps its place under one row of a
-  // mouse's buttons. The compact layout's band spans the map, so it starts
-  // under the band there. The AoE panel starts under the band with every
-  // pointer, and while both show, under the bar, which would otherwise lie
-  // over its shape buttons.
-  // On the wide layout there is no toolbar on the map: 8 px under its top.
+  const placeFreelyOffered = placeFreelyShown({ isGM, hasMap: !!currentMap, snapTokens: currentMap?.snapTokens, hex: !!currentMap && isHexGrid(gridFrame(currentMap)), paintOn: paint.on });
+  // Where the Put back bar starts: 8 px under the map's top.
   const underToolbar = BAND_GAP;
   const putBackShown = draggedToken !== null && putBackOffered && !fingerCarrying;
-  const heldBarBottom = useMeasuredBottom(heldBarRef, containerRef, putBackShown, underToolbar);
-  const aoeTop = heldBarBottom !== null ? heldBarBottom + BAND_GAP : BAND_GAP;
 
   /**
    * Open Draw with the pen, putting away what would take its presses (a GM
@@ -4338,8 +4341,9 @@ export default function MapCanvas({ onEditToken, onShowShortcuts, onOpenSpiritLa
     setSelectedLightId(null);
     putRulerAway();
     if (draggedToken) cancelHold();
-    // On the compact layout the strip and the stack take turns.
-    if (compact) setToolsShown(false);
+    // One card beside the rail (a strip on a phone) at a time.
+    setToolsShown(false);
+    setRailPopover(null);
     setDrawKind(eraseOnly ? 'eraser' : 'pen');
   };
   /**
@@ -4366,7 +4370,8 @@ export default function MapCanvas({ onEditToken, onShowShortcuts, onOpenSpiritLa
     setSelectedWallIds(new Set());
     setHoverToken(null);
     setGmPreviewPlayerView(false);
-    if (compact) setToolsShown(false);
+    setToolsShown(false);
+    setRailPopover(null);
     // The lighting's map-sized canvases are drawn for a preview alone, and
     // made again when one is next on: their memory goes to the picture.
     for (const ref of [lightingOffscreenRef, lightCoverageOffscreenRef, lightOnlyOffscreenRef, memoryMaskOffscreenRef, memoryOffscreenRef]) {
@@ -4415,6 +4420,8 @@ export default function MapCanvas({ onEditToken, onShowShortcuts, onOpenSpiritLa
   /** Tools on: the stack shows, and Draw is put away, as a GM tool puts it away. */
   const showTools = () => {
     setDrawKind(null);
+    putRulerAway();
+    setRailPopover(null);
     setToolsShown(true);
   };
   /** Tools off: the stack hides, and takes its armed tool with it. */
@@ -4465,7 +4472,8 @@ export default function MapCanvas({ onEditToken, onShowShortcuts, onOpenSpiritLa
   const drawPanel: DrawControlsProps | null = drawKind && {
     kind: drawKind,
     onKindChange: setDrawKind,
-    settings: drawSettings,
+    settings: drawLook,
+    playerColour,
     onSettingsChange: (patch) => setDrawSettings((prev) => ({ ...prev, ...patch })),
     isGM,
     onlyErase: eraseOnly,
@@ -4560,7 +4568,353 @@ export default function MapCanvas({ onEditToken, onShowShortcuts, onOpenSpiritLa
   const railTwoCol = railTwoColumns(railGroups, railCellPx, shownMapHeight);
   const railPx = railWidth(railTwoCol ? 2 : 1, coarsePointer ? 44 : 40) * rootScale;
   const zoomCenter = { x: canvasSize.width / 2, y: canvasSize.height / 2 };
+  // GM tools' tabs, the card's body (the GM tools cell; on a phone a strip).
+  const gmToolsBody = (tab: 'fog' | 'walls' | 'lights') => {
+    if (!currentMap) return null;
+    if (tab === 'fog') return (
+      <GmFogControls
+        fogMode={fogMode}
+        fogShape={fogShape}
+        onFogShapeChange={setFogShape}
+        brushSquares={fogBrushSquares}
+        onBrushSquaresChange={setFogBrushSquares}
+        fogEnabled={fogEnabled}
+        onResetExploration={(currentMap.lightingEnabled ?? false) && explorationEnabled
+          ? () => { socket?.getSocket()?.emit('exploration:reset', { mapId: currentMap.id }); }
+          : undefined}
+        onFogEnabledChange={async (enabled) => {
+          if (!campaign || !currentMap) return;
+          // Shown at once; the settings broadcast confirms it for every
+          // client, this one included. Put back if the save fails.
+          // On the map on screen, which may be one being prepared: the
+          // table stays where it is.
+          const { id: mapId, fogEnabled: before } = currentMap;
+          updateMap(mapId, (latest) => ({ ...latest, fogEnabled: enabled }));
+          if (!enabled) { setFogMode(null); cancelFogDrag(); }
+          try {
+            await mapService.updateMap(campaign.id, mapId, { fogEnabled: enabled });
+          } catch (err) {
+            // Say why: a map stored larger than the size limits is
+            // refused fog, and the box would otherwise just untick.
+            updateMap(mapId, (latest) => ({ ...latest, fogEnabled: before }));
+            showToast(apiErrorMessage(err) || 'Could not change fog of war for this map', 'error');
+          }
+        }}
+        onFogModeChange={(mode) => {
+          setFogMode(mode);
+          // Deactivate wall/light tools when switching to fog tool
+          if (mode) {
+            setDrawKind(null);
+            setWallMode(null);
+            setLightMode(null);
+            setSelectedLightId(null);
+            setSelectedWallIds(new Set());
+          }
+        }}
+        onRevealAll={() => {
+          const socketInstance = socket?.getSocket();
+          if (socketInstance && currentMap) {
+            socketInstance.emit('fog:operation', { mapId: currentMap.id, operation: { op: 'reveal_all' } });
+          }
+          setFogState((prev) => prev ? { ...prev, revealed: new Array(prev.revealed.length).fill(true) } : prev);
+        }}
+        onHideAll={() => {
+          const socketInstance = socket?.getSocket();
+          if (socketInstance && currentMap) {
+            socketInstance.emit('fog:operation', { mapId: currentMap.id, operation: { op: 'hide_all' } });
+          }
+          setFogState((prev) => prev ? { ...prev, revealed: new Array(prev.revealed.length).fill(false) } : prev);
+        }}
+      />
+    );
+    if (tab === 'walls') return (
+      <GmWallControls
+        {...wallPanel}
+        onWallModeChange={(mode) => {
+          wallPanel.onWallModeChange(mode);
+          // Deactivate fog/light tools when switching to wall tool
+          if (mode) { setFogMode(null); setLightMode(null); setSelectedLightId(null); setDrawKind(null); }
+        }}
+      />
+    );
+    return (
+      <GmLightControls
+        lightMode={lightMode}
+        onLightModeChange={(mode) => {
+          setLightMode(mode);
+          if (mode !== 'light-select') setSelectedLightId(null);
+          // Deactivate wall/fog tools when switching to light tool
+          if (mode) { setWallMode(null); setFogMode(null); setDrawKind(null); }
+        }}
+        lightCount={lightSources.length}
+        onClearAll={() => {
+          setLightSources([]);
+          setSelectedLightId(null);
+          const socketInstance = socket?.getSocket();
+          if (socketInstance && currentMap) {
+            socketInstance.emit('lights:replace', ownEdits.tag({ mapId: currentMap.id, lights: [] }));
+          }
+        }}
+        selectedLight={selectedLightId ? lightSources.find((l) => l.id === selectedLightId) ?? null : null}
+        onSelectedLightChange={(updated) => {
+          setLightSources((prev) => prev.map((l) => l.id === updated.id ? updated : l));
+          const socketInstance = socket?.getSocket();
+          if (socketInstance && currentMap) {
+            socketInstance.emit('light:update', ownEdits.tag({ mapId: currentMap.id, light: updated }));
+          }
+        }}
+        onDeleteSelected={() => {
+          if (!selectedLightId || !currentMap) return;
+          setLightSources((prev) => prev.filter((l) => l.id !== selectedLightId));
+          const socketInstance = socket?.getSocket();
+          if (socketInstance) {
+            socketInstance.emit('light:remove', ownEdits.tag({ mapId: currentMap.id, lightId: selectedLightId }));
+          }
+          setSelectedLightId(null);
+        }}
+        lightingEnabled={currentMap.lightingEnabled ?? false}
+        globalIllumination={currentMap.globalIllumination ?? true}
+        onGlobalIlluminationChange={async (on) => {
+          if (!campaign) return;
+          const { id: mapId, globalIllumination: before } = currentMap;
+          updateMap(mapId, (latest) => ({ ...latest, globalIllumination: on }));
+          try {
+            await mapService.updateMap(campaign.id, mapId, { globalIllumination: on });
+          } catch (err) {
+            updateMap(mapId, (latest) => ({ ...latest, globalIllumination: before }));
+            showToast(apiErrorMessage(err) || 'Could not change Global Illumination', 'error');
+          }
+        }}
+        placementDefaults={lightPlacementDefaults}
+        onDefaultsChange={setLightPlacementDefaults}
+      />
+    );
+  };
   const closeRailPopover = () => setRailPopover(null);
+  // ── The scene's grid look and snapping, for everyone (the map's fields):
+  // shown at once, saved, put back with a reason if refused. The opacity
+  // slider is saved once it rests, not at every step of a drag.
+  type SceneGridPatch = Partial<Pick<CampaignMap, 'gridColor' | 'gridOpacity' | 'gridLineWidth' | 'snapTokens'>>;
+  const saveSceneGrid = async (patch: SceneGridPatch, before: SceneGridPatch) => {
+    if (!campaign || !currentMap) return;
+    const mapId = currentMap.id;
+    try {
+      await mapService.updateMap(campaign.id, mapId, patch);
+    } catch (err) {
+      updateMap(mapId, (latest) => ({ ...latest, ...before }));
+      showToast(apiErrorMessage(err) || 'Could not change the grid for this scene', 'error');
+    }
+  };
+  const setSceneGrid = (patch: SceneGridPatch) => {
+    if (!currentMap) return;
+    const before = Object.fromEntries(Object.keys(patch).map((k) => [k, currentMap[k as keyof SceneGridPatch]])) as SceneGridPatch;
+    updateMap(currentMap.id, (latest) => ({ ...latest, ...patch }));
+    void saveSceneGrid(patch, before);
+  };
+  const opacitySave = useRef<{ timer: ReturnType<typeof setTimeout>; before: number | undefined } | null>(null);
+  useEffect(() => () => { if (opacitySave.current) clearTimeout(opacitySave.current.timer); }, []);
+  const setSceneGridOpacity = (opacity: number) => {
+    if (!currentMap) return;
+    const before = opacitySave.current?.before ?? currentMap.gridOpacity;
+    if (opacitySave.current) clearTimeout(opacitySave.current.timer);
+    updateMap(currentMap.id, (latest) => ({ ...latest, gridOpacity: opacity }));
+    opacitySave.current = { before, timer: setTimeout(() => { opacitySave.current = null; void saveSceneGrid({ gridOpacity: opacity }, { gridOpacity: before }); }, 300) };
+  };
+  const gridLook = currentMap ? gridLookOf(currentMap) : null;
+  const gridPopover = (
+    <div className="flex flex-col gap-2 px-4 pt-3 pb-2">
+      <GroupHeading>Only on your screen</GroupHeading>
+      <Binary label="Grid" off="Hidden" on="Shown" value={showGrid} onChange={setShowGrid} />
+      {placeFreelyOffered && (<>
+        <Binary label="Place freely" value={placeFreely} onChange={setPlaceFreely} />
+        <Help>On: tokens you move stop between squares, as with Alt held.</Help>
+      </>)}
+      {isGM && currentMap && gridLook && (<>
+        <Sep wide />
+        <GroupHeading>For everyone on this scene</GroupHeading>
+        <ColourGrid label="Line colour" swatches={GRID_SWATCHES} value={gridLook.color} onChange={(gridColor) => setSceneGrid({ gridColor })} hex={false} />
+        <Slider label="Opacity" valueText={`${Math.round(gridLook.opacity * 100)} %`} min={10} max={100} step={5} value={Math.round(gridLook.opacity * 100)} onChange={(pct) => setSceneGridOpacity(pct / 100)} />
+        <Seg label="Line width" options={GRID_WIDTHS.map((w) => ({ value: w.value, label: w.label }))} value={gridLook.lineWidth} onChange={(v) => v && setSceneGrid({ gridLineWidth: v as 1 | 2 | 3 })} />
+        <Seg label="Snap tokens" options={GRID_OR_OFF} value={currentMap.snapTokens !== false} onChange={(v) => v !== null && setSceneGrid({ snapTokens: v })} />
+        <Help>Grid: everyone&apos;s tokens stop on squares. Off: they go anywhere.</Help>
+        <button
+          type="button"
+          onClick={() => { closeRailPopover(); setGridSettingsOpen(true); }}
+          className="-mx-4 flex min-h-10 pointer-coarse:min-h-11 items-center justify-between px-4 text-left text-sm text-ink hover:bg-ink/5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand"
+        >
+          Grid settings…
+          <ChevronRight className="size-4 text-ink-muted" aria-hidden="true" />
+        </button>
+      </>)}
+    </div>
+  );
+  // ── The cards beside the rail (on a phone, strips at the map's foot); one at a time.
+  const railCard = currentMap ? shownRailCard({
+    draw: drawPanel !== null,
+    measure: showRuler,
+    aoe: showAoE,
+    spirit: isGM && railPopover === 'spirit',
+    gm: isGM && stackShown && !(compact && paint.on),
+  }) : null;
+  const gmTabShown = gmTool ? ({ fog: 'fog', wall: 'walls', light: 'lights' } as const)[gmTool.kind] : gmTab;
+  const measureBody = (
+    <>
+      <ColourGrid
+        label="Colour"
+        swatches={RULER_COLOURS.map((c) => ({ name: c.name, value: c.swatch }))}
+        value={RULER_COLOURS.find((c) => c.value === rulerColor)?.swatch ?? ''}
+        valueName={RULER_COLOURS.find((c) => c.value === rulerColor)?.name}
+        onChange={(swatch) => { const c = RULER_COLOURS.find((x) => x.swatch === swatch); if (c) setRulerColor(c.value); }}
+        hex={false}
+        custom={false}
+      />
+      <Help>{rulerNeedsToken ? RULER_NEEDS_TOKEN : isGM ? 'Drag across the map to measure.' : 'Point at a square to measure from your token to it.'}</Help>
+    </>
+  );
+  const aoeSizeLabel = aoeConfig.shape === 'sphere' || aoeConfig.shape === 'cylinder' ? 'Radius' : aoeConfig.shape === 'cube' ? 'Side' : 'Length';
+  const aoeAims = aoeConfig.shape === 'cone' || aoeConfig.shape === 'line';
+  const aoeBody = (
+    <>
+      {campaign && <SpellAreaPicker campaignId={campaign.id} onPick={applySpellAoE} />}
+      <CardSelect label="Shape" value={aoeConfig.shape} onChange={(shape) => { setAoEConfig((prev) => ({ ...prev, shape: shape as AoEShape })); setAreaSpellId(null); }}>
+        {(['sphere', 'cylinder', 'cone', 'line', 'cube'] as AoEShape[]).map((shape) => (
+          <option key={shape} value={shape}>{shape === 'sphere' ? 'Circle' : shape.charAt(0).toUpperCase() + shape.slice(1)}</option>
+        ))}
+      </CardSelect>
+      <Caption>{`${aoeSizeLabel} (ft)`}</Caption>
+      <input
+        type="number"
+        min={5}
+        max={500}
+        step={5}
+        value={aoeConfig.sizeFt}
+        onChange={(e) => setAoEConfig((prev) => ({ ...prev, sizeFt: Math.max(5, parseInt(e.target.value) || 5) }))}
+        aria-label={`${aoeSizeLabel} in feet`}
+        className="input-cozy h-10 pointer-coarse:h-11 w-full shrink-0 text-sm pointer-coarse:text-base"
+      />
+      <div role="group" aria-label="Sizes" className="grid shrink-0 grid-cols-5 gap-1">
+        {[10, 15, 20, 30, 60].map((ft) => (
+          <CardButton key={ft} onClick={() => setAoEConfig((prev) => ({ ...prev, sizeFt: ft }))} pressed={aoeConfig.sizeFt === ft}>{`${ft} ft`}</CardButton>
+        ))}
+      </div>
+      {aoeConfig.shape === 'line' && (<>
+        <Caption>Width (ft)</Caption>
+        <input
+          type="number"
+          min={5}
+          max={100}
+          step={5}
+          value={aoeConfig.widthFt ?? 5}
+          onChange={(e) => setAoEConfig((prev) => ({ ...prev, widthFt: Math.max(5, parseInt(e.target.value) || 5) }))}
+          aria-label="Width in feet"
+          className="input-cozy h-10 pointer-coarse:h-11 w-full shrink-0 text-sm pointer-coarse:text-base"
+        />
+      </>)}
+      {/* Alt's free placement, for a finger or a pen. */}
+      <Seg label="Snap" options={GRID_OR_OFF} value={aoeSnap} onChange={(v) => v !== null && setAoESnap(v)} />
+      {/* Place for everyone: a stored area the whole table sees, in an element's look. */}
+      {mayDraw && (<>
+        <Sep />
+        <Binary label="Place for everyone" value={aoePersist} onChange={(on) => { setAoEPersist(on); setAoEAnchor(null); }} />
+        {aoePersist && (<>
+          <Caption>Element</Caption>
+          <div className="relative shrink-0">
+            <i aria-hidden="true" className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 rounded-full" style={{ background: AREA_ELEMENT_STYLES[areaElement].stroke }} />
+            <select aria-label="Element" value={areaElement} onChange={(e) => setAreaElement(e.target.value as AreaElement)} className="input-cozy w-full pl-9 text-sm">
+              {AREA_ELEMENTS.map((element) => <option key={element} value={element}>{AREA_ELEMENT_STYLES[element].name}</option>)}
+            </select>
+          </div>
+          <Caption>Label</Caption>
+          <input
+            type="text"
+            value={areaLabel}
+            maxLength={AREA_LIMITS.maxLabelLength}
+            onChange={(e) => setAreaLabel(e.target.value)}
+            placeholder="Optional"
+            aria-label="Area label"
+            className="input-cozy h-10 pointer-coarse:h-11 w-full shrink-0 text-sm pointer-coarse:text-base"
+          />
+          {isGM && <Binary label="Who sees it" off="Everyone" on="Only me" value={areaGmOnly} onChange={setAreaGmOnly} />}
+        </>)}
+      </>)}
+      <Help>
+        {aoePersist
+          ? aoeAims
+            ? (aoeAnchor ? 'Click where it points to place it for everyone.' : 'Click its square, then where it points.')
+            : 'Click the map to place it for everyone.'
+          : aoeAnchor ? 'Click the map to move it.' : 'Click the map to place the shape.'}
+        {/* Cone and line pivot about the square clicked; a finger has no hover to aim with, nor an Alt key. */}
+        {aoeAims && ' ' + (aoeAnchor
+          ? (coarsePointer ? 'Drag from its square to aim it.' : 'Move the pointer to aim it round that square.')
+          : !aoeSnap ? 'Placed freely, off the grid.'
+            : coarsePointer ? 'Snap Off places it freely, off the grid.' : 'Alt+click places it freely, off the grid.')}
+      </Help>
+      {aoeAnchor && <CardButton onClick={() => setAoEAnchor(null)}>Clear placement</CardButton>}
+      {/* Clear the placed areas: the GM's every one, a player's own. */}
+      {(isGM ? mapAreas.areas.length > 0 : mapAreas.areas.some((a) => a.authorId === user?.id && mapAreas.mayErase(a))) && (<>
+        <Sep />
+        <CardButton
+          danger
+          onClick={() => {
+            if (!areaClearArmed) { setAreaClearArmed(true); return; }
+            setAreaClearArmed(false);
+            setSelectedAreaId(null);
+            mapAreas.clear();
+          }}
+          onBlur={() => setAreaClearArmed(false)}
+        >
+          {areaClearArmed ? 'Press again to clear' : isGM ? 'Clear all areas' : 'Clear my areas'}
+        </CardButton>
+      </>)}
+    </>
+  );
+  const railCardOf = (key: RailCardKey, strip: boolean): ReactNode => {
+    if (!currentMap) return null;
+    switch (key) {
+      case 'draw':
+        return drawPanel && (
+          <RailCard title="Draw" label="Drawing tools" closeLabel="Put the drawing tools away" onClose={drawPanel.onClose} strip={strip}>
+            <DrawControls {...drawPanel} />
+          </RailCard>
+        );
+      case 'measure':
+        return <RailCard title="Measure" onClose={putRulerAway} strip={strip}>{measureBody}</RailCard>;
+      case 'aoe':
+        return <RailCard title="Spell area" onClose={handleToggleAoE} strip={strip}>{aoeBody}</RailCard>;
+      case 'spirit':
+        return (
+          <RailCard title="Spirit Layer" icon={Ghost} onClose={closeRailPopover} strip={strip}>
+            <SpiritLayerControls spiritTokensShown={gmShowSpiritTokens} onSpiritTokensShownChange={setGmShowSpiritTokens} />
+          </RailCard>
+        );
+      case 'gm':
+        return (
+          <RailCard
+            title="GM tools"
+            onClose={() => { hideTools(); gmToolsButtonRef.current?.focus({ preventScroll: true }); }}
+            strip={strip}
+            tabs={(
+              <CardTabs
+                label="GM tools"
+                value={gmTabShown}
+                onChange={(tab) => { if (tab !== gmTabShown) { putGmToolAway(); setGmTab(tab); } }}
+                tabs={[
+                  { value: 'fog', label: 'Fog', tour: 'fog' },
+                  { value: 'walls', label: wallPanel.wallCount > 0 ? `Walls (${wallPanel.wallCount})` : 'Walls', tour: 'walls' },
+                  { value: 'lights', label: lightSources.length > 0 ? `Lights (${lightSources.length})` : 'Lights', tour: 'lights' },
+                ]}
+              />
+            )}
+          >
+            {gmToolsBody(gmTabShown)}
+          </RailCard>
+        );
+    }
+  };
+  // Beside the rail on the wide layout and a tablet, inside the cell's box.
+  const besideCell = (key: RailCardKey) => !compact && railCard === key && (
+    <BesideRail align="bottom">{railCardOf(key, false)}</BesideRail>
+  );
   const railView = [
     ...(compact ? [
       <RailCell key="fit" label="Fit map" text={`${Math.round(mapControls.zoom * 100)}%`} onNameHeld={railHint.dismiss} onClick={mapControlActions.fit} />,
@@ -4572,64 +4926,47 @@ export default function MapCanvas({ onEditToken, onShowShortcuts, onOpenSpiritLa
         onClick={() => mapControls.zoomIn(zoomCenter)} disabled={mapControls.zoom >= mapControls.maxZoom} />,
       <RailCell key="fit" label="Fit map" icon={Maximize2} onNameHeld={railHint.dismiss} onClick={mapControlActions.fit} />,
     ]),
-    // Pressed while the grid shows; opens the grid's popover (PR C redesigns its rows).
+    // Pressed while the grid shows; opens the grid's popover: the GM's top-aligned with the cell, a player's short one above it.
     <RailCell key="grid" label="Grid" icon={Grid3x3} tour="grid" lit={showGrid} onNameHeld={railHint.dismiss}
       expanded={railPopover === 'grid'} onClick={() => setRailPopover((open) => (open === 'grid' ? null : 'grid'))}>
       {railPopover === 'grid' && (
-        <RailPopover label="Grid" onClose={closeRailPopover}>
-          <MenuHeading>Only on your screen</MenuHeading>
-          <MenuRow icon={Grid3x3} label="Toggle Grid" pressed={showGrid} keepOpen onSelect={mapControlActions.toggleGrid} />
-          {showGrid && <MenuRow icon={Palette} label={gridColorName} keepOpen onSelect={mapControlActions.nextGridColor} />}
-          {placeFreelyOffered && !paint.on && (
-            <MenuRow icon={Move} label="Place tokens freely" title={placeFreelyLabel} pressed={placeFreely} keepOpen onSelect={mapControlActions.togglePlaceFreely} />
-          )}
-        </RailPopover>
+        <BesideRail align={isGM ? 'top' : 'bottom'}>
+          <RailPopover label="Grid" onClose={closeRailPopover} className="static w-[18.5rem] max-h-full overflow-y-auto overscroll-contain py-0">
+            {gridPopover}
+          </RailPopover>
+        </BesideRail>
       )}
     </RailCell>,
   ];
   const railSpirit = isGM && (
-      <RailCell key="spirit" label="Spirit Layer" icon={Ghost} spirit expanded={railPopover === 'spirit'} onNameHeld={railHint.dismiss}
-        onClick={() => setRailPopover((open) => (open === 'spirit' ? null : 'spirit'))}>
-        {railPopover === 'spirit' && (
-          <RailPopover label="Spirit Layer" onClose={closeRailPopover}>
-            <MenuRow icon={Ghost} label={spiritTokensLabel} pressed={gmShowSpiritTokens} keepOpen onSelect={mapControlActions.toggleSpiritTokens} />
-            {onOpenSpiritLayer && (
-              <MenuRow icon={Settings2} label="Spirit Layer settings" more onSelect={() => { closeRailPopover(); onOpenSpiritLayer(); }} />
-            )}
-          </RailPopover>
-        )}
+      <RailCell key="spirit" label="Spirit Layer" icon={Ghost} spirit expanded={railCard === 'spirit'} onNameHeld={railHint.dismiss}
+        onClick={() => { if (railPopover === 'spirit') { closeRailPopover(); return; } putRailCardsAway('spirit'); setRailPopover('spirit'); }}>
+        {besideCell('spirit')}
       </RailCell>
   );
   const railTools = [
     ...(mapToolsShown ? [
       <RailCell key="ruler" label="Measure" icon={Ruler} pressed={showRuler} onNameHeld={railHint.dismiss} onClick={mapControlActions.toggleRuler}>
-        {/* The ruler's colour, beside its cell while it is on (PR C moves it into Measure's card). */}
-        {showRuler && (
-          <div className="absolute right-[calc(100%+8px)] top-0 z-30 rounded-xl border border-ink/15 bg-surface/90 p-1 shadow-lg">
-            <button
-              type="button"
-              onClick={mapControlActions.nextRulerColor}
-              title={rulerColorName}
-              aria-label={rulerColorName}
-              className="flex size-10 pointer-coarse:size-11 items-center justify-center rounded-[10px] hover:bg-ink/5 focus-visible:outline-2 focus-visible:outline-brand"
-            >
-              <Palette className={`w-4 h-4 ${rulerColor === 'purple' ? 'text-spirit-ink' : rulerColor === 'black' ? 'text-stone-gray' : 'text-accent-ink'}`} aria-hidden="true" />
-            </button>
-          </div>
-        )}
+        {besideCell('measure')}
       </RailCell>,
-      <RailCell key="aoe" label="Spell area" icon={Zap} tour="aoe" pressed={showAoE} onNameHeld={railHint.dismiss} onClick={mapControlActions.toggleAoE} />,
+      <RailCell key="aoe" label="Spell area" icon={Zap} tour="aoe" pressed={showAoE} onNameHeld={railHint.dismiss} onClick={mapControlActions.toggleAoE}>
+        {besideCell('aoe')}
+      </RailCell>,
       <RailCell key="ping" label="Ping" icon={MapPin} pressed={pingArmed} onNameHeld={railHint.dismiss} onClick={() => setPingArmed((armed) => !armed)} />,
       drawOffered && (
-        <RailCell key="draw" label="Draw" icon={Pencil} pressed={drawKind !== null} buttonRef={drawButtonRef} onNameHeld={railHint.dismiss} onClick={toggleDraw} />
+        <RailCell key="draw" label="Draw" icon={Pencil} pressed={drawKind !== null} buttonRef={drawButtonRef} onNameHeld={railHint.dismiss} onClick={toggleDraw}>
+          {besideCell('draw')}
+        </RailCell>
       ),
     ] : []),
     railSpirit,
   ];
   const railGm = [
     railGmCount > 0 && (
-      <RailCell key="gm-tools" label="GM tools" icon={Layers} tour="gm-tools" expanded={stackShown} buttonRef={gmToolsButtonRef}
-        onNameHeld={railHint.dismiss} onClick={() => (stackShown ? hideTools() : showTools())} />
+      <RailCell key="gm-tools" label="GM tools" icon={Layers} tour="gm-tools" expanded={railCard === 'gm'} buttonRef={gmToolsButtonRef}
+        onNameHeld={railHint.dismiss} onClick={() => (stackShown ? hideTools() : showTools())}>
+        {besideCell('gm')}
+      </RailCell>
     ),
   ];
   // As player ▾ in the top bar, for the GM while lighting or fog is on.
@@ -4719,6 +5056,8 @@ export default function MapCanvas({ onEditToken, onShowShortcuts, onOpenSpiritLa
   return (
     <div
       ref={containerRef}
+      // The map's box, which a card beside the rail stays inside (cardParts.tsx).
+      data-rail-area=""
       className="relative w-full h-full bg-parchment"
       style={{ opacity: isFading ? 0 : 1, transition: 'opacity 0.3s ease' }}
       onDragOver={handleDragOver}
@@ -4892,7 +5231,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts, onOpenSpiritLa
           centred={tableLayout !== 'wide'}
           bottom={railBottom}
           // Out of the way of a card or popover beside the rail.
-          hint={railHint.shown && !stackShown && !railPopover && !drawKind && !paint.on && !showRuler
+          hint={railHint.shown && !railCard && !railPopover && !paint.on
             ? <RailHint onDismiss={railHint.dismiss} /> : undefined}
         />}
       {asPlayerSlot && previewOffered && createPortal(asPlayerMenu, asPlayerSlot)}
@@ -4922,29 +5261,18 @@ export default function MapCanvas({ onEditToken, onShowShortcuts, onOpenSpiritLa
         );
       })()}
 
-      {/* The tool panels, in a stack that can be dragged: the drawing tools
-          for whoever has Draw open, then the GM's Fog, Walls and Lights. On
-          the compact layout the drawing tools are a strip in the dock at
-          the map's foot instead. */}
-      {(userRole === 'GM' || (drawPanel && !compact)) && currentMap && (
+      {/* Mapmaker's panel, in a stack that can be dragged, left of the rail
+          on the wide layout and a tablet; on a phone a strip at the map's
+          foot. The other tools' cards stand beside the rail (railCardOf). */}
+      {userRole === 'GM' && paint.on && !compact && currentMap && (
         <GmToolPanelContainer
           containerRef={containerRef}
           band={topBand}
-          label={userRole === 'GM' ? 'GM tools' : 'Tools'}
-          // The GM tools cell shows it, left of the rail; on the wide layout
-          // and a tablet Draw and Mapmaker show their own panels in it, on a
-          // phone they are strips at the map's foot.
-          hidden={compact ? !stackShown : !(stackShown || drawPanel || paint.on)}
-          onHide={compact || stackShown ? () => {
-            hideTools();
-            gmToolsButtonRef.current?.focus({ preventScroll: true });
-          } : undefined}
+          label="Mapmaker"
           corner={{ top: BAND_GAP, right: BAND_GAP + railPx + BAND_GAP }}
           // Above an open dock, and on a phone the strip and notes at the map's foot, however tall.
           roomBelow={compact && dockHeight !== null ? mapCover + dockHeight + BAND_GAP : mapCover > 0 ? mapCover + BAND_GAP : undefined}
         >
-          {/* On the compact layout Paint's tools are a strip at the map's foot instead. */}
-          {paint.on && !compact && (
             <PaintControls
               settings={paint.settings}
               onSettingsChange={(patch) => paint.setSettings((prev) => ({ ...prev, ...patch }))}
@@ -4960,134 +5288,19 @@ export default function MapCanvas({ onEditToken, onShowShortcuts, onOpenSpiritLa
               onClose={paint.close}
               selection={paint.selection}
             />
-          )}
-          {drawPanel && !compact && <DrawControls {...drawPanel} />}
-          {/* On a phone the stack is put away while Paint is on, so the map keeps room to paint on. */}
-          {userRole === 'GM' && !(compact && paint.on) && (
-          // On the wide layout only while the GM tools cell is on (or a tool armed).
-          <div hidden={!compact && !stackShown || undefined} className="flex flex-col gap-1.5 *:shrink-0">
-          <GmFogControls
-            fogMode={fogMode}
-            fogShape={fogShape}
-            onFogShapeChange={setFogShape}
-            brushSquares={fogBrushSquares}
-            onBrushSquaresChange={setFogBrushSquares}
-            fogEnabled={fogEnabled}
-            onResetExploration={(currentMap.lightingEnabled ?? false) && explorationEnabled
-              ? () => { socket?.getSocket()?.emit('exploration:reset', { mapId: currentMap.id }); }
-              : undefined}
-            onFogEnabledChange={async (enabled) => {
-              if (!campaign || !currentMap) return;
-              // Shown at once; the settings broadcast confirms it for every
-              // client, this one included. Put back if the save fails.
-              // On the map on screen, which may be one being prepared: the
-              // table stays where it is.
-              const { id: mapId, fogEnabled: before } = currentMap;
-              updateMap(mapId, (latest) => ({ ...latest, fogEnabled: enabled }));
-              if (!enabled) { setFogMode(null); cancelFogDrag(); }
-              try {
-                await mapService.updateMap(campaign.id, mapId, { fogEnabled: enabled });
-              } catch (err) {
-                // Say why: a map stored larger than the size limits is
-                // refused fog, and the box would otherwise just untick.
-                updateMap(mapId, (latest) => ({ ...latest, fogEnabled: before }));
-                showToast(apiErrorMessage(err) || 'Could not change fog of war for this map', 'error');
-              }
-            }}
-            onCollapse={() => {
-              setFogMode(null);
-              cancelFogDrag();
-            }}
-            onFogModeChange={(mode) => {
-              setFogMode(mode);
-              // Deactivate wall/light tools when switching to fog tool
-              if (mode) {
-                setDrawKind(null);
-                setWallMode(null);
-                setLightMode(null);
-                setSelectedLightId(null);
-                setSelectedWallIds(new Set());
-              }
-            }}
-            onRevealAll={() => {
-              const socketInstance = socket?.getSocket();
-              if (socketInstance && currentMap) {
-                socketInstance.emit('fog:operation', { mapId: currentMap.id, operation: { op: 'reveal_all' } });
-              }
-              setFogState((prev) => prev ? { ...prev, revealed: new Array(prev.revealed.length).fill(true) } : prev);
-            }}
-            onHideAll={() => {
-              const socketInstance = socket?.getSocket();
-              if (socketInstance && currentMap) {
-                socketInstance.emit('fog:operation', { mapId: currentMap.id, operation: { op: 'hide_all' } });
-              }
-              setFogState((prev) => prev ? { ...prev, revealed: new Array(prev.revealed.length).fill(false) } : prev);
-            }}
-          />
-          <GmWallControls
-            {...wallPanel}
-            onWallModeChange={(mode) => {
-              wallPanel.onWallModeChange(mode);
-              // Deactivate fog/light tools when switching to wall tool
-              if (mode) { setFogMode(null); setLightMode(null); setSelectedLightId(null); setDrawKind(null); }
-            }}
-          />
-          <GmLightControls
-            lightMode={lightMode}
-            onLightModeChange={(mode) => {
-              setLightMode(mode);
-              if (mode !== 'light-select') setSelectedLightId(null);
-              // Deactivate wall/fog tools when switching to light tool
-              if (mode) { setWallMode(null); setFogMode(null); setDrawKind(null); }
-            }}
-            onCollapse={() => {
-              setLightMode(null);
-              setSelectedLightId(null);
-            }}
-            lightCount={lightSources.length}
-            onClearAll={() => {
-              setLightSources([]);
-              setSelectedLightId(null);
-              const socketInstance = socket?.getSocket();
-              if (socketInstance && currentMap) {
-                socketInstance.emit('lights:replace', ownEdits.tag({ mapId: currentMap.id, lights: [] }));
-              }
-            }}
-            selectedLight={selectedLightId ? lightSources.find((l) => l.id === selectedLightId) ?? null : null}
-            onSelectedLightChange={(updated) => {
-              setLightSources((prev) => prev.map((l) => l.id === updated.id ? updated : l));
-              const socketInstance = socket?.getSocket();
-              if (socketInstance && currentMap) {
-                socketInstance.emit('light:update', ownEdits.tag({ mapId: currentMap.id, light: updated }));
-              }
-            }}
-            onDeleteSelected={() => {
-              if (!selectedLightId || !currentMap) return;
-              setLightSources((prev) => prev.filter((l) => l.id !== selectedLightId));
-              const socketInstance = socket?.getSocket();
-              if (socketInstance) {
-                socketInstance.emit('light:remove', ownEdits.tag({ mapId: currentMap.id, lightId: selectedLightId }));
-              }
-              setSelectedLightId(null);
-            }}
-            lightingEnabled={currentMap.lightingEnabled ?? false}
-            globalIllumination={currentMap.globalIllumination ?? true}
-            onGlobalIlluminationChange={async (on) => {
-              if (!campaign) return;
-              const { id: mapId, globalIllumination: before } = currentMap;
-              updateMap(mapId, (latest) => ({ ...latest, globalIllumination: on }));
-              try {
-                await mapService.updateMap(campaign.id, mapId, { globalIllumination: on });
-              } catch (err) {
-                updateMap(mapId, (latest) => ({ ...latest, globalIllumination: before }));
-                showToast(apiErrorMessage(err) || 'Could not change Global Illumination', 'error');
-              }
-            }}
-            placementDefaults={lightPlacementDefaults}
-            onDefaultsChange={setLightPlacementDefaults}
-          />
-          </div>)}
         </GmToolPanelContainer>
+      )}
+
+      {/* Edit scene, opened at the grid from the grid popover. */}
+      {isGM && gridSettingsOpen && currentMap && campaign && (
+        <EditMapModal
+          isOpen
+          atGrid
+          map={currentMap}
+          campaignId={campaign.id}
+          onClose={() => setGridSettingsOpen(false)}
+          onUpdated={(updated) => { upsertCampaignMap(updated); updateMap(updated.id, updated); }}
+        />
       )}
 
       {/* A text label being written, in a box at its point on the map. */}
@@ -5119,11 +5332,11 @@ export default function MapCanvas({ onEditToken, onShowShortcuts, onOpenSpiritLa
             left: drawTool.textBox.at[0] * mapControls.zoom + mapControls.panOffset.x,
             top: drawTool.textBox.at[1] * mapControls.zoom + mapControls.panOffset.y,
             // At least 16 pixels on a touch screen, below which iOS zooms the page to type.
-            fontSize: Math.max(coarsePointer ? 16 : 8, labelFontSize(drawSettings.width) * mapControls.zoom),
+            fontSize: Math.max(coarsePointer ? 16 : 8, labelFontSize(drawLook.width) * mapControls.zoom),
             lineHeight: 1.25,
             fontWeight: 600,
             fontFamily: "'Inter', system-ui, sans-serif",
-            color: drawSettings.color,
+            color: drawLook.color,
           }}
         />
       )}
@@ -5181,198 +5394,6 @@ export default function MapCanvas({ onEditToken, onShowShortcuts, onOpenSpiritLa
         </div>
       )}
 
-      {/* AoE panel, under the toolbar's band (top-12 until the band is
-          measured), and under Put back while that shows. */}
-      {showAoE && currentMap && (
-        <div
-          className="absolute top-12 left-2 z-10 p-3 space-y-3 w-52 shadow-xl rounded-xl border border-moss-green/30 bg-parchment/95 backdrop-blur-xs"
-          // Moved down, it keeps to the map, scrolling inside where it is
-          // taller than the room below it.
-          style={aoeTop !== null
-            ? { top: aoeTop, maxHeight: `calc(100% - ${aoeTop}px - 1rem)`, overflowY: 'auto', overscrollBehavior: 'contain' }
-            : undefined}
-        >
-          <p className="text-xs font-semibold text-brand-ink">AoE Shape</p>
-          {campaign && <SpellAreaPicker campaignId={campaign.id} onPick={applySpellAoE} />}
-
-          {/* Shape selector */}
-          <div className="flex flex-wrap gap-1.5">
-            {(['sphere', 'cylinder', 'cone', 'line', 'cube'] as AoEShape[]).map((shape) => (
-              <button
-                key={shape}
-                onClick={() => { setAoEConfig((prev) => ({ ...prev, shape })); setAreaSpellId(null); }}
-                className={`touch-target text-xs px-2 py-1 rounded border transition-colors capitalize ${
-                  aoeConfig.shape === shape
-                    ? 'bg-moss-green/15 border-moss-green/60 text-brand-ink font-medium'
-                    : 'border-stone-gray/30 text-stone-gray hover:border-moss-green/40 hover:text-brand-ink'
-                }`}
-              >
-                {shape === 'sphere' ? 'Circle' : shape.charAt(0).toUpperCase() + shape.slice(1)}
-              </button>
-            ))}
-          </div>
-
-          {/* Size input */}
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-stone-gray">
-              {aoeConfig.shape === 'sphere' || aoeConfig.shape === 'cylinder' ? 'Radius' : aoeConfig.shape === 'cube' ? 'Side' : 'Length'} (ft)
-            </label>
-            <input
-              type="number"
-              min={5}
-              max={500}
-              step={5}
-              value={aoeConfig.sizeFt}
-              onChange={(e) => setAoEConfig((prev) => ({ ...prev, sizeFt: Math.max(5, parseInt(e.target.value) || 5) }))}
-              aria-label={`${aoeConfig.shape === 'sphere' || aoeConfig.shape === 'cylinder' ? 'Radius' : aoeConfig.shape === 'cube' ? 'Side' : 'Length'} in feet`}
-              className="w-full input-cozy text-sm py-1"
-            />
-          </div>
-
-          {/* Width input (line only) */}
-          {aoeConfig.shape === 'line' && (
-            <div className="space-y-1">
-              <label className="text-xs font-medium text-stone-gray">Width (ft)</label>
-              <input
-                type="number"
-                min={5}
-                max={100}
-                step={5}
-                value={aoeConfig.widthFt ?? 5}
-                onChange={(e) => setAoEConfig((prev) => ({ ...prev, widthFt: Math.max(5, parseInt(e.target.value) || 5) }))}
-                aria-label="Width in feet"
-                className="w-full input-cozy text-sm py-1"
-              />
-            </div>
-          )}
-
-          {/* Quick-size presets */}
-          <div className="space-y-1">
-            <p className="text-xs font-medium text-stone-gray">Presets</p>
-            <div className="flex flex-wrap gap-1">
-              {[10, 15, 20, 30, 60].map((ft) => (
-                <button
-                  key={ft}
-                  onClick={() => setAoEConfig((prev) => ({ ...prev, sizeFt: ft }))}
-                  className="touch-target text-xs px-1.5 py-0.5 rounded-sm bg-moss-green/10 hover:bg-moss-green/15 text-brand-ink border border-moss-green/20 transition-colors"
-                >
-                  {ft} ft
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Alt's free placement, for a finger or a pen. */}
-          <label className="flex items-center gap-2 cursor-pointer touch-target">
-            <input
-              type="checkbox"
-              checked={aoeSnap}
-              onChange={(e) => setAoESnap(e.target.checked)}
-              className="accent-moss-green"
-            />
-            <span className="text-xs font-medium text-stone-gray">Snap to grid</span>
-          </label>
-
-          {/* Place for everyone: a stored area the whole table sees, in an element's look. */}
-          {mayDraw && (
-            <div className="space-y-2 border-t border-moss-green/20 pt-2">
-              <label className="flex items-center gap-2 cursor-pointer touch-target">
-                <input
-                  type="checkbox"
-                  checked={aoePersist}
-                  onChange={(e) => { setAoEPersist(e.target.checked); setAoEAnchor(null); }}
-                  className="accent-moss-green"
-                />
-                <span className="text-xs font-medium text-stone-gray">Place for everyone</span>
-              </label>
-              {aoePersist && (
-                <>
-                  <div role="group" aria-label="Element" className="flex flex-wrap gap-1">
-                    {AREA_ELEMENTS.map((element) => (
-                      <button
-                        key={element}
-                        type="button"
-                        aria-pressed={areaElement === element}
-                        onClick={() => setAreaElement(element)}
-                        className={`touch-target inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border transition-colors ${
-                          areaElement === element
-                            ? 'bg-moss-green/15 border-moss-green/60 text-brand-ink font-medium'
-                            : 'border-stone-gray/30 text-stone-gray hover:border-moss-green/40 hover:text-brand-ink'
-                        }`}
-                      >
-                        <span aria-hidden="true" className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: AREA_ELEMENT_STYLES[element].stroke }} />
-                        {AREA_ELEMENT_STYLES[element].name}
-                      </button>
-                    ))}
-                  </div>
-                  <input
-                    type="text"
-                    value={areaLabel}
-                    maxLength={AREA_LIMITS.maxLabelLength}
-                    onChange={(e) => setAreaLabel(e.target.value)}
-                    placeholder="Label (optional)"
-                    aria-label="Area label"
-                    className="w-full input-cozy text-sm py-1"
-                  />
-                  {isGM && (
-                    <label className="flex items-center gap-2 cursor-pointer touch-target">
-                      <input type="checkbox" checked={areaGmOnly} onChange={(e) => setAreaGmOnly(e.target.checked)} className="accent-moss-green" />
-                      <span className="text-xs font-medium text-stone-gray">GM only</span>
-                    </label>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-          {/* Clear the placed areas: the GM's every one, a player's own. */}
-          {(isGM ? mapAreas.areas.length > 0 : mapAreas.areas.some((a) => a.authorId === user?.id && mapAreas.mayErase(a))) && (
-            <button
-              type="button"
-              onClick={() => {
-                if (!areaClearArmed) { setAreaClearArmed(true); return; }
-                setAreaClearArmed(false);
-                setSelectedAreaId(null);
-                mapAreas.clear();
-              }}
-              onBlur={() => setAreaClearArmed(false)}
-              className="touch-target text-xs text-stone-gray hover:text-danger-ink transition-colors"
-            >
-              {areaClearArmed ? 'Tap again to clear' : isGM ? 'Clear all areas' : 'Clear my areas'}
-            </button>
-          )}
-
-          {/* Clear the anchor */}
-          {aoeAnchor && (
-            <button
-              onClick={() => setAoEAnchor(null)}
-              className="touch-target text-xs text-stone-gray hover:text-danger-ink transition-colors"
-            >
-              × Clear placement
-            </button>
-          )}
-
-          <p className="text-xs text-stone-gray">
-            {aoePersist
-              ? (aoeConfig.shape === 'cone' || aoeConfig.shape === 'line')
-                ? (aoeAnchor ? 'Click where it points to place it for everyone' : 'Click its square, then where it points')
-                : 'Click the map to place it for everyone'
-              : aoeAnchor ? 'Click map to reposition' : 'Click map to place shape'}
-          </p>
-          {/* Cone and line pivot about the square you click, so most of the
-              time you want them on your token. Alt, or Snap to grid off, is
-              the escape hatch for an effect cast at a distance — a wall of
-              fire, say. */}
-          {(aoeConfig.shape === 'cone' || aoeConfig.shape === 'line') && (
-            <p className="text-xs text-stone-gray">
-              {/* A finger has no hover to aim with, nor an Alt key. */}
-              {aoeAnchor
-                ? (coarsePointer ? 'Drag from its square to aim it' : 'Move the cursor to aim it around that square')
-                : !aoeSnap ? 'Placed freely, off the grid'
-                  : coarsePointer ? 'Untick Snap to grid to place it freely, off the grid' : 'Alt+click to place it freely, off the grid'}
-            </p>
-          )}
-        </div>
-      )}
 
       {/* The tapped area: what it covers, as this screen draws it, and Delete for who may. */}
       {selectedArea && areaFrame && (() => {
@@ -5464,7 +5485,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts, onOpenSpiritLa
                 </div>
               )}
             </div>
-            {drawPanel && currentMap && <DrawStrip {...drawPanel} />}
+            {railCard && railCardOf(railCard, true)}
             {paint.on && currentMap && (
               <PaintStrip
                 settings={paint.settings}

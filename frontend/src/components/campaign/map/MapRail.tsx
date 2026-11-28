@@ -62,7 +62,7 @@ export function RailCell({ label, icon: Icon, text, onClick, pressed, expanded, 
   const on = pressed === true || expanded === true || lit === true;
 
   return (
-    <div className="relative">
+    <div className="relative" data-rail-cell="">
       <button
         ref={buttonRef}
         type="button"
@@ -127,13 +127,14 @@ export function RailReadout({ children }: { children: ReactNode }) {
 export function RailPopover({ label, onClose, children, className }: { label: string; onClose: () => void; children: ReactNode; className?: string }) {
   const root = useRef<HTMLDivElement>(null);
   const returnTo = useRef<HTMLElement | null>(null);
-  useEffect(() => {
-    // The cell that opened it takes the keys back on Escape.
-    returnTo.current = root.current?.parentElement?.querySelector('button') ?? null;
-  }, []);
-  // A press on the cell itself toggles it shut there, not here.
+  // A press on the cell itself toggles it shut there, not here; the cell
+  // takes the keys back on Escape. The popover may sit in a box inside the
+  // cell's (BesideRail), so the cell is found by its mark.
   const cellRoot = useRef<HTMLElement | null>(null);
-  useEffect(() => { cellRoot.current = root.current?.parentElement ?? null; }, []);
+  useEffect(() => {
+    cellRoot.current = root.current?.closest<HTMLElement>('[data-rail-cell]') ?? root.current?.parentElement ?? null;
+    returnTo.current = cellRoot.current?.querySelector('button') ?? null;
+  }, []);
   useDismiss(true, cellRoot, onClose, returnTo);
   return (
     <div
@@ -216,7 +217,7 @@ export function MapRail({ view, tools, gm, twoColumns, hint, slim = false, centr
   if (!centred) return rail;
   // A box as tall as the map shown above the dock, clear of a phone's notch on the right, the rail centred in it.
   return (
-    <div className="pointer-events-none absolute top-0 right-[max(0.5rem,env(safe-area-inset-right))] z-30 flex items-center" style={{ bottom }}>
+    <div data-rail-area="" className="pointer-events-none absolute top-0 right-[max(0.5rem,env(safe-area-inset-right))] z-30 flex items-center" style={{ bottom }}>
       {rail}
     </div>
   );

@@ -36,7 +36,6 @@ import CampaignRoster from '@/components/campaign/CampaignRoster';
 const MapCanvas = lazy(() => import('@/components/campaign/MapCanvas'));
 import MapManager from '@/components/campaign/MapManager';
 import TokenManager from '@/components/campaign/TokenManager';
-import SpiritLayerControls from '@/components/campaign/SpiritLayerControls';
 import AtmospherePanel from '@/components/campaign/AtmospherePanel';
 import AtmospherePlayer from '@/components/campaign/AtmospherePlayer';
 import GalleryPopup from '@/components/campaign/GalleryPopup';
@@ -127,7 +126,6 @@ function CampaignPageContent() {
   }, [socket, refreshCurrentMap]);
   const [isMapManagerOpen, setIsMapManagerOpen] = useState(false);
   const [isTokenManagerOpen, setIsTokenManagerOpen] = useState(false);
-  const [isSpiritLayerOpen, setIsSpiritLayerOpen] = useState(false);
   const [isAtmospherePanelOpen, setIsAtmospherePanelOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isDocumentsOpen, setIsDocumentsOpen] = useState(false);
@@ -152,7 +150,8 @@ function CampaignPageContent() {
     tokens: () => setIsTokenManagerOpen(true),
     creatures: () => setIsCreatureLibraryOpen(true),
     templates: () => setIsTokenTemplateLibraryOpen(true),
-    spirit: () => setIsSpiritLayerOpen(true),
+    // The Spirit Layer is a card beside the map's rail (MapCanvas).
+    spirit: () => undefined,
     atmosphere: () => setIsAtmospherePanelOpen(true),
     settings: () => setIsSettingsOpen(true),
   };
@@ -261,7 +260,7 @@ function CampaignPageContent() {
               </div>
             }
           >
-            <MapCanvas onEditToken={editToken} onShowShortcuts={() => setIsShortcutsOpen(true)} onOpenSpiritLayer={() => setIsSpiritLayerOpen(true)} />
+            <MapCanvas onEditToken={editToken} onShowShortcuts={() => setIsShortcutsOpen(true)} />
           </Suspense>
         </div>
       </div>
@@ -318,14 +317,6 @@ function CampaignPageContent() {
         <TokenManager
           isOpen={isTokenManagerOpen}
           onClose={() => setIsTokenManagerOpen(false)}
-        />
-      )}
-
-      {/* Spirit Layer Controls slide-over panel (GM only) */}
-      {userRole === 'GM' && (
-        <SpiritLayerControls
-          isOpen={isSpiritLayerOpen}
-          onClose={() => setIsSpiritLayerOpen(false)}
         />
       )}
 

@@ -83,44 +83,6 @@ export function stackCornerTop(band: TopBand | null, stackWidth: number, rightGa
   return band.buttonsRight > left ? band.bottom + BAND_GAP : null;
 }
 
-/**
- * The bottom edge of `el`, in CSS pixels from the map container's top: null
- * while it has no size (not laid out yet, or jsdom).
- */
-export function measureBottom(el: HTMLElement, container: HTMLElement): number | null {
-  const box = el.getBoundingClientRect();
-  if (box.height === 0) return null;
-  return Math.round(box.bottom - container.getBoundingClientRect().top);
-}
-
-/**
- * The bottom edge of a panel over the map while it shows, measured again
- * when it changes size or is given another `top`.
- */
-export function useMeasuredBottom(
-  ref: RefObject<HTMLElement | null>,
-  containerRef: RefObject<HTMLElement | null>,
-  shown: boolean,
-  top: number | null,
-): number | null {
-  const [bottom, setBottom] = useState<number | null>(null);
-  useLayoutEffect(() => {
-    const el = ref.current;
-    const container = containerRef.current;
-    if (!shown || !el || !container) {
-      setBottom(null);
-      return undefined;
-    }
-    const measure = () => setBottom(measureBottom(el, container));
-    measure();
-    if (typeof ResizeObserver === 'undefined') return undefined;
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [ref, containerRef, shown, top]);
-  return bottom;
-}
-
 const sameBand = (a: TopBand | null, b: TopBand | null) =>
   a === b || (a !== null && b !== null
     && a.bottom === b.bottom && a.buttonsRight === b.buttonsRight && a.width === b.width && a.wrapped === b.wrapped);

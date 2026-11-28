@@ -28,6 +28,8 @@ interface EditMapModalProps {
   campaignId: string;
   onClose: () => void;
   onUpdated: (map: CampaignMap) => void;
+  /** Opened at the grid's settings (the map's Grid popover, Grid settings…). */
+  atGrid?: boolean;
 }
 
 // ============================================
@@ -89,7 +91,12 @@ export default function EditMapModal({
   campaignId,
   onClose,
   onUpdated,
+  atGrid = false,
 }: EditMapModalProps) {
+  const gridSection = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (isOpen && atGrid) gridSection.current?.scrollIntoView?.({ block: 'start' });
+  }, [isOpen, atGrid]);
   const [mapAssetId, setMapAssetId] = useState<string | null>(null);
   const [spiritAssetId, setSpiritAssetId] = useState<string | null>(null);
   const [name, setName] = useState('');
@@ -358,7 +365,7 @@ export default function EditMapModal({
                   </div>
 
                   {/* Grid Settings */}
-                  <div className="border border-moss-green/20 rounded-lg p-4 space-y-4 bg-moss-green/5">
+                  <div ref={gridSection} className="border border-moss-green/20 rounded-lg p-4 space-y-4 bg-moss-green/5">
                     <h3 className="text-sm font-medium text-brand-ink">Grid Settings</h3>
 
                     <MapGridShapeFields

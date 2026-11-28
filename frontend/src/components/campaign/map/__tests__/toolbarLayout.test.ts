@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { measureTopBand, measureBottom, underBand, belowBand, stackCornerTop, BAND_GAP, type TopBand } from '../toolbarLayout';
+import { measureTopBand, underBand, belowBand, stackCornerTop, BAND_GAP, type TopBand } from '../toolbarLayout';
 
 /** A box at `left, top` of `width` by `height`, as getBoundingClientRect gives it. */
 const box = (left: number, top: number, width: number, height: number) =>
@@ -74,18 +74,6 @@ describe('measureTopBand', () => {
 });
 
 // The Put back bar's foot, which the AoE panel starts under while both show.
-describe('measureBottom', () => {
-  it('reads a panel’s bottom edge from the map’s top', () => {
-    const bar = el(box(183, 168, 254, 62));
-    expect(measureBottom(bar, el(box(100, 50, 600, 500), bar))).toBe(180);
-  });
-
-  it('gives nothing while the panel has no size', () => {
-    const bar = el(box(0, 0, 0, 0));
-    expect(measureBottom(bar, el(box(0, 0, 0, 0), bar))).toBeNull();
-  });
-});
-
 const oneRow: TopBand = { bottom: 68, buttonsRight: 503, width: 754, wrapped: false };
 
 describe('belowBand: the AoE panel', () => {
