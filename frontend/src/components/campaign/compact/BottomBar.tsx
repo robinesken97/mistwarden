@@ -95,6 +95,7 @@ export default function BottomBar({ active, expanded = active, onSelect, sheetId
               key={tab}
               type="button"
               id={`compact-tab-${tab}`}
+              data-tour={`bar-${tab}`}
               aria-current={open ? 'true' : undefined}
               aria-expanded={tab === 'map' ? undefined : expanded === tab}
               aria-controls={tab === 'map' ? undefined : sheetIds?.[tab]}

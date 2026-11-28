@@ -6,7 +6,7 @@
 //
 // - At the table, for everyone: Notes and Session (the session panels the
 //   rail's tabs open, which the compact layout opens in its session sheet),
-//   Documents and Shortcuts.
+//   Documents, Shortcuts and the guided Tour.
 // - Display on this device: the fog's mist and the dice animation, in place
 //   (DisplaySettings), as the desktop's header offers them.
 // - GM tools, for the GM: the header's toolbar, every tool in its order
@@ -19,7 +19,7 @@
 // ============================================
 
 import { useId } from 'react';
-import { BookOpen, Keyboard, Settings, Sparkles } from 'lucide-react';
+import { BookOpen, Keyboard, Settings, Signpost, Sparkles } from 'lucide-react';
 import { useCampaign } from '@/contexts/CampaignContext';
 import type { MenuAction } from '@/components/ui/menu';
 import { TOOL_GROUPS, type SessionToolKey } from '@/components/campaign/SessionToolbar';
@@ -28,6 +28,7 @@ import { BottomSheet, type SheetEdges } from './BottomSheet';
 import { onTheBar, type BarPanel } from './BottomBar';
 import SheetMenuRows from './SheetMenuRows';
 import { DISPLAY_SETTINGS_LABEL, DisplaySettings } from '@/components/campaign/DisplaySettings';
+import { startTour } from '@/components/campaign/tour/tourSteps';
 
 /** The session panels More opens: every one the bar has no button for (BAR_PANELS). */
 export type MorePanel = Exclude<SessionTab, BarPanel>;
@@ -75,7 +76,7 @@ function Group({ heading, items, onClose }: { heading: string; items: MenuAction
 function DisplayGroup() {
   const headingId = useId();
   return (
-    <div role="group" aria-labelledby={headingId} className="mt-4">
+    <div role="group" aria-labelledby={headingId} data-tour="display" className="mt-4">
       <h3 id={headingId} className="mx-1 mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-muted">{DISPLAY_SETTINGS_LABEL}</h3>
       <div className="rounded-cozy border border-ink/10 bg-paper/60 p-3">
         <DisplaySettings />
@@ -103,6 +104,8 @@ export default function MoreSheet({
     action('documents', 'Documents', BookOpen, onOpenDocuments),
     ...(onOpenSpells ? [action('spells', 'Spell Library', Sparkles, onOpenSpells)] : []),
     action('shortcuts', 'Shortcuts', Keyboard, onOpenShortcuts),
+    // Mistwarden, 2026-11-28: the guided tour (TableTour.tsx).
+    action('tour', 'Tour', Signpost, startTour),
   ];
   const gmTools = TOOL_GROUPS.flat().map(({ key, label, icon }) =>
     action(key, label, icon, () => onOpenTool(key), key === 'spirit' ? { tone: 'spirit' } : {})
