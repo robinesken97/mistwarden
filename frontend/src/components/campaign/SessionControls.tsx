@@ -204,6 +204,7 @@ export default function SessionControls() {
           {!activeSession && (
             <Button
               onClick={handleStart}
+              data-tour="start-session"
               disabled={isLoading}
               className="w-full flex items-center justify-center gap-2"
             >

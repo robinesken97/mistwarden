@@ -77,6 +77,7 @@ export default function SessionToolbar({
                 iconOnly
                 icon={icon}
                 aria-label={label}
+                data-tour={`tool-${key}`}
                 onClick={() => onOpen(key)}
                 className={cn(
                   openPanels[key] && 'bg-accent/15! text-accent-ink!',

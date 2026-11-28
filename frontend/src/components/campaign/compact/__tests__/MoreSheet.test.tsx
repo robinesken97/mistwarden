@@ -11,6 +11,7 @@ const seat = vi.hoisted(() => ({ role: 'GM' as string }));
 vi.mock('@/contexts/CampaignContext', () => ({ useCampaign: () => ({ userRole: seat.role }) }));
 
 import MoreSheet from '../MoreSheet';
+import { TOUR_START_EVENT } from '@/components/campaign/tour/tourSteps';
 
 const onSheetEntry = () => (window.history.state as Record<string, unknown> | null)?.cozyvttSheet === true;
 
@@ -44,7 +45,7 @@ function groups(): Array<[string, string[]]> {
   ]);
 }
 
-const AT_THE_TABLE: [string, string[]] = ['At the table', ['Notes', 'Gallery', 'Session', 'Documents', 'Shortcuts']];
+const AT_THE_TABLE: [string, string[]] = ['At the table', ['Notes', 'Gallery', 'Session', 'Documents', 'Shortcuts', 'Tour']];
 /** This device's display settings: two dropdowns, no rows. */
 const DISPLAY: [string, string[]] = ['Display on this device', []];
 
@@ -94,6 +95,16 @@ describe('More', () => {
     const handlers = more();
     fireEvent.click(screen.getByRole('button', { name: label }));
     expect(handlers[handler]).toHaveBeenCalledWith(...args);
+    expect(handlers.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('Tour closes More and starts the guided tour', () => {
+    const started = vi.fn();
+    window.addEventListener(TOUR_START_EVENT, started);
+    const handlers = more();
+    fireEvent.click(screen.getByRole('button', { name: 'Tour' }));
+    window.removeEventListener(TOUR_START_EVENT, started);
+    expect(started).toHaveBeenCalledTimes(1);
     expect(handlers.onClose).toHaveBeenCalledTimes(1);
   });
 

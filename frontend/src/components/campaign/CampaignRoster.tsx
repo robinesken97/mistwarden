@@ -335,7 +335,7 @@ export default function CampaignRoster() {
 
   return (
     <>
-    <div className="glass-panel p-4 space-y-4">
+    <div data-tour="roster" className="glass-panel p-4 space-y-4">
       {/* Header */}
       <div className="flex items-center gap-2 pb-2 border-b border-moss-green/20">
         <Users className="w-5 h-5 text-brand-ink" />

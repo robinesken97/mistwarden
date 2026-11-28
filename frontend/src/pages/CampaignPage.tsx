@@ -50,6 +50,7 @@ import TokenRoster from '@/components/campaign/TokenRoster';
 import CampaignSettingsModal from '@/components/campaign/CampaignSettingsModal';
 import CampaignDocumentsModal from '@/components/documents/CampaignDocumentsModal';
 import ShortcutsPanel from '@/components/campaign/ShortcutsPanel';
+import TableTour from '@/components/campaign/TableTour';
 import SessionPanels from '@/components/campaign/SessionPanels';
 import DesktopTable from '@/components/campaign/DesktopTable';
 import CompactTable from '@/components/campaign/compact/CompactTable';
@@ -414,6 +415,16 @@ function CampaignPageContent() {
 
       {/* What the server refuses, shown as a message */}
       <TableRefusals />
+
+      {/* Mistwarden, 2026-11-28: the guided tour, started from its Tour button. */}
+      <TableTour
+        campaignId={campaign.id}
+        kind={userRole === 'GM' ? 'gm' : 'player'}
+        practice={campaign.isPractice === true}
+        live={campaign.status === CampaignStatus.ACTIVE}
+        userId={user?.id}
+        role={userRole}
+      />
     </div>
   );
 }

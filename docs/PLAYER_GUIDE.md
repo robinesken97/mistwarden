@@ -16,6 +16,7 @@ No technical knowledge required. Let's go.
 3. [Creating Your Character](#creating-your-character)
 4. [The Campaign Page](#the-campaign-page)
    - [On a phone](#on-a-phone)
+   - [The guided tour](#the-guided-tour)
    - [Leaving a campaign](#leaving-a-campaign)
 5. [Chat and Dice](#chat-and-dice)
    - [Rolling from your sheet](#rolling-from-your-sheet)
@@ -167,6 +168,7 @@ The top bar shows:
 - Connection indicator: a dot that goes green when you're connected
 - A **book icon**, **Campaign documents**: the rulebooks and handouts your GM has shared with this campaign
 - A **keyboard icon**, **Keyboard shortcuts**: every key the map takes (see [Keyboard Shortcuts](#keyboard-shortcuts))
+- A **signpost**, **Tour**: a guided tour of your token, the dice, your character sheet and the chat (see [The guided tour](#the-guided-tour))
 - **Hide party panel** and **Hide session panel**, which fold the side columns away, and **Show party panel** and **Show session panel**, which bring them back
 - Navigation controls
 
@@ -192,6 +194,10 @@ In **Dice** each roll takes two lines, who rolled it, what for and when over the
 A press and hold on your token opens its menu as a list from the bottom of the screen, as it does on a character in **Party**'s roster. The map's toolbar keeps **Zoom Out**, **Zoom In**, **Ping** and **Draw** in its one row; its **More** has the rest, such as **Fit to Screen**, the grid and the **Ruler**. Turn the phone on its side and the bar's buttons move into the header, with sheets and menus opening from the right. See [The campaign page on a phone or tablet](USER_GUIDE.md#the-campaign-page-on-a-phone-or-tablet) for the whole of it.
 
 To open CozyVTT from your phone's home screen like an app, full screen, see [Adding CozyVTT to your home screen](USER_GUIDE.md#adding-cozyvtt-to-your-home-screen).
+
+### The guided tour
+
+**Tour**, the signpost in the header (under **More** on a phone), points at what you play with, one step at a time: your token, the dice, your character sheet and the chat. It starts only when you press it, and opens the tab or panel a step is about. **Next** goes on, **Back** goes back, and **End tour** or **Escape** stops it; the arrow beside **End tour** folds the card out of the way until the next step, and a reload comes back to the step you were on. If no token is yours yet, the token step says so: your GM gives you one. In a practice campaign each step also asks you to try the thing.
 
 ### Rulebooks and Handouts
 

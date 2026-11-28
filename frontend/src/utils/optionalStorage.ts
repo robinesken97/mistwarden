@@ -22,6 +22,14 @@ export const optionalStorage = {
       // Refused or full: the choice lasts as long as the page.
     }
   },
+  // Mistwarden, 2026-11-28: the guided tour forgets its place as it ends.
+  removeItem(key: string): void {
+    try {
+      window.localStorage.removeItem(key);
+    } catch {
+      // Refused: nothing was kept.
+    }
+  },
 };
 
 /**

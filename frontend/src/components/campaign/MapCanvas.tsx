@@ -4715,6 +4715,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
         tabIndex={0}
         role="application"
         aria-label="Map"
+        data-tour="map"
         aria-describedby={mapHintId}
         className="absolute inset-0 select-none [-webkit-touch-callout:none] outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand"
         style={{
@@ -4860,6 +4861,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
               variant="secondary" size="sm"
               className="ml-auto sm:ml-0 shrink-0 inline-flex items-center justify-center"
               aria-label="More map controls"
+              data-tour="map-controls"
               aria-haspopup="dialog"
               aria-expanded={mapControlsOpen}
               title={mapControlsTitle(mapControlRows)}
@@ -4897,6 +4899,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
               variant="secondary" iconOnly className={showGrid ? 'bg-moss-green/20' : undefined}
               title="Toggle Grid"
               aria-label="Toggle Grid"
+              data-tour="grid"
             >
               <Grid3x3 className="w-4 h-4" />
             </Button>
@@ -4947,6 +4950,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
                 variant="secondary" iconOnly className={showAoE ? 'bg-moss-green/20' : undefined}
                 title="AoE Shape — area of effect overlay"
                 aria-label="AoE Shape — area of effect overlay"
+                data-tour="aoe"
               >
                 <Zap className={`w-4 h-4 ${showAoE ? 'text-brand-ink' : ''}`} />
               </Button>
