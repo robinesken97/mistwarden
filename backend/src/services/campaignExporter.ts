@@ -56,6 +56,7 @@ function dataFileLabel(name: string): string {
   if (name.startsWith('maps/')) return 'map data';
   if (name.startsWith('creatures/')) return 'creatures';
   if (name.startsWith('token-templates/')) return 'token templates';
+  if (name.startsWith('spells/')) return 'spells';
   if (name.startsWith('assets/')) return 'picture and sound list';
   return 'settings';
 }
@@ -147,6 +148,8 @@ export async function prepareCampaignExport(
       maps: { orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] },
       creatureTemplates: { where: { source: 'custom' } },
       tokenTemplates: true,
+      // The campaign's own; the SRD's and the instance's have no campaign.
+      spellTemplates: { orderBy: [{ name: 'asc' }, { id: 'asc' }] },
     },
   });
 
@@ -281,6 +284,23 @@ export async function prepareCampaignExport(
     });
   }
 
+  // 5b. The campaign's own spells, as the Spell Library takes them
+  const spellsData = campaign.spellTemplates.map((spell) => ({
+    name: spell.name,
+    gameSystem: spell.gameSystem,
+    level: spell.level,
+    school: spell.school,
+    castingTime: spell.castingTime,
+    range: spell.range,
+    components: spell.components,
+    duration: spell.duration,
+    concentration: spell.concentration,
+    ritual: spell.ritual,
+    description: spell.description,
+    area: spell.area,
+    element: spell.element,
+  }));
+
   // 6. Build asset manifest
   const assetManifest: Record<string, Omit<ArchivedAsset, 'filePath' | 'details'> & Partial<AssetDetails>> = {};
   for (const [id, info] of assetMap.entries()) {
@@ -346,6 +366,9 @@ export async function prepareCampaignExport(
   if (tokenTemplatesData.length > 0) {
     dataFiles.push({ name: 'token-templates/templates.json', content: JSON.stringify(tokenTemplatesData, null, 2) });
   }
+  if (spellsData.length > 0) {
+    dataFiles.push({ name: 'spells/spells.json', content: JSON.stringify(spellsData, null, 2) });
+  }
   const assetManifestFile = { name: 'assets/asset-manifest.json', content: JSON.stringify(assetManifest, null, 2) };
 
   // 11. Refuse an archive an import would refuse or cut, before sending any
@@ -355,6 +378,7 @@ export async function prepareCampaignExport(
   for (const [count, max, many] of [
     [creaturesData.length, IMPORT_LIMITS.MAX_CREATURES, 'custom creatures'],
     [tokenTemplatesData.length, IMPORT_LIMITS.MAX_TOKEN_TEMPLATES, 'token templates'],
+    [spellsData.length, IMPORT_LIMITS.MAX_SPELLS, 'spells'],
   ] as const) {
     if (count > max) {
       throw new ExportTooLargeError(

@@ -47,6 +47,7 @@ const SKIPPED_KIND: Record<CampaignImportSkipped['kind'], string> = {
   token: 'token',
   creature: 'creature',
   tokenTemplate: 'token template',
+  spell: 'spell',
   asset: 'file',
 };
 

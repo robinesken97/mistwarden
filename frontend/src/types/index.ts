@@ -1193,7 +1193,7 @@ export interface CampaignImportPreview {
 
 /** Something a campaign import left out, and why. */
 export interface CampaignImportSkipped {
-  kind: 'map' | 'token' | 'creature' | 'tokenTemplate' | 'asset';
+  kind: 'map' | 'token' | 'creature' | 'tokenTemplate' | 'spell' | 'asset';
   name: string;
   reason: string;
 }

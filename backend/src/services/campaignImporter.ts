@@ -53,6 +53,7 @@ import {
   prepareMap,
   prepareCreature,
   prepareTokenTemplate,
+  prepareSpell,
   importedGameSystem,
   label,
   type SkippedItem,
@@ -963,6 +964,19 @@ export async function importCampaign(
                 const row = prepareTokenTemplate(raw, { remapAsset, isTokenPicture, report });
                 return row ? { ...row, id: randomUUID(), createdById: importingUserId, campaignId: newCampaignId } : null;
               }, (data: Prisma.TokenTemplateCreateManyInput[]) => tx.tokenTemplate.createMany({ data }));
+            }
+          }
+
+          // The campaign's own spells (not the SRD's or the instance's, which an export leaves out)
+          const spellsEntry = directory.files.find((f) => f.path === 'spells/spells.json');
+          if (spellsEntry) {
+            const spellsRaw = await readListEntry(archivePath, spellsEntry, total, 'spell', 'Spells', report,
+              { max: IMPORT_LIMITS.MAX_SPELLS, one: 'spell', many: 'spells' });
+            if (Array.isArray(spellsRaw)) {
+              await inBatches(spellsRaw, (raw) => {
+                const row = prepareSpell(raw, report);
+                return row ? { ...row, id: randomUUID(), createdById: importingUserId, campaignId: newCampaignId } : null;
+              }, (data: Prisma.SpellTemplateCreateManyInput[]) => tx.spellTemplate.createMany({ data }));
             }
           }
 

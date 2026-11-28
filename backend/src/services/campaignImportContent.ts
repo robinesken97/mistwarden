@@ -24,6 +24,7 @@ import {
   ImportGameSystemSchema,
   CreatureTemplateSchema,
   TokenTemplateImportSchema,
+  SpellTemplateImportSchema,
   type ImportToken,
 } from '../validators/campaignImport';
 import { MAP_LIMITS, GEOMETRY_MARGIN_SQUARES, wallWithinMap, lightWithinMap } from '../validators/maps';
@@ -34,10 +35,11 @@ import { clampTokenPosition, roundTokenPosition } from '../utils/mapTokens';
 import { isHexGrid, type GridFrame } from '../utils/tokenCentre';
 import { cutText } from '../utils/cutText';
 import { RETIRED_GAME_SYSTEM } from '../legacy/retiredGameSystem';
+import { spellAreaJson } from './spellSeed';
 
 // ── The report ──────────────────────────────────────────────────────────────
 
-export type SkippedKind = 'map' | 'token' | 'creature' | 'tokenTemplate' | 'asset';
+export type SkippedKind = 'map' | 'token' | 'creature' | 'tokenTemplate' | 'spell' | 'asset';
 
 /** Something the archive held that the import left out, and why. */
 export interface SkippedItem {
@@ -657,5 +659,30 @@ export function prepareTokenTemplate(raw: unknown, ctx: LibraryContext): TokenTe
     showHpBar: t.showHpBar ?? false,
     statBlock: t.statBlock ? (t.statBlock as Prisma.InputJsonValue) : Prisma.JsonNull,
     sightRadius: t.sightRadius ?? null,
+  };
+}
+
+type SpellRow = Omit<Prisma.SpellTemplateCreateManyInput, 'id' | 'createdById' | 'campaignId'>;
+
+/**
+ * A campaign's own spell from the archive, held to what the Spell Library
+ * saves, or null when it cannot be stored; it is then listed with the reason.
+ */
+export function prepareSpell(raw: unknown, report: ImportReport): SpellRow | null {
+  const fallback = 'Unnamed spell';
+  const rawName = raw !== null && typeof raw === 'object' ? (raw as Record<string, unknown>).name : undefined;
+  const fitted = fitToSchema(SpellTemplateImportSchema, raw);
+  if (!fitted.ok) {
+    report.skip('spell', label(rawName, fallback), describeIssue(fitted.issue));
+    return null;
+  }
+  const { area, gameSystem, ...spell } = fitted.value;
+  const whose = `Spell "${label(spell.name, fallback)}"`;
+  sayCut(fitted.cut, (what) => report.warn(`${whose}: ${what}`));
+  return {
+    ...spell,
+    gameSystem: importedGameSystem(gameSystem, `${whose}: its`, `${whose}: its game system is no longer supported, so it was imported with none.`, report),
+    source: 'custom',
+    area: spellAreaJson(area),
   };
 }
