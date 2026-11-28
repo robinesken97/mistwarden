@@ -7,7 +7,7 @@ through the `pg` driver (`src/config/prismaClient.ts`).
 
 ## Models
 
-The schema is in [`schema.prisma`](./schema.prisma) — 25 models grouped by domain:
+The schema is in [`schema.prisma`](./schema.prisma) — 26 models grouped by domain:
 
 **User & auth**
 - `User` — accounts with optional MFA, which an administrator must turn on within 7 days
@@ -25,6 +25,7 @@ The schema is in [`schema.prisma`](./schema.prisma) — 25 models grouped by dom
 - `Map` — base + spirit layer, tokens, walls, lights, fog, annotations; per-map switches for fog of war, Global Illumination and explored memory (`fogEnabled`, `globalIllumination`, `explorationEnabled`, all default on so existing maps keep their behaviour); `drawnBackground`, the colour a map drawn in CozyVTT is made in (null for one made from a picture); the grid: `gridSize` (a float since `20261127200000_hex_grid`: pixels between neighbouring cell centres), `gridType` (`square`, `hexPointy`, `hexFlat`) and `gridOffsetX`/`gridOffsetY` (map pixels, default 0), placed by `src/utils/tokenCentre.ts`
 - `MapExploration` — one player's explored cells on one map; never read when deciding which tokens to send
 - `MapDrawing` — one drawing on one map (a stroke, a shape or a text label): its kind, colours, width and points in whole map pixels from the top-left, who drew it (`authorId`, null once their account is deleted) and who is sent it (`audience`, `ALL` or `GM`). It goes with its map. `layer` is `MARKUP` for everything drawn so far; `GROUND`, `pattern` and `stamp` are kept for GM-drawn map art and not accepted yet
+- `MapArea` — one spell area on one map (a sphere, cylinder, cone, line or cube): its anchor in map pixels, its aim in radians, its size in feet so it is drawn by the map's feet per square, its element's look, label, who placed it (`authorId`, null once their account is deleted) and who is sent it (`audience`). It goes with its map
 - `CreatureTemplate` — SRD bestiary + custom creatures (campaign-scoped or global). `source` says which; `createdById` is the author, null for SRD creatures and once the author's account is deleted
 - `CreatureFavorite` — GM's per-campaign starred creatures
 - `TokenTemplate` — reusable token configurations copyable across campaigns
