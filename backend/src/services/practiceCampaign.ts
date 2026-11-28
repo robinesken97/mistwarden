@@ -269,7 +269,7 @@ async function writeContent(tx: Prisma.TransactionClient, campaignId: string, gm
 
   const gm = await tx.user.findUniqueOrThrow({ where: { id: gmId }, select: { displayName: true } });
   const sheet = toJson(heroSheet(gm.displayName));
-  const hero = await tx.character.findFirst({ where: { campaignId, name: PRACTICE_CHARACTER_NAME }, select: { id: true } });
+  const hero = await tx.character.findFirst({ where: { campaignId, userId: gmId, name: PRACTICE_CHARACTER_NAME }, select: { id: true } });
   if (hero) {
     await tx.character.update({ where: { id: hero.id }, data: { data: sheet, gameSystem: 'FIFTH_EDITION' } });
   } else {

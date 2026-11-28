@@ -142,7 +142,8 @@ describe('POST /api/campaigns/:campaignId/practice/reset', () => {
 
     // A player with a character of their own, a spell area, a note of theirs, a second map, an initiative order.
     await prisma.campaignMembership.create({ data: { userId: player.id, campaignId, role: 'PLAYER', characterIds: [] } });
-    const own = await prisma.character.create({ data: { userId: player.id, campaignId, name: 'Own Hero', data: {}, gameSystem: 'FIFTH_EDITION' } });
+    // Named as the sample character, which the reset must leave alone: it is the player's.
+    const own = await prisma.character.create({ data: { userId: player.id, campaignId, name: PRACTICE_CHARACTER_NAME, data: { mine: true }, gameSystem: 'FIFTH_EDITION' } });
     await prisma.campaignMembership.update({ where: { userId_campaignId: { userId: player.id, campaignId } }, data: { characterIds: [own.id] } });
     await prisma.mapArea.create({ data: { mapId: before.maps[0].id, shape: 'circle', anchorX: 100, anchorY: 100, sizeFt: 20 } });
     await prisma.personalNote.create({ data: { userId: player.id, campaignId, title: 'Mine', content: '' } });
@@ -165,8 +166,8 @@ describe('POST /api/campaigns/:campaignId/practice/reset', () => {
 
     // Members and their characters stay; the sample character is put back, not made twice.
     expect(after.memberships.map((m) => m.userId).sort()).toEqual([gm.id, player.id].sort());
-    expect(after.characters.map((c) => c.name).sort()).toEqual(['Own Hero', PRACTICE_CHARACTER_NAME]);
-    expect(after.characters.find((c) => c.name === PRACTICE_CHARACTER_NAME)).toMatchObject({ id: before.characters[0].id });
+    expect(after.characters.map((c) => c.id).sort()).toEqual([before.characters[0].id, own.id].sort());
+    expect(after.characters.find((c) => c.id === own.id)!.data).toEqual({ mine: true });
     expect(after.characters.find((c) => c.id === before.characters[0].id)!.data).toMatchObject({ darkvisionFeet: 60 });
     // The pictures are used again, not stored anew.
     expect(after.assets.map((a) => a.id).sort()).toEqual(before.assets.map((a) => a.id).sort());

@@ -445,7 +445,8 @@ export default function DashboardPage() {
 
           {/* Campaigns Section */}
           <section>
-            <div className="flex items-center justify-between mb-6">
+            {/* Wraps on a phone: the heading and three buttons are wider than 375 px. */}
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
               <h2 className="text-2xl font-semibold text-brand-ink font-heading">
                 Your Campaigns
               </h2>
