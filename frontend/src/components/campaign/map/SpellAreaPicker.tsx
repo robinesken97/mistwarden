@@ -1,13 +1,14 @@
 // ============================================
 // The AoE panel's From spell: a spell from the campaign's Spell Library
 // fills the template's shape and size, and the area's look and label. A
-// spell without an area is listed greyed, so a search for it says why.
+// spell without an area takes one of its name from below (withFallbackArea);
+// one still without is listed greyed, so a search for it says why.
 // ============================================
 
 import { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useCampaignSpellsQuery } from '@/hooks/queries';
-import { areaInWords, levelInWords, spellAoE, type SpellAoE } from '@/utils/spells';
+import { areaInWords, levelInWords, spellAoE, withFallbackArea, type SpellAoE } from '@/utils/spells';
 
 /** How many matches the list shows at once; a search narrows the rest. */
 const SHOWN = 40;
@@ -58,7 +59,8 @@ function SpellSearch({ campaignId, onPick }: { campaignId: string; onPick: (aoe:
       {spells.isLoading && <p className="text-xs text-stone-gray">Loading spells...</p>}
       {spells.isSuccess && matches.length === 0 && <p className="text-xs text-stone-gray">No spell of that name.</p>}
       <ul aria-label="Spells" className="max-h-48 overflow-y-auto overscroll-contain space-y-0.5">
-        {matches.slice(0, SHOWN).map((spell) => {
+        {matches.slice(0, SHOWN).map((listed) => {
+          const spell = withFallbackArea(listed, spells.data ?? []);
           const aoe = spellAoE(spell);
           return (
             <li key={spell.id}>

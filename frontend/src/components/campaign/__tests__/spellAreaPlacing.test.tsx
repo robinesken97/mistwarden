@@ -48,6 +48,19 @@ beforeEach(() => {
 });
 
 describe('From spell in the AoE panel', () => {
+  it('gives an imported spell with no area the area and look of the SRD spell of its name', async () => {
+    api.listCampaignSpells.mockResolvedValue([
+      spell({ id: 'imp-gale', name: 'Glass Gale', source: 'custom:homebrew' }),
+      spell({ id: 'srd-gale', name: 'Glass Gale', area: { shape: 'cone', sizeFt: 30 }, element: 'cold' }),
+    ]);
+    const onPick = vi.fn<(aoe: SpellAoE) => void>();
+    wrap(<SpellAreaPicker campaignId="c1" onPick={onPick} />);
+    await userEvent.click(screen.getByRole('button', { name: /From spell/ }));
+    const [imported] = await screen.findAllByRole('button', { name: /Glass Gale/ });
+    await userEvent.click(imported);
+    expect(onPick).toHaveBeenCalledWith({ config: { shape: 'cone', sizeFt: 30 }, element: 'cold', label: 'Glass Gale', spellId: 'imp-gale' });
+  });
+
   it('fills the template, look and label from a cone spell, and greys a spell with no area', async () => {
     const onPick = vi.fn<(aoe: SpellAoE) => void>();
     wrap(<SpellAreaPicker campaignId="c1" onPick={onPick} />);

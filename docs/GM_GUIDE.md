@@ -776,7 +776,7 @@ It holds four kinds of spell, each marked in the list:
 - **Imported**, marked with its source tag: spells an administrator imports from Markdown files for every campaign on the server (see below). Players see everything of one but its description, which they are told is available to the GM; you and an administrator read it in full. They cannot be edited, only imported again, and no campaign export carries them.
 - **Campaign**: spells you add with **New spell**, for this campaign only. Open one in the list to **Edit** or **Delete** it. No other campaign sees them, and a campaign export carries them (the SRD's and the server's stay on the server).
 
-Two spells may share a name. Where they do, the campaign's is the one a character sheet uses, then the server's, then an imported one, then the SRD's, so a campaign's own Fireball replaces the SRD's at your table.
+Two spells may share a name. Where they do, the campaign's is the one a character sheet uses, then the server's, then an imported one, then the SRD's, so a campaign's own Fireball replaces the SRD's at your table. Where the one used has no area but one of the same name further down the list has (an imported spell whose text names none, beside the SRD's), **Place area** and **From spell…** place that one's area, and its look if the spell used has none.
 
 **Importing spells from Markdown.** An administrator can add spells to every campaign's library from Markdown files of 5e-style spells, such as your own homebrew notes. Open the Spell Library in any campaign and expand **Import from Markdown**:
 

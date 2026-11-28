@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { areaInWords, resolveSpellByName, spellAoE } from '../spells';
+import { areaInWords, resolveSpellByName, spellAoE, withFallbackArea } from '../spells';
+import type { SpellArea } from '@/types/spells';
+import type { AreaElement } from '@/constants/areaLimits';
 
 const srd = { id: 'srd', name: 'Fireball', source: 'srd', campaignId: null };
 const server = { id: 'server', name: 'fireball', source: 'custom', campaignId: null };
@@ -18,6 +20,21 @@ describe('resolveSpellByName', () => {
     expect(resolveSpellByName([srd, imported, other], 'fireball')?.id).toBe('imported');
     expect(resolveSpellByName([imported, server], 'fireball')?.id).toBe('server');
     expect(resolveSpellByName([imported, campaign], 'fireball')?.id).toBe('campaign');
+  });
+
+  it('takes the area, and the look where it has none, of a spell of its name below it, leaving the rows as they are', () => {
+    type Row = { id: string; name: string; source: string; campaignId: null; area: SpellArea | null; element: AreaElement };
+    const cone: SpellArea = { shape: 'cone', sizeFt: 30 };
+    const plain: Row = { id: 'imported', name: 'Glass Gale', source: 'custom:homebrew', campaignId: null, area: null, element: 'none' };
+    const below: Row = { id: 'srd', name: 'glass gale', source: 'srd', campaignId: null, area: cone, element: 'cold' };
+    const resolved = resolveSpellByName([plain, below], 'Glass Gale');
+    expect(resolved).toMatchObject({ id: 'imported', area: cone, element: 'cold' });
+    expect(plain.area).toBeNull();
+    // Its own look stays; a spell above lends nothing; one with an area keeps it.
+    expect(withFallbackArea<Row>({ ...plain, element: 'force' }, [below])).toMatchObject({ area: cone, element: 'force' });
+    expect(withFallbackArea({ ...below, area: null }, [{ ...plain, area: cone }]).area).toBeNull();
+    const own: SpellArea = { shape: 'sphere', sizeFt: 10 };
+    expect(withFallbackArea({ ...plain, area: own }, [below]).area).toBe(own);
   });
 
   it('finds nothing for a name no spell has, or none at all', () => {
