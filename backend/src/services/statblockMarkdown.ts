@@ -376,7 +376,7 @@ function sectionOf(label: string): { list: ListKey; label: string; prefix: strin
 
 /** Every stat block in `markdown`, or under one heading of it. */
 export function readStatBlockMarkdown(markdown: string, options: MarkdownReadOptions = {}): MarkdownReadResult {
-  const lines = markdown.replace(/^﻿/, '').split(/\r?\n/);
+  const lines = markdown.replace(/^\uFEFF/, '').split(/\r?\n/);
   let from = 0;
   let to = lines.length;
   if (options.onlyUnderHeading?.trim()) {
