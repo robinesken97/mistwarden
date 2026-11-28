@@ -316,8 +316,9 @@ export function BottomSheet({ open, title, height, onClose, onHeightChange, edge
   if (dragOffset !== null) place.transform = `translateY(${dragOffset}px)`;
 
   const handleBar = <span aria-hidden="true" className="block h-1.5 w-10 rounded-full bg-ink-muted/40" />;
-  // The handle is drawn 20 px tall, and takes a press 44 px tall.
-  const handleClass = "relative mx-auto mt-2 flex h-5 w-16 shrink-0 touch-none items-center justify-center rounded-full after:absolute after:-inset-x-2 after:-inset-y-3 after:content-['']";
+  // The handle is drawn 20 px tall, and takes a press 44 px tall: from the
+  // sheet's top edge, which cuts off anything above it, to 16 px below.
+  const handleClass = "relative mx-auto mt-2 flex h-5 w-16 shrink-0 touch-none items-center justify-center rounded-full after:absolute after:-inset-x-2 after:-top-2 after:-bottom-4 after:content-['']";
 
   return (
     <FloatingLayer>

@@ -28,3 +28,23 @@ it('is on the page only while it shows', () => {
   fireEvent.mouseLeave(button);
   expect(screen.queryByRole('tooltip')).toBeNull();
 });
+
+it('goes when its control is pressed, as a tap leaves no hover to end', () => {
+  vi.useFakeTimers();
+  render(<Tooltip content="Tour of the table"><button>Tour</button></Tooltip>);
+  const button = screen.getByRole('button', { name: 'Tour' });
+
+  // A tap: the hover a touch screen sends, then the click, and never a leave.
+  fireEvent.mouseEnter(button);
+  fireEvent.click(button);
+  act(() => { vi.advanceTimersByTime(400); });
+  expect(screen.queryByRole('tooltip')).toBeNull();
+
+  // Shown already, a press takes it away too.
+  fireEvent.mouseLeave(button);
+  fireEvent.mouseEnter(button);
+  act(() => { vi.advanceTimersByTime(400); });
+  expect(screen.getByRole('tooltip')).toBeInTheDocument();
+  fireEvent.click(button);
+  expect(screen.queryByRole('tooltip')).toBeNull();
+});

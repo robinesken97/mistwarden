@@ -103,7 +103,7 @@ export default function BottomBar({ active, expanded = active, onSelect, sheetId
               className={cn(
                 'relative flex min-w-0 flex-col items-center justify-center gap-0.5 transition-colors',
                 'focus:outline-hidden focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand',
-                inHeader ? 'h-12 w-13 min-w-11 rounded-cozy text-[10px]' : 'text-[11px] md:text-xs',
+                inHeader ? 'h-12 w-14 min-w-11 rounded-cozy text-xs' : 'text-xs',
                 open ? 'font-semibold text-brand-ink' : 'font-medium text-ink-muted hover:text-ink',
                 open && inHeader && 'bg-brand/10'
               )}

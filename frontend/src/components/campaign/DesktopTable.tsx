@@ -16,6 +16,7 @@
 import { useState } from 'react';
 import { useLeavePage } from '@/hooks/useLeaveGuard';
 import { useSessionLayout } from '@/hooks/useSessionLayout';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import {
   ArrowLeft,
   Sun,
@@ -79,6 +80,10 @@ export default function DesktopTable({
   const rightPanelRef = usePanelRef();
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [rightCollapsed, setRightCollapsed] = useState(false);
+  // On a very wide screen the side columns stop at 480 pixels and the map
+  // takes the rest: at 3840 they were 765 and 956 wide. From 1920 up, where
+  // the rail's quarter reaches 480, so no narrower window changes.
+  const sideMax = useMediaQuery('(min-width: 1920px)') ? '480px' : undefined;
 
   const togglePanel = (
     panelRef: React.RefObject<PanelImperativeHandle | null>,
@@ -276,6 +281,7 @@ export default function DesktopTable({
             id="party"
             defaultSize={20}
             minSize="260px"
+            maxSize={sideMax}
             collapsible
             panelRef={leftPanelRef}
             onResize={(size) => setLeftCollapsed(size.asPercentage === 0)}
@@ -301,6 +307,7 @@ export default function DesktopTable({
             id="rail"
             defaultSize={25}
             minSize="300px"
+            maxSize={sideMax}
             collapsible
             panelRef={rightPanelRef}
             onResize={(size) => setRightCollapsed(size.asPercentage === 0)}

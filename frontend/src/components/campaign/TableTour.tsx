@@ -40,6 +40,16 @@ const sameBox = (a: Box | null, b: Box | null) =>
   a === b || (!!a && !!b && a.top === b.top && a.left === b.left && a.width === b.width && a.height === b.height);
 
 /**
+ * The foot of the card's room: the top of the compact layout's bar where it
+ * runs along the screen's foot (on a phone on its side it is in the header),
+ * else the window's. The card stood over the bar's buttons.
+ */
+function roomFoot(): number {
+  const bar = document.querySelector('[data-tour="bar-map"]')?.closest('nav')?.getBoundingClientRect();
+  return bar && bar.top > window.innerHeight / 2 ? bar.top : window.innerHeight;
+}
+
+/**
  * Where the card goes: beside its target where the screen has the width,
  * so what the target opens below it (a panel's section, a slide-over) stays
  * clear; else under it, over it, or at the edge farther from its middle.
@@ -48,7 +58,8 @@ const sameBox = (a: Box | null, b: Box | null) =>
  * has it in the bottom left corner, clear of a dialog in the middle.
  */
 function cardPlace(target: Box | null, hasTargets: boolean, cardHeight: number, cardWidth: number): { top: number; left: number } | null {
-  const { innerWidth: width, innerHeight: height } = window;
+  const width = window.innerWidth;
+  const height = roomFoot();
   if (!target) return hasTargets ? { top: Math.max(GAP, height - cardHeight - GAP), left: GAP } : null;
   const level = Math.min(Math.max(target.top, GAP), Math.max(GAP, height - cardHeight - GAP));
   if (target.left - GAP - cardWidth >= GAP) return { top: level, left: target.left - GAP - cardWidth };
@@ -185,7 +196,7 @@ export default function TableTour({ campaignId, kind, practice, live, userId, ro
   // On the body, over the sheets and dialogs drawn there (FloatingLayer.tsx).
   return (
     <FloatingLayer>
-    <div className="fixed inset-0 z-90 pointer-events-none">
+    <div className="fixed inset-0 z-90 pointer-events-none" style={{ bottom: window.innerHeight - roomFoot() }}>
       {box && (
         // The ring, and the page dimmed around it; neither takes a press.
         <div
@@ -202,7 +213,7 @@ export default function TableTour({ campaignId, kind, practice, live, userId, ro
         aria-labelledby={titleId}
         aria-describedby={bodyId}
         tabIndex={-1}
-        className={`pointer-events-auto absolute ${folded ? 'w-auto' : 'w-[min(22rem,calc(100vw-2rem))]'} card-cozy max-h-[calc(100dvh-2rem)] overflow-y-auto space-y-2 shadow-2xl outline-hidden focus-visible:ring-2 focus-visible:ring-brand ${place ? '' : 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'}`}
+        className={`pointer-events-auto absolute ${folded ? 'w-auto' : 'w-[min(22rem,calc(100vw-2rem))]'} card-cozy max-h-[calc(100%-2rem)] overflow-y-auto space-y-2 shadow-2xl outline-hidden focus-visible:ring-2 focus-visible:ring-brand ${place ? '' : 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'}`}
         style={place ?? undefined}
       >
         <div className="flex items-center gap-2">

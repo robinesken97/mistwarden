@@ -72,7 +72,9 @@ export default function SessionSidebar() {
               )}
             >
               <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
-              <span className={active ? undefined : 'sr-only @min-[26rem]:not-sr-only'}>{label}</span>
+              {/* The open tab's label too goes where it would not fit: a rail
+                  under 19rem, or 23rem where the other tabs are a finger's size. */}
+              <span className={active ? '@max-[19rem]:sr-only pointer-coarse:@max-[23rem]:sr-only' : 'sr-only @min-[26rem]:not-sr-only'}>{label}</span>
               {key === 'chat' && unreadChat > 0 && (
                 <span
                   className="min-w-[18px] h-[18px] px-1 rounded-full bg-brand text-brand-text text-[10px] font-bold flex items-center justify-center"

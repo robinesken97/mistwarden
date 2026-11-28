@@ -4636,7 +4636,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
     )
     : null;
   const heldDistanceText = heldDistance && (
-    <span className="text-xs text-stone-gray font-mono font-semibold">Carried {gridDistanceLabel(heldDistance)}</span>
+    <span className="text-xs text-stone-gray font-semibold tabular-nums">Carried {gridDistanceLabel(heldDistance)}</span>
   );
   const heldDistanceCard = heldDistanceText && (
     <div className="glass-panel px-3 py-1.5 bg-parchment/90 backdrop-blur-xs">{heldDistanceText}</div>
@@ -5338,6 +5338,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
               step={5}
               value={aoeConfig.sizeFt}
               onChange={(e) => setAoEConfig((prev) => ({ ...prev, sizeFt: Math.max(5, parseInt(e.target.value) || 5) }))}
+              aria-label={`${aoeConfig.shape === 'sphere' || aoeConfig.shape === 'cylinder' ? 'Radius' : aoeConfig.shape === 'cube' ? 'Side' : 'Length'} in feet`}
               className="w-full input-cozy text-sm py-1"
             />
           </div>
@@ -5353,6 +5354,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
                 step={5}
                 value={aoeConfig.widthFt ?? 5}
                 onChange={(e) => setAoEConfig((prev) => ({ ...prev, widthFt: Math.max(5, parseInt(e.target.value) || 5) }))}
+                aria-label="Width in feet"
                 className="w-full input-cozy text-sm py-1"
               />
             </div>

@@ -138,7 +138,7 @@ export default function GmFogControls({
       </label>
 
       {!fogEnabled && (
-        <p className="px-1 text-[11px] leading-snug text-stone-400">
+        <p className="px-1 text-xs leading-snug text-stone-400">
           Fog is off. Players see the whole map (dynamic lighting still applies).
           What you had revealed is kept for when you turn it back on.
         </p>
@@ -197,7 +197,7 @@ export default function GmFogControls({
       )}
       {onBrushSquaresChange && fogShape === 'brush' && (
         <div className="flex items-center gap-1" role="group" aria-label="Brush size">
-          <span className="px-1 text-[11px] text-stone-400">Size</span>
+          <span className="px-1 text-xs text-stone-400">Size</span>
           {BRUSH_SIZES.map(({ squares, label }) => (
             <button
               key={label}
@@ -205,7 +205,7 @@ export default function GmFogControls({
               aria-pressed={brushSquares === squares}
               aria-label={`Brush size ${label}`}
               onClick={() => onBrushSquaresChange(squares)}
-              className={`touch-target min-w-8 px-2 py-0.5 rounded text-[11px] font-medium border ${
+              className={`touch-target min-w-8 px-2 py-0.5 rounded text-xs font-medium border ${
                 brushSquares === squares ? 'bg-stone-600/60 text-stone-100 border-stone-400/60' : 'bg-stone-800/40 text-stone-400 border-stone-700/50 hover:bg-stone-700/60'
               }`}
             >
@@ -217,7 +217,7 @@ export default function GmFogControls({
 
       {/* How-to hint — only while a mode is armed */}
       {fogMode && (
-        <p className="px-1 text-[11px] leading-snug text-stone-400">
+        <p className="px-1 text-xs leading-snug text-stone-400">
           {fogShape === 'brush'
             ? <>Paint over the map to {fogMode === 'fog-reveal' ? 'reveal' : 'hide'} what the brush touches.</>
             : fogShape === 'lasso'
@@ -281,7 +281,7 @@ export default function GmFogControls({
             {confirmReset && <ConfirmPulse ring="ring-warning" />}
             {confirmReset ? 'Confirm?' : 'Reset explored areas'}
           </button>
-          <p className="px-1 mt-1 text-[10px] leading-snug text-stone-500">
+          <p className="px-1 mt-1 text-xs leading-snug text-stone-500">
             Forgets what every player has seen of this map. Their view now is unchanged.
           </p>
         </div>

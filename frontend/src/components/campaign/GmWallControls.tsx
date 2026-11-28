@@ -8,6 +8,7 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 import type { WallType } from '@/types/walls';
+import { useCoarsePointer } from '@/hooks/useMediaQuery';
 
 export type WallToolMode = 'wall-draw' | 'wall-select' | 'wall-split' | 'wall-erase' | 'wall-polygon' | 'wall-brush' | null;
 
@@ -129,6 +130,8 @@ export default function GmWallControls({
   // table wants to see the map, not three open panels over it.
   const [collapsed, setCollapsed] = useState(true);
   const bodyId = useId();
+  // A finger's size for every control where the pointer is coarse, as in the compact layout's map (index.css).
+  const coarsePointer = useCoarsePointer();
 
   const handleClearAll = () => {
     if (!confirmClear) { setConfirmClear(true); return; }
@@ -141,7 +144,7 @@ export default function GmWallControls({
   };
 
   return (
-    <div data-tour="walls" className="flex flex-col gap-0 bg-stone-800/90 rounded-lg border border-warm-amber/20 min-w-[200px] overflow-hidden">
+    <div data-tour="walls" className={`flex flex-col gap-0 bg-stone-800/90 rounded-lg border border-warm-amber/20 min-w-[200px] overflow-hidden${coarsePointer ? ' finger-controls' : ''}`}>
       {/* Header with collapse toggle */}
       <button
         type="button"
@@ -363,7 +366,7 @@ export default function GmWallControls({
               >
                 Merge point
               </button>
-              <span className="text-[10px] text-stone-300 px-1">Remove this point and join the two segments into one straight wall</span>
+              <span className="text-xs text-stone-300 px-1">Remove this point and join the two segments into one straight wall</span>
             </div>
           )}
 
@@ -435,7 +438,7 @@ export default function GmWallControls({
                 type="color"
                 value={wallColor}
                 onChange={(e) => onWallColorChange(e.target.value)}
-                className="w-5 h-5 rounded-sm cursor-pointer border-0 bg-transparent p-0"
+                className="touch-target w-5 h-5 rounded-sm cursor-pointer border-0 bg-transparent p-0"
                 title="Custom wall color"
                 aria-label="Custom wall color picker"
               />

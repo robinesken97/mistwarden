@@ -583,7 +583,7 @@ export default function DiceRoller() {
         min-w-0 px-0 py-1.5 rounded-md text-xs font-medium transition-all
         disabled:opacity-50 disabled:cursor-not-allowed
         text-ink
-        ${btn.color}${compact ? ' touch-target' : ' touch-hit'}
+        ${btn.color} touch-target
       `}
     >
       {btn.label}
@@ -599,7 +599,7 @@ export default function DiceRoller() {
         px-2 py-1 rounded-md border border-warm-amber/30 text-xs font-medium
         bg-warm-amber/10 hover:bg-warm-amber/20 transition-all
         disabled:opacity-50 disabled:cursor-not-allowed
-        text-ink${compact ? ' shrink-0 touch-target' : ' touch-hit'}
+        text-ink touch-target${compact ? ' shrink-0' : ''}
       `}
     >
       {btn.label}
@@ -616,7 +616,7 @@ export default function DiceRoller() {
         px-2 py-1 rounded-md border border-spirit-purple/30 text-xs font-medium
         bg-spirit-purple/10 hover:bg-spirit-purple/20 transition-all
         disabled:opacity-50 disabled:cursor-not-allowed
-        text-ink max-w-40 truncate${compact ? ' shrink-0 touch-target' : ' touch-hit'}
+        text-ink max-w-40 truncate touch-target${compact ? ' shrink-0' : ''}
       `}
     >
       {macro.name}
@@ -631,7 +631,7 @@ export default function DiceRoller() {
       className={`
         px-2 py-1 rounded-md border border-dashed border-ink-muted/40 text-xs
         hover:bg-surface transition-all text-ink-secondary
-        flex items-center gap-1${compact ? ' shrink-0 touch-target' : ' touch-hit'}
+        flex items-center gap-1 touch-target${compact ? ' shrink-0' : ''}
       `}
     >
       <Plus className="w-3 h-3" />
@@ -723,9 +723,10 @@ export default function DiceRoller() {
   ) : (
     <div className="flex items-center gap-2">
       {secretRollBox}
+      {/* The box is 12 px; a finger presses it through its label, 44 px tall. */}
       <label
         htmlFor="secretRoll"
-        className="flex items-center gap-1 text-xs text-ink-secondary cursor-pointer"
+        className="touch-target flex items-center gap-1 text-xs text-ink-secondary cursor-pointer"
       >
         <EyeOff className="w-3 h-3" />
         {secretRollWords}
@@ -776,7 +777,7 @@ export default function DiceRoller() {
         disabled:opacity-50 disabled:cursor-not-allowed
         transition-all duration-200
         focus:outline-hidden focus:ring-2 focus:ring-brand/50
-      `, compact ? 'touch-target inline-flex items-center justify-center' : 'touch-hit')}
+      `, 'touch-target', compact && 'inline-flex items-center justify-center')}
       title="Clear all fields"
       aria-label="Clear all fields"
     >
@@ -810,7 +811,7 @@ export default function DiceRoller() {
         showSecretRolls
           ? 'border-ink-muted/30 bg-paper/50 text-ink hover:bg-paper/70'
           : 'border-warm-amber/40 bg-warm-amber/10 text-accent-ink'
-      }${compact ? ' touch-target' : ' touch-hit'}`}
+      } touch-target`}
       title={
         showSecretRolls
           ? 'Hide secret rolls in this list (only affects your view)'
@@ -827,7 +828,7 @@ export default function DiceRoller() {
   const clearHistoryButton = userRole === 'GM' && rolls.length > 0 && (
     <button
       onClick={handleClearHistory}
-      className={`flex items-center gap-1 px-2 py-1 text-xs rounded-md border border-danger/30 bg-danger/10 text-danger-ink hover:bg-danger/15 transition-all${compact ? ' touch-target' : ' touch-hit'}`}
+      className={`flex items-center gap-1 px-2 py-1 text-xs rounded-md border border-danger/30 bg-danger/10 text-danger-ink hover:bg-danger/15 transition-all touch-target`}
       title="Clear all roll history"
     >
       <Trash2 className="w-3 h-3" aria-hidden="true" />
@@ -953,8 +954,9 @@ export default function DiceRoller() {
           )}
         </AnimatePresence>
 
-        {/* The seven dice, one row, each a share of the width. */}
-        <div role="group" aria-label="Dice" className={cn('grid grid-cols-7 gap-1', compact ? 'mb-1.5' : 'mb-2')}>
+        {/* The seven dice, one row, each a share of the width; in the desktop
+            column on a touch screen, rows of four, a finger's size each. */}
+        <div role="group" aria-label="Dice" className={cn('grid grid-cols-7 gap-1', compact ? 'mb-1.5' : 'mb-2 pointer-coarse:grid-cols-4')}>
           {quickRollButtons}
         </div>
 

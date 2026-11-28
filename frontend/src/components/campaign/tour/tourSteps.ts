@@ -75,7 +75,7 @@ export const GM_TOUR: readonly TourStep[] = [
   {
     id: 'map',
     title: 'The map',
-    body: 'Everyone at the table sees this map. Drag an empty spot to move it; zoom with the mouse wheel, a pinch or the zoom buttons.',
+    body: 'Everyone at the table sees this map. Drag an empty spot to move it; zoom with a pinch, the mouse wheel or the zoom buttons.',
     task: 'Move the map a little and zoom in on the courtyard.',
     targets: ['map'],
     openers: MAP,

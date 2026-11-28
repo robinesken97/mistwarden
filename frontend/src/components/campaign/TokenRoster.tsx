@@ -153,15 +153,15 @@ function TokenRow({ token, campaignId, mapId, onEditToken }: TokenRowProps) {
         <TokenSymbolAvatar token={token} type={token.type} disposition={token.disposition} className={`w-7 h-7 ${!token.visible ? 'opacity-40' : ''}`} />
       )}
 
-      {/* Name + HP */}
-      <div className="flex-1 min-w-0">
+      {/* Name + HP; on a touch screen it keeps 8rem, and the actions go under it before it is cut shorter */}
+      <div className="flex-1 min-w-0 pointer-coarse:min-w-32">
         <p title={token.name} className={`text-xs font-medium truncate ${!token.visible ? 'text-stone-gray/50' : 'text-charcoal'}`}>
           {token.name}
-          {!token.visible && <span className="ml-1 text-[10px] text-stone-gray/40">(hidden)</span>}
-          {token.obscured && <span className="ml-1 text-[10px] text-stone-gray/40">(obscured)</span>}
+          {!token.visible && <span className="ml-1 text-xs text-stone-gray/40">(hidden)</span>}
+          {token.obscured && <span className="ml-1 text-xs text-stone-gray/40">(obscured)</span>}
         </p>
         {hp && (
-          <p className="text-[10px] text-stone-gray/60">{hp}</p>
+          <p className="text-xs text-stone-gray/60">{hp}</p>
         )}
       </div>
 
@@ -262,7 +262,7 @@ function TokenGroup({ label, tokens, campaignId, mapId, onEditToken, defaultOpen
     <div>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="touch-target w-full flex items-center gap-1.5 px-2 py-1 text-[10px] font-semibold text-stone-gray/70 uppercase tracking-wider hover:text-stone-gray transition-colors"
+        className="touch-target w-full flex items-center gap-1.5 px-2 py-1 text-xs font-semibold text-stone-gray/70 uppercase tracking-wider hover:text-stone-gray transition-colors"
       >
         {isOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
         {label} ({tokens.length})
