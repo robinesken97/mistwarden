@@ -46,9 +46,14 @@ interface GmToolPanelContainerProps {
 // the toolbar's (top-4) and as far in from the right edge as the toolbar is
 // from the left (left-4); 200 pixels of panels inside its padding.
 const CORNER_TOP = '1rem';
-/** The stack's gap from the map's right edge, and its one width, in pixels: set here and read for the toolbar's reach. */
-const CORNER_RIGHT_PX = 16;
-const STACK_WIDTH_PX = 216;
+/**
+ * The stack's gap from the map's right edge, and its one width, in rem (16
+ * and 216 px at the usual text size): set here and read for the toolbar's
+ * reach. In rem so the stack grows with the page on a very wide screen
+ * (index.css scales the root font from 2200 px).
+ */
+const CORNER_RIGHT_REM = 1;
+const STACK_WIDTH_REM = 13.5;
 /**
  * Room kept below the stack for the Preview Player View button, which sits
  * 5rem above the map's bottom edge: that, its height and a gap. A taller
@@ -131,13 +136,14 @@ export default function GmToolPanelContainer({ children, containerRef, band = nu
     };
   }, [moved, hidden, onTheMap, containerRef]);
 
-  const underBand = stackCornerTop(band, STACK_WIDTH_PX, CORNER_RIGHT_PX);
+  const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+  const underBand = stackCornerTop(band, STACK_WIDTH_REM * rem, CORNER_RIGHT_REM * rem);
   const corner = underBand !== null ? `${underBand}px` : CORNER_TOP;
   const top = position ? `${position.y}px` : corner;
   const style: React.CSSProperties = {
     position: 'absolute',
-    ...(position ? { left: position.x, top: position.y } : { top: corner, right: CORNER_RIGHT_PX }),
-    width: STACK_WIDTH_PX,
+    ...(position ? { left: position.x, top: position.y } : { top: corner, right: CORNER_RIGHT_REM * rem }),
+    width: STACK_WIDTH_REM * rem,
     zIndex: 30,
     maxHeight: `max(${SHORTEST}, calc(100% - ${top} - ${roomBelow !== undefined ? `${roomBelow}px` : ROOM_BELOW}))`,
   };

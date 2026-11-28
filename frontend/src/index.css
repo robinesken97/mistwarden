@@ -464,6 +464,19 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /* A very wide screen at 100 % (a 4K monitor) scales the page up: from
+     2200 px the root font grows 1 px per 180 px of width, 112.5 % at 2560,
+     and stops at 150 % (3640 px and up, 3840 included). Every rem size
+     follows; the media queries do not, being in the browser's own rem, so
+     the layouts switch at the same widths. A % of the browser's text size,
+     so a reader's larger default stays the floor. Below 2200 nothing
+     changes. __tests__/wideScreenScale.test.ts holds the numbers. */
+  @media (min-width: 2200px) {
+    html {
+      font-size: clamp(100%, calc(100% + (100vw - 2200px) / 180), 150%);
+    }
+  }
+
   h1, h2, h3, h4, h5, h6 {
     @apply font-heading;
   }
@@ -517,6 +530,20 @@
     ) {
     font-size: 1rem;
   }
+}
+
+/* On a very wide screen the small sizes the components write in pixels
+   (text-[10px] and the like, about 190 places) grow with the root font as the rem
+   sizes do (the wide-screen rule in the base layer); below 2200 px they stay
+   as written. Outside any layer, so it wins over the class it names; the
+   coarse-pointer rule above for a form control is more specific and keeps
+   its 16 px. */
+@media (min-width: 2200px) {
+  [class~='text-[7px]'] { font-size: 0.4375rem; }
+  [class~='text-[8px]'] { font-size: 0.5rem; }
+  [class~='text-[9px]'] { font-size: 0.5625rem; }
+  [class~='text-[10px]'] { font-size: 0.625rem; }
+  [class~='text-[11px]'] { font-size: 0.6875rem; }
 }
 
 /* A select a finger's size. A height, not a min-height: WebKit ignores
