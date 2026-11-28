@@ -8,8 +8,9 @@
 // layout measurable so ChatPanel's autoscroll-to-bottom keeps
 // working while the tab is inactive.
 //
-// Which one is open is the game store's `sessionTab`, which the rail's
-// tab bar (SessionSidebar) sets. Each panel fills the box it is drawn
+// Which one is open is the game store's `sessionTab`, which the wide
+// layout's tab column (DesktopTable) and the compact layout's bar set.
+// Each panel fills the box it is drawn
 // in, so that box is `position: relative` with a height of its own.
 //
 // On the desktop each panel is a tab panel named by its tab in the rail.

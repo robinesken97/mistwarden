@@ -126,7 +126,8 @@ const KEPT: Kept[] = [
   // What the app keeps in a browser.
   { name: 'cozyvtt_user_theme', pkg: 'frontend', written: /'cozyvtt_user_theme'/ },
   { name: 'cozyvtt-session-tab', pkg: 'frontend', written: /'cozyvtt-session-tab'/ },
-  { name: 'cozyvtt-session-layout', pkg: 'frontend', written: /'cozyvtt-session-layout'/ },
+  // Kept only to delete the old resizable-panel layout a browser may still hold.
+  { name: 'cozyvtt-session-layout', pkg: 'frontend', written: /'react-resizable-panels:cozyvtt-session-layout'/ },
   { name: 'cozyvtt.signInNotice', pkg: 'frontend', written: /'cozyvtt\.signInNotice'/ },
   { name: 'cozyvtt-preparing-map:', pkg: 'frontend', written: /`cozyvtt-preparing-map:\$\{campaignId\}`/ },
   { name: 'cozyvtt-paint-tab', pkg: 'frontend', written: /'cozyvtt-paint-tab'/ },

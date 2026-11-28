@@ -1,4 +1,6 @@
 import { Fragment, useState, useEffect, useEffectEvent, useLayoutEffect, useRef, useCallback, useMemo, FormEvent, KeyboardEvent } from 'react';
+import { createPortal } from 'react-dom';
+import { useTableChrome } from '@/stores/tableChromeStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Dices, Send, AlertCircle, RotateCcw, Trash2, EyeOff, Eye, Plus, ChevronDown } from 'lucide-react';
 import { useWebSocket } from '@/contexts/WebSocketContext';
@@ -116,6 +118,9 @@ export default function DiceRoller() {
    * log keeps its room.
    */
   const compact = useCompactLayout();
+  // On the wide layout the panel's header names the dice and takes Secret and Clear.
+  const panelHeader = useTableChrome((st) => st.panelHeader);
+  const wideHeader = !compact && panelHeader?.tab === 'dice' ? panelHeader.el : null;
   const [moreOptions, setMoreOptions] = useState(false);
 
   // Roll history state
@@ -858,7 +863,8 @@ export default function DiceRoller() {
       {/* Header. The compact layout's sheet names the panel already, so
           there the log starts at the top, and Secret and Clear go under the
           controls. */}
-      {!compact && (
+      {wideHeader && createPortal(<>{secretRollsToggle}{clearHistoryButton}</>, wideHeader)}
+      {!compact && !wideHeader && (
       <div className="shrink-0 p-3 border-b border-ink-muted/20">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">

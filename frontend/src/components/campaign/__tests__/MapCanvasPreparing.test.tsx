@@ -15,7 +15,7 @@
  * screen.
  */
 
-import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act, createEvent, within } from '@testing-library/react';
 import type { CampaignMap, Token } from '@/types';
 import { mouse } from '@/test/pointer';
@@ -159,6 +159,7 @@ vi.mock('@/services/api', () => {
 
 import MapCanvas from '../MapCanvas';
 import { useGameStore } from '@/stores/gameStore';
+import { useTableChrome } from '@/stores/tableChromeStore';
 
 function mapOf(id: string, extra: Partial<CampaignMap> = {}): CampaignMap {
   return {
@@ -210,7 +211,16 @@ beforeAll(() => {
   Object.defineProperty(window, 'ResizeObserver', { value: RO, configurable: true });
 });
 
+// The top bar's place for As player (DesktopTable), which the map portals into.
+let asPlayerSlot: HTMLElement;
+afterEach(() => {
+  useTableChrome.setState({ asPlayerSlot: null });
+  asPlayerSlot.remove();
+});
+
 beforeEach(() => {
+  asPlayerSlot = document.body.appendChild(document.createElement('div'));
+  useTableChrome.setState({ asPlayerSlot });
   h.sent.length = 0;
   h.handlers.clear();
   h.receiveTableMap.mockClear();
@@ -397,11 +407,10 @@ describe('on a map being prepared', () => {
 
   it('offers no Player Preview, and says why', () => {
     render(<MapCanvas />);
-    const button = screen.getByRole('button', { name: 'Preview Player View' });
+    const button = within(asPlayerSlot).getByRole('button', { name: 'As player' });
     expect(button).toBeDisabled();
-    expect(button).toHaveAttribute('title', 'Preview Player View is off while you prepare a map the table is not on');
-    // Said in words too: a touch screen shows no title.
-    expect(screen.getByText('Off while you prepare a map')).toBeInTheDocument();
+    expect(button).toHaveAttribute('title', 'As player is off while you prepare a scene the table is not on');
+    expect(screen.queryByText('Off while you prepare a map')).toBeNull();
   });
 
   it("rolls from a token's Roll... for the GM alone", async () => {
@@ -431,6 +440,6 @@ describe("on the table's map", () => {
 
   it('offers Player Preview', () => {
     render(<MapCanvas />);
-    expect(screen.getByRole('button', { name: 'Preview Player View' })).toBeEnabled();
+    expect(within(asPlayerSlot).getByRole('button', { name: 'As player' })).toBeEnabled();
   });
 });

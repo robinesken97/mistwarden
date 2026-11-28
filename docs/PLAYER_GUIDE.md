@@ -140,39 +140,45 @@ Click your campaign from the dashboard to enter it. This is where the action hap
 
 On a computer, or a tablet held sideways, the page has three main areas, described below. On a phone it has a layout of its own: see [On a phone](#on-a-phone).
 
-### Left Sidebar — Campaign Info
-- Campaign name and description at the top
+### Party Tab — Campaign Roster
+- The campaign's name and description are in **⋯ › Campaign info** in the top bar
 - The **Campaign Roster** showing all players and their characters
 - A small dot beside each person shows whether they're **in session** right now — green if they're connected, grey if not. Handy for telling "thinking" apart from "their internet fell over"
 - A character with hit points on its sheet shows a bar on its card, with the current and maximum beside it. On your own character you also get a row of buttons to change them: **−5**, **−** (one down), **+** (one up) and **+5**. Your GM has them on every character. The minus buttons are damage, so in 5E and Fantasy d20 your temporary hit points go first, and your hit points stop at 0. A Horror d100 character's hit points go below 0 when the damage is more than is left, since its rules keep track of the number
 - Click a character to read its sheet. Right-click one for a menu (on a touch screen, press and hold it): **View Character Sheet** for anyone's character, and for your own **Roll...**, **Temporary HP...** (see [Temporary hit points](#temporary-hit-points)), **Edit Character Sheet** and **Remove from Campaign**, which takes the character out of the campaign and keeps it in your library
 - If you're curious about your fellow adventurers, it's all here
-- **Your role** at the bottom of the **Campaign Info** panel, and under it **Leave Campaign**, which takes you out of the campaign after asking (see [Leaving a campaign](#leaving-a-campaign)), and **About CozyVTT**, which shows the credits for the game rules the sheets use (see [Credits](USER_GUIDE.md#credits))
+- **Leave Campaign** at the top of the tab, which takes you out of the campaign after asking (see [Leaving a campaign](#leaving-a-campaign)), and **About CozyVTT**, which shows the credits for the game rules the sheets use (see [Credits](USER_GUIDE.md#credits))
 
 ### Center — The Map
-This is the battle map. During a session, you'll see your token here and can move it: click it to pick it up, then click where it should go ([Moving Your Token](#moving-your-token)). On a tablet or a phone, see [On a touch screen](#on-a-touch-screen). The toolbar at its top left zooms and fits the view, and you move the view by dragging an empty part of the map ([Moving Around the Map](USER_GUIDE.md#moving-around-the-map)). The map may be a picture your GM uploaded or one they drew in CozyVTT; it works the same either way. When the GM saves a change to the map you are on, its picture changes where you are: your view, and a token you are holding, stay as they were.
+This is the battle map. During a session, you'll see your token here and can move it: click it to pick it up, then click where it should go ([Moving Your Token](#moving-your-token)). On a tablet or a phone, see [On a touch screen](#on-a-touch-screen). The rail on its right edge zooms and fits the view, and you move the view by dragging an empty part of the map ([Moving Around the Map](USER_GUIDE.md#moving-around-the-map)). The map may be a picture your GM uploaded or one they drew in CozyVTT; it works the same either way. When the GM saves a change to the map you are on, its picture changes where you are: your view, and a token you are holding, stay as they were.
 
-### Right Sidebar — Your Tools
+### The Other Tabs — Your Tools
 A tabbed panel — click a tab to switch between:
 - **Chat** — Talk to everyone (an unread badge shows on the tab when messages arrive while you're on another tab)
 - **Dice** — Roll your dice
 - **Initiative** — See the turn order during combat
 - **Notes** — Your own private notes (see [Your Own Notes](#your-own-notes))
-- **Session** — The vibe and past sessions (the Live / Paused badge is in the header)
+- **Table** — The vibe and past sessions (the Live / Paused chip is in the top bar)
 
-You can also drag the divider to resize the sidebar, or collapse it to give the map more room.
-
-### The Header Bar
+### The Top Bar
 The top bar shows:
-- Campaign name, a **Live**, **Paused** or **Inactive** badge, and the current vibe
-- Connection indicator: a dot that goes green when you're connected
-- A **book icon**, **Campaign documents**: the rulebooks and handouts your GM has shared with this campaign
-- A **keyboard icon**, **Keyboard shortcuts**: every key the map takes (see [Keyboard Shortcuts](#keyboard-shortcuts))
-- A **signpost**, **Tour**: a guided tour of your token, the dice, your character sheet and the chat (see [The guided tour](#the-guided-tour))
-- **Hide party panel** and **Hide session panel**, which fold the side columns away, and **Show party panel** and **Show session panel**, which bring them back
-- Navigation controls
+- **Dashboard** (back), the campaign name, a **Live**, **Paused** or **Inactive** chip, and a sun icon when a vibe is set
+- A connection status, only while the page is connecting or disconnected, with **Retry**
+- **Library ▾**, with **Spells** and **Documents**: the rulebooks and handouts your GM has shared with this campaign are under **Documents**
+- **⋯**, with **Keyboard shortcuts** (every key the map takes: see [Keyboard Shortcuts](#keyboard-shortcuts)), **Tour** (a guided tour of your token, the dice, your character sheet and the chat: see [The guided tour](#the-guided-tour)), **Display on this device** and **Campaign info**
 
 *Screenshot pending — Campaign header with status indicators.*
+
+### The table on a wide screen
+
+On a screen 1,024 pixels wide or more (an iPad held sideways, a laptop, a desktop) the page has the top bar above, a column of tabs on the left and the map with its rail of tools on the right.
+
+- The tabs are **Chat**, **Dice**, **Initiative**, **Party**, **Notes**, **Gallery** and **Table**. A tab opens its panel beside the column.
+- Press the open tab again, or the panel's fold button, to fold the panel away and give the map the room. It starts folded under 1,280 pixels and open from 1,280; your device remembers your choice.
+- The rail on the map's right edge has **Zoom out**, the zoom level, **Zoom in**, **Fit map**, **Grid**, **Measure**, **Spell area**, **Ping** and **Draw**. On a short screen it becomes two columns.
+- **Grid** opens a small panel beside the rail; **Draw** opens its tools in a card left of the rail.
+- With a mouse, point at a cell to see its name. On a touch screen, press and hold a cell for its name; the first time, a hint says "Press and hold for names".
+- Your token's card, with its picture, name, **HP** and conditions, sits at the map's bottom left while it is selected or hovered.
 
 ### On a phone
 
@@ -197,11 +203,11 @@ To open CozyVTT from your phone's home screen like an app, full screen, see [Add
 
 ### The guided tour
 
-**Tour**, the signpost in the header (under **More** on a phone), points at what you play with, one step at a time: your token, the dice, your character sheet and the chat. It starts only when you press it, and opens the tab or panel a step is about. **Next** goes on, **Back** goes back, and **End tour** or **Escape** stops it; the arrow beside **End tour** folds the card out of the way until the next step, and a reload comes back to the step you were on. If no token is yours yet, the token step says so: your GM gives you one. In a practice campaign each step also asks you to try the thing.
+**Tour**, in the **⋯** menu of the top bar (under **More** on a phone), points at what you play with, one step at a time: your token, the dice, your character sheet and the chat. It starts only when you press it, and opens the tab or panel a step is about. **Next** goes on, **Back** goes back, and **End tour** or **Escape** stops it; the arrow beside **End tour** folds the card out of the way until the next step, and a reload comes back to the step you were on. If no token is yours yet, the token step says so: your GM gives you one. In a practice campaign each step also asks you to try the thing.
 
 ### Rulebooks and Handouts
 
-Press the **book icon** in the header to see what your GM has shared with the campaign: a rulebook, a page of house rules, a handout for the scene. **Read** opens it in a full-screen reader over the map, and the arrow beside it opens it in a new browser tab, handy for keeping the rules up on a second screen while you play. Only Firefox on a computer shows a PDF inside the reader. In Chrome, Edge, Safari and on a phone the reader offers **Open this PDF in a new tab** instead, as the arrow does.
+Choose **Library ▾ › Documents** in the top bar to see what your GM has shared with the campaign: a rulebook, a page of house rules, a handout for the scene. **Read** opens it in a full-screen reader over the map, and the arrow beside it opens it in a new browser tab, handy for keeping the rules up on a second screen while you play. Only Firefox on a computer shows a PDF inside the reader. In Chrome, Edge, Safari and on a phone the reader offers **Open this PDF in a new tab** instead, as the arrow does.
 
 You can read everything on that list and nothing that is not on it. Sharing is the GM's to do, so if a rulebook you expected is missing, ask them. If your GM edits a shared document, you see the new text the next time you open it.
 
@@ -209,9 +215,9 @@ You can keep documents of your own too, from **Documents** on your dashboard: up
 
 ### Connection Status
 
-When you first load the campaign page, CozyVTT connects to the live session. Look for the **connection indicator** in the header — it turns green when you're successfully connected. On a phone the header shows the connection only while it is not working: a spinning icon while it connects, and an icon with a red dot when it has dropped. If you see a loading spinner, just wait a moment.
+When you first load the campaign page, CozyVTT connects to the live session. The top bar shows the connection only while it is not working: a spinning icon while it connects, and an icon with a red dot when it has dropped. Nothing there means you are connected. If you see a loading spinner, just wait a moment.
 
-If you lose connection (WiFi hiccup, a server restart), CozyVTT keeps trying to reconnect by itself for as long as it takes: every few seconds at first, then every 30 seconds, and at once when you come back to the tab. The indicator shows **Connecting...** while it tries. When it shows **Disconnected** or **Connection Error** in red, the **Retry** button beside it tries straight away.
+If you lose connection (WiFi hiccup, a server restart), CozyVTT keeps trying to reconnect by itself for as long as it takes: every few seconds at first, then every 30 seconds, and at once when you come back to the tab. The top bar shows **Connecting...** while it tries. When it shows **Disconnected** or **Connection Error** in red, the **Retry** button beside it tries straight away.
 
 ### If your GM hands you the game
 
@@ -236,8 +242,8 @@ action somebody took, not something that happens on its own.
 If you no longer want to play or watch, you can leave a campaign yourself; you
 do not need to ask the GM.
 
-1. Open the campaign and find **Your role** at the bottom of the **Campaign
-   Info** panel, in the left sidebar.
+1. Open the campaign and find **Your role** in **⋯ › Campaign info**
+   in the top bar.
 2. Click **Leave Campaign** under it. A window asks whether you are sure and
    says what happens.
 3. Click **Leave Campaign** in that window. You see "You left this campaign."
@@ -266,7 +272,7 @@ Settings** while they are the GM).
 
 ## Chat and Dice
 
-Chat and dice are your two most-used tools. They each have their own tab in the right sidebar, one click apart during a session.
+Chat and dice are your two most-used tools. They each have their own tab in the left column, one click apart during a session.
 
 ### The Chat Panel
 
@@ -354,7 +360,7 @@ One thing to know: if the GM has **paused** the session, your rolls from the **D
 
 Your character's sheet rolls at the table when you open it on the campaign page, from the **Campaign Roster** for instance. Click an ability, a saving throw, a skill or an attack to roll it, or a weapon's damage to roll that. Damage the dice can't roll, such as `1d8 slashing`, stays on the sheet as text: pointing at it or clicking it says why, and nothing is rolled. On a 5E or Fantasy d20 sheet, put just the dice in the damage roll box (**Damage Roll** in 5E), such as `1d8+3`, and the type in the damage type box. The roll lands in the **Dice** panel named for what it was, such as "Dexterity Save". A small dice icon beside a stat says it rolls. A sheet opened from the **Characters** page doesn't roll, since there's no table there.
 
-**Knowing it rolled.** The stat you click or tap gives a short pulse as its roll goes (with reduced motion turned on in your system, a brief highlight), and a phone that allows it, such as one with Chrome on Android, gives a short buzz; an iPhone lets no website vibrate. While the **Dice** panel is not on your screen, as on a phone where the sheet covers it, or on a computer while the session panel shows another tab or is hidden, a message at the top of the page gives the roll's result for a few seconds, such as "Longsword Attack: 17", with "(secret)" after a secret roll.
+**Knowing it rolled.** The stat you click or tap gives a short pulse as its roll goes (with reduced motion turned on in your system, a brief highlight), and a phone that allows it, such as one with Chrome on Android, gives a short buzz; an iPhone lets no website vibrate. While the **Dice** panel is not on your screen, as on a phone where the sheet covers it, or on a computer while the panel shows another tab or is folded, a message at the top of the page gives the roll's result for a few seconds, such as "Longsword Attack: 17", with "(secret)" after a secret roll.
 
 **Advantage and Disadvantage.** Right-click an ability, a saving throw, a skill or an attack for a small menu of **Normal**, **Advantage** and **Disadvantage**, and choose one to roll. On a phone or a tablet, press and hold the stat for half a second instead: the menu opens where your finger is, and you lift your finger and tap a choice. The stat doesn't also roll as you lift, and a finger that slides scrolls the sheet as usual and opens nothing.
 
@@ -483,7 +489,7 @@ A single note can hold about fifty pages of text, so a long campaign journal is 
 
 ### Catching up on last time
 
-The **Session** tab has a **Past Sessions** list. When your GM ends a session they can write a few lines about what happened, and those notes appear here — newest first, with the date and how long you played. It's the place to look when you've forgotten whose idea the rope was.
+The **Table** tab has a **Past Sessions** list. When your GM ends a session they can write a few lines about what happened, and those notes appear here — newest first, with the date and how long you played. It's the place to look when you've forgotten whose idea the rope was.
 
 If a session shows no notes, your GM simply didn't write any that night.
 
@@ -491,13 +497,13 @@ If a session shows no notes, your GM simply didn't write any that night.
 
 ## Measuring and Spell Areas
 
-Two tools in the toolbar above the map answer "can I actually reach that?" before you commit to a turn. Both are private — they draw on your screen only, so nobody sees you working out whether the fireball catches your own party.
+Two tools on the map's rail answer "can I actually reach that?" before you commit to a turn. Both are private — they draw on your screen only, so nobody sees you working out whether the fireball catches your own party.
 
 **Ruler** (the ruler icon) — measures from **your own token**, so there's nothing to click: turn it on and move the cursor, and the distance in feet follows, using the map's scale and its diagonal rule. If your GM hasn't placed your token on the map yet, the ruler has nothing to measure from and won't draw.
 
 On a touch screen, which has no cursor, tap the square you want to measure to, or slide one finger to it: the line stays when you lift, and the next tap moves its end. While the ruler is up, one finger measures and two fingers move and zoom the map. A tap on your own token still picks it up and puts the ruler away, and while you hold it a tap puts it down, as it would with the ruler away. A stylus taps the same way.
 
-**AoE Shape** (the lightning icon) — draws a spell area. Pick **Circle**, **Cone**, **Line** or **Cube**, set the size in feet or use one of the presets, and move the cursor to position it. A cone has your game's shape: in 5E as wide at its far end as it is long, in Fantasy d20 a quarter circle.
+**Spell area** (the lightning icon; **AoE Shape** on a phone) — draws a spell area. Pick **Circle**, **Cone**, **Line** or **Cube**, set the size in feet or use one of the presets, and move the cursor to position it. A cone has your game's shape: in 5E as wide at its far end as it is long, in Fantasy d20 a quarter circle.
 
 For a cone or a line, **click your own token first**. That square becomes the pivot, and moving the cursor swings the shape around it — the point it comes out of slides around the square's edge to follow your aim, so it always leaves on the side you're pointing and never cuts back across you. Keep turning until you can see what the attack catches.
 
@@ -523,13 +529,13 @@ A few things worth knowing:
 
 If you ping repeatedly in quick succession, some will be quietly ignored — that's a spam guard, not a bug.
 
-**Without a keyboard**, click or tap **Ping** in the map's toolbar, then the spot; click it again or press **Esc** to put it away without pinging. On a touch screen you can also press and hold the spot for half a second, on empty ground or on a token that has no menu for you (see [On a touch screen](#on-a-touch-screen)).
+**Without a keyboard**, click or tap **Ping** on the map's rail, then the spot; click it again or press **Esc** to put it away without pinging. On a touch screen you can also press and hold the spot for half a second, on empty ground or on a token that has no menu for you (see [On a touch screen](#on-a-touch-screen)).
 
-**Double tap to ping.** A tap that closes a menu does not count toward one. On a touch screen, two quick taps on empty ground ping the spot where the second lands. The taps must come within half a second of each other and land within 20 pixels of each other. The first tap still does what a tap does, such as clearing the selection, so there is no wait. A third quick tap starts again: three taps ping once, four twice. It works only while no tool is up: with **Ping**, **Draw**, the **Ruler** or **AoE Shape** up, a tap is that tool's. Two taps on a token, or on a door, do what they always do and ping nothing; to point at a creature, use **Ping**, or press and hold it if it has no menu for you. A stylus double taps the same way; a mouse's double-click pings nothing.
+**Double tap to ping.** A tap that closes a menu does not count toward one. On a touch screen, two quick taps on empty ground ping the spot where the second lands. The taps must come within half a second of each other and land within 20 pixels of each other. The first tap still does what a tap does, such as clearing the selection, so there is no wait. A third quick tap starts again: three taps ping once, four twice. It works only while no tool is up: with **Ping**, **Draw**, the **Ruler** or **Spell area** up, a tap is that tool's. Two taps on a token, or on a door, do what they always do and ping nothing; to point at a creature, use **Ping**, or press and hold it if it has no menu for you. A stylus double taps the same way; a mouse's double-click pings nothing.
 
 ### Drawing and pointing
 
-**Draw** (the pencil, after **Ping** in the map's toolbar) opens the drawing tools in the top right corner of the map, with the pen chosen; on a phone they open in a strip across the foot of the map. Sketch a plan, circle a door, label a room: everyone at the table sees it as you draw, and it stays on the map until it is erased. Click **Draw** again, the **×** on the panel (**Done** on a phone's strip), or press **Esc** to put the tools away.
+**Draw** (the pencil on the map's rail) opens the drawing tools in a card left of the rail, with the pen chosen; on a phone they open in a strip across the foot of the map. Sketch a plan, circle a door, label a room: everyone at the table sees it as you draw, and it stays on the map until it is erased. Click **Draw** again, the **×** on the panel (**Done** on a phone's strip), or press **Esc** to put the tools away.
 
 | Tool | How |
 |---|---|
@@ -545,7 +551,7 @@ Pick a colour, a width, and for shapes **Fill shapes** and **Snap to grid**. **C
 
 While the tools are up, a click draws, so it does not pick up your token. Put them away to move it. With a mouse the right button moves the map; on a touch screen, two fingers do.
 
-You can draw while your GM lets players draw (**Players may draw**, on unless they turn it off), except while the session is paused or has ended. Then, while the map holds drawings of yours, **Draw** offers only the eraser and **Clear mine**, so you can still tidy up; with none, it is gone from the toolbar. A spectator has no **Draw**. A ping is different: anyone can ping, a spectator too, at any time.
+You can draw while your GM lets players draw (**Players may draw**, on unless they turn it off), except while the session is paused or has ended. Then, while the map holds drawings of yours, **Draw** offers only the eraser and **Clear mine**, so you can still tidy up; with none, it is gone from the rail. A spectator has no **Draw**. A ping is different: anyone can ping, a spectator too, at any time.
 
 Drawings are the topmost layer of the map: they show over the tokens, the fog and the dark, so you can plan over ground you have not seen yet ("we'll head this way"). The laser pointer shows over everything too, as a ping does.
 
@@ -553,7 +559,7 @@ Drawings are the topmost layer of the map: they show over the tokens, the fog an
 
 ## The Initiative Tracker
 
-The **Initiative** tab in the right sidebar shows the turn order. As the GM adds combatants they appear there, and when the GM clicks **Start Combat** the first one's turn begins.
+The **Initiative** tab shows the turn order. As the GM adds combatants they appear there, and when the GM clicks **Start Combat** the first one's turn begins.
 
 *Screenshot pending — Initiative tracker during combat.*
 
@@ -616,7 +622,7 @@ Advantage and disadvantage cancel out, as the rules say, and one d20 is rolled. 
 
 ## The Vibe Tracker
 
-The **Vibe Tracker**, in the **Session** tab, shows the time of day your GM has set for the scene: dawn, day, dusk and night unless your GM has named their own. When it changes, the whole map shifts colour to match over a few seconds, and the header shows the current one. If your GM edits or removes the current period, your view follows at once.
+The **Vibe Tracker**, in the **Table** tab, shows the time of day your GM has set for the scene: dawn, day, dusk and night unless your GM has named their own. When it changes, the whole map shifts colour to match over a few seconds, and the top bar's sun icon shows that one is set. If your GM edits or removes the current period, your view follows at once.
 
 *Screenshot pending — Vibe tracker showing the current period.*
 
@@ -780,7 +786,7 @@ The campaign card on the dashboard calls a **Live** campaign **Active**.
 
 ### Keyboard Shortcuts
 
-On the map, once you've clicked it. Press `?` on the map, or click **Keyboard shortcuts** (the keyboard icon in the header, beside **Campaign documents**), to see this list on screen. It shows the keys that do something for you; the GM's also has the wall, undo and Mapmaker keys.
+On the map, once you've clicked it. Press `?` on the map, or choose **⋯ › Keyboard shortcuts**, to see this list on screen. It shows the keys that do something for you; the GM's also has the wall, undo and Mapmaker keys.
 
 | Action | Shortcut |
 |--------|---------|
@@ -812,11 +818,11 @@ In the chat box:
 
 **CozyVTT won't open on my tablet or old computer.** It needs Chrome or Edge 111, Firefox 128 or Safari 16.4 (iPadOS 16.4 on an iPad), or newer: Chrome, Edge and Safari from 2023, Firefox from 2024. An older browser may not load the app, or may draw parts of it wrongly, so update the browser or use another device.
 
-**I lost connection.** CozyVTT reconnects by itself; **Retry** beside the connection indicator in the header tries at once. Your session state is saved on the server.
+**I lost connection.** CozyVTT reconnects by itself; **Retry** beside the connection status in the top bar tries at once. Your session state is saved on the server.
 
 **Someone edited my character.** Only you and your campaign's GM can edit your characters. If you have concerns, speak with your platform administrator.
 
-**I want to stop playing in a campaign.** Click **Leave Campaign** in the **Campaign Info** panel: see [Leaving a campaign](#leaving-a-campaign).
+**I want to stop playing in a campaign.** Click **Leave Campaign** at the top of the **Party** tab: see [Leaving a campaign](#leaving-a-campaign).
 
 **I need to switch characters.** From the Characters page, unassign your current character from the campaign and assign the new one. Let your GM know so they can update the token.
 

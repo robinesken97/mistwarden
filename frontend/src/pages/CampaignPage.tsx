@@ -26,7 +26,8 @@ import { usePresenceSync } from '@/hooks/usePresenceSync';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 
 // Campaign components
-import CampaignInfo from '@/components/campaign/CampaignInfo';
+import CampaignInfo, { InvitePlayerButton } from '@/components/campaign/CampaignInfo';
+import LeaveCampaign from '@/components/campaign/LeaveCampaign';
 import PreparingBanner from '@/components/campaign/PreparingBanner';
 import CampaignRoster from '@/components/campaign/CampaignRoster';
 // Lazy-loaded — MapCanvas is by far the largest component in the app; splitting
@@ -261,7 +262,7 @@ function CampaignPageContent() {
               </div>
             }
           >
-            <MapCanvas onEditToken={editToken} onShowShortcuts={() => setIsShortcutsOpen(true)} />
+            <MapCanvas onEditToken={editToken} onShowShortcuts={() => setIsShortcutsOpen(true)} onOpenSpiritLayer={() => setIsSpiritLayerOpen(true)} />
           </Suspense>
         </div>
       </div>
@@ -269,7 +270,13 @@ function CampaignPageContent() {
     session: <SessionPanels />,
     party: (
       <div className="space-y-4">
-        <CampaignInfo onLeft={endTable} />
+        {/* On the wide layout the Campaign Info card is in ⋯ › Campaign info;
+            the Party tab keeps its Invite Player or Leave Campaign at the top. */}
+        {compact
+          ? <CampaignInfo onLeft={endTable} />
+          : userRole === 'GM'
+            ? <InvitePlayerButton />
+            : userRole && <LeaveCampaign campaign={campaign} userRole={userRole} onLeft={endTable} />}
         <CampaignRoster />
         {/* Token Roster — GM only */}
         {userRole === 'GM' && (
@@ -301,19 +308,11 @@ function CampaignPageContent() {
           <DesktopTable
             campaign={campaign}
             isOwner={isOwner}
-            openTools={{
-              maps: isMapManagerOpen,
-              tokens: isTokenManagerOpen,
-              creatures: isCreatureLibraryOpen,
-              templates: isTokenTemplateLibraryOpen,
-              spirit: isSpiritLayerOpen,
-              atmosphere: isAtmospherePanelOpen,
-              settings: isSettingsOpen,
-            }}
             onOpenTool={(key) => sessionPanelOpeners[key]()}
             onOpenDocuments={() => setIsDocumentsOpen(true)}
             onOpenSpells={() => setIsSpellLibraryOpen(true)}
             onOpenShortcuts={() => setIsShortcutsOpen(true)}
+            onLeft={endTable}
           />
         )}
       </TableHosts>

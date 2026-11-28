@@ -1,11 +1,12 @@
 /**
  * The campaign page's two arrangements, and a change between them.
  *
- * From 1,024 px wide the page draws the desktop's header and three columns;
- * below, the compact arrangement, the map between a header and a bar of
- * sheets. Exactly one is drawn, chosen by the one media query, and a change
- * across the width, a tablet turned or a window resized, must find everything
- * as it was: the map, the session panels and the Party content mounted once,
+ * From 1,024 px wide the page draws the desktop's top bar, a tab column, the
+ * panel of the chosen tab and the map; below, the compact arrangement, the
+ * map between a header and a bar of sheets. Exactly one is drawn, chosen by
+ * the one media query, and a change across the width, a tablet turned or a
+ * window resized, must find everything as it was: the map, the session
+ * panels and the Party content mounted once,
  * no socket listener registered again, the open tab and the unread count, a
  * slide-over and the quick editor still open, the keyboard where it was, and
  * the chat log at its newest message.
@@ -13,7 +14,9 @@
  * The parts are stand-ins that count their mounts, register one socket
  * listener each, keep a number in their own state and hold a list that
  * scrolls; the socket counts every listener registered. The arrangements are
- * the page's own.
+ * the page's own. The Campaign Info card is the one piece of the Party
+ * content that differs: the compact Party sheet shows it, while the wide Party
+ * tab shows Invite Player in its place and keeps the card in ⋯ › Campaign info.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -107,13 +110,6 @@ const page = vi.hoisted(() => ({
 }));
 
 vi.mock('react-router', () => ({ useNavigate: () => page.navigate }));
-vi.mock('react-resizable-panels', () => ({
-  Group: ({ children }: { children?: ReactNode }) => <div data-group="">{children}</div>,
-  Panel: ({ id, children }: { id: string; children?: ReactNode }) => <div data-panel={id}>{children}</div>,
-  Separator: () => null,
-  useDefaultLayout: () => ({ defaultLayout: undefined, onLayoutChanged: () => undefined }),
-  usePanelRef: () => ({ current: null }),
-}));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: page.user }) }));
 vi.mock('@/contexts/CampaignContext', () => ({
   CampaignProvider: ({ children }: { children?: ReactNode }) => <>{children}</>,
@@ -127,6 +123,11 @@ vi.mock('@/hooks/useInitiativeSync', () => ({ useInitiativeSync: () => undefined
 vi.mock('@/hooks/usePresenceSync', () => ({ usePresenceSync: () => undefined }));
 vi.mock('@/hooks/useOnRejoin', () => ({ useOnRejoin: () => undefined }));
 vi.mock('@/hooks/useAccessRevoked', () => ({ useAccessRevoked: () => undefined }));
+// The bar asks the server's settings whether to offer AI writing help: here it does not.
+vi.mock('@/hooks/queries', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/hooks/queries')>()),
+  useServerConfigQuery: () => ({ data: { ai: { enabled: false } } }),
+}));
 
 vi.mock('@/components/campaign/MapCanvas', standIn('Map'));
 vi.mock('@/components/campaign/ChatPanel', standIn('Chat'));
@@ -136,7 +137,12 @@ vi.mock('@/components/campaign/PersonalNotes', standIn('Notes'));
 vi.mock('@/components/campaign/VibeTracker', standIn('Vibe'));
 vi.mock('@/components/campaign/SessionControls', standIn('Controls'));
 vi.mock('@/components/campaign/SessionHistory', standIn('History'));
-vi.mock('@/components/campaign/CampaignInfo', standIn('Info'));
+// Drawn by arrangement (the compact Party sheet, or Invite Player on the wide
+// Party tab), so these are not parts held across a change and count nothing.
+vi.mock('@/components/campaign/CampaignInfo', () => ({
+  default: () => <div data-testid="campaign-info" />,
+  InvitePlayerButton: () => <button type="button">Invite Player</button>,
+}));
 vi.mock('@/components/campaign/CampaignRoster', standIn('Roster'));
 // The Token Roster opens a token in the quick editor, as its Edit buttons do.
 vi.mock('@/components/campaign/TokenRoster', async () => {
@@ -170,12 +176,13 @@ vi.mock('@/components/campaign/TokenTemplateLibrary', nothing);
 vi.mock('@/components/campaign/CampaignSettingsModal', nothing);
 vi.mock('@/components/documents/CampaignDocumentsModal', nothing);
 vi.mock('@/components/ConnectionStatus', nothing);
+vi.mock('@/components/campaign/LeaveCampaign', nothing);
 
 import CampaignPage from '../CampaignPage';
 import { useGameStore } from '@/stores/gameStore';
 import { COMPACT_LAYOUT_QUERY } from '@/constants/layout';
 
-const PARTS = ['Map', 'Chat', 'Dice', 'Initiative', 'Notes', 'Vibe', 'Controls', 'History', 'Info', 'Roster', 'TokenRoster'];
+const PARTS = ['Map', 'Chat', 'Dice', 'Initiative', 'Notes', 'Vibe', 'Controls', 'History', 'Roster', 'TokenRoster'];
 
 /**
  * A part's button, by its text: in a closed sheet it is hidden, and has no
@@ -188,7 +195,15 @@ const part = (name: string) => {
 };
 const heading = () => screen.queryByRole('heading', { level: 1, name: 'Test' });
 const bar = () => screen.queryByRole('navigation', { name: 'Table' });
-const columns = () => document.querySelectorAll('[data-panel]');
+/** The wide arrangement's tab column. */
+const wideTabs = () => screen.queryByRole('tablist', { name: 'Panels' });
+/** The wide arrangement's panel beside the tab column. */
+const widePanel = '#wide-panel';
+const partyPanel = '#wide-panel [role="tabpanel"][aria-labelledby="session-tab-party"]';
+const info = () => screen.queryByTestId('campaign-info');
+const invite = () => screen.queryByRole('button', { name: 'Invite Player', hidden: true });
+/** Opens the top bar's Library list. */
+const openLibrary = () => fireEvent.click(screen.getByRole('button', { name: 'Library' }));
 const press = (name: string) => fireEvent.click(within(bar()!).getByRole('button', { name: new RegExp(`^${name}`) }));
 /** The screen turns, or the window is resized, across 1,024 px. */
 const arrange = (compact: boolean) => act(() => screenWidth.set(compact));
@@ -236,13 +251,17 @@ afterEach(async () => {
 });
 
 describe('the desktop arrangement, from 1,024 px wide', () => {
-  it('draws the map, the session panels and the Party content in its columns, and no bar', async () => {
+  it('draws the map, the session panels and the Party content beside its tabs, and no bar', async () => {
     await openPage();
 
-    expect(part('Map').closest('[data-panel="map"] section')).not.toBeNull();
-    expect(part('Chat').closest('#session-tabpanel-chat')?.closest('[data-panel="rail"]')).not.toBeNull();
-    expect(part('Roster').closest('[data-panel="party"] aside')).not.toBeNull();
-    expect(screen.getByRole('button', { name: 'Edit Goblin' }).closest('[data-panel="party"] aside')).not.toBeNull();
+    expect(wideTabs()).not.toBeNull();
+    expect(part('Map').closest('main')).not.toBeNull();
+    expect(part('Chat').closest('#session-tabpanel-chat')?.closest(widePanel)).not.toBeNull();
+    expect(part('Roster').closest(partyPanel)).not.toBeNull();
+    expect(screen.getByText('Edit Goblin').closest(partyPanel)).not.toBeNull();
+    // Invite Player heads the wide Party tab; the Campaign Info card is in ⋯.
+    expect(invite()?.closest(partyPanel)).not.toBeNull();
+    expect(info()).toBeNull();
     expect(bar()).toBeNull();
   });
 
@@ -271,24 +290,27 @@ describe('the desktop arrangement, from 1,024 px wide', () => {
   // nothing out, so the class is what can be checked here.
   it('is as tall as the screen shows, toolbar or not', async () => {
     await openPage();
-    const page = document.querySelector('header')!.parentElement!;
+    const page = document.querySelector('header')!.closest<HTMLElement>('[data-table-page]')!;
     expect(page.className.split(/\s+/)).toContain('h-dvh');
     expect(page.className.split(/\s+/)).not.toContain('h-screen');
   });
 
-  // The header's tools are the GM's. The page decides by the stored role,
-  // whatever the label says.
+  // The GM's tools are in the top bar's Library list. The page decides by the
+  // stored role, whatever the label says.
   it.each([
     ['GM', 1],
     ['PLAYER', 0],
     ['SPECTATOR', 0],
-  ] as const)('shows the GM tools in the header to the stored role %s %d times', async (role, count) => {
+  ] as const)('shows the GM tools in the Library list to the stored role %s %d times', async (role, count) => {
     const before = page.campaign.userRole;
     page.campaign.userRole = role;
     try {
       await openPage();
-      expect(screen.queryAllByRole('toolbar', { name: 'GM tools' })).toHaveLength(count);
-      expect(screen.queryAllByRole('button', { name: 'Map Library' })).toHaveLength(count);
+      openLibrary();
+      for (const name of ['Scenes', 'Tokens', 'Creatures', 'Token Templates']) {
+        expect(screen.queryAllByRole('button', { name }), name).toHaveLength(count);
+      }
+      expect(screen.getByRole('button', { name: 'Documents' })).toBeTruthy();
     } finally {
       page.campaign.userRole = before;
     }
@@ -302,11 +324,12 @@ describe('the compact arrangement, below 1,024 px', () => {
 
     expect(heading()).not.toBeNull();
     expect(bar()).not.toBeNull();
-    expect(columns()).toHaveLength(0);
+    expect(wideTabs()).toBeNull();
     expect(part('Map').closest('main')).not.toBeNull();
     expect(part('Chat').closest('[data-sheet]')).not.toBeNull();
     expect(part('Roster').closest('[data-sheet]')).not.toBeNull();
     expect(screen.getByText('Edit Goblin').closest('[data-sheet]')).not.toBeNull();
+    expect(info()?.closest('[data-sheet]')).not.toBeNull();
     for (const name of PARTS) expect(life.mounts[name], name).toBe(1);
   });
 
@@ -343,17 +366,22 @@ describe('a change of arrangement', () => {
 
     arrange(true);
     expect(bar()).not.toBeNull();
-    expect(columns()).toHaveLength(0);
+    expect(wideTabs()).toBeNull();
     expect(part('Map')).toBe(map);
     expect(map.closest('main')).not.toBeNull();
     expect(part('Chat').closest('[data-sheet]')).not.toBeNull();
-    expect(part('Info').closest('[data-sheet]')).not.toBeNull();
+    expect(part('Roster').closest('[data-sheet]')).not.toBeNull();
+    expect(info()?.closest('[data-sheet]')).not.toBeNull();
+    expect(invite()).toBeNull();
 
     arrange(false);
     expect(bar()).toBeNull();
-    expect(map.closest('[data-panel="map"] section')).not.toBeNull();
-    expect(part('Chat').closest('[data-panel="rail"]')).not.toBeNull();
-    expect(part('Info').closest('[data-panel="party"]')).not.toBeNull();
+    expect(wideTabs()).not.toBeNull();
+    expect(map.closest('main')).not.toBeNull();
+    expect(part('Chat').closest(widePanel)).not.toBeNull();
+    expect(part('Roster').closest(partyPanel)).not.toBeNull();
+    expect(invite()?.closest(partyPanel)).not.toBeNull();
+    expect(info()).toBeNull();
 
     arrange(true);
     arrange(false);
@@ -370,8 +398,9 @@ describe('a change of arrangement', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Dice' }));
     chatArrives('mara');
     expect(screen.getByLabelText('1 unread messages')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Map Library' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Edit Goblin' }));
+    openLibrary();
+    fireEvent.click(screen.getByRole('button', { name: 'Scenes' }));
+    fireEvent.click(screen.getByText('Edit Goblin'));
 
     arrange(true);
     expect(screen.getByRole('dialog', { name: 'Map Library' })).toBeTruthy();
@@ -398,7 +427,11 @@ describe('a change of arrangement', () => {
     chatArrives('mara');
     expect(within(bar()!).getByLabelText('1 unread messages')).toBeTruthy();
 
+    // The wide panel starts folded below 1,280 px, so the count holds until
+    // the Chat tab shows the chat.
     arrange(false);
+    expect(screen.getByLabelText('1 unread messages')).toBeTruthy();
+    fireEvent.click(screen.getByRole('tab', { name: /^Chat/ }));
     expect(useGameStore.getState().unreadChat).toBe(0);
   });
 
@@ -412,8 +445,10 @@ describe('a change of arrangement', () => {
     expect(document.activeElement).toBe(part('Map'));
   });
 
-  it("opens the session sheet when the keyboard was in the rail, so the control stays in sight", async () => {
+  it("opens the session sheet when the keyboard was in the wide panel, so the control stays in sight", async () => {
     await openPage();
+    // A folded panel is inert and holds no keyboard: open it on the chat first.
+    fireEvent.click(screen.getByRole('tab', { name: /^Chat/ }));
     part('Chat').focus();
 
     arrange(true);

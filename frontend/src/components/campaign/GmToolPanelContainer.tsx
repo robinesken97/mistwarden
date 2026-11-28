@@ -36,6 +36,8 @@ interface GmToolPanelContainerProps {
   roomBelow?: number;
   /** The card's heading: "GM tools", or what a player's Draw panel is under. */
   label?: string;
+  /** Its place before it is dragged, in px from the map's top and right edges: on the wide layout, left of the rail. */
+  corner?: { top: number; right: number };
 }
 
 /**
@@ -66,7 +68,7 @@ const ROOM_BELOW = '8rem';
 /** The stack is never cut shorter than this, wherever it is dropped. */
 const SHORTEST = '6rem';
 
-export default function GmToolPanelContainer({ children, containerRef, band = null, hidden = false, onHide, topLimit = 0, roomBelow, label = 'GM tools' }: GmToolPanelContainerProps) {
+export default function GmToolPanelContainer({ children, containerRef, band = null, hidden = false, onHide, topLimit = 0, roomBelow, label = 'GM tools', corner: cornerAt }: GmToolPanelContainerProps) {
   // Where the stack was dropped, in pixels from the map container's top left
   // corner; null for its place in the top right corner. It was fixed to the
   // window, so it stayed put when the map moved or shrank and could be left
@@ -138,11 +140,11 @@ export default function GmToolPanelContainer({ children, containerRef, band = nu
 
   const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
   const underBand = stackCornerTop(band, STACK_WIDTH_REM * rem, CORNER_RIGHT_REM * rem);
-  const corner = underBand !== null ? `${underBand}px` : CORNER_TOP;
+  const corner = cornerAt ? `${cornerAt.top}px` : underBand !== null ? `${underBand}px` : CORNER_TOP;
   const top = position ? `${position.y}px` : corner;
   const style: React.CSSProperties = {
     position: 'absolute',
-    ...(position ? { left: position.x, top: position.y } : { top: corner, right: CORNER_RIGHT_REM * rem }),
+    ...(position ? { left: position.x, top: position.y } : { top: corner, right: cornerAt ? cornerAt.right : CORNER_RIGHT_REM * rem }),
     width: STACK_WIDTH_REM * rem,
     zIndex: 30,
     maxHeight: `max(${SHORTEST}, calc(100% - ${top} - ${roomBelow !== undefined ? `${roomBelow}px` : ROOM_BELOW}))`,

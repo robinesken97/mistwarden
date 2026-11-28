@@ -12,12 +12,13 @@
  */
 
 import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, act, within } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor, within } from '@testing-library/react';
 import type { CampaignMap, Token } from '@/types';
 import type { Drawing, DrawingAddAck, DrawingAddEvent, DrawingPreview, DrawingPreviewEvent } from '@/types/drawings';
 import { recordDrawing, nextFrame, pictures, type Call } from '@/test/recordingCanvas';
 import { contact, mouse } from '@/test/pointer';
 import { DRAWING_LIMITS } from '@/constants/drawingLimits';
+import { useTableChrome } from '@/stores/tableChromeStore';
 
 const h = vi.hoisted(() => {
   const listeners = new Set<() => void>();
@@ -218,7 +219,12 @@ beforeAll(() => {
   Object.defineProperty(window, 'ResizeObserver', { value: RO, configurable: true });
 });
 
+// The top bar's slot MapCanvas puts As player in (DesktopTable's, in the app).
+let asPlayerSlot: HTMLElement;
 beforeEach(() => {
+  asPlayerSlot = document.createElement('div');
+  document.body.appendChild(asPlayerSlot);
+  useTableChrome.setState({ asPlayerSlot });
   h.sent.length = 0;
   h.handlers.clear();
   h.answers.add = async () => ({ ok: true, id: 'stored-1' });
@@ -226,6 +232,18 @@ beforeEach(() => {
   useGameStore.getState().clearGameState();
   h.set({ userRole: 'GM', currentMap: mapWith(), status: 'ACTIVE', playersMayDraw: true, playerSpiritVisible: false, memberships: [] });
 });
+afterEach(() => {
+  useTableChrome.setState({ mapmakerSlot: null, asPlayerSlot: null });
+  asPlayerSlot.remove();
+});
+
+/** Player Preview as Mara, from As player in the top bar. */
+async function previewAsMara() {
+  fireEvent.click(screen.getByRole('button', { name: 'As player' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Mara' }));
+  // The list closes a moment after the row's click (TopBarMenu).
+  await waitFor(() => expect(screen.queryByRole('group', { name: 'As player' })).toBeNull());
+}
 
 describe('the drawings on the map', () => {
   const drawn = recordDrawing();
@@ -287,7 +305,7 @@ describe('the drawings on the map', () => {
 
     // The preview shows drawings over its fog, as a player sees them, and
     // none for the GM alone.
-    fireEvent.click(screen.getByRole('button', { name: 'Preview Player View' }));
+    await previewAsMara();
     await nextFrame();
     top = composite(layers()[2]);
 
@@ -378,7 +396,7 @@ describe('the drawings on the map', () => {
     expect(indexOf(added, 'lineTo', 123, 77)).toBeGreaterThan(-1);
     expect(indexOf(added, 'lineTo', 321, 45)).toBeGreaterThan(-1);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Zoom In' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
     await nextFrame();
     expect(indexOf(composite(layers()[2]), 'lineTo', 123, 77)).toBeGreaterThan(-1);
   });
@@ -504,13 +522,14 @@ function stroke(from: { clientX: number; clientY: number }, ...to: Array<{ clien
 }
 
 describe('the Draw button', () => {
-  it('is in the toolbar for the GM, beside Ping, in the group that wraps together, sized for a finger', () => {
+  it('is in the rail for the GM, right after Ping, sized for a finger', () => {
     render(<MapCanvas />);
 
     const button = drawButton()!;
     expect(button).toHaveAttribute('aria-pressed', 'false');
-    expect(button.parentElement).toBe(screen.getByRole('button', { name: 'Ping' }).parentElement);
-    expect(button.className.split(/\s+/)).toContain('touch-target');
+    expect(within(screen.getByRole('navigation', { name: 'Map tools' })).getByRole('button', { name: 'Draw' })).toBe(button);
+    expect(button.parentElement!.previousElementSibling).toBe(screen.getByRole('button', { name: 'Ping' }).parentElement);
+    expect(button.className.split(/\s+/)).toContain('pointer-coarse:size-11');
   });
 
   it('is there for a player while Players may draw is on and the session is live', () => {
@@ -574,15 +593,16 @@ describe('the Draw button', () => {
   // the clicks before the pen, and the pen the GM tools'.
   it('puts the ruler, the area template and a GM tool away, and is put away by them', () => {
     render(<MapCanvas />);
-    fireEvent.click(screen.getByTitle('Ruler — measure distance'));
+    fireEvent.click(screen.getByRole('button', { name: 'Measure' }));
     fireEvent.click(drawButton()!);
-    expect(screen.getByTitle('Ruler — measure distance').className).not.toContain('bg-moss-green/20');
+    expect(screen.getByRole('button', { name: 'Measure' })).toHaveAttribute('aria-pressed', 'false');
 
-    fireEvent.click(screen.getByTitle('AoE Shape — area of effect overlay'));
+    fireEvent.click(screen.getByRole('button', { name: 'Spell area' }));
     expect(screen.queryByRole('region', { name: 'Drawing tools' })).not.toBeInTheDocument();
 
     fireEvent.click(drawButton()!);
     expect(screen.queryByText('AoE Shape')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'GM tools' }));
     fireEvent.click(screen.getByText('Walls'));
     fireEvent.click(screen.getByLabelText('Wall draw mode'));
     expect(screen.queryByRole('region', { name: 'Drawing tools' })).not.toBeInTheDocument();
@@ -1150,11 +1170,11 @@ describe('the eraser', () => {
   });
 
   // Player Preview shows what a player is sent: the eraser finds only that.
-  it('passes over a drawing for the GM alone in Preview Player View', () => {
+  it('passes over a drawing for the GM alone in Preview Player View', async () => {
     h.set({ currentMap: mapWith({ fogEnabled: true }), memberships: [{ userId: 'p1', role: 'PLAYER', user: { displayName: 'Mara' } }] });
     render(<MapCanvas />);
     fire('drawings:state', { mapId: 'map-a', drawings: [drawing({ id: 'secret', audience: 'GM', points: [[100, 100], [300, 100]] })] });
-    fireEvent.click(screen.getByRole('button', { name: 'Preview Player View' }));
+    await previewAsMara();
     draw('Eraser');
 
     mouse.down(surface(), px(200, 100));
@@ -1238,7 +1258,8 @@ describe('a finger, a pen and the mouse under the Draw tool', () => {
     fireEvent.contextMenu(surface(), square(0, 19));
     mouse.move(surface(), px(60, 10), 0);
 
-    expect(readout()).toBe('(0, 19)');
+    // The view moved by the pan: the pointer is over the goblin's square, (0, 19), and shows its card.
+    expect(screen.getByText('Goblin')).toBeInTheDocument();
     expect(screen.queryByText('Edit Token')).not.toBeInTheDocument();
     expect(added()).toEqual([]);
   });

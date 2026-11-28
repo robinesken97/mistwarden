@@ -561,10 +561,10 @@ describe('a new picture for the map on screen', () => {
 
   it('leaves the view and a carried token as they were', async () => {
     await shown();
-    fireEvent.click(screen.getByRole('button', { name: 'Zoom In' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
     const zoomed = zoom();
     expect(zoomed).not.toBe('54%');
-    fireEvent.click(screen.getByRole('button', { name: 'Zoom Out' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom out' }));
     expect(zoom()).toBe('54%');
 
     mouse.down(surface(), fittedSquare(5, 13));
@@ -660,7 +660,7 @@ describe('a new picture for the map on screen', () => {
 
     await first.decoded();
     await nextFrame();
-    act(() => { fireEvent.click(screen.getByRole('button', { name: 'Zoom In' })); });
+    act(() => { fireEvent.click(screen.getByRole('button', { name: 'Zoom in' })); });
     await nextFrame();
     expect(picturesIn(drawing.take(layers()[0]))).toEqual([second]);
   });
@@ -679,7 +679,7 @@ describe('a new picture for the map on screen', () => {
     pictureAt(OLD).load();
     await pictureAt(OLD).decoded();
     await nextFrame();
-    act(() => { fireEvent.click(screen.getByRole('button', { name: 'Zoom In' })); });
+    act(() => { fireEvent.click(screen.getByRole('button', { name: 'Zoom in' })); });
     await nextFrame();
     expect(srcs()).toEqual([OLD]);
     expect(screen.queryByText('Loading map...')).toBeNull();

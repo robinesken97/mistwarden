@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import { CampaignRole, TokenLayer, TokenType, type CampaignMap, type RosterMember, type Token } from '@/types';
 import type { WallSegment } from '@/types/walls';
 import { contact, mouse } from '@/test/pointer';
@@ -145,6 +145,7 @@ vi.mock('@/services/api', () => {
 import MapCanvas from '../MapCanvas';
 import CampaignRoster from '../CampaignRoster';
 import { useGameStore } from '@/stores/gameStore';
+import { useTableChrome } from '@/stores/tableChromeStore';
 
 function mapNamed(id: string, extra: Partial<CampaignMap> = {}): CampaignMap {
   return {
@@ -453,14 +454,22 @@ describe("the GM's token menu", () => {
  * draws and on one it does not: the GM previewing is still the GM.
  */
 describe('the token menu in Player Preview', () => {
+  let slot: HTMLElement;
   beforeEach(() => {
     h.set({ currentMap: mapNamed('map-a', { lightingEnabled: true, globalIllumination: true }) });
+    slot = document.body.appendChild(document.createElement('div'));
+    useTableChrome.setState({ asPlayerSlot: slot });
+  });
+  afterEach(() => {
+    useTableChrome.setState({ asPlayerSlot: null });
+    slot.remove();
   });
 
   it("is the GM's, on a token the preview draws and on a hidden one", () => {
     render(<MapCanvas />);
     show(hero('char-alice', 'alice'), goblin({ visible: false, position: { x: 3, y: 10 } }));
-    fireEvent.click(screen.getByRole('button', { name: 'Preview Player View' }));
+    fireEvent.click(within(slot).getByRole('button', { name: 'As player' }));
+    fireEvent.click(within(screen.getByRole('group', { name: 'As player' })).getByRole('button', { name: 'Alice' }));
 
     rightClick(2, 19);
     expect(rows()).toEqual(['View Character Sheet', 'Roll...', ...ROTATE, MOUNT, ...GM_ITEMS]);

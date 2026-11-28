@@ -526,7 +526,9 @@
       [class~='text-[8px]'],
       [class~='text-[9px]'],
       [class~='text-[10px]'],
-      [class~='text-[11px]']
+      [class~='text-[11px]'],
+      [class~='text-[0.8125rem]'],
+      [class~='text-[0.9375rem]']
     ) {
     font-size: 1rem;
   }
