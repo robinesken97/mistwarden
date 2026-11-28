@@ -4553,8 +4553,10 @@ export default function MapCanvas({ onEditToken, onShowShortcuts, onOpenSpiritLa
   // one group of its cells.
   const railViewCount = compact ? 2 : 5;
   const railGroups = compact ? [railViewCount + railToolCount + railGmCount] : [railViewCount, railToolCount, railGmCount];
-  // The map shown above an open dock, which the rail fits into.
-  const shownMapHeight = canvasSize.height - mapCover;
+  // The map shown above an open dock, and on a phone above the strip and
+  // notes at the map's foot, which the rail fits into.
+  const railBottom = mapCover + (compact ? dockHeight ?? 0 : 0);
+  const shownMapHeight = canvasSize.height - railBottom;
   const railTwoCol = railTwoColumns(railGroups, railCellPx, shownMapHeight);
   const railPx = railWidth(railTwoCol ? 2 : 1, coarsePointer ? 44 : 40) * rootScale;
   const zoomCenter = { x: canvasSize.width / 2, y: canvasSize.height / 2 };
@@ -4887,7 +4889,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts, onOpenSpiritLa
           slim={compact}
           // Centred on the shown map, above an open dock, except on the wide layout.
           centred={tableLayout !== 'wide'}
-          bottom={mapCover}
+          bottom={railBottom}
           // Out of the way of a card or popover beside the rail.
           hint={railHint.shown && !stackShown && !railPopover && !drawKind && !paint.on && !showRuler
             ? <RailHint onDismiss={railHint.dismiss} /> : undefined}

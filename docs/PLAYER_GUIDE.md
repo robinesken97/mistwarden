@@ -182,28 +182,15 @@ On a screen 1,024 pixels wide or more (an iPad held sideways, a laptop, a deskto
 
 ### On a phone
 
-On a phone, on most tablets held upright and in a browser window narrower than 1,024 pixels, the map fills the screen. Above it a one-line header has the arrow back to your dashboard, the campaign's name and **Live**, **Paused** or **Inactive** (a coloured dot on a phone turned on its side). Along the bottom a bar of buttons opens everything the side panels hold:
+On a phone, on a tablet held upright and in a browser window narrower than 1,024 pixels, the map fills the screen under the same top bar, and the seven tabs (**Chat**, **Dice**, **Initiative**, **Party**, **Notes**, **Gallery**, **Table**) sit in a dock along the bottom, folded to their row. Tap a tab and its panel rises over the foot of the map, to 40 % of the screen; tap it again, or its **⌄**, to fold it. Drag the bar at the top of the panel up for more room (60 % on a tablet, the whole screen on a phone) or down to fold it. Your device remembers how you left it. A number on **Chat** counts the messages that came in while it was folded.
 
-| Button | What it opens |
-|---|---|
-| **Map** | Closes whatever is open, back to the map |
-| **Chat** | The chat. A number on the button counts the messages that came in while it was closed |
-| **Dice** | The dice roller |
-| **Initiative** | The turn order |
-| **Party** | The campaign's info, the roster with your character's hit point buttons, **Leave Campaign** and **About CozyVTT** |
-| **More** | **Notes**, **Session** (the vibe and past sessions), **Documents** (your GM's rulebooks and handouts) and **Shortcuts** |
-
-Each opens as a sheet over the map. Chat, Dice, Initiative and Party open at half the screen's height, so you can watch the map, and pinch, pan or tap it, while you chat or roll. Tap the bar at the top of the sheet, or drag it up, for the full height. Close it with its **✕**, its button or **Map**, a drag down, or your phone's **Back**. **Back** also closes a window opened over the map, such as a character sheet; its editor asks **Discard Changes?** first if you have changed something.
-
-In **Dice** each roll takes two lines, who rolled it, what for and when over the expression and its dice, with the total beside them in large type, so several fit in the half-height sheet.
-
-A press and hold on your token opens its menu as a list from the bottom of the screen, as it does on a character in **Party**'s roster. The map's toolbar keeps **Zoom Out**, **Zoom In**, **Ping** and **Draw** in its one row; its **More** has the rest, such as **Fit to Screen**, the grid and the **Ruler**. Turn the phone on its side and the bar's buttons move into the header, with sheets and menus opening from the right. See [The campaign page on a phone or tablet](USER_GUIDE.md#the-campaign-page-on-a-phone-or-tablet) for the whole of it.
+On a phone the top bar is slimmer: **Live** is a dot, and **⋯** rises as a sheet with **Spells** and **Documents** at its top. The map's rail on the right keeps eight cells: the zoom (tap it to fit the map; pinch to zoom), **Grid**, **Measure**, **Spell area**, **Ping** and **Draw**. **Draw** opens its tools in a strip above the dock. Press and hold your token for its menu, which rises from the bottom of the screen. Turn the phone on its side and the tabs move into the top bar, with a panel opening on the left. See [The campaign page on a phone or tablet](USER_GUIDE.md#the-campaign-page-on-a-phone-or-tablet) for the whole of it.
 
 To open CozyVTT from your phone's home screen like an app, full screen, see [Adding CozyVTT to your home screen](USER_GUIDE.md#adding-cozyvtt-to-your-home-screen).
 
 ### The guided tour
 
-**Tour**, in the **⋯** menu of the top bar (under **More** on a phone), points at what you play with, one step at a time: your token, the dice, your character sheet and the chat. It starts only when you press it, and opens the tab or panel a step is about. **Next** goes on, **Back** goes back, and **End tour** or **Escape** stops it; the arrow beside **End tour** folds the card out of the way until the next step, and a reload comes back to the step you were on. If no token is yours yet, the token step says so: your GM gives you one. In a practice campaign each step also asks you to try the thing.
+**Tour**, in the **⋯** menu of the top bar, points at what you play with, one step at a time: your token, the dice, your character sheet and the chat. It starts only when you press it, and opens the tab or panel a step is about. **Next** goes on, **Back** goes back, and **End tour** or **Escape** stops it; the arrow beside **End tour** folds the card out of the way until the next step, and a reload comes back to the step you were on. If no token is yours yet, the token step says so: your GM gives you one. In a practice campaign each step also asks you to try the thing.
 
 ### Rulebooks and Handouts
 
@@ -412,9 +399,9 @@ On a tablet or a phone your finger does what the mouse does, and a little more:
 |---|---|
 | Move your token | Put your finger on it, slide it to the square and lift: it goes down where you lift, and stays selected. A second finger on the glass before you lift puts it back where it was. |
 | Move it in two taps | Tap your token, then tap the square. In between it stays in your hand, drawn faded on its own square with the selection ring, its hit-point bar and its conditions, so you can move the map with one finger, or pinch, and keep hold of it. Slide the token from its own square to carry it, or tap the square it came from to put it back. |
-| Put back a token you are holding | Tap **Put back** in the bar at the top of the map, which names the token. It does what **Esc** does. |
+| Put back a token you are holding | Tap **Put back** in the pill at the top of the map, which names the token. It does what **Esc** does. |
 | Move the map | Slide one finger anywhere but on a token you can move. Pinch two fingers to zoom, about your fingers. |
-| Read a token's details | Tap it. It is selected, and its card shows at the bottom left of the map (on a phone, across its foot), as hovering it with a mouse would (see [Pointing at a token](#pointing-at-a-token)). The card lets taps through to the map under it, except on its **✕**, which closes it until you next tap a token, the same one included. |
+| Read a token's details | Tap it. It is selected, and its card shows at the bottom left of the map, as hovering it with a mouse would (see [Pointing at a token](#pointing-at-a-token)). The card lets taps through to the map under it, except on its **✕**, which closes it until you next tap a token, the same one included. |
 | Open a token's menu | Press and hold the token for half a second: the menu a right-click opens there opens, with the same items, and the token is selected. Lift your finger and tap an item. |
 | Open a character's or a combatant's menu | Press and hold its row in the **Campaign Roster** or the initiative tracker for half a second: the menu a right-click opens there opens. A tap on a character still opens its sheet, and sliding your finger scrolls the panel. |
 | Roll from your sheet with advantage | Tap a stat to roll it. Press and hold it for half a second for **Normal**, **Advantage** and **Disadvantage** (**Fortune** and **Misfortune** in Fantasy d20), or set **Roll mode** in the sheet's header for a run of rolls. See [Rolling from your sheet](#rolling-from-your-sheet). |
@@ -503,7 +490,7 @@ Two tools on the map's rail answer "can I actually reach that?" before you commi
 
 On a touch screen, which has no cursor, tap the square you want to measure to, or slide one finger to it: the line stays when you lift, and the next tap moves its end. While the ruler is up, one finger measures and two fingers move and zoom the map. A tap on your own token still picks it up and puts the ruler away, and while you hold it a tap puts it down, as it would with the ruler away. A stylus taps the same way.
 
-**Spell area** (the lightning icon; **AoE Shape** on a phone) — draws a spell area. Pick **Circle**, **Cone**, **Line** or **Cube**, set the size in feet or use one of the presets, and move the cursor to position it. A cone has your game's shape: in 5E as wide at its far end as it is long, in Fantasy d20 a quarter circle.
+**Spell area** (the lightning icon) — draws a spell area. Pick **Circle**, **Cone**, **Line** or **Cube**, set the size in feet or use one of the presets, and move the cursor to position it. A cone has your game's shape: in 5E as wide at its far end as it is long, in Fantasy d20 a quarter circle.
 
 For a cone or a line, **click your own token first**. That square becomes the pivot, and moving the cursor swings the shape around it — the point it comes out of slides around the square's edge to follow your aim, so it always leaves on the side you're pointing and never cuts back across you. Keep turning until you can see what the attack catches.
 

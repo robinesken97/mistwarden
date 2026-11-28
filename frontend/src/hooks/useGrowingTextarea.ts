@@ -25,6 +25,13 @@ export function useGrowingTextarea(ref: RefObject<HTMLTextAreaElement | null>, v
     const borders = px(style.borderTopWidth) + px(style.borderBottomWidth);
     const padding = px(style.paddingTop) + px(style.paddingBottom);
     const most = line * maxLines + padding + borders;
+    // Empty, it is one line tall: a placeholder that wraps in a narrow box
+    // (a phone's chat) would otherwise make it taller than its neighbours.
+    if (value === '') {
+      box.style.height = `${line + padding + borders}px`;
+      box.style.overflowY = 'hidden';
+      return;
+    }
     // scrollHeight holds the padding and not the borders, and the box is border-box.
     const wanted = box.scrollHeight + borders;
     box.style.height = `${Math.min(wanted, most)}px`;

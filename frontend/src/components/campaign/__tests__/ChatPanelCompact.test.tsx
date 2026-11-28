@@ -48,7 +48,8 @@ it('puts the recipient, a one-line box and a square Send on one row, the keys sa
   expect(screen.queryByText(KEYS)).toBeNull();
   expect(box).toHaveAttribute('title', KEYS);
   expect(box).toHaveAttribute('aria-description', KEYS);
-  expect(box).toHaveAttribute('placeholder', 'Type a message…');
+  // A phone's box holds the short form on one line.
+  expect(box).toHaveAttribute('placeholder', 'Message…');
   // No "To" label: the list is named Send to; 128 px, Everyone whole beside its chevron.
   const toList = screen.getByRole('combobox', { name: 'Send to' });
   expect(classes(toList)).toContain('w-32');

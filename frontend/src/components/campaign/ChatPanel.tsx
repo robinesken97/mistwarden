@@ -11,7 +11,7 @@ import { useWebSocket } from '@/contexts/WebSocketContext';
 import { useOnRejoin } from '@/hooks/useOnRejoin';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCampaign } from '@/contexts/CampaignContext';
-import { useCompactLayout } from '@/contexts/LayoutContext';
+import { isPhoneLayout, useCompactLayout, useTableLayout } from '@/contexts/LayoutContext';
 import { useGrowingTextarea } from '@/hooks/useGrowingTextarea';
 import { getMessages } from '@/services/message.service';
 import { mergeMessages } from '@/utils/messageMerge';
@@ -142,6 +142,7 @@ export default function ChatPanel() {
   // messages sit closer together, each a denser row (ChatMessage). The log
   // gets the room.
   const compact = useCompactLayout();
+  const phone = isPhoneLayout(useTableLayout());
   // On the wide layout the panel's header names the chat and takes its count and eraser.
   const panelHeader = useTableChrome((st) => st.panelHeader);
   const wideHeader = panelHeader?.tab === 'chat' ? panelHeader.el : null;
@@ -830,7 +831,8 @@ export default function ChatPanel() {
         setBoxRefusal(null);
       }}
       onKeyDown={handleKeyDown}
-      placeholder={recipient ? 'Type a whisper…' : 'Type a message…'}
+      // A phone's box is too narrow for the long words on one line.
+      placeholder={phone ? (recipient ? 'Whisper…' : 'Message…') : recipient ? 'Type a whisper…' : 'Type a message…'}
       aria-label="Chat message"
       // The keys, said on hover and to a screen reader rather than in a line under the row.
       title={CHAT_KEYS_HINT}
