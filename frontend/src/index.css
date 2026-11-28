@@ -468,6 +468,15 @@
     @apply font-heading;
   }
 
+  /* A small heading, uppercase or 12 to 14 px (More's "At the table", the
+     roster's "GM", a popover's title), is a label: the font choice's label
+     face, which is the heading face unless the choice names another
+     (FontOption.label in themes.ts). A heading class (font-heading) is a
+     utility and still wins. */
+  :is(h1, h2, h3, h4, h5, h6):is(.uppercase, .text-xs, .text-sm) {
+    font-family: var(--font-label, var(--font-heading));
+  }
+
   * {
     box-sizing: border-box;
   }
