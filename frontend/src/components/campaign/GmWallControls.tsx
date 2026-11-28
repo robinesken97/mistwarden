@@ -144,7 +144,7 @@ export default function GmWallControls({
   };
 
   return (
-    <div data-tour="walls" className={`flex flex-col gap-0 bg-stone-800/90 rounded-lg border border-warm-amber/20 min-w-[200px] overflow-hidden${coarsePointer ? ' finger-controls' : ''}`}>
+    <div data-tour="walls" className={`flex flex-col gap-0 bg-stone-800 rounded-lg border border-warm-amber/20 min-w-[200px] overflow-hidden${coarsePointer ? ' finger-controls' : ''}`}>
       {/* Header with collapse toggle */}
       <button
         type="button"

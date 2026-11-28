@@ -1001,7 +1001,7 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
                   </div>
                 ) : (
                   <>
-                    <p className="text-sm text-stone-gray/70 italic mb-2">No stat block</p>
+                    <p className="text-sm text-stone-gray italic mb-2">No stat block</p>
                     <Button
                       onClick={() => setShowCreateStatBlock(true)}
                       variant="secondary" className="text-xs"
@@ -1047,7 +1047,7 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
         {/* ── Initiative ── */}
         <section>
           <h3 className="text-xs font-semibold text-stone-gray uppercase tracking-wide mb-2">
-            Initiative <span className="font-normal normal-case opacity-60">(optional)</span>
+            Initiative <span className="font-normal normal-case">(optional)</span>
           </h3>
           <input
             type="number"
@@ -1165,7 +1165,7 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
         {/* ── GM Notes ── */}
         <section>
           <h3 className="text-xs font-semibold text-stone-gray uppercase tracking-wide mb-2">
-            GM Notes <span className="font-normal normal-case opacity-60">(not shown to players)</span>
+            GM Notes <span className="font-normal normal-case">(not shown to players)</span>
           </h3>
           <textarea
             value={notes}
@@ -1203,7 +1203,7 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
             />
             Hide name from players
           </label>
-          <p className="text-xs text-stone-gray/60 mt-1">
+          <p className="text-xs text-stone-gray mt-1">
             Players see no name plate and the order calls it an unknown creature.
           </p>
         </section>
@@ -1236,7 +1236,7 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
               ))}
           </select>
           {controller.kind === 'player' && (
-            <p className="text-xs text-stone-gray/60 mt-1">
+            <p className="text-xs text-stone-gray mt-1">
               This player can move the token on the map.
             </p>
           )}

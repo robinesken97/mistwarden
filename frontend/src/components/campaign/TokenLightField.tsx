@@ -45,7 +45,7 @@ function RadiusInput({ label, value, onCommit, disabled }: { label: string; valu
   };
   return (
     <label className="flex-1 text-xs text-stone-gray">
-      {label} <span className="opacity-60">(squares)</span>
+      {label} <span>(squares)</span>
       <input
         type="number" min={0} max={MAX_RADIUS} step={0.5}
         value={draft}
@@ -110,7 +110,7 @@ export default function TokenLightField({ value, onChange, disabled }: TokenLigh
           </div>
         </div>
       )}
-      <p className="text-xs text-stone-gray/60 mt-1">
+      <p className="text-xs text-stone-gray mt-1">
         Lit at the token and moves with it. Players see by it only while they can see the token.
       </p>
     </div>

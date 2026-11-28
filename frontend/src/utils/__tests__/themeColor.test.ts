@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { headerInk, sheetAccent, shouldUseWhiteText, THEME_SHEET_ACCENT, toStoredHexColor } from '../themeColor';
-import { AA_TEXT, contrastRatio, parseRgb } from '../color';
+import { headerInk, SHEET_BOX_TINT, sheetAccent, shouldUseWhiteText, THEME_SHEET_ACCENT, toStoredHexColor } from '../themeColor';
+import { AA_TEXT, contrastRatio, parseRgb, type Rgb } from '../color';
 import { PRESET_THEMES as THEMES } from '@/themes';
 import { THEME_COLOR_PATTERN } from '../styleAllowlists';
 import { COLOR_PRESETS as FIFTH_EDITION } from '@/components/character-sheets/fifth-edition/colorPresets';
@@ -87,6 +87,9 @@ describe.each([
 
 describe('sheetAccent', () => {
   const channels = (css: string) => parseRgb(/^rgb\((.*)\)$/.exec(css)![1]);
+  /** The page under a sheet box: tinted with the accent, as SHEET_BOX draws it. */
+  const inBox = (accent: Rgb, page: string) =>
+    parseRgb(page).map((v, i) => Math.round(accent[i] * SHEET_BOX_TINT + v * (1 - SHEET_BOX_TINT))) as Rgb;
 
   it("is the theme's accent when the sheet has no colour of its own", () => {
     expect(sheetAccent(undefined, '23 22 28')).toBe(THEME_SHEET_ACCENT);
@@ -100,6 +103,7 @@ describe('sheetAccent', () => {
       for (const preset of FIFTH_EDITION) {
         const accent = sheetAccent(preset.hex, page);
         expect(contrastRatio(channels(accent.accent), parseRgb(page))).toBeGreaterThanOrEqual(AA_TEXT - 0.01);
+        expect(contrastRatio(channels(accent.accent), inBox(channels(accent.accent), page))).toBeGreaterThanOrEqual(AA_TEXT - 0.01);
         expect(contrastRatio(channels(accent.onFill), channels(accent.fill))).toBeGreaterThanOrEqual(AA_TEXT - 0.01);
       }
     }
@@ -111,6 +115,7 @@ describe('sheetAccent', () => {
     for (const theme of THEMES) {
       const accent = sheetAccent(undefined, theme.colors.bgBase, theme.colors.accent);
       expect(contrastRatio(channels(accent.accent), parseRgb(theme.colors.bgBase))).toBeGreaterThanOrEqual(AA_TEXT - 0.01);
+      expect(contrastRatio(channels(accent.accent), inBox(channels(accent.accent), theme.colors.bgBase))).toBeGreaterThanOrEqual(AA_TEXT - 0.01);
       expect(accent.fill).toBe('rgb(var(--rgb-accent))');
     }
   });

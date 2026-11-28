@@ -182,7 +182,7 @@ export default function DashboardPage() {
                     <User className="w-6 h-6 text-brand-ink" />
                   </div>
                   <div className="min-w-0">
-                    <h2 className="text-xl font-semibold text-brand-ink font-heading truncate">
+                    <h2 className="text-xl font-semibold text-brand-ink font-heading">
                       Your Characters
                     </h2>
                     <p className="text-sm text-warm-gray">
@@ -280,7 +280,7 @@ export default function DashboardPage() {
                     <FolderOpen className="w-6 h-6 text-brand-ink" />
                   </div>
                   <div className="min-w-0">
-                    <h2 className="text-xl font-semibold text-brand-ink font-heading truncate">
+                    <h2 className="text-xl font-semibold text-brand-ink font-heading">
                       Asset Library
                     </h2>
                     <p className="text-sm text-warm-gray">
@@ -322,7 +322,7 @@ export default function DashboardPage() {
                     <BookOpen className="w-6 h-6 text-brand-ink" />
                   </div>
                   <div className="min-w-0">
-                    <h2 className="text-xl font-semibold text-brand-ink font-heading truncate">
+                    <h2 className="text-xl font-semibold text-brand-ink font-heading">
                       Documents
                     </h2>
                     <p className="text-sm text-warm-gray">
@@ -364,7 +364,7 @@ export default function DashboardPage() {
                     <FileText className="w-6 h-6 text-brand-ink" />
                   </div>
                   <div className="min-w-0">
-                    <h2 className="text-xl font-semibold text-brand-ink font-heading truncate">
+                    <h2 className="text-xl font-semibold text-brand-ink font-heading">
                       Character Templates
                     </h2>
                     <p className="text-sm text-warm-gray">Shared starter sheets</p>

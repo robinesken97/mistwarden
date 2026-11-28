@@ -414,7 +414,7 @@ export default function CampaignSettingsModal({
           </div>
 
           {/* ── Tabs ── */}
-          <div className="flex gap-1 mt-4">
+          <div className="flex flex-wrap gap-1 mt-4">
             {(
               [
                 ...(isGmViewer
@@ -432,7 +432,7 @@ export default function CampaignSettingsModal({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`touch-target px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+                className={`touch-target whitespace-nowrap px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
                   activeTab === tab.id
                     ? tab.id === 'danger'
                       ? 'bg-danger/10 text-danger-ink border border-danger/20'
