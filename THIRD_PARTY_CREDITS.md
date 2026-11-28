@@ -48,6 +48,7 @@ The pictures in the repository are CozyVTT's own artwork, its logo, its mascot a
 - `frontend/public/default-mascot.png`: the mascot
 - `frontend/public/favicon.svg`, `frontend/public/favicon-32.png`, `frontend/public/favicon-192.png`, `frontend/public/icon-512.png` and `frontend/public/apple-touch-icon.png`: the app's icons, which a browser shows in a tab or on a home screen
 - `backend/assets/practice/courtyard.png` and `backend/assets/practice/practice-notice.png`: the practice campaign's map and handout, Mistwarden's own work, drawn as SVG by `backend/scripts/render-practice-pictures.js` (2026-11-28)
+- `docs/screenshots/character-sheet-5e.png`, `docs/screenshots/dice-3d.png`, `docs/screenshots/fog-lighting.png`, `docs/screenshots/gallery.png`, `docs/screenshots/map-table.png`, `docs/screenshots/spell-area.png` and `docs/screenshots/tablet-layout.png`: screenshots of Mistwarden showing the practice campaign above (2026-11-28); the token symbols in them are from game-icons.net, credited below
 
 ### Token symbols
 
