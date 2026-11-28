@@ -421,6 +421,22 @@ const [lastSession] = await cogm.ok('list_sessions', { campaignId });
 assert.equal(lastSession.notes, 'The drake fled.');
 assert.equal((await cogm.ok('set_session_notes', { campaignId, sessionId: lastSession.id, notes: 'The drake fled north.' })).notes, 'The drake fled north.');
 
+step("a player's character: refused in co-GM mode, one field merged with the edit override, the old sheet saved");
+const { character: made } = await player<{ character: { id: string } }>('POST', '/api/characters', { name: 'Wren', campaignId, data: { notes: 'Left-handed.', class: 'ranger' } });
+const before = await cogm.ok('get_character', { campaignId, characterId: made.id });
+const textField = Object.keys(before.data ?? {}).find((k) => typeof before.data[k] === 'string');
+assert.ok(textField, `no text field on the new sheet: ${Object.keys(before.data ?? {}).join(', ')}`);
+const refusedSheet = await cogm.call('update_character', { campaignId, characterId: made.id, updatedAt: before.updatedAt, fields: { [textField]: 'Changed by the GM' } });
+assert.ok(refusedSheet.isError && /ALLOW_ANY_EDIT/.test(refusedSheet.text), "co-GM mode changed a player's sheet");
+const anyEdit = await connect({ MISTWARDEN_MCP_ALLOW_ANY_EDIT: '1' });
+const changed = await anyEdit.ok('update_character', { campaignId, characterId: made.id, updatedAt: before.updatedAt, fields: { [textField]: 'Changed by the GM' } });
+await anyEdit.client.close();
+const { character: sheetAfter } = await player<{ character: { data: Record<string, unknown> } }>('GET', `/api/characters/${made.id}`);
+assert.deepEqual(sheetAfter.data, { ...before.data, [textField]: 'Changed by the GM' }, 'the other fields of the sheet changed');
+assert.equal((await stat(changed.previousSheetSavedTo)).mode & 0o777, 0o600);
+assert.deepEqual(JSON.parse(await readFile(changed.previousSheetSavedTo, 'utf8')).data, before.data);
+process.stdout.write(`  merged "${textField}"; old sheet in ${changed.previousSheetSavedTo}\n`);
+
 step('the imports deleted again by their tag');
 assert.ok((await cogm.call('delete_imported_creatures', { sourceTag: tag })).isError, 'deleted without confirm');
 assert.equal((await cogm.ok('delete_imported_creatures', { sourceTag: tag, confirm: true })).deleted, 1);

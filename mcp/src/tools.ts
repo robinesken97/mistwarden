@@ -10,7 +10,7 @@ import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
-import type { Settings } from './config.ts';
+import { type Settings, writePrivateJson } from './config.ts';
 import { assertPlaceable, cellFromTop, fogCellsInRect, gridForPicture, isHexMap, topRowOf } from './coords.ts';
 import { readTextFile, searchFiles, walkFiles } from './files.ts';
 import {
@@ -1032,9 +1032,10 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
     return (await ctx.api.json<{ roster: unknown[] }>('GET', `/api/campaigns/${campaignId}/characters`)).roster;
   }, true);
 
+  interface CharacterRow { id: string; userId: string; campaignId: string | null; name: string; updatedAt: string; data: unknown }
   const characterIn = async (campaignId: string, characterId: string) => {
     assertUuid(characterId, 'characterId');
-    const { character } = await ctx.api.json<{ character: { campaignId: string | null; updatedAt: string } }>('GET', `/api/characters/${characterId}`);
+    const { character } = await ctx.api.json<{ character: CharacterRow }>('GET', `/api/characters/${characterId}`);
     if (character.campaignId !== campaignId) throw new GuardError('That character is not in this campaign.');
     return character;
   };
@@ -1046,17 +1047,31 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
     return characterIn(campaignId, characterId);
   }, true);
 
-  tool('update_character', 'Change a player character\'s name or sheet as the GM. data REPLACES the whole sheet: read it with get_character, change it, send it back with the updatedAt that get_character gave (a character changed since is refused). Players see it at once: needs MISTWARDEN_MCP_COGM=1 or MISTWARDEN_MCP_ALLOW_ANY_EDIT=1.', {
+  tool('update_character', `Change named top-level fields of a character's sheet (fields: { field: new value }), and/or its name, as the GM. Only the fields named change; the rest of the sheet is kept. Pass the updatedAt that get_character gave: a character changed since is refused. Character sheets are NOT in create_backup, so the sheet as it was is first saved to a local file (named in the answer). Players see the change at once. A character of this account needs MISTWARDEN_MCP_COGM=1 or MISTWARDEN_MCP_ALLOW_ANY_EDIT=1; anyone else's (a player's) needs MISTWARDEN_MCP_ALLOW_ANY_EDIT=1.`, {
     campaignId: campaignIdArg, characterId: id('Character id.'),
     updatedAt: z.string().max(40).describe('updatedAt from get_character.'),
-    name: z.string().min(1).max(200).optional(), data: z.record(z.string(), z.unknown()).optional().describe('The whole sheet.'),
-  }, async ({ campaignId, characterId, updatedAt, name, data }) => {
+    name: z.string().min(1).max(200).optional(),
+    fields: z.record(z.string().min(1).max(100), z.unknown()).optional().describe('Top-level sheet fields to set, each replaced whole.'),
+  }, async ({ campaignId, characterId, updatedAt, name, fields }) => {
     await campaignAsGm(ctx, campaignId);
-    if (!ctx.settings.coGm && !ctx.settings.allowAnyEdit) {
-      throw new GuardError('Refused: a character is not created by this server. Start the server with MISTWARDEN_MCP_COGM=1 to change characters.');
+    if (name === undefined && (!fields || Object.keys(fields).length === 0)) throw new GuardError('Give name and/or fields.');
+    const character = await characterIn(campaignId, characterId);
+    const { user } = await once('me', () => ctx.api.json<{ user: { id: string } }>('GET', '/api/auth/me'));
+    const own = character.userId === user.id;
+    if (!ctx.settings.allowAnyEdit && !(own && ctx.settings.coGm)) {
+      throw new GuardError(own
+        ? 'Refused: changing characters needs MISTWARDEN_MCP_COGM=1 or MISTWARDEN_MCP_ALLOW_ANY_EDIT=1.'
+        : "Refused: this is another member's character, and its sheet is not in create_backup. Change it in Mistwarden, or start the server with MISTWARDEN_MCP_ALLOW_ANY_EDIT=1.");
     }
-    await characterIn(campaignId, characterId);
-    return (await ctx.api.json<{ character: unknown }>('PUT', `/api/characters/${characterId}`, { json: { name, data, updatedAt } })).character;
+    if (character.updatedAt !== updatedAt) throw new GuardError(`Refused: the character changed at ${character.updatedAt}, after the updatedAt given. Read it again with get_character.`);
+    // Saved before the write: the export does not hold player sheets.
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const savedTo = path.join(ctx.settings.backupDir, 'characters', campaignId, `${characterId}-${stamp}.json`);
+    await writePrivateJson(savedTo, character);
+    const sheet = character.data && typeof character.data === 'object' && !Array.isArray(character.data) ? character.data as Record<string, unknown> : {};
+    const data = fields ? { ...sheet, ...fields } : undefined;
+    const { character: saved } = await ctx.api.json<{ character: unknown }>('PUT', `/api/characters/${characterId}`, { json: { name, data, updatedAt } });
+    return { character: saved, changedFields: Object.keys(fields ?? {}), previousSheetSavedTo: savedTo };
   });
 
   // ---- Local files ----

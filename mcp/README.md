@@ -94,7 +94,7 @@ the session.
 | Edit or delete anything else | no | no | no | yes |
 | Table tools (registered) | no | yes | yes | no |
 | Player-visible tools (`set_current_map`, `show_gallery_picture`, `share_document`) | no | no | yes | no |
-| Change a character sheet | no | yes | no | yes |
+| Change named fields of a character sheet | no | only this account's own characters | no | yes, anyone's |
 | Clear every area of a map | no | yes | no | yes |
 
 The switches add up: `COGM=1` with `ALLOW_ANY_EDIT=1` lets edits reach
@@ -148,6 +148,15 @@ Every delete also needs a recent backup (below), whatever the switches.
   only `.md`, `.txt`, `.json` and `.csv` files, and bound what they
   answer: 500 entries, 50 search hits of 3 lines each, 100,000 characters per
   read (page on with `nextOffset`).
+- **Character sheets.** Player sheets are not in the campaign export, so
+  `create_backup` cannot bring one back. `update_character` therefore changes
+  only the top-level fields it is given (`fields`), refuses a character
+  changed since the `updatedAt` read with `get_character`, and first saves the
+  character as it was to
+  `<backup folder>/characters/<campaign id>/<character id>-<time>.json`
+  (mode 0600), naming the file in its answer. Another member's character
+  needs `MISTWARDEN_MCP_ALLOW_ANY_EDIT=1`; co-GM mode alone reaches only this
+  account's own.
 - **Instance data.** `import_creatures_markdown` and `import_spells_markdown`
   write to the instance's library, which every campaign of the instance sees,
   and need a platform admin. They read a Markdown file under the file root and
@@ -218,7 +227,7 @@ Walls and lights: `add_walls`, `update_wall` (type only), `delete_walls`,
 `add_light`, `update_light`, `delete_light`.
 Fog: `fog_reveal_rect`, `fog_hide_rect`, `fog_reveal_all`, `fog_hide_all`.
 Notes: `create_note`, `update_note`. Gallery: `add_gallery_picture`.
-Characters: `update_character` (co-GM or edit-any).
+Characters: `update_character` (named fields; own characters with co-GM, anyone's with edit-any).
 Dice: `roll_dice` (a secret roll needs no switch).
 Local files: `list_files`, `search_files`, `read_file`.
 Instance library (platform admins): `import_creatures_markdown`,

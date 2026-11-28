@@ -1,7 +1,7 @@
 // Added for Mistwarden on 2026-11-28.
 // The tools against a stub of the REST API: which are registered under which
 // switch, and what the guards let through to the server.
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -25,8 +25,9 @@ beforeEach(async () => {
 
 type Route = (body: Record<string, unknown> | undefined) => unknown;
 
-function harness(switches: Partial<Settings> = {}) {
+function harness(switches: Partial<Settings> = {}, extra: Record<string, Route> = {}) {
   const routes: Record<string, Route> = {
+    ...extra,
     [`GET /api/campaigns/${C}`]: () => ({ campaign: { id: C, name: 'Mistvale', userRole: 'GM', currentMapId: MAP, memberships: [], maps: [] } }),
     [`GET /api/campaigns/${C}/maps/${MAP}`]: () => ({
       map: {
@@ -146,5 +147,39 @@ describe('instance imports', () => {
       [true, '### Thrumwing Drake\n'],
       [false, '### Thrumwing Drake\n'],
     ]);
+  });
+});
+
+describe('update_character', () => {
+  const CHAR = 'cccccccc-0000-4000-8000-000000000001';
+  const ME = 'dddddddd-0000-4000-8000-000000000001';
+  const PLAYER = 'dddddddd-0000-4000-8000-000000000002';
+  const at = '2026-11-28T10:00:00.000Z';
+  const routesFor = (owner: string): Record<string, Route> => ({
+    'GET /api/auth/me': () => ({ user: { id: ME } }),
+    [`GET /api/characters/${CHAR}`]: () => ({ character: { id: CHAR, userId: owner, campaignId: C, name: 'Wren', updatedAt: at, data: { hp: 9, notes: 'old', level: 3 } } }),
+    [`PUT /api/characters/${CHAR}`]: (b) => ({ character: { id: CHAR, ...b } }),
+  });
+
+  it('merges only the named fields, after saving the sheet as it was to a private file', async () => {
+    const h = harness({ coGm: true }, routesFor(ME));
+    const r = await h.call('update_character', { campaignId: C, characterId: CHAR, updatedAt: at, fields: { hp: 4 } });
+    expect(r.isError).toBe(false);
+    expect(h.sent(`PUT /api/characters/${CHAR}`)[0].body).toEqual({ data: { hp: 4, notes: 'old', level: 3 }, updatedAt: at });
+    const folder = path.join(dir, 'backups', 'characters', C);
+    const [file] = await readdir(folder);
+    expect(JSON.parse(r.text).previousSheetSavedTo).toBe(path.join(folder, file));
+    expect(JSON.parse(await readFile(path.join(folder, file), 'utf8')).data).toEqual({ hp: 9, notes: 'old', level: 3 });
+    expect((await stat(path.join(folder, file))).mode & 0o777).toBe(0o600);
+  });
+
+  it("needs the edit override for another member's character, and a current updatedAt", async () => {
+    const cogm = harness({ coGm: true }, routesFor(PLAYER));
+    expect((await cogm.call('update_character', { campaignId: C, characterId: CHAR, updatedAt: at, fields: { hp: 4 } })).text).toMatch(/ALLOW_ANY_EDIT/);
+    expect(cogm.sent(`PUT /api/characters/${CHAR}`)).toEqual([]);
+    expect((await harness({}, routesFor(ME)).call('update_character', { campaignId: C, characterId: CHAR, updatedAt: at, fields: { hp: 4 } })).isError).toBe(true);
+    const any = harness({ allowAnyEdit: true }, routesFor(PLAYER));
+    expect((await any.call('update_character', { campaignId: C, characterId: CHAR, updatedAt: '2026-11-27T00:00:00.000Z', fields: { hp: 4 } })).text).toMatch(/changed at/);
+    expect((await any.call('update_character', { campaignId: C, characterId: CHAR, updatedAt: at, fields: { hp: 4 } })).isError).toBe(false);
   });
 });
