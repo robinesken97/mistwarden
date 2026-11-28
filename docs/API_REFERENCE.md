@@ -620,6 +620,22 @@ Rolls made before the GM last cleared the history are excluded (see `Campaign.ro
 
 In the web client, a player's rolls while the session is **paused** are made in their own browser and never sent, so they never appear here. The GM's rolls are sent as usual, and the server takes a `dice.roll` whatever the session's state, so a script's rolls while paused are kept and listed.
 
+### The GM's table actions over REST
+
+What the web client sends over the socket, for a script or the MCP bridge that holds none. **Each requires GM role**, shares one limit (see Rate Limits), and calls what the socket event calls, so the table is sent the same events with the same fields.
+
+| Route | Body | As the socket's | Answers |
+|-------|------|-----------------|---------|
+| `POST /api/campaigns/:campaignId/messages` | `{ content, recipientId? }` | `chat.message` | `201 { message }`; a whisper reaches only its recipient's and the GM's sockets; the campaign's chat cooldown holds for the GM too (`429`) |
+| `POST /api/campaigns/:campaignId/dice-rolls` | `{ expression, secret?, purpose?, characterName? }` | `dice.roll` | `201 { roll }`; a secret roll goes to the GM's own sockets, never to a player |
+| `PUT /api/campaigns/:campaignId/vibe/current` | `{ period }` | `vibe.update` | `200 { period, audioNotice? }`; the period's track plays and the chat gets the system message |
+| `PUT /api/campaigns/:campaignId/atmosphere/effect` | `{ effect }`, one of `rain`, `mist`, `leaves`, `sparkles`, `snow`, `wind`, or `null` | `atmosphere.effect.set` | `200`; an unknown effect is a `400` here, where the socket clears the weather |
+| `PUT /api/campaigns/:campaignId/atmosphere/audio` | `{ assetId, volume?, loop? }`, `assetId` null to stop | `atmosphere.audio.set` | `200`; a track the GM may not read is a `404` |
+| `POST /api/campaigns/:campaignId/maps/:id/areas` | `{ area }` as `area:add` carries it | `area:add` | `201 { id }`; an area for the GM alone reaches no player |
+| `DELETE /api/campaigns/:campaignId/maps/:id/areas/:areaId` | | `area:remove` | `200` |
+| `DELETE /api/campaigns/:campaignId/maps/:id/areas` | | `area:clear` | `200` |
+| `POST /api/campaigns/:campaignId/maps/:id/exploration/reset` | | `exploration:reset` | `200`; every player's explored memory of the map is forgotten |
+
 ---
 
 ## Token Template Endpoints
@@ -1896,6 +1912,7 @@ authentication is set up on the account, and then has to send a code at every si
 | Campaign import, import preview, campaign export | 20 of each, per user | 1 hour | Every request but one refused for overlapping another; also one of the three at a time per user |
 | Invitation emails (per GM) | 20 invitations that ask for an email | 1 hour | Invitations created with `sendEmail: true` on an instance with SMTP, whether or not the email goes out; a refused invitation is not counted |
 | All the notes of a campaign you have left (per user) | 60 requests | 1 hour | Every request |
+| The GM's table actions over REST: chat, dice, vibe, atmosphere, spell areas, explored-memory reset (per user, all together) | 120 requests | 1 minute | Every request |
 | General API | 300 requests | 1 minute | Every request |
 | Dice rolls (WebSocket) | 50 rolls, and 200 | 1 second, and 1 minute | Every roll |
 | Chat messages (WebSocket) | 50 messages, and 300 | 1 second, and 1 minute | Every message |
