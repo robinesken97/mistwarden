@@ -69,7 +69,8 @@ function cardPlace(target: Box | null, hasTargets: boolean, cardHeight: number, 
   if (below + cardHeight <= height - GAP) return { top: below, left };
   const above = target.top - GAP - cardHeight;
   if (above >= GAP) return { top: above, left };
-  return { top: target.top + target.height / 2 > height / 2 ? GAP : Math.max(GAP, height - cardHeight - GAP), left };
+  // The window's middle, not the room's: a target as tall as the room keeps the card at its foot.
+  return { top: target.top + target.height / 2 > window.innerHeight / 2 ? GAP : Math.max(GAP, height - cardHeight - GAP), left };
 }
 
 export default function TableTour({ campaignId, kind, practice, live, userId, role }: TableTourProps) {

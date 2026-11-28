@@ -721,17 +721,14 @@ export default function DiceRoller() {
       {secretRollWords}
     </label>
   ) : (
-    <div className="flex items-center gap-2">
+    // The box is 12 px; a finger presses it through its label, 44 px tall.
+    <label className="touch-target flex items-center gap-2 text-xs text-ink-secondary cursor-pointer">
       {secretRollBox}
-      {/* The box is 12 px; a finger presses it through its label, 44 px tall. */}
-      <label
-        htmlFor="secretRoll"
-        className="touch-target flex items-center gap-1 text-xs text-ink-secondary cursor-pointer"
-      >
+      <span className="flex items-center gap-1">
         <EyeOff className="w-3 h-3" />
         {secretRollWords}
-      </label>
-    </div>
+      </span>
+    </label>
   );
 
   const rollButton = (

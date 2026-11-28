@@ -67,7 +67,9 @@ export default function SessionSidebar() {
                 'text-xs font-medium transition-colors duration-150',
                 'focus:outline-hidden focus-visible:ring-2 focus-visible:ring-brand',
                 active
-                  ? 'text-brand-ink bg-surface-light/70 border-b-2 border-brand -mb-px'
+                  // Where its label shows on a touch screen, the open tab is as wide as
+                  // the label: the others' 44 px minimum let it be squeezed narrower.
+                  ? 'text-brand-ink bg-surface-light/70 border-b-2 border-brand -mb-px pointer-coarse:@min-[23rem]:min-w-max'
                   : 'text-ink-muted hover:text-ink hover:bg-surface/60'
               )}
             >
