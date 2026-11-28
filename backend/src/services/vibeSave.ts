@@ -15,7 +15,7 @@ import { prisma } from '../config/database';
 import { findVibePeriod, normalizeVibeSettings } from '../utils/vibe-presets';
 import { vibePeriodAudioAssetId } from '../utils/vibeAudio';
 import { readJsonObject } from '../utils/prisma-json';
-import { getSocketInstance } from '../websocket/utils';
+import { getSocketInstance, sendSystemMessage } from '../websocket/utils';
 import logger from '../utils/logger';
 import type { VibeSettingsInput } from '../validators/campaigns';
 import { lastAmbientVolume, setCampaignAmbientAudio } from './atmosphereAudio';
@@ -156,4 +156,77 @@ export async function announceVibeSave(
   const volume = await lastAmbientVolume(campaignId);
   const result = await setCampaignAmbientAudio(io, campaignId, actingUserId, newTrack, { volume });
   if (!result.ok) await setCampaignAmbientAudio(io, campaignId, actingUserId, null, { volume });
+}
+
+/** What a switch of the vibe answers: refused with the GM's message, or done with a notice when the period's track could not play. */
+export type VibeSwitchOutcome =
+  | { ok: true; period: string; audioNotice?: string }
+  | { ok: false; status: 400 | 404 | 409; error: string };
+
+/**
+ * Switch the campaign's vibe to `period`, for the socket's vibe.update and
+ * REST alike. Every member is sent `vibe.updated`, the period's track
+ * becomes the table's ambient audio (none means silence), and the chat gets
+ * a system message. A dead or forbidden track silences the table and is
+ * answered as `audioNotice`, but never blocks the switch.
+ */
+export async function switchVibe(io: Server, campaignId: string, actingUserId: string, period: unknown): Promise<VibeSwitchOutcome> {
+  if (!period || typeof period !== 'string') {
+    return { ok: false, status: 400, error: 'period (string) is required' };
+  }
+
+  const campaign = await prisma.campaign.findUnique({
+    where: { id: campaignId },
+    select: { vibeSettings: true, currentVibe: true },
+  });
+  if (!campaign) return { ok: false, status: 404, error: 'Campaign not found' };
+
+  // Normalize settings to handle old and new formats
+  const vibeSettings = normalizeVibeSettings(campaign.vibeSettings);
+  if (!vibeSettings.enabled) {
+    return { ok: false, status: 409, error: 'Vibe tracker is not enabled for this campaign' };
+  }
+
+  const vibePeriod = findVibePeriod(vibeSettings, period);
+  if (!vibePeriod) {
+    const availablePeriods = vibeSettings.periods.map((p: { name: string }) => p.name).join(', ');
+    return { ok: false, status: 400, error: `Unknown vibe period '${period}'. Available: ${availablePeriods}` };
+  }
+
+  await prisma.campaign.update({
+    where: { id: campaignId },
+    data: { currentVibe: vibePeriod.name },
+  });
+
+  // To all campaign members, the sender included for confirmation.
+  io.to(campaignId).emit('vibe.updated', {
+    period: vibePeriod.name,
+    hue: vibePeriod.hue,
+    filter: vibePeriod.filter,
+    audio: vibePeriod.audio,
+    updatedBy: actingUserId,
+    timestamp: new Date().toISOString(),
+  });
+
+  // The vibe owns the soundtrack: a period with a track starts it for
+  // the table, one without silences it. Older settings carried free-text
+  // notes in this field; those count as no track.
+  let audioNotice: string | undefined;
+  const requestedAudio = vibePeriodAudioAssetId(vibePeriod.audio);
+  const volume = await lastAmbientVolume(campaignId);
+  const audioResult = await setCampaignAmbientAudio(io, campaignId, actingUserId, requestedAudio, { volume });
+  if (!audioResult.ok) {
+    await setCampaignAmbientAudio(io, campaignId, actingUserId, null, { volume });
+    audioNotice = `The "${vibePeriod.name}" period's audio track is unavailable, so the vibe changed without audio`;
+  }
+
+  const periodDisplayName = vibePeriod.name.charAt(0).toUpperCase() + vibePeriod.name.slice(1);
+  await sendSystemMessage(
+    campaignId,
+    `Time advances to ${periodDisplayName}.`,
+    { userId: actingUserId, action: 'vibe.update', period: vibePeriod.name }
+  );
+
+  logger.info('vibe.update', { period: vibePeriod.name, userId: actingUserId, campaignId });
+  return { ok: true, period: vibePeriod.name, ...(audioNotice ? { audioNotice } : {}) };
 }

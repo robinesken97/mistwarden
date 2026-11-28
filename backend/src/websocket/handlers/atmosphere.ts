@@ -5,7 +5,7 @@
 import { Server } from 'socket.io';
 import { AuthenticatedSocket } from '../auth';
 import logger from '../../utils/logger';
-import { setCampaignAmbientAudio, setCampaignAtmosphereEffect } from '../../services/atmosphereAudio';
+import { ATMOSPHERE_EFFECTS, applyAtmosphereEffect, setCampaignAmbientAudio } from '../../services/atmosphereAudio';
 import { withinCeiling } from '../shared';
 
 export function registerAtmosphereHandlers(io: Server, socket: AuthenticatedSocket): void {
@@ -23,20 +23,11 @@ export function registerAtmosphereHandlers(io: Server, socket: AuthenticatedSock
         return;
       }
 
-      const VALID_EFFECTS = ['rain', 'mist', 'leaves', 'sparkles', 'snow', 'wind'];
-      const effect = data.effect === null || VALID_EFFECTS.includes(data.effect)
+      const effect = data.effect === null || (ATMOSPHERE_EFFECTS as readonly string[]).includes(data.effect)
         ? data.effect
         : null;
 
-      await setCampaignAtmosphereEffect(socket.campaignId, effect);
-
-      io.to(socket.campaignId).emit('atmosphere.effect.updated', {
-        effect,
-        setBy: socket.userId,
-        timestamp: new Date().toISOString(),
-      });
-
-      logger.info('atmosphere.effect.set', { effect: effect ?? 'none', userId: socket.userId, campaignId: socket.campaignId });
+      await applyAtmosphereEffect(io, socket.campaignId, socket.userId, effect);
     } catch (error) {
       logger.error('atmosphere.effect.set failed', { err: error });
       socket.emit('error', { message: 'Failed to set atmosphere effect' });

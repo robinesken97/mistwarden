@@ -5,13 +5,10 @@
 import { Server } from 'socket.io';
 import { AuthenticatedSocket } from '../auth';
 import { prisma } from '../../config/database';
-import { rollDice, parseDiceExpression, DiceParserError } from '../../utils/dice-parser';
+import { DiceParserError } from '../../utils/dice-parser';
 import logger from '../../utils/logger';
 import { withinCeiling } from '../shared';
-import { toJson } from '../../utils/prisma-json';
-import { canRollDice } from '../../services/permissions';
-import { campaignSockets } from '../utils';
-import { DiceRollSchema } from '../../validators/dice';
+import { rollForMember } from '../../services/dice';
 import { ackFrom, refuseRequest } from '../ack';
 
 export function registerDiceHandlers(io: Server, socket: AuthenticatedSocket): void {
@@ -36,118 +33,17 @@ export function registerDiceHandlers(io: Server, socket: AuthenticatedSocket): v
       // same ceiling and does not draw an error apiece.
       if (!withinCeiling(socket, 'dice.roll', ack)) return;
 
-      // Spectators watch: they may talk in chat, and they may not roll.
-      if (!canRollDice(socket.role)) {
-        refuse('Spectators cannot roll dice');
+      // Spectators, the payload and the expression are checked in the
+      // service (services/dice.ts), which the REST route shares.
+      const outcome = await rollForMember(io, { campaignId: socket.campaignId, userId: socket.userId!, role: socket.role }, data, socket);
+      if (!outcome.ok) {
+        refuse(outcome.error);
         return;
       }
+      const { expression, result, secret } = outcome.roll;
+      ack?.({ ok: true, id: outcome.roll.id });
 
-      // The labels are stored with the roll and sent to every member, so
-      // they are bounded here (validators/dice.ts).
-      const parsed = DiceRollSchema.safeParse(data);
-      if (!parsed.success) {
-        refuse(parsed.error.issues[0]?.message ?? 'Dice expression required');
-        return;
-      }
-      const { expression, characterName, purpose, secret } = parsed.data;
-
-      // Validate expression syntax (without rolling)
-      try {
-        parseDiceExpression(expression);
-      } catch (error) {
-        if (error instanceof DiceParserError) {
-          refuse(`Invalid dice expression: ${error.message}`);
-          return;
-        }
-        throw error;
-      }
-
-      // Roll the dice
-      const rollResult = rollDice(expression);
-
-      // Get user information
-      const user = await prisma.user.findUnique({
-        where: { id: socket.userId },
-        select: { displayName: true },
-      });
-
-      if (!user) {
-        refuse('User not found');
-        return;
-      }
-
-      // SECURITY: Save ALL rolls to database (including secret rolls for audit)
-      // Secret rolls are marked but still saved for GM oversight and dispute resolution
-      const diceRoll = await prisma.diceRoll.create({
-        data: {
-          campaignId: socket.campaignId,
-          userId: socket.userId!,
-          expression,
-          result: rollResult.total,
-          breakdown: toJson(rollResult), // Store full RollResult
-          characterName: characterName || null,
-          purpose: purpose || null,
-          secret: secret || false, // Mark as secret for visibility filtering
-        },
-      });
-
-      // A roll is not a chat message, and no second row is written for it.
-      //
-      // One used to be: a Message of type DICE_ROLL whose metadata repeated the
-      // expression, result, breakdown, character name, purpose and secret flag
-      // that the DiceRoll row above already holds. Nothing ever read it — the
-      // chat panel does not listen for rolls, and the history endpoint filters
-      // the type out — so the rows accumulated with no way to reach or clear
-      // them, and their presence starved the chat page they were filtered from.
-      //
-      // The copy was also the unsafe one: `secret` lived only inside unindexed
-      // metadata, where the chat query does not filter on it. The DiceRoll table
-      // is the record, with `secret` as a real column and a clear-history
-      // watermark. Rolls are read from there, by the Dice panel.
-
-      // Broadcast result with role-based filtering.
-      //
-      // `id` and the stored `rolledAt` are sent rather than a freshly generated
-      // timestamp so that a roll arriving live and the same roll replayed from
-      // history identify as one entry. Without the id the client keyed rolls by
-      // user and broadcast time, which no stored roll could ever match.
-      const rollData = {
-        id: diceRoll.id,
-        userId: socket.userId,
-        userName: user.displayName,
-        characterName: characterName || null,
-        expression,
-        result: rollResult.total,
-        breakdown: rollResult,
-        purpose: purpose || null,
-        timestamp: diceRoll.rolledAt.toISOString(),
-        secret: secret || false,
-      };
-
-      if (secret) {
-        // Secret roll - send to roller (always)
-        socket.emit('dice.rolled', rollData);
-
-        // SECURITY: Also send to GM(s) for audit/oversight
-        // Follows Spirit Layer pattern: GMs see everything, players see filtered
-        for (const s of await campaignSockets(io, socket.campaignId)) {
-          const authedSocket = s as unknown as AuthenticatedSocket;
-          // Send to GMs only (excluding the original roller if they're GM)
-          if (authedSocket.role === 'GM' && authedSocket.userId !== socket.userId) {
-            s.emit('dice.rolled.secret', {
-              ...rollData,
-              originalRoller: socket.userId,
-              isAuditView: true, // Flag so GM UI can style differently
-            });
-          }
-        }
-      } else {
-        // Normal roll - broadcast to all campaign members
-        io.to(socket.campaignId).emit('dice.rolled', rollData);
-      }
-      ack?.({ ok: true, id: diceRoll.id });
-
-      logger.debug('dice.roll', { expression, result: rollResult.total, userId: socket.userId, secret: secret || false, campaignId: socket.campaignId });
+      logger.debug('dice.roll', { expression, result, userId: socket.userId, secret, campaignId: socket.campaignId });
     } catch (error) {
       logger.error('dice.roll failed', { err: error });
       refuse(error instanceof DiceParserError ? `Dice roll failed: ${error.message}` : 'Failed to roll dice');

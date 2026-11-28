@@ -5,14 +5,11 @@
 import { Server } from 'socket.io';
 import type { MessageType } from '@prisma/client';
 import { AuthenticatedSocket } from '../auth';
-import { prisma } from '../../config/database';
 import logger from '../../utils/logger';
-import { foreignKeyConstraint } from '../../utils/errors';
-import { chatMessageLimiter, withinCeiling } from '../shared';
-import { campaignSockets } from '../utils';
+import { withinCeiling } from '../shared';
 import { ackFrom, refuseRequest } from '../ack';
-import { ChatMessageSchema, CHAT_CONTENT_REFUSAL, WHISPER_RECIPIENT_REFUSAL, WHISPER_SELF_REFUSAL } from '../../validators/chat';
-import { whisperRecipient } from '../../services/permissions';
+import { ChatMessageSchema, CHAT_CONTENT_REFUSAL } from '../../validators/chat';
+import { sendChatMessage } from '../../services/chat';
 
 /**
  * The `chat.message` the server sends each member who may read the message.
@@ -102,103 +99,31 @@ export function registerChatHandlers(io: Server, socket: AuthenticatedSocket): v
         rememberedKey = key;
       }
 
-      // Who a whisper is for, asked after the clientId memory, so a resend of
-      // one that reached its recipient before they left is answered with the
-      // first id, and before the cooldown, so a refused whisper does not use
-      // it up.
-      let whisperTo: { id: string; displayName: string } | null = null;
-      if (recipientId !== undefined) {
-        if (recipientId === socket.userId) {
-          refuse(WHISPER_SELF_REFUSAL);
-          return;
-        }
-        whisperTo = await whisperRecipient(campaignId, socket.userId!, recipientId);
-        if (!whisperTo) {
-          refuse(WHISPER_RECIPIENT_REFUSAL);
-          return;
-        }
+      // The whisper's recipient is asked after the clientId memory, so a
+      // resend of one that reached its recipient before they left is
+      // answered with the first id (services/chat.ts).
+      let remembered = false;
+      const outcome = await sendChatMessage(
+        io,
+        { campaignId, userId: socket.userId!, role: socket.role },
+        { content, type: askedType, recipientId },
+        {
+          clientId,
+          onWrite: rememberedKey === null ? undefined : (id) => {
+            const now = Date.now();
+            forgetOldClientIds(now);
+            sentByClientId.set(rememberedKey!, { id, at: now });
+            remembered = true;
+          },
+        },
+      );
+      if (!outcome.ok) {
+        if (remembered) sentByClientId.delete(rememberedKey!);
+        refuse(outcome.error);
+        return;
       }
-
-      // The type is decided by the sender's role on the session, not by the
-      // payload: a player's message is always PLAYER. The GM's is GM unless
-      // they ask to speak as a player (out of character). A whisper is a
-      // WHISPER whoever sends it.
-      const type: 'PLAYER' | 'GM' | 'WHISPER' = whisperTo ? 'WHISPER' : socket.role === 'GM' ? (askedType ?? 'GM') : 'PLAYER';
-
-      // Rate limiting: respect campaign's chatCooldown settings
-      const campaignSettings = await prisma.campaign.findUnique({
-        where: { id: campaignId },
-        select: { chatCooldownEnabled: true, chatCooldownSeconds: true },
-      });
-
-      if (campaignSettings?.chatCooldownEnabled) {
-        const windowMs = (campaignSettings.chatCooldownSeconds ?? 5) * 1000;
-        if (!chatMessageLimiter.check(`${socket.userId}:${campaignId}`, 1, windowMs)) {
-          refuse(`Rate limit: wait ${campaignSettings.chatCooldownSeconds}s between messages.`);
-          return;
-        }
-      }
-
-      const write = (async () => {
-        const user = await prisma.user.findUnique({
-          where: { id: socket.userId },
-          select: { displayName: true },
-        });
-        if (!user) throw new UserGoneError();
-        const message = await prisma.message.create({
-          data: { campaignId, userId: socket.userId!, type, content, recipientId: whisperTo?.id ?? null },
-        });
-        return { user, message };
-      })();
-      if (rememberedKey) {
-        const now = Date.now();
-        forgetOldClientIds(now);
-        sentByClientId.set(rememberedKey, { id: write.then(({ message }) => message.id), at: now });
-      }
-
-      let written: Awaited<typeof write>;
-      try {
-        written = await write;
-      } catch (error) {
-        if (rememberedKey) sentByClientId.delete(rememberedKey);
-        if (error instanceof UserGoneError) {
-          refuse('User not found');
-          return;
-        }
-        // The recipient's account was deleted after they were looked up. Any
-        // other missing row, such as the campaign deleted meanwhile, is a
-        // failure to send.
-        if (whisperTo && foreignKeyConstraint(error) === 'Message_recipientId_fkey') {
-          refuse(WHISPER_RECIPIENT_REFUSAL);
-          return;
-        }
-        throw error;
-      }
-      const { user, message } = written;
-
-      const payload: ChatMessageBroadcast = {
-        id: message.id,
-        userId: socket.userId!,
-        userName: user.displayName,
-        content: message.content,
-        type,
-        timestamp: message.createdAt.toISOString(),
-        ...(whisperTo ? { recipientId: whisperTo.id, recipientName: whisperTo.displayName } : {}),
-      };
-
-      // Who may read a message is decided for each member here, as it is for
-      // a secret roll: every member a message to everyone, and only the
-      // sender's and the recipient's sockets in this campaign a whisper.
-      // Never the user's own room, which spans every campaign they have open.
-      // Nothing is awaited between fetching the sockets and the emits. The
-      // sender's own sockets also get the clientId, to match the copy they
-      // are already showing.
-      for (const s of await campaignSockets(io, campaignId)) {
-        const reader = s as unknown as AuthenticatedSocket;
-        if (whisperTo && reader.userId !== socket.userId && reader.userId !== whisperTo.id) continue;
-        s.emit('chat.message', reader.userId === socket.userId && clientId !== undefined ? { ...payload, clientId } : payload);
-      }
-      ack?.({ ok: true, id: message.id });
+      const type = outcome.message.type;
+      ack?.({ ok: true, id: outcome.message.id });
 
       logger.debug('chat.message', { type, userId: socket.userId, campaignId });
     } catch (error) {
@@ -208,6 +133,3 @@ export function registerChatHandlers(io: Server, socket: AuthenticatedSocket): v
     }
   });
 }
-
-/** The sender's account was deleted between authenticating and sending. */
-class UserGoneError extends Error {}
