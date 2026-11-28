@@ -82,6 +82,7 @@ All pictures are taken in the built-in practice campaign, whose map and pictures
 - Optional writing help for GMs (an NPC, read-aloud text, notes) through an AI provider you configure. Off unless `AI_PROVIDER` is set; the key stays on the server.
 - Admin Panel: users, invitations, settings, activity log, uploaded files, instance backups.
 - Practice campaign: every user can open one small campaign of their own (map, walls, a door, a light, fog, a character, a note) to try the tools on, and reset it to how it was made.
+- Guided tours: a **Tour** button walks a GM through map, fog, walls, lights, tokens, initiative, spell areas and the session, and a player through their token, dice, sheet and chat. It starts only when asked; in the practice campaign each step can be tried out.
 - Setup wizard guarded by a one-time setup token printed in the backend log.
 
 ### Automation and MCP
