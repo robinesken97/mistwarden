@@ -273,6 +273,8 @@ function readBlock(lines: string[], start: number, end: number, name: string, he
         if (Object.keys(values).length) block.skills = values;
         if (unread.length) warnings.push(`Skills: left out "${unread.join(', ')}"`);
       } else if (key === 'challenge') {
+        // A dash means the book gives no rating (a sidekick, for one): the same as no Challenge line.
+        if (/^[-—–]*$/.test(rest)) continue;
         const cr = /^(\d+(?:\/\d+)?)\s*(?:\(\s*([\d,]+)\s*XP\s*\))?\s*(.*)$/i.exec(rest);
         if (!cr) errors.push(`Challenge: no rating in "${rest}"`);
         else {
