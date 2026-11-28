@@ -14219,6 +14219,86 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
 
+  /api/campaigns/practice:
+    post:
+      tags: [Campaigns]
+      summary: Open the caller's practice campaign
+      description: >
+        The practice campaign the caller runs as GM, or a new one made now:
+        one per user. It holds a small map with walls, doors, a light, fog and
+        tokens, a sample 5E character, a GM note and a gallery picture, all
+        made with Mistwarden's own pictures. Per user: 20 requests an hour,
+        together with the reset.
+      operationId: openPracticeCampaign
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: The caller's practice campaign, which they already had
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  campaign:
+                    $ref: '#/components/schemas/Campaign'
+        '201':
+          description: A practice campaign made now
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  campaign:
+                    $ref: '#/components/schemas/Campaign'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          description: Opened or reset too often in the last hour
+
+  /api/campaigns/{campaignId}/practice/reset:
+    post:
+      tags: [Campaigns]
+      summary: Reset a practice campaign
+      description: >
+        GM only. Puts a practice campaign back as it was made: its maps (with
+        their drawings, spell areas and explored memory), notes and gallery go
+        and are made again, the initiative order is cleared and the dice
+        history hidden. Members and their characters stay; the sample
+        character's sheet is put back. Any other campaign is refused with 409
+        and left as it is.
+      operationId: resetPracticeCampaign
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CampaignId'
+      responses:
+        '200':
+          description: Reset
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  mapId:
+                    type: string
+                    format: uuid
+                    description: The new current map.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Not a practice campaign
+        '429':
+          description: Opened or reset too often in the last hour
+
   /api/campaigns/{campaignId}/maps/import-uvtt:
     post:
       tags: [Maps]
@@ -15228,6 +15308,10 @@ components:
           format: date-time
           nullable: true
           description: When the GM last cleared the dice history; older rolls are not returned.
+        isPractice:
+          type: boolean
+          default: false
+          description: A practice campaign (POST /api/campaigns/practice). Set by the server alone; no create, update or import sets it, and only such a campaign can be reset.
         createdAt:
           type: string
           format: date-time

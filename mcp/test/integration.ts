@@ -443,4 +443,21 @@ assert.equal((await cogm.ok('delete_imported_creatures', { sourceTag: tag, confi
 assert.equal((await cogm.ok('delete_imported_spells', { sourceTag: tag, confirm: true })).deleted, 1);
 await cogm.client.close();
 
+// Mistwarden, 2026-11-28: the practice campaign, whose pictures are bundled
+// with the backend; a picture missing from the image answers 404 here.
+step('the practice campaign: made once, its pictures served, reset, deleted');
+const practice = await rest<{ campaign: { id: string; isPractice: boolean; currentMapId: string } }>('POST', '/api/campaigns/practice');
+assert.equal(practice.campaign.isPractice, true);
+assert.equal((await rest<{ campaign: { id: string } }>('POST', '/api/campaigns/practice')).campaign.id, practice.campaign.id);
+const practiceId = practice.campaign.id;
+const { map: practiceMap } = await rest<{ map: { imageUrl: string; tokens: unknown[] } }>('GET', `/api/campaigns/${practiceId}/maps/${practice.campaign.currentMapId}`);
+assert.equal(practiceMap.tokens.length, 5);
+await rest('GET', practiceMap.imageUrl);
+const practicePictures = await rest<{ pictures: Array<{ url: string }> }>('GET', `/api/campaigns/${practiceId}/gallery`);
+assert.equal(practicePictures.pictures.length, 1);
+await rest('GET', practicePictures.pictures[0].url);
+const { mapId: resetMapId } = await rest<{ mapId: string }>('POST', `/api/campaigns/${practiceId}/practice/reset`);
+assert.notEqual(resetMapId, practice.campaign.currentMapId);
+await rest('DELETE', `/api/campaigns/${practiceId}`);
+
 process.stdout.write(`OK: scene built and checked in campaign ${campaignId} (${names.length} tools without a switch, ${openNames.length} player-visible, ${cogmNames.length} co-GM)\n`);

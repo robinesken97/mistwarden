@@ -56,6 +56,7 @@ import { invitationEmailLimiter } from '../../middleware/invitationEmailLimiter'
 import { aiLimiter } from '../campaignAi';
 import { leftNotesDownloadLimiter } from '../../middleware/leftNotesDownloadLimiter';
 import { gmActionLimiter, GM_ACTIONS_PER_MINUTE } from '../../middleware/gmActionLimiter';
+import { practiceCampaignLimiter, PRACTICE_CAMPAIGN_REQUESTS_PER_HOUR } from '../../middleware/practiceCampaignLimiter';
 
 jest.setTimeout(60000);
 
@@ -77,6 +78,7 @@ const LIMITERS = new Map<RequestHandler, string>([
   [leftNotesDownloadLimiter, 'leftNotesDownloadLimiter'],
   [aiLimiter, 'aiLimiter'],
   [gmActionLimiter, 'gmActionLimiter'],
+  [practiceCampaignLimiter, 'practiceCampaignLimiter'],
 ]);
 
 /** What a row's requests are sent with. */
@@ -158,6 +160,10 @@ const ROWS: Row[] = [
   { route: 'DELETE /api/campaigns/:campaignId/maps/:id/areas/:areaId', limiter: 'gmActionLimiter', limit: GM_ACTIONS_PER_MINUTE, send: (c) => c.agent.delete(`/api/campaigns/${c.campaignId}/maps/${NO_MAP}/areas/${NO_MAP}`) },
   { route: 'DELETE /api/campaigns/:campaignId/maps/:id/areas', limiter: 'gmActionLimiter', limit: GM_ACTIONS_PER_MINUTE, send: (c) => c.agent.delete(`/api/campaigns/${c.campaignId}/maps/${NO_MAP}/areas`) },
   { route: 'POST /api/campaigns/:campaignId/maps/:id/exploration/reset', limiter: 'gmActionLimiter', limit: GM_ACTIONS_PER_MINUTE, send: (c) => c.agent.post(`/api/campaigns/${c.campaignId}/maps/${NO_MAP}/exploration/reset`) },
+  // The row's campaign is not a practice one, so each reset is refused (409) and still counts.
+  { route: 'POST /api/campaigns/:campaignId/practice/reset', limiter: 'practiceCampaignLimiter', limit: PRACTICE_CAMPAIGN_REQUESTS_PER_HOUR, send: (c) => c.agent.post(`/api/campaigns/${c.campaignId}/practice/reset`) },
+  // The first makes the row user's practice campaign, each after opens it; the campaign goes with the row's user.
+  { route: 'POST /api/campaigns/practice', limiter: 'practiceCampaignLimiter', limit: PRACTICE_CAMPAIGN_REQUESTS_PER_HOUR, send: (c) => c.agent.post('/api/campaigns/practice') },
 ];
 
 const rowKey = (route: string, limiter: string) => `${route} ${limiter}`;
@@ -212,6 +218,9 @@ describe('each limited route', () => {
 
   afterAll(async () => {
     await cleanupCampaigns(campaigns);
+    // The practice campaign row's requests made, and its pictures.
+    await prisma.campaign.deleteMany({ where: { ownerId: { in: created } } });
+    await prisma.asset.deleteMany({ where: { uploadedById: { in: created } } });
     await cleanupUsers(created);
     await prisma.$disconnect();
   });
