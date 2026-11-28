@@ -207,7 +207,7 @@ export default function GmLightControls({
         <div id={bodyId} className="flex flex-col gap-2 p-2 pt-1">
           {/* Warning when lighting is off */}
           {!lightingEnabled && (
-            <div className="text-xs text-amber-400/60 bg-amber-400/5 rounded-sm px-1.5 py-1 border border-amber-400/10">
+            <div className="text-xs text-amber-300 bg-amber-400/5 rounded-sm px-1.5 py-1 border border-amber-400/10">
               Dynamic lighting is off. Enable it in Edit Map for lights to affect player visibility.
             </div>
           )}
@@ -228,7 +228,7 @@ export default function GmLightControls({
             </label>
           )}
           {lightingEnabled && !globalIllumination && lightCount === 0 && (
-            <div className="text-xs text-amber-400/60 bg-amber-400/5 rounded-sm px-1.5 py-1 border border-amber-400/10">
+            <div className="text-xs text-amber-300 bg-amber-400/5 rounded-sm px-1.5 py-1 border border-amber-400/10">
               No lights placed and Global Illumination is off: players see only their darkvision.
             </div>
           )}
@@ -382,7 +382,7 @@ export default function GmLightControls({
                       }}
                       className={`w-5 h-5 rounded-full border-2 transition-transform ${
                         displayColor === c.value
-                          ? 'border-white scale-110'
+                          ? 'border-stone-100 scale-110'
                           : 'border-stone-600 hover:border-stone-400'
                       }`}
                       style={{ backgroundColor: c.value }}

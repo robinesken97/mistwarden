@@ -674,7 +674,11 @@ export function applyThemeColors(colors: ThemeColors): void {
   // The browser draws its own controls (text boxes, checkboxes, a dropdown's
   // open list) for the scheme it is told; a dark paper is a dark theme,
   // custom ones included.
-  root.style.colorScheme = relativeLuminance(parseRgb(colors.paper)) < 0.18 ? 'dark' : 'light';
+  // data-scheme carries it to the stylesheet: the GM's tool panels turn light
+  // on a light theme (index.css, .gm-panels).
+  const scheme = relativeLuminance(parseRgb(colors.paper)) < 0.18 ? 'dark' : 'light';
+  root.style.colorScheme = scheme;
+  root.dataset.scheme = scheme;
 }
 
 /**

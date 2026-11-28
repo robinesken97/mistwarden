@@ -17,8 +17,10 @@ import indexCss from '../../index.css?raw';
 
 /**
  * Exempt:
- *  - the map's tool panels, deliberately dark panels floating over the map:
- *    the GM's Fog, Walls and Lights, their stack, the drawing tools and Paint's
+ *  - the map's tool panels, drawn in stone and its hues floating over the map:
+ *    the GM's Fog, Walls and Lights, their stack, the drawing tools and Paint's.
+ *    Dark as drawn on a dark theme; on a light theme index.css turns them
+ *    light (`[data-scheme='light'] .gm-panels`), checked below
  *  - each sheet's header colour presets (`colorPresets.ts`)
  */
 const EXEMPT = [
@@ -146,6 +148,22 @@ describe('themed surfaces use semantic tokens', () => {
       .filter((entry) => entry.count > 0)
       .map((entry) => `${entry.file} (${entry.count})`);
     expect(found).toEqual([]);
+  });
+
+  // On a light theme the panels' stone and hue text shades are remapped to
+  // the theme's paper and ink and to dark hues; a text colour the block does
+  // not remap would stay light on the light panel. Two are labels on a fill
+  // that stays as drawn: stone-900 on the lime, amber and warning fills,
+  // white on the armed red Clear button.
+  it('turns every text colour of the GM tool panels dark on a light theme', () => {
+    const block = /\[data-scheme='light'\] \.gm-panels \{([^}]*)\}/.exec(indexCss)?.[1] ?? '';
+    const remapped = new Set([...block.matchAll(/--color-([a-z]+-\d+):/g)].map((m) => m[1]));
+    const ON_A_FILL = new Set(['stone-900', 'white']);
+    const TEXT = /(?<![\w-])(?:[\w-]+:)*text-((?:stone|amber|red|sky|emerald|green|lime|yellow|orange|violet|teal|blue)-\d+|white)\b/g;
+    const found = EXEMPT.flatMap((path) => [...(SOURCES[path] ?? '').matchAll(TEXT)].map((m) => m[1]))
+      .filter((colour) => !remapped.has(colour) && !ON_A_FILL.has(colour));
+    expect(remapped.size).toBeGreaterThan(10);
+    expect([...new Set(found)]).toEqual([]);
   });
 
   it('keeps the exemption list small and intentional', () => {

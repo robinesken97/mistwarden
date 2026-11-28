@@ -146,7 +146,7 @@ export default function GmToolPanelContainer({ children, containerRef, band = nu
   // notes wrap instead of widening every panel when it is opened. The card is
   // the toolbar's (glass-panel p-2 bg-parchment/90 backdrop-blur-xs).
   return (
-    <div ref={panelRef} style={style} hidden={hidden || undefined} className="glass-panel p-2 bg-parchment/90 backdrop-blur-xs flex flex-col gap-1.5 overflow-y-auto *:shrink-0">
+    <div ref={panelRef} style={style} hidden={hidden || undefined} className="gm-panels glass-panel p-2 bg-parchment/90 backdrop-blur-xs flex flex-col gap-1.5 overflow-y-auto *:shrink-0">
       {/* The card's heading, which is its drag handle, kept in view while the
           panels below it scroll. Taller for a finger on a touch screen, and
           it takes the touch itself: left to the browser, a finger's drag

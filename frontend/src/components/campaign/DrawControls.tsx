@@ -147,16 +147,16 @@ export default function DrawControls({
   return (
     <section
       aria-label="Drawing tools"
-      className="flex flex-col gap-2 p-2 bg-stone-800/90 rounded-lg border border-amber-400/20 w-full text-stone-300"
+      className="flex flex-col gap-2 p-2 bg-stone-800 rounded-lg border border-amber-400/20 w-full text-stone-300"
     >
       <div className="flex items-center justify-between">
-        <h2 className="text-xs text-amber-400/70 font-medium uppercase tracking-wide">Draw</h2>
+        <h2 className="text-xs text-amber-300 font-medium uppercase tracking-wide">Draw</h2>
         <button
           type="button"
           onClick={onClose}
           aria-label="Put the drawing tools away"
           title="Put the drawing tools away"
-          className="touch-target inline-flex items-center justify-center w-6 h-6 rounded-sm text-stone-400 hover:text-white hover:bg-stone-700"
+          className="touch-target inline-flex items-center justify-center w-6 h-6 rounded-sm text-stone-400 hover:text-stone-100 hover:bg-stone-700"
         >
           <X className="w-3.5 h-3.5" />
         </button>

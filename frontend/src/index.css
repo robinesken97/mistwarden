@@ -553,6 +553,48 @@
   min-height: 2.75rem;
 }
 
+/* The GM's tool panels (GmToolPanelContainer and the Fog, Walls, Lights,
+   Draw and Paint cards in it) are drawn in Tailwind's stone and its hues, a
+   dark island over the map. On a light theme (data-scheme, set by
+   applyThemeColors) they follow the theme instead: the stone shades become
+   the theme's paper and ink, the hues' text shades (100 to 400) their
+   readable 800, and the dark hue washes (700, 900) light ones. A dark theme
+   keeps the island as drawn. Each shade below has one role in those files
+   (text, or fill and border); utils/__tests__/themeTokens.test.ts checks
+   that every palette colour the panels use is either here or a fill that
+   reads on a light panel as it is. */
+[data-scheme='light'] .gm-panels {
+  --color-stone-100: rgb(var(--rgb-ink));
+  --color-stone-200: rgb(var(--rgb-ink));
+  --color-stone-300: rgb(var(--rgb-ink-secondary));
+  --color-stone-400: rgb(var(--rgb-ink-muted));
+  --color-stone-500: color-mix(in srgb, rgb(var(--rgb-ink)) 45%, rgb(var(--rgb-paper)));
+  --color-stone-600: color-mix(in srgb, rgb(var(--rgb-ink)) 28%, rgb(var(--rgb-paper)));
+  --color-stone-700: color-mix(in srgb, rgb(var(--rgb-ink)) 12%, rgb(var(--rgb-paper)));
+  --color-stone-800: rgb(var(--rgb-paper));
+  --color-amber-100: #92400e;
+  --color-amber-200: #92400e;
+  --color-amber-300: #92400e;
+  --color-blue-300: #1e40af;
+  --color-emerald-300: #065f46;
+  --color-emerald-400: #065f46;
+  --color-green-400: #166534;
+  --color-lime-300: #3f6212;
+  --color-lime-400: #3f6212;
+  --color-orange-400: #9a3412;
+  --color-red-300: #991b1b;
+  --color-red-400: #991b1b;
+  --color-sky-300: #075985;
+  --color-sky-400: #075985;
+  --color-teal-400: #115e59;
+  --color-violet-400: #5b21b6;
+  --color-yellow-400: #854d0e;
+  --color-lime-700: #bef264;
+  --color-red-700: #fca5a5;
+  --color-red-900: #fecaca;
+  --color-sky-700: #7dd3fc;
+}
+
 /* Panel resize separator styles (react-resizable-panels v4 renders
    [data-separator] elements; the attribute value tracks interaction
    state: inactive | hover | active | disabled) */

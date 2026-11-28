@@ -426,11 +426,9 @@ export default function GmWallControls({
                   key={c.value}
                   onClick={() => onWallColorChange(c.value)}
                   title={c.label}
-                  className="w-5 h-5 rounded-full border-2 transition-transform hover:scale-110"
-                  style={{
-                    backgroundColor: c.value,
-                    borderColor: wallColor === c.value ? '#fff' : 'transparent',
-                  }}
+                  // The ring outlines the white swatch on a light theme's panel.
+                  className={`w-5 h-5 rounded-full border-2 ring-1 ring-stone-600 transition-transform hover:scale-110 ${wallColor === c.value ? 'border-stone-100' : 'border-transparent'}`}
+                  style={{ backgroundColor: c.value }}
                   aria-label={`Wall color: ${c.label}`}
                 />
               ))}
