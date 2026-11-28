@@ -236,10 +236,10 @@ export default function MapManager({ isOpen, onClose }: MapManagerProps) {
 
   // ---- CRUD handlers ----
 
-  /** A copy or a new scene, at the top of its list; a template stays out of the campaign's scenes. */
+  /** A copy or a new scene, at the top of its list; campaign.maps holds templates too, as the server sends them. */
   const addMap = (map: CampaignMap) => {
     setMaps((prev) => [map, ...prev]);
-    if (!map.isTemplate) upsertCampaignMap(map);
+    upsertCampaignMap(map);
   };
 
   const handleCreated = (map: CampaignMap, drawnPicture?: Asset) => {
@@ -259,7 +259,7 @@ export default function MapManager({ isOpen, onClose }: MapManagerProps) {
 
   const handleUpdated = (updated: CampaignMap) => {
     setMaps((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
-    if (!updated.isTemplate) upsertCampaignMap(updated);
+    upsertCampaignMap(updated);
     // The table's map or the one being prepared, whichever this is. A map
     // being prepared is told of its edit by nothing else: the server sends
     // map.changed for the table's map alone.
