@@ -220,6 +220,8 @@ describe("the rail's names", () => {
       ]);
       for (const button of cells) {
         expect(button).not.toHaveAttribute('title');
+        // Measure's name stays off its open card.
+        if (button.getAttribute('aria-label') === 'Measure') continue;
         // A mouse resting on it shows its name after a moment.
         fireEvent.pointerOver(button, { pointerType: 'mouse' });
         act(() => { vi.advanceTimersByTime(400); });
@@ -316,9 +318,8 @@ describe("the Spell area card's size", () => {
     mouse.up(canvas, { clientX: 125, clientY: 125 });
 
     const card = screen.getByRole('region', { name: 'Spell area' });
-    for (const name of ['10 ft', '15 ft', '20 ft', '30 ft', '60 ft', 'Clear placement']) {
-      expect(classesOf(within(card).getByRole('button', { name }))).toContain('pointer-coarse:h-11');
-    }
+    expect(classesOf(within(card).getByRole('button', { name: 'Clear placement' }))).toContain('pointer-coarse:h-11');
+    for (const name of ['10', '15', '20', '30', '60']) expect(classesOf(radio('Common sizes (ft)', name, card))).toContain('pointer-coarse:h-11');
     for (const name of ['Grid', 'Off']) expect(classesOf(radio('Snap', name, card))).toContain('pointer-coarse:h-11');
   });
 });

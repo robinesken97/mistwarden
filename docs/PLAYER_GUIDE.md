@@ -407,13 +407,13 @@ On a tablet or a phone your finger does what the mouse does, and a little more:
 | Roll from your sheet with advantage | Tap a stat to roll it. Press and hold it for half a second for **Normal**, **Advantage** and **Disadvantage** (**Fortune** and **Misfortune** in Fantasy d20), or set **Roll mode** in the sheet's header for a run of rolls. See [Rolling from your sheet](#rolling-from-your-sheet). |
 | Open or close a door | Tap it, as you would click it. Press and hold it for its menu. |
 | Measure a distance | With the **Ruler** up, tap the square, or slide one finger to it; the line stays after you lift (see [Measuring and Spell Areas](#measuring-and-spell-areas)). |
-| Aim a spell area | With **AoE Shape** up, slide your finger from the square it comes from towards the target (see [Measuring and Spell Areas](#measuring-and-spell-areas)). Untick **Snap to grid** to place it off the grid, as **Alt** does with a mouse. |
+| Aim a spell area | With **Spell area** up, slide your finger from the square it comes from towards the target (see [Measuring and Spell Areas](#measuring-and-spell-areas)). Set **Snap** to **Off** to place it off the grid, as **Alt** does with a mouse. |
 | Point at the map | Tap the spot twice, quickly, on empty ground: everyone sees your ping where the second tap lands, as with **Tab**. It works while no tool is up; two taps on a token do what they always do, and ping nothing. Or press and hold the spot for half a second, on empty ground or on a token that has no menu for you. Or tap **Ping** in the map's toolbar, then tap the spot; you can move the map first. Tap **Ping** again to put it away. |
 | Draw on the map | With **Draw** up, one finger draws and two fingers move and pinch the map; with the eraser, the text label or the polygon, one finger moves the map too, and a tap acts. Holding a finger still opens no menu (see [Drawing and pointing](#drawing-and-pointing)). |
 
 A stylus works as a mouse, and opens no menu by holding: use a finger for that. Tap your token with it to pick it up and tap the square to put it down. On a tablet that can tell a stylus hovering just above it, the token follows the stylus meanwhile; take the stylus away and the token waits, faded, on its own square.
 
-On a phone or a tablet some controls are bigger than on a computer, at least 44 pixels square, so a fingertip hits the one it means: the map's toolbar, **Put back**, the **AoE Shape** panel's buttons, the card's **✕**, the items of the token, door and character menus and of a character sheet's roll menu, the buttons of a sheet's **Roll mode**, the close buttons of messages, dialogs, side panels and the **Roll...** pickers, the icon buttons in the page's header, your character's hit point buttons in the party panel, and the names and your die in the initiative tracker. A menu taller than the screen scrolls. Where a row is too narrow for its buttons, they go onto a line of their own: in a narrow party panel your character's hit point buttons take two lines, **−5** and **−** beside the hit points and **+** and **+5** under them on the right. With a mouse they keep their usual size, and other controls keep the size they have on a computer.
+On a phone or a tablet some controls are bigger than on a computer, at least 44 pixels square, so a fingertip hits the one it means: the map's toolbar, **Put back**, the **Spell area** card's buttons, the card's **✕**, the items of the token, door and character menus and of a character sheet's roll menu, the buttons of a sheet's **Roll mode**, the close buttons of messages, dialogs, side panels and the **Roll...** pickers, the icon buttons in the page's header, your character's hit point buttons in the party panel, and the names and your die in the initiative tracker. A menu taller than the screen scrolls. Where a row is too narrow for its buttons, they go onto a line of their own: in a narrow party panel your character's hit point buttons take two lines, **−5** and **−** beside the hit points and **+** and **+5** under them on the right. With a mouse they keep their usual size, and other controls keep the size they have on a computer.
 
 ### Two creatures can't stand in the same square
 
@@ -494,7 +494,7 @@ On a touch screen, which has no cursor, tap the square you want to measure to, o
 
 For a cone or a line, **click your own token first**. That square becomes the pivot, and moving the cursor swings the shape around it — the point it comes out of slides around the square's edge to follow your aim, so it always leaves on the side you're pointing and never cuts back across you. Keep turning until you can see what the attack catches.
 
-For something you cast at a distance rather than from yourself — a wall of fire, say — hold **Alt** while clicking, or untick **Snap to grid** in the AoE panel. That drops the grid snapping and pins the shape exactly where you clicked, and it turns about that point instead.
+For something you cast at a distance rather than from yourself — a wall of fire, say — hold **Alt** while clicking, or set **Snap** to **Off** in the **Spell area** card. That drops the grid snapping and pins the shape exactly where you clicked, and it turns about that point instead.
 
 On a touch screen, which has no cursor to aim with, put your finger on the square the cone or line comes from and slide it towards your target: the shape is pinned on that square and turns to follow your finger, and stays aimed when you lift. A tap moves a shape to the square you tap.
 
@@ -534,7 +534,7 @@ If you ping repeatedly in quick succession, some will be quietly ignored — tha
 | **Eraser** | Click or tap one of your own drawings to erase it. |
 | **Laser pointer** | Drag to point at something. Everyone sees the trail, which fades within 3 seconds; nothing is kept. With reduced motion turned on in your system the trail does not fade: it shows whole for 3 seconds, then goes. |
 
-Pick a colour, a width, and for shapes **Fill shapes** and **Snap to grid**. **Clear mine** erases every drawing of yours on the map. You can erase only your own drawings; the GM can erase anyone's.
+Pick a colour (**Your colour**, your player colour, comes first and is where the pen and the laser start), a width, and for shapes **Fill** and **Snap**. **Clear mine** erases every drawing of yours on the map. You can erase only your own drawings; the GM can erase anyone's.
 
 While the tools are up, a click draws, so it does not pick up your token. Put them away to move it. With a mouse the right button moves the map; on a touch screen, two fingers do.
 

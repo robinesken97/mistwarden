@@ -69,7 +69,7 @@ On a screen 1,024 pixels wide or more (an iPad held sideways, a laptop, a deskto
 
 - **Top bar:** **Dashboard**, the campaign's title, the **Live**, **Paused** or **Inactive** chip and a sun icon when a vibe is set. A connection status shows only while it connects or is down, with **Retry**. On the right: **Library ▾** (**Scenes**, **Tokens**, **Creatures**, **Token Templates**, **Spells**, **Documents**), **AI** (when the server has an AI set up), **As player ▾** (while the map has dynamic lighting or fog of war on) and **⋯** (**Mapmaker**, **Atmosphere**, **Campaign Settings**, **Keyboard shortcuts**, **Tour**, **Display on this device**, **Campaign info**).
 - **Left tabs:** **Chat**, **Dice**, **Initiative**, **Party**, **Notes**, **Gallery**, **Table**. A tab opens its panel beside the column; press the open tab again, or the panel's fold button, to fold it away. The panel starts folded under 1,280 pixels and open from 1,280; each device remembers your choice.
-- **Map rail**, on the map's right edge: **Zoom out**, the zoom level, **Zoom in**, **Fit map**, **Grid**, **Measure**, **Spell area**, **Ping**, **Draw**, **Spirit Layer** and **GM tools**. Small panels (**Grid**, **Spirit Layer**) open beside it; the GM tool panels, **Draw** and **Mapmaker** open as a card left of it. On a short screen the rail becomes two columns.
+- **Map rail**, on the map's right edge: **Zoom out**, the zoom level, **Zoom in**, **Fit map**, **Grid**, **Measure**, **Spell area**, **Ping**, **Draw**, **Spirit Layer** and **GM tools**. **Grid** opens a small popover beside it; **Measure**, **Spell area**, **Draw**, **Spirit Layer** and **GM tools** each open a card left of it, one at a time, and **Mapmaker** its panel. On a phone the cards are strips across the foot of the map. On a short screen the rail becomes two columns.
 - **Token card**, at the map's bottom left: the selected or hovered token's picture, name and, where it has them, **HP**, initiative and conditions. While you carry a token, **Carried** and the distance show in it.
 
 ### Inviting Players
@@ -223,13 +223,13 @@ Under **Grid Settings** in Create Map and Edit Map, **Grid Type** picks **Square
 
 A map stores how its grid is drawn, the same for everyone at the table: a colour (`gridColor`, `#rrggbb`), how opaque it is (`gridOpacity`, 0.1 to 1) and how wide its lines are on screen (`gridLineWidth`, 1 thin, 2 medium or 3 thick pixels, whatever the zoom). Every map starts with the look the grid always had: black at 0.4, 2 pixels. You set it with `PUT /api/campaigns/:id/maps/:mapId` or the MCP server's `update_map_settings`; every member's page is told at once, and it travels with the map in a campaign export and in a copy of the map. Each player keeps only their own **show grid** on or off.
 
-The web app's controls for it, and drawing the grid in the map's look, come in a later release, when maps are called scenes; until then the map controls' grid colour button still switches the grid between black and white on your own screen only.
+In the web app, the **Grid** cell on the map's rail opens a small popover in two groups. **Only on your screen**: **Grid: Hidden | Shown**, and for you **Place freely: Off | On** (below). **For everyone on this scene**: **Line colour** (five colours, or any other with the pipette), **Opacity** (10 to 100 %), **Line width** (**Thin | Medium | Thick**), **Snap tokens: Grid | Off** (the setting below) and **Grid settings…**, which opens the scene's settings at the grid. Each change is drawn at once and reaches every player's map.
 
 ### Tokens between squares
 
 **Tokens snap to grid**, under **Grid Settings** in Create Map and Edit Map, is on for every map unless you turn it off.
 
-- **On** (the default): tokens stand on whole squares, as they always have. You, the GM, can still put one between squares: hold **Alt** (**Option** on a Mac) while you move it and when you put it down, or, on a touch screen, turn on **Place tokens freely** in the **Grid** panel on the map's rail (under **More** on a narrow screen). A player's token always lands on a whole square here.
+- **On** (the default): tokens stand on whole squares, as they always have. You, the GM, can still put one between squares: hold **Alt** (**Option** on a Mac) while you move it and when you put it down, or, on a touch screen, set **Place freely** to **On** in the **Grid** popover on the map's rail. It is offered only on a square grid whose tokens snap, and not while Mapmaker is on. A player's token always lands on a whole square here.
 - **Off**: anyone moving a token, players included, can stop it between squares, to a hundredth of a square. The token is drawn, sees and is seen from exactly where it stands, and a click anywhere on it picks it up. The ruler and the carried-token readout still count whole squares, rounded, and a player still cannot end a move overlapping another creature.
 - **Turning it back on** moves every token to its nearest whole square, kept on the map, and a rider onto its mount's square.
 - A **hex map** always snaps, so the box is ticked and greyed out there; switching a map to hexes turns snapping on.
@@ -1064,11 +1064,11 @@ Two tools on the map's rail help you work out what a spell or a move actually re
 
 **Ruler** (the ruler icon) — click a start point, then move the cursor to measure the distance between two squares in feet, using the map's own scale and its diagonal rule. For a player there's nothing to click: their ruler always measures from their own token. On a touch screen, tap the start, which shows as a dot, and then the end, and the line stays; the third tap starts again. Or put your finger on the start and slide it to the end. While the ruler is up a finger measures and does not move the map; use two fingers for that. While you hold a token you tapped, a tap puts it down, as it would with the ruler away.
 
-**Spell area** (the lightning icon; **AoE Shape** on a phone) — overlays a spell area on the map. Pick **Circle**, **Cone**, **Line** or **Cube**, set the size in feet (or use a preset), and move the cursor to position it. Click the map to pin the shape in place; with a shape pinned, moving the cursor aims cone and line templates. Press **Esc** to drop the placement, and again to put the tool away.
+**Spell area** (the lightning icon) — opens its card beside the rail and overlays a spell area on the map. Pick the **Shape** (**Circle**, **Cylinder**, **Cone**, **Line** or **Cube**), set the size in feet (or pick one of the **Common sizes**), and move the cursor to position it. Click the map to pin the shape in place; with a shape pinned, moving the cursor aims cone and line templates. Press **Esc** to drop the placement, and again to put the tool away.
 
 **Aiming a cone or line.** Click the square the effect comes from — usually the caster's token — and that square becomes the pivot. Moving the cursor then swings the shape around it, and the point it starts from slides around that square's edge to follow: straight out the middle of an edge when you aim along a row or column, out the corner when you aim diagonally. It always leaves on the side you're aiming at, so the shape sweeps *around* the token rather than back through it. The pivot stays put however far you swing, so you can keep turning until you've found what the attack actually catches.
 
-**Placing something away from the caster.** Some effects aren't measured from anyone — a wall of fire is a line you drop wherever you like within range. **Alt+click** places the shape freely: it ignores the grid and pins the origin exactly where you clicked, and the shape then turns about that point. Unticking **Snap to grid** in the **Spell area** panel does the same for every click or tap until you tick it again, which is the way on a touch screen.
+**Placing something away from the caster.** Some effects aren't measured from anyone — a wall of fire is a line you drop wherever you like within range. **Alt+click** places the shape freely: it ignores the grid and pins the origin exactly where you clicked, and the shape then turns about that point. Setting **Snap** to **Off** in the **Spell area** card does the same for every click or tap until you tick it again, which is the way on a touch screen.
 
 Otherwise templates snap to your map's grid, so a shape covers whole squares rather than straddling them:
 
@@ -1093,15 +1093,15 @@ Draw is for marking up any map with a picture, and the whole table sees it live;
 | **Eraser** | Click or tap a drawing to erase it. |
 | **Laser pointer** | Drag to point. Everyone sees the trail fade within 3 seconds of where you pointed; nothing is kept. With reduced motion turned on in your system the trail does not fade: it shows whole for 3 seconds, then goes. |
 
-- **Colour**: one of the eight in the panel, or **Another colour** for any other.
+- **Colour**: **Your colour** first (your player colour, the one your pings have, where the pen and the laser start), then eight named ones, or any other with the pipette or a typed hex code.
 - **Width**: from 1 to 64, in the map's own pixels, so a stroke grows and shrinks with the zoom like the map does.
-- **Fill shapes**: fills a rectangle, an ellipse or a polygon with its colour, which the map shows through.
-- **Snap to grid**: puts the ends of lines and arrows, and the corners of shapes and polygons, on the nearest corner or middle of a square.
-- **Only I can see this**: the drawing is yours alone. On your screen it is dashed and faded, so you can tell it from what the table sees; it never reaches a player's browser, and it is left out of the **As player** view. The box is not offered with the laser pointer, which goes to everyone.
+- **Fill: Outline | Filled**: fills a rectangle, an ellipse or a polygon with its colour, which the map shows through.
+- **Snap: Grid | Off**: puts the ends of lines and arrows, and the corners of shapes and polygons, on the nearest corner or middle of a square.
+- **Who sees it: Everyone | Only me**: with **Only me** the drawing is yours alone. On your screen it is dashed and faded, so you can tell it from what the table sees; it never reaches a player's browser, and it is left out of the **As player** view. It is not offered with the laser pointer, which goes to everyone.
 
 While the drawing tools are up a click draws: it picks up no token and opens no door. The right mouse button moves the map, and with a finger two fingers move and pinch it. One finger draws; for the eraser, the text label and the polygon a tap acts and a slide moves the map. A second finger, or **Esc**, drops a stroke you are drawing from every screen; the laser pointer's trail fades as it would.
 
-Drawings are the topmost layer of the map: they show over the tokens, and over a player's fog and the dark of a lit map, so the table can plan over ground it cannot see yet ("we'll head this way"). A drawing for everyone shows to every player wherever it is; to keep a note from the players, tick **Only I can see this**. The **As player** view shows the drawings over its fog, as a player sees them, and none of yours alone.
+Drawings are the topmost layer of the map: they show over the tokens, and over a player's fog and the dark of a lit map, so the table can plan over ground it cannot see yet ("we'll head this way"). A drawing for everyone shows to every player wherever it is; to keep a note from the players, set **Who sees it** to **Only me**. The **As player** view shows the drawings over its fog, as a player sees them, and none of yours alone.
 
 Players can draw too, while **Players may draw** is on in Campaign Settings' **General** tab, except while the session is paused or has ended; a spectator cannot. The switch is on in every campaign until you turn it off. While a player may not draw, their **Draw** offers only the eraser and **Clear mine**, for drawings of their own on the map, and is gone when they have none. When you turn the switch off, a stroke a player is drawing fades from the other screens within about 4 seconds, and the drawings players made stay until erased. A player can erase only their own drawings, with the eraser or **Clear mine**, and you can erase anyone's. **Clear drawings** erases every drawing on the map, yours and the players', after asking. Under it, your **Draw** panel lists each other member with drawings on the map, with how many, as **Clear Mara's drawings (3)**: it erases that member's drawings alone, for everyone, after asking, and leaves everyone else's. Someone who has left the campaign is listed as **Clear the drawings of someone who has left**.
 
@@ -1428,7 +1428,7 @@ Fog is drawn over the map in each player's browser, so everything under it has a
 | **Walls, windows and doors** | Every one, because their browser works out what their characters can see from them. Each door arrives open or closed. A **locked** door arrives as an ordinary closed door, so the lock is not given away, and locking or unlocking a closed door sends them nothing at all, whether you change one door or a whole selection with **Change type**; a player who tries it is told it is locked. |
 | **Lights** | Every light that is on: where it is, how far it reaches and its colour. A light you have switched off is not sent until you switch it on, and adding, moving or deleting one that is off sends them nothing at all, **Clear All** included when every light left is off. |
 | **Fog** | Only which squares are revealed to them. |
-| **Drawings** | Every drawing for everyone on the map, wherever it is, fog or no fog. A drawing made with **Only I can see this** is never sent. |
+| **Drawings** | Every drawing for everyone on the map, wherever it is, fog or no fog. A drawing made with **Who sees it: Only me** is never sent. |
 
 With dynamic lighting on, a change to a wall, door or light also sends each player the tokens their characters can now see. A change that sends them nothing in the table above, such as locking a closed door, does not, so nothing reaches their browser to say that anything happened.
 
@@ -1453,7 +1453,7 @@ Open the **Walls** panel, one of the GM tool panels stacked at the top right of 
 - **Split** — Click on a wall segment to add a midpoint, splitting it into two segments.
 - **Erase** — Click and drag to brush-erase wall segments.
 - **Polygon** — Click to place corners of a room; click near the starting point, or click **Done** in the panel, to close the shape and create all wall segments at once. A double-click on a polygon of fewer than three corners keeps the corners you have placed.
-- **Brush** — Paint over the map to trace walls; the brush stroke is automatically simplified into straight wall segments. With **Snap to grid** enabled, segments align perfectly to grid intersections.
+- **Brush** — Paint over the map to trace walls; the brush stroke is automatically simplified into straight wall segments. With **Snap** set to **Grid**, segments align perfectly to grid intersections.
 
 On a touch screen every tool works with one finger: a tap is a click, and dragging a finger is dragging the mouse. Finish a line, or close a polygon once it has three corners, with a double tap on its last corner, or with **Done** in the panel. The two taps come within half a second and land within 20 pixels of each other. With **Snap to grid** on and a grid square 20 pixels across or more on screen, the second must also land on the same corner as the first, so two quick taps on neighbouring corners still add a wall between them; zoomed out further, a fingertip cannot pick out a corner, and any second tap that close ends the line. A quick third tap there starts a new line, or a new polygon, where it lands, and a double tap on a polygon of fewer than three corners keeps the corners you have placed. Nothing needs a keyboard: the panel's **Done**, **Cancel**, **Add to selection**, **Delete segment** and **Undo** do what a double-click, **Esc**, **Shift**, the **Delete** key and **Ctrl+Z** do. A finger held still is never a long-press while a tool is up, so it can rest on a wall's end before it drags. A second finger cancels a drag in progress, putting a moved wall or light back, and pinches the zoom instead. A stylus works as a mouse, and while it touches the screen your hand resting beside it does nothing.
 
@@ -1467,7 +1467,7 @@ Wall types are selected from the **Draw type** buttons in the Walls panel:
 | Locked (a locked door) | Red | Yes | Players cannot open it until you unlock it |
 | Window | Blue | No | Transparent to light |
 
-**Colour, snapping and clearing.** The **Wall color** swatches, and the colour box beside them, set the colour walls are drawn in on your screen. **Snap to grid** pulls new points onto the grid, and **Snap to endpoint** pulls them onto the nearest existing wall end; the second is available only while the first is off. **Clear all** deletes every wall on the map, after a second click on **Confirm clear all?**.
+**Colour, snapping and clearing.** The **Colour** swatches, the pipette and the hex box set the colour walls are drawn in on your screen. **Snap: Grid | Endpoints | Off** pulls new points onto the grid, onto the nearest existing wall end, or nowhere. **Clear all** deletes every wall on the map, after a second click on **Confirm clear all?**.
 
 **Locking and unlocking a door.** Right-click a door on the map, with no wall, fog or light tool in use, for its menu: **Open Door** or **Close Door**, and for you **Lock Door** or **Unlock Door**. **Change type** in the Walls panel's **Select** mode does the same for every wall selected. Players get the same menu for the doors they are offered, without the lock. A locked door reaches their browser as an ordinary closed door, so it looks like any other until they try to open it and are told it is locked.
 
@@ -1497,7 +1497,7 @@ The **Brush** tool lets you paint over the map to quickly trace walls:
 4. On release, the brush stroke is simplified into straight wall segments using Douglas-Peucker line simplification
 
 **Tips for the brush tool:**
-- Enable **Snap to grid** for straight, grid-aligned walls (recommended for dungeon maps)
+- Set **Snap** to **Grid** for straight, grid-aligned walls (recommended for dungeon maps)
 - Disable snap for organic or curved wall layouts
 - When snap is off, the tool uses image edge detection to refine wall placement
 
@@ -1771,7 +1771,7 @@ It is a **separate plane, not a see-through overlay.** Someone viewing the spiri
 
 There are two ways a player ends up there:
 
-- **The whole table at once.** Open **Spirit Layer settings** in the **Spirit Layer** panel on the map's rail, and open the veil with the switch at the top of the panel. Every player is in the spirit realm until you close it again.
+- **The whole table at once.** Open the **Spirit Layer** card from the ghost on the map's rail, and set **Spirit realm** to **Open**. The card also holds, for your screen alone, **Planes: Active | Both** and **Spirit tokens: Hidden | Shown**, the realm's **Atmosphere**, and a **Hidden | Shown** pair for each token in the spirit realm on this scene. Every player is in the spirit realm until you close it again.
 - **One player at a time.** Give a player control of a token that lives on the spirit layer. Any player controlling a *visible* spirit-layer token on the current map sees the spirit realm; everyone else stays on the material plane. **Hiding that token takes the player back to the material plane:** a hidden token does not count, so hide it only when you mean them to leave. A spectator is never moved by a token, only by the whole-table switch above.
 
 *Screenshot pending — Spirit Layer control panel.*

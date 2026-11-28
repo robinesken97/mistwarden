@@ -36,7 +36,7 @@ export function Help({ children, className }: { children: ReactNode; className?:
 
 /** A line between groups. */
 export function Sep({ wide = false }: { wide?: boolean }) {
-  return <div aria-hidden="true" className={cn('h-px shrink-0 bg-ink/10', wide && '-mx-4')} />;
+  return <div aria-hidden="true" className={cn('my-[-0.5px] h-px shrink-0 bg-ink/10', wide && '-mx-4')} />;
 }
 
 export interface SegOption<T> {
@@ -111,7 +111,7 @@ export function Seg<T extends string | number | boolean>({ label, caption, optio
               className={cn(
                 'flex min-w-0 items-center justify-center rounded-lg px-2 whitespace-nowrap transition-colors select-none',
                 'focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand disabled:opacity-50 disabled:cursor-not-allowed',
-                tools ? 'h-12 pointer-coarse:h-13 flex-col gap-0.5 text-xs leading-4' : 'h-8 pointer-coarse:h-11 gap-1.5 text-sm',
+                tools ? 'h-12 pointer-coarse:h-13 flex-col gap-1 text-xs leading-4' : 'h-8 pointer-coarse:h-11 gap-2 text-sm',
                 on ? 'bg-surface-light font-semibold text-brand-ink shadow-[0_1px_2px_var(--color-canvas)]' : 'font-medium text-ink-muted hover:text-ink',
               )}
             >

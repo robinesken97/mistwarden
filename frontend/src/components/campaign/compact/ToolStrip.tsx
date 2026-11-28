@@ -1,8 +1,6 @@
 /**
  * ToolStrip
- * The shell of a tool's strip on the compact layout, which the Draw strip
- * (DrawStrip) and Paint's (PaintStrip) share, so the two cannot drift: a
- * region across the foot of the map, above the bar, with the map live above
+ * The shell of Paint's strip (PaintStrip) on the compact layout: a region across the foot of the map, above the bar, with the map live above
  * it. The finger works on the map there, so the strip is no dialog and holds
  * no focus.
  *

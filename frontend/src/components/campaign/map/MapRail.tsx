@@ -101,7 +101,8 @@ export function RailCell({ label, icon: Icon, text, onClick, pressed, expanded, 
           <span aria-hidden="true" className="rounded-full border border-ink/20 px-1.5 text-[0.8125rem] leading-5 text-ink-secondary tabular-nums">{text}</span>
         )}
       </button>
-      {named && !expanded && (
+      {/* Not over what the cell opened beside it. */}
+      {named && !expanded && !children && (
         <span
           role="tooltip"
           className="pointer-events-none absolute right-[calc(100%+8px)] top-1/2 -translate-y-1/2 z-70 whitespace-nowrap rounded-lg px-2.5 py-1 text-xs font-medium bg-ink text-canvas shadow-lg"

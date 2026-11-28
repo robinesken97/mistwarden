@@ -4793,11 +4793,12 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
         aria-label={`${aoeSizeLabel} in feet`}
         className="input-cozy h-10 pointer-coarse:h-11 w-full shrink-0 text-sm pointer-coarse:text-base"
       />
-      <div role="group" aria-label="Sizes" className="grid shrink-0 grid-cols-5 gap-1">
-        {[10, 15, 20, 30, 60].map((ft) => (
-          <CardButton key={ft} onClick={() => setAoEConfig((prev) => ({ ...prev, sizeFt: ft }))} pressed={aoeConfig.sizeFt === ft}>{`${ft} ft`}</CardButton>
-        ))}
-      </div>
+      <Seg
+        label="Common sizes (ft)"
+        options={[10, 15, 20, 30, 60].map((ft) => ({ value: ft, label: String(ft) }))}
+        value={[10, 15, 20, 30, 60].includes(aoeConfig.sizeFt) ? aoeConfig.sizeFt : null}
+        onChange={(ft) => ft !== null && setAoEConfig((prev) => ({ ...prev, sizeFt: ft }))}
+      />
       {aoeConfig.shape === 'line' && (<>
         <Caption>Width (ft)</Caption>
         <input
