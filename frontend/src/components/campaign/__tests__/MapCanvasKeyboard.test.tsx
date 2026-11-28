@@ -16,6 +16,7 @@ import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vite
 import { render, screen, fireEvent, act, createEvent } from '@testing-library/react';
 import { TokenLayer, TokenType, type CampaignMap, type Token } from '@/types';
 import { mouse, contact } from '@/test/pointer';
+import { useTableChrome } from '@/stores/tableChromeStore';
 
 const h = vi.hoisted(() => {
   const listeners = new Set<() => void>();
@@ -214,7 +215,12 @@ beforeAll(() => {
   Object.defineProperty(window, 'ResizeObserver', { value: RO, configurable: true });
 });
 
+// The top bar's slot MapCanvas puts As player in (DesktopTable's, in the app).
+let asPlayerSlot: HTMLElement;
 beforeEach(() => {
+  asPlayerSlot = document.createElement('div');
+  document.body.appendChild(asPlayerSlot);
+  useTableChrome.setState({ asPlayerSlot });
   h.sent.length = 0;
   h.handlers.clear();
   h.updateToken.mockReset().mockResolvedValue({});
@@ -226,7 +232,17 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+  useTableChrome.setState({ mapmakerSlot: null, asPlayerSlot: null });
+  asPlayerSlot.remove();
 });
+
+/** Opens or closes As player's list in the top bar. */
+const asPlayer = () => fireEvent.click(screen.getByRole('button', { name: 'As player' }));
+/** Starts Player Preview as `who`, a row of As player's list. */
+function previewAs(who: string) {
+  asPlayer();
+  fireEvent.click(screen.getByRole('button', { name: who }));
+}
 
 describe('what a click selects', () => {
   it('picks up a token you may move, as before, and selects it too', () => {
@@ -348,7 +364,7 @@ describe('selecting in Player Preview', () => {
     });
   });
 
-  const previewAsAlice = () => fireEvent.click(screen.getByRole('button', { name: 'Preview Player View' }));
+  const previewAsAlice = () => previewAs('Alice');
 
   it('selects nothing the preview does not draw, by a click or a right-click', () => {
     render(<MapCanvas />);
@@ -437,7 +453,7 @@ describe('an Escape something else on the page used', () => {
   it('closes the creature roll picker and leaves the area template up', () => {
     render(<MapCanvas />);
     show(goblin());
-    fireEvent.click(screen.getByTitle('AoE Shape — area of effect overlay'));
+    fireEvent.click(screen.getByRole('button', { name: 'Spell area' }));
     fireEvent.contextMenu(surface(), at(0, 19));
     fireEvent.click(screen.getByText('Roll...'));
     expect(screen.getByPlaceholderText('e.g. 2d6+3')).toBeInTheDocument();
@@ -871,8 +887,8 @@ describe('stepping through tokens with , and .', () => {
 
       // Panned left until the centre is two squares inside the edge, at 700.
       mouse.move(surface(), { clientX: 700, clientY: 475 });
+      // Its hover card: the pointer is over square (18, 10), as the wide card names no square.
       expect(screen.getByText('Far Scout')).toBeInTheDocument();
-      expect(screen.getByText('(18, 10)')).toBeInTheDocument();
     });
   });
 });
@@ -999,7 +1015,8 @@ describe('Enter on a token out of sight', () => {
 
     // Square 19's centre, x 975 on the map, is panned to two squares inside the right edge.
     mouse.move(surface(), { clientX: page.left + 700, clientY: page.top + 475 });
-    expect(screen.getByText('(19, 10)')).toBeInTheDocument();
+    // The goblin's hover card: the pointer is over square (19, 10), as the wide card names no square.
+    expect(screen.getByText('Goblin')).toBeInTheDocument();
   });
 });
 
@@ -1009,7 +1026,7 @@ describe('Escape', () => {
     show(token('tok-goblin', 'Goblin', 2, 18));
     click(at(2, 18));
     mouse.move(surface(), at(6, 14));
-    fireEvent.click(screen.getByTitle('AoE Shape — area of effect overlay'));
+    fireEvent.click(screen.getByRole('button', { name: 'Spell area' }));
     await act(async () => { press('Enter'); });
     expect(screen.getByText('Rotate Left')).toBeInTheDocument();
 
@@ -1051,7 +1068,7 @@ describe('where the token keys apply', () => {
     render(<MapCanvas />);
     show(token('tok-goblin', 'Goblin', 5, 10));
     select('tok-goblin');
-    const zoomIn = screen.getByTitle('Zoom In');
+    const zoomIn = screen.getByRole('button', { name: 'Zoom in' });
     zoomIn.focus();
     pressOn(zoomIn, 'ArrowRight');
     await act(async () => { pressOn(zoomIn, ']'); });
@@ -1261,7 +1278,7 @@ describe('a selection the screen does not draw', () => {
     // The GM's fog: everything hidden.
     fire('fog:updated', { mapId: 'map-a', fogState: { fogCols: 20, fogRows: 20, cellPx: 50, revealed: new Array(400).fill(false) } });
     select('tok-goblin');
-    fireEvent.click(screen.getByRole('button', { name: 'Preview Player View' }));
+    previewAs('Alice');
 
     press('ArrowRight');
     await act(async () => { press(']'); });
@@ -1291,7 +1308,7 @@ describe("the map's focus stop", () => {
   it('is not focused by a press on a panel over the map', () => {
     render(<MapCanvas />);
 
-    fireEvent.pointerDown(screen.getByTitle('Zoom In'), { pointerType: 'mouse', button: 0, buttons: 1 });
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Zoom in' }), { pointerType: 'mouse', button: 0, buttons: 1 });
 
     expect(document.activeElement).not.toBe(theMap());
   });
@@ -1381,8 +1398,8 @@ describe('Follow my selection', () => {
   const lurker = () => token('tok-h', 'Lurker', 3, 10, { visible: false });
   const borin = () => token('tok-b', 'Borin', 5, 10, { type: TokenType.PLAYER, controlledBy: 'bob' });
   const memoryAskedFor = () => sentOf('exploration:request').map((p) => (p as { userId?: string }).userId ?? null);
-  /** The hover card's name line; the picker lists the same names as options. */
-  const card = (name: string) => screen.queryByText(name, { selector: 'span' });
+  /** The hover card's name line; As player's list, closed here, has rows of the same names. */
+  const card = (name: string) => screen.queryByText(name, { selector: 'div' });
 
   beforeEach(() => {
     h.set({
@@ -1395,19 +1412,22 @@ describe('Follow my selection', () => {
   });
 
   function follow() {
-    fireEvent.click(screen.getByRole('button', { name: 'Preview Player View' }));
-    fireEvent.change(screen.getByLabelText('Player or token to preview as'), { target: { value: 'selected' } });
+    previewAs('Follow my selection');
   }
+  const followRow = () => screen.getByRole('button', { name: 'Follow my selection' });
 
   it('is offered in the picker, and stays chosen as the tokens change', () => {
     render(<MapCanvas />);
     show(alya(), borin());
     follow();
-    expect(screen.getByLabelText('Player or token to preview as')).toHaveValue('selected');
+    asPlayer();
+    expect(followRow()).toHaveAttribute('aria-pressed', 'true');
+    asPlayer();
 
     show(borin());
 
-    expect(screen.getByLabelText('Player or token to preview as')).toHaveValue('selected');
+    asPlayer();
+    expect(followRow()).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('looks through each token as the selection steps, passing over what that view does not show', () => {
@@ -1439,7 +1459,9 @@ describe('Follow my selection', () => {
     expect(sentOf('exploration:request')).toHaveLength(asked);
     mouse.move(surface(), at(3, 10));
     expect(card('Lurker')).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'GM View' })).toBeInTheDocument();
+    // Still previewing: As player offers the way back to the GM view.
+    asPlayer();
+    expect(screen.getByRole('button', { name: 'Back to GM view' })).toBeInTheDocument();
   });
 
   it("steps through a split party on a lit map, from nothing selected, and never to what is hidden", () => {

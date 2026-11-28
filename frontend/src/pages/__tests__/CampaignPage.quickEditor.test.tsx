@@ -58,11 +58,16 @@ vi.mock('@/contexts/WebSocketContext', () => ({
 vi.mock('@/hooks/useInitiativeSync', () => ({ useInitiativeSync: () => undefined }));
 vi.mock('@/hooks/useOnRejoin', () => ({ useOnRejoin: () => undefined }));
 vi.mock('@/hooks/useAccessRevoked', () => ({ useAccessRevoked: () => undefined }));
+// The bar asks the server's settings whether to offer AI writing help: here it does not.
+vi.mock('@/hooks/queries', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/hooks/queries')>()),
+  useServerConfigQuery: () => ({ data: { ai: { enabled: false } } }),
+}));
 
 const nothing = vi.hoisted(() => () => ({ default: () => null }));
 // The banner over a map being prepared: none here, no map is.
 vi.mock('@/components/campaign/PreparingBanner', nothing);
-vi.mock('@/components/campaign/CampaignInfo', nothing);
+vi.mock('@/components/campaign/CampaignInfo', () => ({ default: () => null, InvitePlayerButton: () => null }));
 vi.mock('@/components/campaign/CampaignRoster', nothing);
 vi.mock('@/components/campaign/MapManager', nothing);
 vi.mock('@/components/campaign/TokenManager', nothing);
@@ -74,7 +79,7 @@ vi.mock('@/components/campaign/CreatureLibrary', nothing);
 vi.mock('@/components/campaign/TokenTemplateLibrary', nothing);
 vi.mock('@/components/campaign/CampaignSettingsModal', nothing);
 vi.mock('@/components/documents/CampaignDocumentsModal', nothing);
-vi.mock('@/components/campaign/SessionSidebar', nothing);
+vi.mock('@/components/campaign/SessionPanels', nothing);
 vi.mock('@/components/campaign/SessionToolbar', nothing);
 vi.mock('@/components/ConnectionStatus', nothing);
 vi.mock('@/components/campaign/MapCanvas', nothing);

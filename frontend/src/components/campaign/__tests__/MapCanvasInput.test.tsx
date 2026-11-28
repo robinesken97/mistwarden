@@ -220,21 +220,21 @@ describe('zooming', () => {
 
   it('goes a quarter per button press, between 10% and 300%', () => {
     render(<MapCanvas />);
-    const press = (title: string, times: number) => {
-      for (let i = 0; i < times; i++) fireEvent.click(screen.getByTitle(title));
+    const press = (name: string, times: number) => {
+      for (let i = 0; i < times; i++) fireEvent.click(screen.getByRole('button', { name }));
     };
 
-    press('Zoom In', 1);
+    press('Zoom in', 1);
     expect(zoom()).toBe('125%');
-    press('Zoom In', 7);
+    press('Zoom in', 7);
     expect(zoom()).toBe('300%');
-    expect(screen.getByTitle('Zoom In')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Zoom in' })).toBeDisabled();
 
-    press('Zoom Out', 10);
+    press('Zoom out', 10);
     expect(zoom()).toBe('50%');
-    press('Zoom Out', 2);
+    press('Zoom out', 2);
     expect(zoom()).toBe('10%');
-    expect(screen.getByTitle('Zoom Out')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Zoom out' })).toBeDisabled();
   });
 });
 
@@ -375,7 +375,7 @@ describe('the card a hovered token shows', () => {
   });
 
   /** The card over the map, found by the name in it. */
-  const card = (name: string) => screen.getByText(name).closest('.glass-panel') as HTMLElement;
+  const card = (name: string) => screen.getByText(name).closest<HTMLElement>('.shadow-lg')!;
   const hover = (point: { clientX: number; clientY: number }) => mouse.move(surface(), point);
   const inOrder = (initiative: number | null) => act(() => {
     useGameStore.getState().setCombatState({
@@ -384,14 +384,15 @@ describe('the card a hovered token shows', () => {
     });
   });
 
-  it('names the token and the square under the pointer, and lists its conditions in full', () => {
+  it('names the token under the pointer, and lists its conditions in full', () => {
     render(<MapCanvas />);
     show(token('tok-goblin', 'Goblin', 0, 19, { conditions: ['poisoned', 'prone'] }));
 
     hover(at(0, 19));
 
     const shown = card('Goblin');
-    expect(within(shown).getByText('(0, 19)')).toBeInTheDocument();
+    // The wide layout's card names no square, and the corner's square gives way to it.
+    expect(screen.queryByText('(0, 19)')).toBeNull();
     expect(within(shown).getByText('poisoned')).toBeInTheDocument();
     expect(within(shown).getByText('prone')).toBeInTheDocument();
   });
@@ -401,19 +402,19 @@ describe('the card a hovered token shows', () => {
     render(<MapCanvas />);
     show(wounded(false));
     hover(at(0, 19));
-    expect(within(card('Goblin')).getByText('5/7')).toBeInTheDocument();
+    expect(within(card('Goblin')).getByText('5 / 7')).toBeInTheDocument();
     expect(within(card('Goblin')).getByText('+2')).toBeInTheDocument();
 
     act(() => { h.set({ userRole: 'PLAYER' }); });
     hover(at(1, 19));
     hover(at(0, 19));
-    expect(within(card('Goblin')).queryByText('5/7')).toBeNull();
-    expect(within(card('Goblin')).queryByText('HP')).toBeNull();
+    expect(within(card('Goblin')).queryByText('5 / 7')).toBeNull();
+    expect(within(card('Goblin')).queryByText(/^HP/)).toBeNull();
 
     show(wounded(true));
     hover(at(1, 19));
     hover(at(0, 19));
-    expect(within(card('Goblin')).getByText('5/7')).toBeInTheDocument();
+    expect(within(card('Goblin')).getByText('5 / 7')).toBeInTheDocument();
   });
 
   it("shows a character's hit points from its sheet, to a player too", () => {
@@ -424,17 +425,17 @@ describe('the card a hovered token shows', () => {
 
     hover(at(0, 19));
 
-    expect(within(card('Mara')).getByText('12/20')).toBeInTheDocument();
+    expect(within(card('Mara')).getByText('12 / 20')).toBeInTheDocument();
   });
 
   it('has an Initiative row only while the token is in the turn order, with a dash before it rolls', () => {
     render(<MapCanvas />);
     show(goblin());
     hover(at(0, 19));
-    expect(within(card('Goblin')).queryByText('Initiative')).toBeNull();
+    expect(within(card('Goblin')).queryByText(/^Initiative/)).toBeNull();
 
     inOrder(null);
-    expect(within(card('Goblin')).getByText('Initiative')).toBeInTheDocument();
+    expect(within(card('Goblin')).getByText(/^Initiative/)).toBeInTheDocument();
     expect(within(card('Goblin')).getByText('—')).toBeInTheDocument();
 
     inOrder(14);

@@ -10,8 +10,8 @@
  * the spirit realm in the store too. Canvas drawing is switched off.
  */
 
-import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import { TokenLayer, TokenType, type CampaignMap, type Token } from '@/types';
 
 const h = vi.hoisted(() => {
@@ -107,6 +107,7 @@ vi.mock('@/services/api', () => {
 import MapCanvasOnly from '../MapCanvas';
 import { LayoutProvider } from '@/contexts/LayoutContext';
 import { useGameStore } from '@/stores/gameStore';
+import { useTableChrome } from '@/stores/tableChromeStore';
 
 const ON_THIS_MAP = 'You have no token on this map to see through. Ask your GM for one.';
 const IN_THE_SPIRIT_REALM = 'You have no token in the spirit realm to see through. Ask your GM for one.';
@@ -163,7 +164,24 @@ beforeAll(() => {
   Object.defineProperty(window, 'ResizeObserver', { value: RO, configurable: true });
 });
 
+// The top bar's place for As player (DesktopTable), which the map portals into.
+let asPlayerSlot: HTMLElement;
+/** Open As player and press the row named `row`. */
+function asPlayer(row: string) {
+  fireEvent.click(within(asPlayerSlot).getByRole('button', { name: 'As player' }));
+  fireEvent.click(within(screen.getByRole('group', { name: 'As player' })).getByRole('button', { name: row }));
+}
+/** Preview as the one player, Me, as the old Preview button started with. */
+const preview = () => asPlayer('Me');
+
+afterEach(() => {
+  useTableChrome.setState({ asPlayerSlot: null });
+  asPlayerSlot.remove();
+});
+
 beforeEach(() => {
+  asPlayerSlot = document.body.appendChild(document.createElement('div'));
+  useTableChrome.setState({ asPlayerSlot });
   act(() => { useGameStore.getState().clearGameState(); });
   h.set({
     userRole: 'PLAYER',
@@ -258,10 +276,6 @@ describe('a player in the spirit realm', () => {
 });
 
 describe("the GM's Player Preview", () => {
-  function preview() {
-    fireEvent.click(screen.getByRole('button', { name: 'Preview Player View' }));
-  }
-
   beforeEach(() => {
     h.set({ userRole: 'GM' });
   });
@@ -301,7 +315,7 @@ describe("the GM's Player Preview", () => {
     render(<MapCanvas />);
     preview();
     expect(screen.getByText(ON_THIS_MAP)).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'GM View' }));
+    asPlayer('Back to GM view');
     expect(hint()).toBeNull();
   });
 });
@@ -309,24 +323,25 @@ describe("the GM's Player Preview", () => {
 describe('where the line sits', () => {
   it('on the desktop, at the foot of the map over the ruler\'s note, letting presses through', () => {
     render(<MapCanvas />);
-    fireEvent.click(screen.getByRole('button', { name: 'Ruler — measure distance' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Measure' }));
 
     const line = screen.getByText(ON_THIS_MAP);
     const ruler = screen.getByText(RULER_NOTE);
     expect(line.parentElement).toBe(ruler.parentElement);
     expect(line.compareDocumentPosition(ruler) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(classesOf(line.parentElement!)).toEqual(expect.arrayContaining(['absolute', 'bottom-16', 'pointer-events-none']));
+    expect(classesOf(line.parentElement!)).toEqual(expect.arrayContaining(['absolute', 'bottom-19', 'pointer-events-none']));
     expect(classesOf(line)).toEqual(classesOf(ruler));
   });
 
-  it('on the desktop in Player Preview, above Preview\'s controls', () => {
+  // Preview's controls are As player in the top bar now, so the line keeps its place.
+  it('on the desktop in Player Preview, where it is outside the preview too', () => {
     h.set({ userRole: 'GM' });
     render(<MapCanvas />);
-    fireEvent.click(screen.getByRole('button', { name: 'Preview Player View' }));
+    preview();
 
     const stack = screen.getByText(ON_THIS_MAP).parentElement!;
-    expect(classesOf(stack)).toContain('bottom-32');
-    expect(classesOf(screen.getByRole('button', { name: 'GM View' }).parentElement!)).toContain('bottom-20');
+    expect(classesOf(stack)).toContain('bottom-19');
+    expect(screen.queryByRole('button', { name: /^(Preview Player View|GM View)$/ })).toBeNull();
   });
 
   it('on the compact layout, in the dock at the map\'s foot, letting presses through', () => {

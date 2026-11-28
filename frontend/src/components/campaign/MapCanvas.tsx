@@ -5033,7 +5033,9 @@ export default function MapCanvas({ onEditToken, onShowShortcuts, onOpenSpiritLa
           tools={railTools}
           gm={railGm}
           twoColumns={railTwoCol}
-          hint={railHint.shown ? <RailHint onDismiss={railHint.dismiss} /> : undefined}
+          // Out of the way of a card or popover beside the rail.
+          hint={railHint.shown && !stackShown && !railPopover && !drawKind && !paint.on && !showRuler
+            ? <RailHint onDismiss={railHint.dismiss} /> : undefined}
         />
       )}
       {!compact && asPlayerSlot && previewOffered && createPortal(asPlayerMenu, asPlayerSlot)}
@@ -5325,8 +5327,8 @@ export default function MapCanvas({ onEditToken, onShowShortcuts, onOpenSpiritLa
       {/* On the wide layout Player Preview is As player ▾ in the top bar (asPlayerMenu). */}
 
       {/* Why a lit map is dark for a player with no token on it, and the
-          ruler's hint for one with no token, stacked up from the foot. In
-          Player Preview they sit above Preview's controls (bottom-20). */}
+          ruler's hint for one with no token, stacked up from the foot, above
+          the token card's row (8 + 60 + 8 px). */}
       {(noTokenNote || rulerNeedsToken) && !compact && (
         <div className={`absolute bottom-19 left-1/2 -translate-x-1/2 w-max max-w-[calc(100%-2rem)] flex flex-col items-center gap-2 pointer-events-none`}>
           {noTokenNote && <div className={MAP_NOTE}>{noTokenNote}</div>}

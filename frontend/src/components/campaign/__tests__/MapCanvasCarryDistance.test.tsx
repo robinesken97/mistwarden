@@ -15,6 +15,7 @@ import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vite
 import { render, screen, fireEvent, act, within } from '@testing-library/react';
 import { TokenLayer, TokenType, type CampaignMap, type Token } from '@/types';
 import { contact, mouse } from '@/test/pointer';
+import { useTableChrome } from '@/stores/tableChromeStore';
 
 const h = vi.hoisted(() => {
   const listeners = new Set<() => void>();
@@ -181,11 +182,23 @@ beforeAll(() => {
   Object.defineProperty(window, 'ResizeObserver', { value: RO, configurable: true });
 });
 
+// The top bar's slot MapCanvas puts As player in (DesktopTable's, in the app).
+let asPlayerSlot: HTMLElement;
 beforeEach(() => {
+  asPlayerSlot = document.createElement('div');
+  document.body.appendChild(asPlayerSlot);
+  useTableChrome.setState({ asPlayerSlot });
   h.sent.length = 0;
   act(() => { useGameStore.getState().clearGameState(); });
   h.set({ userRole: 'GM', currentMap: mapWith() });
 });
+afterEach(() => {
+  useTableChrome.setState({ mapmakerSlot: null, asPlayerSlot: null });
+  asPlayerSlot.remove();
+});
+
+/** The wide layout's details card around `el`. */
+const cardOf = (el: HTMLElement) => el.closest<HTMLElement>('.shadow-lg')!;
 
 describe('with a mouse', () => {
   it('shows how far the held token has come beside the square under the pointer, and goes as it is put down', () => {
@@ -195,7 +208,8 @@ describe('with a mouse', () => {
     expect(carried()).toBeNull();
 
     click(at(0, 19));
-    expect(carried()).toBe('Carried 0 ft (0 sq)');
+    // The goblin's card shows under the pointer; its line says it only once the token has moved.
+    expect(carried()).toBeNull();
     mouse.move(surface(), at(3, 17));
 
     expect(carried()).toBe('Carried 15 ft (3 sq)');
@@ -225,7 +239,7 @@ describe('with a mouse', () => {
 
     mouse.move(surface(), at(4, 19));
 
-    const card = screen.getByText('Wolf').closest('.glass-panel') as HTMLElement;
+    const card = cardOf(screen.getByText('Wolf'));
     expect(within(card).getByText(/^Carried /)).toBeInTheDocument();
     expect(carried()).toBe('Carried 20 ft (4 sq)');
   });
@@ -250,7 +264,8 @@ describe('with a mouse', () => {
     mouse.move(surface(), at(2, 19));
     expect(carried()).toBe('Carried 10 ft (2 sq)');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Preview Player View' }));
+    fireEvent.click(screen.getByRole('button', { name: 'As player' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Alice' }));
 
     expect(carried()).toBeNull();
   });
@@ -333,10 +348,10 @@ describe('with a finger', () => {
     finger.up(surface(), at(0, 19));
     finger.leave(surface());
 
-    const card = screen.getByRole('button', { name: 'Close details' }).closest('.glass-panel') as HTMLElement;
+    const card = cardOf(screen.getByRole('button', { name: 'Close details' }));
     expect(within(card).getByText('Goblin')).toBeInTheDocument();
-    expect(within(card).getByText(/^Carried /)).toBeInTheDocument();
-    expect(carried()).toBe('Carried 0 ft (0 sq)');
+    // Nothing carried yet: the card's line says so only once the token has moved.
+    expect(within(card).queryByText(/^Carried /)).toBeNull();
   });
 });
 

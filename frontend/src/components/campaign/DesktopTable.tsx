@@ -108,7 +108,9 @@ export default function DesktopTable({
   useEffect(() => {
     setSessionShown(panel.open && !panel.party);
   }, [panel.open, panel.party, setSessionShown]);
-  useEffect(() => () => setSessionShown(true), [setSessionShown]);
+  // Another page shows the panels again; set directly, so a switch to the
+  // compact layout, which sets its own value, does not read the chat as seen.
+  useEffect(() => () => useGameStore.setState({ sessionShown: true }), []);
 
   /** Show `tab`, or fold the panel when `tab` is the one open. */
   const selectTab = (tab: WideTab) => {

@@ -113,8 +113,10 @@ export default function CompactTable({ campaign, isOwner, onOpenTool, onOpenDocu
   useEffect(() => {
     setSessionShown(sheet === 'session');
   }, [sheet, setSessionShown]);
-  // The desktop's rail, or another page, shows the panels again.
-  useEffect(() => () => setSessionShown(true), [setSessionShown]);
+  // Another page shows the panels again. Set directly, not through
+  // setSessionShown, which would read the chat as seen: the wide layout
+  // taking over may show it folded, and sets its own value as it mounts.
+  useEffect(() => () => useGameStore.setState({ sessionShown: true }), []);
 
   const [headerRef, headerHeight] = useHeight();
   const edges: SheetEdges = { top: `${headerHeight}px`, bottom: sideways ? '0px' : BOTTOM_BAR_HEIGHT };

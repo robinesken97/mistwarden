@@ -36,6 +36,7 @@ import { onSheetEntry } from '@/components/campaign/compact/sheetHistory';
 import { hasUnsavedWork, reportSignedIn, reportSignedOut } from '@/services/unsavedWork';
 import type { ViewedMapChange } from '@/contexts/CampaignContext';
 import { LayoutProvider } from '@/contexts/LayoutContext';
+import { useTableChrome } from '@/stores/tableChromeStore';
 
 const h = vi.hoisted(() => {
   const listeners = new Set<() => void>();
@@ -292,10 +293,21 @@ async function pressSave() {
   if (asked) await act(async () => { fireEvent.click(within(asked).getByRole('button', { name: 'Save over it' })); });
 }
 
+/** Shows the GM's Fog, Walls and Lights stack, which the wide layout hides behind GM tools. */
+function openGmTools() {
+  const cell = screen.getByRole('button', { name: 'GM tools' });
+  if (cell.getAttribute('aria-expanded') !== 'true') fireEvent.click(cell);
+}
+
 /** The draft store of this test. */
 const drafts = () => h.drafts.store as MemoryDraftStore;
 
+// The top bar's slot MapCanvas puts its Mapmaker row in (DesktopTable's, in the app).
+let mapmakerSlot: HTMLElement;
 beforeEach(() => {
+  mapmakerSlot = document.createElement('div');
+  document.body.appendChild(mapmakerSlot);
+  useTableChrome.setState({ mapmakerSlot });
   h.drafts.store = memoryDraftStore();
   h.openTabs = null;
   h.sent.length = 0;
@@ -328,6 +340,8 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.useRealTimers();
+  useTableChrome.setState({ mapmakerSlot: null, asPlayerSlot: null });
+  mapmakerSlot.remove();
 });
 
 describe('where Paint is offered', () => {
@@ -1907,6 +1921,7 @@ describe('Paint owns the map', () => {
     {
       what: 'Delete and Backspace delete no wall',
       arrange: () => {
+        openGmTools();
         fireEvent.click(screen.getByText('Walls'));
         fireEvent.click(screen.getByLabelText('Wall select mode'));
         press('a', { ctrlKey: true });
@@ -1920,6 +1935,7 @@ describe('Paint owns the map', () => {
     {
       what: 'Ctrl+Z undoes no wall change',
       arrange: () => {
+        openGmTools();
         fireEvent.click(screen.getByText('Walls'));
         fireEvent.click(screen.getByLabelText('Wall select mode'));
         press('a', { ctrlKey: true });
@@ -1958,6 +1974,7 @@ describe('Paint owns the map', () => {
     {
       what: 'a wall tool is put away and draws no wall',
       arrange: () => {
+        openGmTools();
         fireEvent.click(screen.getByText('Walls'));
         fireEvent.click(screen.getByLabelText('Wall draw mode'));
       },
@@ -1973,15 +1990,15 @@ describe('Paint owns the map', () => {
     {
       what: 'the ruler is put away, and not offered while Mapmaker is on',
       arrange: () => {
-        fireEvent.click(screen.getByRole('button', { name: /^Ruler/ }));
+        fireEvent.click(screen.getByRole('button', { name: 'Measure' }));
       },
       act: () => {
-        expect(screen.queryByRole('button', { name: /^Ruler/ })).toBeNull();
+        expect(screen.queryByRole('button', { name: 'Measure' })).toBeNull();
         drag({ clientX: 100, clientY: 600 }, { clientX: 300, clientY: 700 });
       },
       nothing: () => {
         fireEvent.click(screen.getByRole('button', { name: 'Mapmaker' }));
-        expect(screen.getByRole('button', { name: /^Ruler/ }).className).not.toMatch(/bg-moss-green\/20/);
+        expect(screen.getByRole('button', { name: 'Measure' })).toHaveAttribute('aria-pressed', 'false');
       },
     },
     {
@@ -2027,6 +2044,7 @@ describe('Paint owns the map', () => {
   it('puts itself away when a GM tool is armed from the stack', async () => {
     await showMap();
     await paintOn();
+    openGmTools();
     fireEvent.click(screen.getByText('Walls'));
     fireEvent.click(screen.getByLabelText('Wall draw mode'));
     expect(screen.getByRole('button', { name: 'Mapmaker' })).toHaveAttribute('aria-pressed', 'false');

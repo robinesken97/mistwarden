@@ -192,7 +192,7 @@ The restore also takes back everything done since the upgrade. After going back,
 
 - **A Horror d100 roll is named for what it tests.** A click on STR rolls Effort, and the other characteristics roll Stamina, Idea, Luck, Agility, Charm and Knowledge, each at five times the characteristic. SIZ has no roll. See [Rolling from your sheet](docs/PLAYER_GUIDE.md#rolling-from-your-sheet).
 
-- **A Horror d100 character's hit points can go below 0.** The **−** and **−5** buttons on the roster card stopped at 0. The open rules keep count below it, so the card now shows a negative number. See [Campaign Info](docs/PLAYER_GUIDE.md#left-sidebar--campaign-info).
+- **A Horror d100 character's hit points can go below 0.** The **−** and **−5** buttons on the roster card stopped at 0. The open rules keep count below it, so the card now shows a negative number. See [Party](docs/PLAYER_GUIDE.md#party-tab--campaign-roster).
 
 - **Opening and saving a Horror d100 sheet changes only what you edit.** The editor used to work the derived numbers out again each time it opened.
 

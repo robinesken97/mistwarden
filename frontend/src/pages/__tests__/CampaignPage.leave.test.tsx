@@ -4,12 +4,14 @@
  * The tab that leaves is told by the server's answer and by its socket's
  * notice, in either order, and says it once only because both reach the one
  * handler useAccessRevoked returns. The Campaign Info panel is given that
- * handler; a page that gave it anything else would say nothing on the answer
- * until the socket's notice came, or say it twice.
+ * handler, in the compact layout's Party sheet and in the wide layout's
+ * ⋯ › Campaign info window; a page that gave it anything else would say
+ * nothing on the answer until the socket's notice came, or say it twice.
  */
 
-import { it, expect, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { COMPACT_LAYOUT_QUERY } from '@/constants/layout';
 
 // The page subscribes to many socket events; each method is a harmless stub.
 const anySocket = vi.hoisted(() => new Proxy({}, { get: () => () => undefined }));
@@ -50,6 +52,11 @@ vi.mock('@/hooks/useOnRejoin', () => ({ useOnRejoin: () => undefined }));
 // The page's handler for the end of its table, as useAccessRevoked returns it.
 const endTable = vi.hoisted(() => vi.fn());
 vi.mock('@/hooks/useAccessRevoked', () => ({ useAccessRevoked: () => endTable }));
+// The bar asks the server's settings whether to offer AI writing help: here it does not.
+vi.mock('@/hooks/queries', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/hooks/queries')>()),
+  useServerConfigQuery: () => ({ data: { ai: { enabled: false } } }),
+}));
 
 const nothing = vi.hoisted(() => () => ({ default: () => null }));
 // The banner over a map being prepared: none here, no map is.
@@ -57,6 +64,7 @@ vi.mock('@/components/campaign/PreparingBanner', nothing);
 const infoProps = vi.hoisted(() => [] as Array<{ onLeft?: unknown }>);
 vi.mock('@/components/campaign/CampaignInfo', () => ({
   default: (props: { onLeft?: unknown }) => { infoProps.push(props); return null; },
+  InvitePlayerButton: () => null,
 }));
 vi.mock('@/components/campaign/CampaignRoster', nothing);
 vi.mock('@/components/campaign/MapManager', nothing);
@@ -69,8 +77,7 @@ vi.mock('@/components/campaign/CreatureLibrary', nothing);
 vi.mock('@/components/campaign/TokenTemplateLibrary', nothing);
 vi.mock('@/components/campaign/CampaignSettingsModal', nothing);
 vi.mock('@/components/documents/CampaignDocumentsModal', nothing);
-vi.mock('@/components/campaign/SessionSidebar', nothing);
-vi.mock('@/components/campaign/SessionToolbar', nothing);
+vi.mock('@/components/campaign/SessionPanels', nothing);
 vi.mock('@/components/ConnectionStatus', nothing);
 vi.mock('@/components/campaign/MapCanvas', nothing);
 
@@ -79,8 +86,39 @@ vi.mock('@/components/campaign/NpcQuickEditor', nothing);
 
 import CampaignPage from '../CampaignPage';
 
-it("gives the Campaign Info panel the page's own end-of-table handler", () => {
+/** The screen is narrower than the wide layout, or not. */
+function screenIs(compact: boolean) {
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: compact && query === COMPACT_LAYOUT_QUERY,
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  }));
+}
+
+beforeEach(() => { infoProps.length = 0; });
+afterEach(() => { vi.unstubAllGlobals(); });
+
+it("gives the Campaign Info panel the page's own end-of-table handler on the compact layout", () => {
+  screenIs(true);
   render(<CampaignPage />);
+
+  expect(infoProps.length).toBeGreaterThan(0);
+  expect(infoProps.every((props) => props.onLeft === endTable)).toBe(true);
+});
+
+it("gives the Campaign Info window the page's own end-of-table handler on the wide layout", () => {
+  screenIs(false);
+  render(<CampaignPage />);
+  // The Party tab has no Campaign Info card there; ⋯ › Campaign info opens it.
+  expect(infoProps).toHaveLength(0);
+
+  fireEvent.click(screen.getByRole('button', { name: 'More' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Campaign info' }));
 
   expect(infoProps.length).toBeGreaterThan(0);
   expect(infoProps.every((props) => props.onLeft === endTable)).toBe(true);

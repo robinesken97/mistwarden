@@ -112,7 +112,7 @@ export function RailCell({ label, icon: Icon, onClick, pressed, expanded, disabl
 /** The zoom level, one cell of the rail. */
 export function RailReadout({ children }: { children: ReactNode }) {
   return (
-    <span role="status" aria-label="Zoom level" className="flex size-10 pointer-coarse:size-11 items-center justify-center text-[0.8125rem] leading-4 text-ink-secondary tabular-nums">
+    <span className="flex size-10 pointer-coarse:size-11 items-center justify-center text-[0.8125rem] leading-4 text-ink-secondary tabular-nums">
       {children}
     </span>
   );

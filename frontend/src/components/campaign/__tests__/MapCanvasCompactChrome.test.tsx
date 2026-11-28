@@ -118,6 +118,7 @@ import MapCanvasOnly from '../MapCanvas';
 import { LayoutProvider } from '@/contexts/LayoutContext';
 import { mapControlItems, mapControlsTitle, type MapControlsActions, type MapControlsView } from '../map/mapControlItems';
 import { useGameStore } from '@/stores/gameStore';
+import { useTableChrome } from '@/stores/tableChromeStore';
 
 function mapWith(extra: Partial<CampaignMap> = {}): CampaignMap {
   return {
@@ -420,11 +421,11 @@ describe('Map controls', () => {
     expect(mapControlsButton()).toHaveFocus();
   });
 
-  it('is not on the desktop, whose toolbar keeps every button', () => {
+  it('is not on the desktop, whose rail keeps every button', () => {
     render(<MapCanvasOnly />);
     expect(screen.queryByRole('button', { name: 'More map controls' })).toBeNull();
     expect(screen.queryByRole('group', { name: 'Map tools' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Fit to Screen' })).toBeInTheDocument();
+    expect(within(screen.getByRole('navigation', { name: 'Map tools' })).getByRole('button', { name: 'Fit map' })).toBeInTheDocument();
   });
 });
 
@@ -590,11 +591,19 @@ describe('the dock at the map’s foot', () => {
     expect(dock()).toContainElement(screen.getByText('Place your character token on the map to use the ruler'));
   });
 
-  it('is not on the desktop, whose card and Preview keep their corners', () => {
-    h.set({ currentMap: mapWith({ fogEnabled: true }) });
-    render(<MapCanvasOnly />);
-    expect(document.querySelector('[data-map-dock]')).toBeNull();
-    expect(classesOf(previewButton().parentElement!)).toEqual(expect.arrayContaining(['absolute', 'bottom-20', 'right-2', 'z-30']));
+  it('is not on the desktop, whose Preview is As player in the top bar', () => {
+    const slot = document.body.appendChild(document.createElement('div'));
+    useTableChrome.setState({ asPlayerSlot: slot });
+    try {
+      h.set({ currentMap: mapWith({ fogEnabled: true }) });
+      render(<MapCanvasOnly />);
+      expect(document.querySelector('[data-map-dock]')).toBeNull();
+      expect(screen.queryByRole('button', { name: /^(Preview Player View|GM View)$/ })).toBeNull();
+      expect(within(slot).getByRole('button', { name: 'As player' })).toBeInTheDocument();
+    } finally {
+      useTableChrome.setState({ asPlayerSlot: null });
+      slot.remove();
+    }
   });
 });
 
@@ -820,9 +829,16 @@ describe('the GM’s tool stack behind Tools', () => {
     expect(screen.queryByTitle(/Drag to move the panels/)).toBeNull();
   });
 
-  it('is always shown on the desktop, with no Hide tools', () => {
+  it('is behind the rail’s GM tools on the desktop, with Hide tools once shown', () => {
     render(<MapCanvasOnly />);
+    expect(stack()).toHaveAttribute('hidden');
+    const gmTools = within(screen.getByRole('navigation', { name: 'Map tools' })).getByRole('button', { name: 'GM tools' });
+    expect(gmTools).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(gmTools);
     expect(stack()).not.toHaveAttribute('hidden');
-    expect(within(stack()).queryByRole('button', { name: 'Hide tools' })).toBeNull();
+    expect(gmTools).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(within(stack()).getByRole('button', { name: 'Hide tools' }));
+    expect(stack()).toHaveAttribute('hidden');
   });
 });

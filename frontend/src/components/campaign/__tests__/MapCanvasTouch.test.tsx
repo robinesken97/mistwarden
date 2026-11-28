@@ -139,6 +139,7 @@ vi.mock('@/services/api', () => {
 import MapCanvas from '../MapCanvas';
 import CharacterContextMenu from '../CharacterContextMenu';
 import { useGameStore } from '@/stores/gameStore';
+import { useTableChrome } from '@/stores/tableChromeStore';
 
 const seg = (id: string, x1: number, y1: number, x2: number, y2: number, type: WallSegment['type'] = 'wall'): WallSegment =>
   ({ id, x1, y1, x2, y2, type });
@@ -233,7 +234,21 @@ beforeAll(() => {
   Object.defineProperty(window, 'ResizeObserver', { value: RO, configurable: true });
 });
 
+// The top bar's place for As player (DesktopTable), which the map portals into.
+let asPlayerSlot: HTMLElement;
+/** Open As player and preview as the choice named `row`. */
+function previewAs(row: string) {
+  fireEvent.click(within(asPlayerSlot).getByRole('button', { name: 'As player' }));
+  fireEvent.click(within(screen.getByRole('group', { name: 'As player' })).getByRole('button', { name: row }));
+}
+afterEach(() => {
+  useTableChrome.setState({ asPlayerSlot: null });
+  asPlayerSlot.remove();
+});
+
 beforeEach(() => {
+  asPlayerSlot = document.body.appendChild(document.createElement('div'));
+  useTableChrome.setState({ asPlayerSlot });
   h.sent.length = 0;
   h.handlers.clear();
   useGameStore.getState().setTokens([]);
@@ -630,8 +645,8 @@ describe('a token held by a tap, and the next finger', () => {
     show(goblin());
     tap(1, square(0, 19));
 
-    fireEvent.click(screen.getByTitle('Zoom In'));
-    fireEvent.click(screen.getByTitle('Zoom Out'));
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom in' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Zoom out' }));
     tap(2, square(5, 19));
 
     expect(sentOf('token.move')).toEqual([]);
@@ -1142,7 +1157,7 @@ describe('Put back', () => {
     tap(1, square(4, 19));
     expect(putBack()!.parentElement).toHaveTextContent('Holding Dire Wolf');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Preview Player View' }));
+    previewAs('Alice');
 
     expect(putBack()!.parentElement).not.toHaveTextContent('Dire Wolf');
     expect(putBack()!.parentElement).toHaveTextContent('Holding Unknown creature');
@@ -1392,8 +1407,8 @@ describe('a double tap', () => {
     ['the pen', () => draw('Pen')],
     ['the eraser', () => draw('Eraser')],
     ['the laser pointer', () => draw('Laser pointer')],
-    ["the GM's ruler", () => fireEvent.click(screen.getByTitle('Ruler — measure distance'))],
-    ['the AoE template', () => fireEvent.click(screen.getByTitle('AoE Shape — area of effect overlay'))],
+    ["the GM's ruler", () => fireEvent.click(screen.getByRole('button', { name: 'Measure' }))],
+    ['the AoE template', () => fireEvent.click(screen.getByRole('button', { name: 'Spell area' }))],
   ])('pings nothing with %s up', (_tool, choose, map = {}) => {
     h.set({ currentMap: mapWith(map) });
     render(<MapCanvas />);
@@ -1408,7 +1423,7 @@ describe('a double tap', () => {
   it('pings nothing with the ruler of a player who has no token on the map', () => {
     h.set({ userRole: 'PLAYER' });
     render(<MapCanvas />);
-    fireEvent.click(screen.getByTitle('Ruler — measure distance'));
+    fireEvent.click(screen.getByRole('button', { name: 'Measure' }));
 
     tap(1, px(500, 500));
     tap(2, px(500, 500));
@@ -1743,7 +1758,8 @@ describe('a double tap', () => {
 // finger: the selected token's details show instead.
 describe('the details of the selected token', () => {
   const wolf = () => token('tok-wolf', 'Dire Wolf', 4, 19, { conditions: ['poisoned', 'prone'] });
-  const card = () => screen.queryByText('Dire Wolf')?.closest('.glass-panel') ?? null;
+  // The wide layout's card, at the map's bottom left.
+  const card = () => screen.queryByText('Dire Wolf')?.closest('.absolute') ?? null;
   const close = () => screen.getByRole('button', { name: 'Close details' });
 
   it('show after a player taps a creature, conditions in full, and stay once the finger has gone', () => {
@@ -1756,7 +1772,8 @@ describe('the details of the selected token', () => {
     expect(card()).not.toBeNull();
     expect(within(card() as HTMLElement).getByText('poisoned')).toBeInTheDocument();
     expect(within(card() as HTMLElement).getByText('prone')).toBeInTheDocument();
-    expect(within(card() as HTMLElement).getByText('(4, 19)')).toBeInTheDocument();
+    // The wide layout's card names no square.
+    expect(within(card() as HTMLElement).queryByText('(4, 19)')).toBeNull();
     expect(within(card() as HTMLElement).getByText('Not yours to move')).toBeInTheDocument();
   });
 
@@ -1766,7 +1783,8 @@ describe('the details of the selected token', () => {
 
     swipe(1, square(4, 19), square(5, 19), square(7, 18));
 
-    expect(within(card() as HTMLElement).getByText('(7, 18)')).toBeInTheDocument();
+    expect(card()).not.toBeNull();
+    expect(sentOf('token.move.end')).toEqual([expect.objectContaining({ tokenId: 'tok-wolf', x: 7, y: 18 })]);
   });
 
   it("show after a pen's tap too", () => {
@@ -1862,7 +1880,7 @@ describe('the details of the selected token', () => {
      */
     function hitTest(p: { clientX: number; clientY: number }): Element {
       const button = screen.getByRole('button', { name: 'Close details' });
-      const panel = button.closest('.glass-panel')!;
+      const panel = button.closest('.absolute')!;
       if (inside(CLOSE, p) && !passesThrough(button)) return button;
       if (inside(CARD, p) && !passesThrough(panel)) return panel;
       return surface();
@@ -1921,10 +1939,9 @@ describe('the details of the selected token', () => {
     finger.down(surface(), px(500, 500));
     finger.move(surface(), px(560, 500));
 
-    // The one square shown is the card's.
-    const squares = screen.getAllByText(/^\(-?\d+, -?\d+\)$/);
-    expect(squares).toHaveLength(1);
-    expect(card()!.contains(squares[0])).toBe(true);
+    // The card shows, and no square: the wide layout's card names none.
+    expect(card()).not.toBeNull();
+    expect(screen.queryAllByText(/^\(-?\d+, -?\d+\)$/)).toEqual([]);
     finger.up(surface(), px(560, 500));
   });
 
@@ -1949,7 +1966,8 @@ describe('the details of the selected token', () => {
       tap(2, square(4, 19));
       expect(card()).not.toBeNull();
 
-      fireEvent.click(screen.getByTitle('Spirit tokens shown, click to hide'));
+      fireEvent.click(screen.getByRole('button', { name: 'Spirit Layer' }));
+      fireEvent.click(within(screen.getByRole('group', { name: 'Spirit Layer' })).getByRole('button', { name: 'Spirit tokens shown, click to hide' }));
 
       expect(card()).toBeNull();
     });
@@ -1967,7 +1985,7 @@ describe('the details of the selected token', () => {
       tap(2, square(4, 19));
       expect(card()).not.toBeNull();
 
-      fireEvent.click(screen.getByRole('button', { name: 'Preview Player View' }));
+      previewAs('Alice');
 
       expect(card()).toBeNull();
     });
@@ -2620,7 +2638,7 @@ describe('the AoE template by touch', () => {
     render(<MapCanvas />);
     pictures.find((p) => p.src === '/api/assets/maps/x')!.load();
     await nextFrame();
-    fireEvent.click(screen.getByTitle('AoE Shape — area of effect overlay'));
+    fireEvent.click(screen.getByRole('button', { name: 'Spell area' }));
   }
   /** A 20-foot circle is 4 squares, 200 pixels, across its radius. */
   const circles = (calls: number[][]) => calls.filter((a) => a[2] === 200).map((a) => [a[0], a[1]]);
@@ -2693,7 +2711,7 @@ describe('the ruler by touch', () => {
     render(<MapCanvas />);
     pictures.find((p) => p.src === '/api/assets/maps/x')!.load();
     await nextFrame();
-    fireEvent.click(screen.getByTitle('Ruler — measure distance'));
+    fireEvent.click(screen.getByRole('button', { name: 'Measure' }));
   }
 
   /**
@@ -2777,7 +2795,7 @@ describe('the ruler by touch', () => {
     await nextFrame();
     show(token('tok-mine', 'Aldra', 0, 19, { type: TokenType.PLAYER, controlledBy: 'me' }));
     tap(1, square(0, 19));
-    fireEvent.click(screen.getByTitle('Ruler — measure distance'));
+    fireEvent.click(screen.getByRole('button', { name: 'Measure' }));
 
     tap(2, square(3, 19));
 
@@ -2792,7 +2810,7 @@ describe('the ruler by touch', () => {
     await nextFrame();
     show(token('tok-mine', 'Aldra', 0, 19, { type: TokenType.PLAYER, controlledBy: 'me' }));
     tap(1, square(0, 19));
-    fireEvent.click(screen.getByTitle('Ruler — measure distance'));
+    fireEvent.click(screen.getByRole('button', { name: 'Measure' }));
     tap(2, square(3, 19));
 
     tap(3, square(5, 19));

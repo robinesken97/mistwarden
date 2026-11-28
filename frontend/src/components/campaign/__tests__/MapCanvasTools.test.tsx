@@ -16,10 +16,11 @@
 
 import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
 import { Profiler } from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, within, waitFor } from '@testing-library/react';
 import { TokenType, type CampaignMap, type Token } from '@/types';
 import type { LightSource, WallSegment } from '@/types/walls';
 import { mouse } from '@/test/pointer';
+import { recordingContext } from '@/test/recordingCanvas';
 
 const h = vi.hoisted(() => {
   const listeners = new Set<() => void>();
@@ -140,6 +141,7 @@ vi.mock('@/services/api', () => {
 
 import MapCanvas from '../MapCanvas';
 import { useGameStore } from '@/stores/gameStore';
+import { useTableChrome } from '@/stores/tableChromeStore';
 import mapService from '@/services/map.service';
 
 const seg = (id: string, x1: number, y1: number, x2: number, y2: number, type: WallSegment['type'] = 'wall'): WallSegment =>
@@ -955,7 +957,7 @@ describe('doors with no tool up', () => {
   it('take the click before the ruler does', () => {
     h.set({ currentMap: mapWith({ wallSegments: [door] }) });
     render(<MapCanvas />);
-    fireEvent.click(screen.getByTitle('Ruler — measure distance'));
+    fireEvent.click(screen.getByRole('button', { name: 'Measure' }));
 
     click(px(150, 104));
 
@@ -986,12 +988,12 @@ describe('the ruler and the AoE template', () => {
   it('are never on together', () => {
     render(<MapCanvas />);
 
-    fireEvent.click(screen.getByTitle('Ruler — measure distance'));
+    fireEvent.click(screen.getByRole('button', { name: 'Measure' }));
     expect(rulerOn()).toBe(true);
-    fireEvent.click(screen.getByTitle('AoE Shape — area of effect overlay'));
+    fireEvent.click(screen.getByRole('button', { name: 'Spell area' }));
     expect(aoeOn()).toBe(true);
     expect(rulerOn()).toBe(false);
-    fireEvent.click(screen.getByTitle('Ruler — measure distance'));
+    fireEvent.click(screen.getByRole('button', { name: 'Measure' }));
     expect(aoeOn()).toBe(false);
   });
 
@@ -999,7 +1001,7 @@ describe('the ruler and the AoE template', () => {
     h.set({ userRole: 'PLAYER' });
     render(<MapCanvas />);
     show(token('tok-mine', 'Aldra', 0, 19, { type: TokenType.PLAYER, controlledBy: 'me' }));
-    fireEvent.click(screen.getByTitle('Ruler — measure distance'));
+    fireEvent.click(screen.getByRole('button', { name: 'Measure' }));
 
     click(square(0, 19));
 
@@ -1010,7 +1012,7 @@ describe('the ruler and the AoE template', () => {
   it("take the GM's click with the ruler up, so no token is picked up", () => {
     render(<MapCanvas />);
     show(token('tok-goblin', 'Goblin', 0, 19));
-    fireEvent.click(screen.getByTitle('Ruler — measure distance'));
+    fireEvent.click(screen.getByRole('button', { name: 'Measure' }));
 
     click(square(0, 19));
 
@@ -1021,7 +1023,7 @@ describe('the ruler and the AoE template', () => {
     render(<MapCanvas />);
     show(token('tok-goblin', 'Goblin', 0, 19));
     click(square(0, 19));
-    fireEvent.click(screen.getByTitle('AoE Shape — area of effect overlay'));
+    fireEvent.click(screen.getByRole('button', { name: 'Spell area' }));
 
     click(square(3, 19));
 
@@ -1030,7 +1032,7 @@ describe('the ruler and the AoE template', () => {
 
   it('stay armed while a wall is half-drawn: Escape drops the wall first', () => {
     render(<MapCanvas />);
-    fireEvent.click(screen.getByTitle('AoE Shape — area of effect overlay'));
+    fireEvent.click(screen.getByRole('button', { name: 'Spell area' }));
     wallTool('Wall draw mode');
     click(px(100, 300));
 
@@ -1140,42 +1142,126 @@ describe('switching tools', () => {
 describe("the GM's spirit token button", () => {
   it('says what a click will do', () => {
     render(<MapCanvas />);
+    fireEvent.click(screen.getByRole('button', { name: 'Spirit Layer' }));
+    const popover = () => screen.getByRole('group', { name: 'Spirit Layer' });
 
-    fireEvent.click(screen.getByTitle('Spirit tokens shown, click to hide'));
+    fireEvent.click(within(popover()).getByRole('button', { name: 'Spirit tokens shown, click to hide' }));
 
-    expect(screen.getByTitle('Spirit tokens hidden — click to show')).toBeInTheDocument();
+    // A row keeps the popover open, so the new words show at once.
+    expect(within(popover()).getByRole('button', { name: 'Spirit tokens hidden — click to show' })).toHaveAttribute('aria-pressed', 'false');
   });
 });
 
 describe('Preview Player View', () => {
-  /** The preview's button, by the words it shows with the preview off or on. */
-  const previewButton = () => screen.queryByRole('button', { name: /^(Preview Player View|GM View)$/ });
+  // The top bar's places for As player and Mapmaker (DesktopTable), which the map portals into.
+  let asPlayerSlot: HTMLElement;
+  let mapmakerSlot: HTMLElement;
+  beforeEach(() => {
+    asPlayerSlot = document.body.appendChild(document.createElement('div'));
+    mapmakerSlot = document.body.appendChild(document.createElement('div'));
+    useTableChrome.setState({ asPlayerSlot, mapmakerSlot });
+  });
+  afterEach(() => {
+    useTableChrome.setState({ asPlayerSlot: null, mapmakerSlot: null });
+    asPlayerSlot.remove();
+    mapmakerSlot.remove();
+  });
+  const asPlayerButton = () => within(asPlayerSlot).queryByRole('button', { name: 'As player' });
+  const asPlayerList = () => screen.getByRole('group', { name: 'As player' });
+  /** Open As player and press the row named `row`. */
+  function asPlayer(row: string) {
+    fireEvent.click(asPlayerButton()!);
+    fireEvent.click(within(asPlayerList()).getByRole('button', { name: row }));
+  }
+  /** The preview as the goblin, the one choice, which the old Preview button started with. */
+  function startPreview() {
+    asPlayer('Goblin');
+    // The preview is on: Goblin is the one previewed, and the way back is offered.
+    fireEvent.click(asPlayerButton()!);
+    expect(within(asPlayerList()).getByRole('button', { name: 'Goblin' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(asPlayerList()).getByRole('button', { name: 'Back to GM view' })).toBeInTheDocument();
+    fireEvent.click(asPlayerButton()!);
+  }
 
-  // So a voice command for the words on the button finds it.
+  it('is offered to the GM with fog or lighting on, and not with neither or to a player', () => {
+    h.set({ currentMap: mapWith({ fogEnabled: true }) });
+    const { unmount } = render(<MapCanvas />);
+    expect(asPlayerButton()).toBeInTheDocument();
+    unmount();
+
+    h.set({ currentMap: mapWith({ lightingEnabled: true }) });
+    const lit = render(<MapCanvas />);
+    expect(asPlayerButton()).toBeInTheDocument();
+    lit.unmount();
+
+    h.set({ currentMap: mapWith() });
+    const plain = render(<MapCanvas />);
+    expect(asPlayerButton()).toBeNull();
+    plain.unmount();
+
+    h.set({ userRole: 'PLAYER', currentMap: mapWith({ fogEnabled: true, lightingEnabled: true }) });
+    render(<MapCanvas />);
+    expect(asPlayerButton()).toBeNull();
+  });
+
+  it('is not offered while Mapmaker is on', async () => {
+    // Mapmaker paints on a canvas of its own, which jsdom does not give.
+    const contexts = new Map<HTMLCanvasElement, CanvasRenderingContext2D>();
+    Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
+      configurable: true,
+      value(this: HTMLCanvasElement) {
+        if (!contexts.has(this)) contexts.set(this, recordingContext(this).ctx);
+        return contexts.get(this);
+      },
+    });
+    try {
+      // A map with no picture offers Mapmaker.
+      h.set({ currentMap: mapWith({ fogEnabled: true, imageUrl: '' }) });
+      render(<MapCanvas />);
+      expect(asPlayerButton()).toBeInTheDocument();
+      fireEvent.click(await within(mapmakerSlot).findByRole('button', { name: 'Mapmaker' }));
+      // Paint opens once it has looked for a kept draft.
+      await waitFor(() => expect(within(mapmakerSlot).getByRole('button', { name: 'Mapmaker' })).toHaveAttribute('aria-pressed', 'true'));
+      expect(asPlayerButton()).toBeNull();
+    } finally {
+      Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', { value: () => null, configurable: true });
+    }
+  });
+
+  // So a voice command for the words on a button finds it.
   it('is named by the words it shows, with the preview off and on', () => {
     h.set({ currentMap: mapWith({ fogEnabled: true }) });
     render(<MapCanvas />);
     show(token('tok-goblin', 'Goblin', 0, 19));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Preview Player View' }));
-    fireEvent.click(screen.getByRole('button', { name: 'GM View' }));
+    fireEvent.click(asPlayerButton()!);
+    expect(asPlayerButton()).toHaveAttribute('aria-expanded', 'true');
+    expect(within(asPlayerList()).getAllByRole('button').map((b) => b.textContent)).toEqual(['Follow my selection', 'Goblin']);
+    expect(asPlayerList()).toHaveTextContent(/^Follow my selectionTokensGoblin$/);
+    fireEvent.click(within(asPlayerList()).getByRole('button', { name: 'Goblin' }));
+    // A row starts the preview and closes the list.
+    expect(screen.queryByRole('group', { name: 'As player' })).toBeNull();
 
-    expect(screen.getByRole('button', { name: 'Preview Player View' })).toBeInTheDocument();
+    fireEvent.click(asPlayerButton()!);
+    expect(within(asPlayerList()).getByRole('button', { name: 'Goblin' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(within(asPlayerList()).getByRole('button', { name: 'Back to GM view' }));
+
+    fireEvent.click(asPlayerButton()!);
+    expect(within(asPlayerList()).queryByRole('button', { name: 'Back to GM view' })).toBeNull();
+    expect(within(asPlayerList()).getByRole('button', { name: 'Goblin' })).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('can still be ended after fog and lighting are both turned off', () => {
     h.set({ currentMap: mapWith({ fogEnabled: true }) });
     render(<MapCanvas />);
     show(token('tok-goblin', 'Goblin', 0, 19));
-    fireEvent.click(previewButton()!);
-    expect(previewButton()).toHaveTextContent('GM View');
+    startPreview();
 
     fireEvent.click(screen.getByText('Fog of War'));
     fireEvent.click(screen.getByLabelText('Fog of war on this map'));
 
-    expect(previewButton()).toHaveTextContent('GM View');
-    fireEvent.click(previewButton()!);
-    expect(previewButton()).toBeNull();
+    asPlayer('Back to GM view');
+    expect(asPlayerButton()).toBeNull();
   });
 
   it('still places a light, so the GM sees its effect as the player does', () => {
@@ -1184,8 +1270,7 @@ describe('Preview Player View', () => {
     show(token('tok-goblin', 'Goblin', 0, 19));
     fireEvent.click(screen.getByText('Lights'));
     fireEvent.click(screen.getByText('Place'));
-    fireEvent.click(previewButton()!);
-    expect(previewButton()).toHaveTextContent('GM View');
+    startPreview();
 
     click(px(400, 400));
 
@@ -1199,8 +1284,7 @@ describe('Preview Player View', () => {
     show(token('tok-goblin', 'Goblin', 0, 19));
     fireEvent.click(screen.getByText('Lights'));
     fireEvent.click(screen.getByText('Select'));
-    fireEvent.click(previewButton()!);
-    expect(previewButton()).toHaveTextContent('GM View');
+    startPreview();
 
     drag(px(255, 250), px(280, 280), px(300, 310));
 

@@ -1,6 +1,6 @@
 /**
- * The keyboard shortcuts window opens from the header's Keyboard shortcuts
- * button and from the map's ? key, and the page holds it, so there is one
+ * The keyboard shortcuts window opens from the header's ⋯ › Keyboard
+ * shortcuts and from the map's ? key, and the page holds it, so there is one
  * window whichever opened it.
  */
 
@@ -44,17 +44,23 @@ vi.mock('@/contexts/WebSocketContext', () => ({
 vi.mock('@/hooks/useInitiativeSync', () => ({ useInitiativeSync: () => undefined }));
 vi.mock('@/hooks/useOnRejoin', () => ({ useOnRejoin: () => undefined }));
 vi.mock('@/hooks/useAccessRevoked', () => ({ useAccessRevoked: () => undefined }));
+// The bar asks the server's settings whether to offer AI writing help: here it does not.
+vi.mock('@/hooks/queries', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/hooks/queries')>()),
+  useServerConfigQuery: () => ({ data: { ai: { enabled: false } } }),
+}));
 
 const nothing = vi.hoisted(() => () => ({ default: () => null }));
 // The banner over a map being prepared: none here, no map is.
 vi.mock('@/components/campaign/PreparingBanner', nothing);
-vi.mock('@/components/campaign/CampaignInfo', nothing);
+vi.mock('@/components/campaign/CampaignInfo', () => ({ default: () => null, InvitePlayerButton: () => null }));
 vi.mock('@/components/campaign/CampaignRoster', nothing);
 vi.mock('@/components/campaign/AtmospherePlayer', nothing);
 vi.mock('@/components/campaign/TableRefusals', nothing);
 vi.mock('@/components/campaign/CampaignSettingsModal', nothing);
 vi.mock('@/components/documents/CampaignDocumentsModal', nothing);
-vi.mock('@/components/campaign/SessionSidebar', nothing);
+vi.mock('@/components/campaign/SessionPanels', nothing);
+vi.mock('@/components/campaign/LeaveCampaign', nothing);
 vi.mock('@/components/ConnectionStatus', nothing);
 // The map stands in for its ? key with a button.
 vi.mock('@/components/campaign/MapCanvas', () => ({
@@ -68,10 +74,11 @@ import CampaignPage from '../CampaignPage';
 const shortcutsWindow = () => screen.queryByRole('dialog', { name: 'Keyboard shortcuts' });
 
 describe('the keyboard shortcuts window on the campaign page', () => {
-  it("opens from the header's Keyboard shortcuts button, showing a player's shortcuts", () => {
+  it("opens from the header's ⋯ › Keyboard shortcuts, showing a player's shortcuts", () => {
     render(<CampaignPage />);
     expect(shortcutsWindow()).toBeNull();
 
+    fireEvent.click(screen.getByRole('button', { name: 'More' }));
     fireEvent.click(screen.getByRole('button', { name: 'Keyboard shortcuts' }));
 
     expect(shortcutsWindow()).not.toBeNull();
