@@ -62,7 +62,7 @@ interface Open5eMonster {
 
 // ─── Size mapping ───────────────────────────────────────────────
 
-const SIZE_MAP: Record<string, { width: number; height: number }> = {
+export const SIZE_MAP: Record<string, { width: number; height: number }> = {
   Tiny:       { width: 1, height: 1 },
   Small:      { width: 1, height: 1 },
   Medium:     { width: 1, height: 1 },

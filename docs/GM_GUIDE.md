@@ -588,6 +588,21 @@ The first time you open the Creature Library on a new server, it may be empty. A
 - You can duplicate any SRD creature to create an editable custom version
 - The button is offered only while no SRD creatures have been imported, so it disappears once they are in. An import that runs again adds no creature twice, and on a library seeded before CozyVTT 1.1.1 it fills in each SRD creature's hit points; custom creatures are never modified
 
+### Importing Stat Blocks from Markdown
+
+An administrator can add creatures to every campaign's library from Markdown files of 5e-style stat blocks, such as your own homebrew notes. Open the Creature Library in any campaign and expand **Import from Markdown**:
+
+1. Pick one or more `.md` files, give a **Source tag** (lower-case letters, digits and dashes, such as `homebrew`) and, if only part of a file holds checked stat blocks, the heading they are under in **Only under heading** (for example `## Checked Blocks`).
+2. Click **Dry run**. Nothing is stored; the report lists every block with its line: **Imported**, **Updated** (one of that tag and name is stored already), **Skipped** with the reason, or **Refused** with each reason, and the warnings for what a stat block has no place for. It also counts the file's **Armor Class** lines, one for each creature imported, updated or refused.
+3. Click **Import** to store them.
+
+What is read: a `### Name` heading per creature, its size, type and alignment in italics, fields with bold labels (`**Armor Class** 15 (natural armor)`, or `- **Armor Class:** 15` in a list), the six scores as a `| STR | DEX | CON | INT | WIS | CHA |` table, traits and actions as `**Name.** text`, and sections as a bold line or a `####` heading (**Actions**, **Bonus Actions**, **Reactions**, **Legendary Actions**; **Actions for …** groups actions under its name). Paragraphs after an action, such as numbered options or a spell list, stay with it. A block ends at the next heading, a page marker `<!-- p. 12 -->`, a `---` rule or a lair section. A heading with no Armor Class (a template or a variant) and an older block whose fields are not bold are skipped and listed. Paragraphs after the last action that do not go on with its rules are taken as the creature's description and left out; the warnings say where they start.
+
+- Imported creatures show their **tag** where others show **SRD** or **Custom**. Every campaign's GM can place and duplicate them; no player can read them. A campaign archive leaves them out, since they belong to no campaign, but it carries what the campaign made from them: a copy made with **Duplicate** is the campaign's own, and a placed token keeps its stat block on the map
+- Importing a file again updates its creatures in place, keeping their pictures and favourites. A creature of the same name as an SRD one is kept beside it, and listed first
+- **Delete tag** removes every creature imported with the tag typed in the box. Tokens already placed keep their stat blocks
+- **Match token pictures** gives each imported creature without a picture the server's **global** token picture of the same name (case, spaces and punctuation aside), such as one uploaded in a ZIP of tokens. A creature with none shows the symbol of its type. Run it again after uploading more
+
 ### Browsing and Searching
 
 The library supports:

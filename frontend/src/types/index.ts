@@ -116,6 +116,8 @@ export interface NpcProficiencies {
 export interface NpcStatBlock {
   /** Armor Class / Defense rating */
   ac: number;
+  /** What the Armor Class is from, as a stat block prints it: "natural armor". */
+  armorDescription?: string;
   /**
    * Maximum hit points. Optional: stat blocks saved before HP was tracked have
    * none, and callers fall back to a default (see CreatureLibrary placement).
@@ -224,6 +226,26 @@ export interface CreatureTemplate {
   campaignId: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+/** What importing a Markdown file of stat blocks did, or would do in a dry run (POST /api/creatures/import-markdown). */
+export interface CreatureImportReport {
+  sourceTag: string;
+  dryRun: boolean;
+  /** The bold Armor Class lines read: each is one row that was imported, updated or refused, or one not read. */
+  armorClassLines: number;
+  counts: { imported: number; updated: number; skipped: number; errors: number };
+  rows: Array<
+    | { line: number; name: string; status: 'imported' | 'updated'; warnings: string[] }
+    | { line: number; name: string; status: 'skipped'; reason: string }
+    | { line: number; name: string; status: 'error'; errors: string[]; warnings: string[] }
+  >;
+}
+
+/** Imported creatures given the shared token picture of their name. */
+export interface CreaturePictureMatches {
+  matched: Array<{ creature: string; sourceTag: string; picture: string; otherPicturesOfTheName: number }>;
+  withoutPicture: number;
 }
 
 export interface TokenHp {

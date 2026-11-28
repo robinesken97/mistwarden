@@ -172,6 +172,8 @@ export function createNpcStatBlockSchema(options: StatBlockSchemaOptions) {
 
   const shape = {
     ac: z.number().int().min(0).max(99),
+    // What the Armor Class is from, as a stat block prints it: "natural armor".
+    armorDescription: z.string().max(STAT_BLOCK_LIMITS.maxDetailLength).optional(),
     // Optional: stat blocks created before HP tracking have neither field
     hpMax: z.number().int().min(1).max(99999).optional(),
     hitDice: z.string().max(STAT_BLOCK_LIMITS.maxHitDiceLength).optional(),

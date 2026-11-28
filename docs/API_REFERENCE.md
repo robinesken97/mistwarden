@@ -1065,6 +1065,7 @@ every write — see [Stat block validation](#stat-block-validation).
 | Field | Type | Notes |
 |---|---|---|
 | `ac` | number | Required. 0–99 |
+| `armorDescription` | string | Optional, at most 500 characters. What the Armor Class is from, as printed: `"natural armor"` |
 | `speed` | string | Required |
 | `abilities` | object | Required. `str`/`dex`/`con`/`int`/`wis`/`cha`, each 0–30, or 0–999 when `gameSystem` is `HORROR_D100`. Ability **scores** (5E's model; a Horror d100 creature keeps its characteristics here) |
 | `hpMax`, `hitDice` | number, string | Optional |
