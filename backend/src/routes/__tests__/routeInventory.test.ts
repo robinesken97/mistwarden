@@ -64,6 +64,8 @@ const TESTED: Record<string, string> = {
   'PUT /api/campaigns/:campaignId/dm': 'legacy/__tests__/oldValuesAccepted.e2e.test.ts',
   'GET /api/campaigns/:campaignId/messages': 'routes/__tests__/campaignMessages.e2e.test.ts',
   'DELETE /api/campaigns/:campaignId/messages/join-leave': 'routes/__tests__/clearJoinLeaveMessages.e2e.test.ts',
+  'POST /api/campaigns/practice': 'routes/__tests__/practiceCampaign.e2e.test.ts',
+  'POST /api/campaigns/:campaignId/practice/reset': 'routes/__tests__/practiceCampaign.e2e.test.ts',
   'GET /api/campaigns/:campaignId/dice-rolls': 'routes/__tests__/campaignDiceRolls.e2e.test.ts',
   'GET /api/campaigns/:campaignId/notes': 'routes/__tests__/personalNotes.e2e.test.ts',
   'POST /api/campaigns/:campaignId/notes': 'routes/__tests__/personalNotes.e2e.test.ts',

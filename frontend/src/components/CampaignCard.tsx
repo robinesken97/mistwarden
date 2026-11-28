@@ -143,6 +143,11 @@ export default function CampaignCard({ campaign, userRole }: CampaignCardProps) 
           {statusBadge.label}
         </span>
         <GameSystemBadge gameSystem={campaign.gameSystem} size="md" />
+        {campaign.isPractice && (
+          <span className="inline-block px-2.5 py-1 rounded-full border text-xs font-medium bg-spirit-purple/15 text-spirit-ink border-spirit-purple/30">
+            Practice
+          </span>
+        )}
       </div>
 
       {/* Info Grid */}

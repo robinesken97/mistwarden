@@ -556,6 +556,18 @@ class ApiClient {
     return response.data;
   }
 
+  /** The caller's practice campaign: the one they run, or a new one. */
+  async openPracticeCampaign(): Promise<{ message: string; campaign: Campaign }> {
+    const response = await this.client.post('/api/campaigns/practice');
+    return response.data;
+  }
+
+  /** Put a practice campaign back as it was made (its GM only). */
+  async resetPracticeCampaign(campaignId: string): Promise<{ message: string; mapId: string }> {
+    const response = await this.client.post(`/api/campaigns/${campaignId}/practice/reset`);
+    return response.data;
+  }
+
   /**
    * Search the people who can be invited to a campaign by display name. A
    * search of INVITE_SEARCH_MIN_LENGTH (in constants/inviteSearchLimits.ts)

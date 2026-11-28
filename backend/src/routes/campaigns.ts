@@ -67,6 +67,9 @@ import path from 'path';
 import fsp from 'fs/promises';
 import { resendDrawings } from '../services/mapDrawings';
 import { resendAreas } from '../services/mapAreas';
+import { openPracticeCampaign, resetPracticeCampaign } from '../services/practiceCampaign';
+import { practiceCampaignLimiter } from '../middleware/practiceCampaignLimiter';
+import { currentMapChanged } from '../websocket/handlers/drawings';
 const router = Router();
 
 /**
@@ -286,6 +289,66 @@ router.post('/', authenticated, async (req: AuthenticatedRequest, res: Response)
       error: 'Internal Server Error',
       message: 'Failed to create campaign',
     });
+  }
+});
+
+/**
+ * POST /api/campaigns/practice
+ * Open the caller's practice campaign (services/practiceCampaign.ts): the one
+ * they run as GM, 200, or a new one, 201. One per user.
+ * Requires: Authentication
+ */
+router.post('/practice', authenticated, practiceCampaignLimiter, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { campaignId, created } = await openPracticeCampaign(req.session.userId!);
+    // SECURITY: see note in GET /api/campaigns — never embed `email` in member-facing payloads.
+    const campaign = await prisma.campaign.findUnique({
+      where: { id: campaignId },
+      include: { memberships: { include: { user: { select: MEMBER_USER_SELECT } } } },
+    });
+    return res.status(created ? 201 : 200).json({
+      message: created ? 'Practice campaign created' : 'Practice campaign found',
+      campaign,
+    });
+  } catch (error) {
+    logger.error('Error opening the practice campaign', { err: error });
+    return res.status(500).json({ error: 'Internal Server Error', message: 'Failed to open the practice campaign' });
+  }
+});
+
+/**
+ * POST /api/campaigns/:campaignId/practice/reset
+ * Put a practice campaign back as it was made. Any other campaign is
+ * refused with 409 and left as it is.
+ * Requires: Campaign GM role
+ */
+router.post('/:campaignId/practice/reset', campaignGM, practiceCampaignLimiter, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { campaignId } = req.params;
+    const outcome = await resetPracticeCampaign(campaignId, req.session.userId!);
+    if (!outcome.reset) {
+      return outcome.reason === 'not-found'
+        ? res.status(404).json({ error: 'Not Found', message: 'Campaign not found' })
+        : res.status(409).json({ error: 'Conflict', message: 'Only a practice campaign can be reset' });
+    }
+
+    // The live half: the order in memory goes, and every page goes onto the
+    // new map. Best effort; the reset is saved.
+    clearCombatState(campaignId);
+    currentMapChanged(campaignId);
+    try {
+      const map = await prisma.map.findUnique({ where: { id: outcome.mapId } });
+      if (map) await broadcastMapData(getSocketInstance(), campaignId, map);
+      broadcastToCampaign(campaignId, 'gallery.changed', { campaignId });
+    } catch (err) {
+      logger.warn('Practice campaign reset, but not sent to the table', { err, campaignId });
+    }
+    await resendInitiative(campaignId, { evenWhenEmpty: true });
+
+    return res.status(200).json({ message: 'Practice campaign reset', mapId: outcome.mapId });
+  } catch (error) {
+    logger.error('Error resetting the practice campaign', { err: error });
+    return res.status(500).json({ error: 'Internal Server Error', message: 'Failed to reset the practice campaign' });
   }
 });
 

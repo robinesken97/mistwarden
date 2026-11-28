@@ -32,6 +32,7 @@ const GM_ONLY = [
   'DELETE /api/campaigns/:campaignId/members/:userId',
   'PUT /api/campaigns/:campaignId/members/:userId/role',
   'DELETE /api/campaigns/:campaignId/messages/join-leave',
+  'POST /api/campaigns/:campaignId/practice/reset',
   'PUT /api/campaigns/:campaignId/sessions/:sessionId/notes',
   'POST /api/campaigns/:campaignId/sessions',
   'PUT /api/campaigns/:campaignId/sessions/:sessionId/pause',

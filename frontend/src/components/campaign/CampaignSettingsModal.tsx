@@ -19,6 +19,7 @@ import {
   Crown,
   MessageCircle,
   Download,
+  RotateCcw,
 } from 'lucide-react';
 import { useCampaign } from '@/contexts/CampaignContext';
 import { useToast } from '@/contexts/ToastContext';
@@ -125,6 +126,10 @@ export default function CampaignSettingsModal({
   // ── Export ────────────────────────────────────
   const [exporting, setExporting] = useState(false);
   const [exportIncludeAudio, setExportIncludeAudio] = useState(false);
+
+  // ── Practice campaign ────────────────────────
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resettingPractice, setResettingPractice] = useState(false);
 
   // ── Danger zone ──────────────────────────────
   const [deleteConfirmName, setDeleteConfirmName] = useState('');
@@ -343,6 +348,19 @@ export default function CampaignSettingsModal({
     } catch (err) {
       showToast(apiErrorMessage(err) ?? 'Failed to delete campaign', 'error');
       setDeletingCampaign(false);
+    }
+  };
+
+  // Every panel shows what the reset made: the page loads again.
+  const handleResetPractice = async () => {
+    setResettingPractice(true);
+    try {
+      await api.resetPracticeCampaign(campaign.id);
+      window.location.reload();
+    } catch (err) {
+      showToast(apiErrorMessage(err) ?? 'Failed to reset the practice campaign', 'error');
+      setResettingPractice(false);
+      setShowResetConfirm(false);
     }
   };
 
@@ -573,6 +591,28 @@ export default function CampaignSettingsModal({
                   )}
                 </Button>
               </div>
+
+              {/* ── Practice campaign ── */}
+              {campaign.isPractice && (
+                <div className="pt-4 mt-4 border-t border-moss-green/15 space-y-3">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-stone-gray">
+                    <RotateCcw className="w-4 h-4 text-brand-ink" />
+                    Practice campaign
+                  </div>
+                  <p className="text-xs text-warm-gray">
+                    Puts the map, tokens, fog, notes and gallery back as they were. Members and their characters stay.
+                  </p>
+                  <Button
+                    type="button"
+                    onClick={() => setShowResetConfirm(true)}
+                    disabled={resettingPractice}
+                    variant="secondary" className="w-full flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    Reset practice campaign
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
@@ -928,6 +968,19 @@ export default function CampaignSettingsModal({
         cancelLabel="Cancel"
         onConfirm={handleConfirmMakeGm}
         onCancel={() => setMemberToPromote(null)}
+      />
+
+      {/* Practice campaign reset confirm dialog */}
+      <ConfirmDialog
+        isOpen={showResetConfirm}
+        title="Reset practice campaign"
+        message={`Reset "${campaign.name}"? Its maps, tokens, drawings, spell areas, notes, gallery and initiative order start over, and the dice history is cleared. Members and their characters stay.`}
+        confirmLabel="Reset"
+        cancelLabel="Cancel"
+        variant="danger"
+        isLoading={resettingPractice}
+        onConfirm={handleResetPractice}
+        onCancel={() => setShowResetConfirm(false)}
       />
 
       {/* Final delete confirm dialog */}

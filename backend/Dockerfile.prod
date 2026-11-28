@@ -40,6 +40,10 @@ RUN npm ci --omit=dev && rm -rf /tmp/node-compile-cache
 # Copy compiled output
 COPY --from=builder /app/dist ./dist
 
+# The practice campaign's pictures, which the backend stores into each new
+# practice campaign (services/practiceCampaign.ts reads them beside dist).
+COPY --from=builder /app/assets ./assets
+
 # Copy Prisma schema, the command-line tools' settings (start.sh's migrate
 # deploy and the restore read them) and the generated client
 COPY --from=builder /app/prisma ./prisma
