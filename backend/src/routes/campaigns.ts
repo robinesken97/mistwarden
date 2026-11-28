@@ -11,7 +11,7 @@ import { resendInitiative } from '../websocket/handlers/initiative';
 import { sendSystemMessage, broadcastToUser, broadcastToCampaign, applyRoleToLiveSockets, clearDeletedCampaignFromLiveSockets, announceRosterChange, getSocketInstance, LEFT_MESSAGE } from '../websocket/utils';
 import { takeMemberOut, tellTableMemberLeft, type TakeOutRefusal } from '../services/campaignMembers';
 import { broadcastMapData } from '../websocket/shared';
-import { clearState as clearCombatState } from '../websocket/initiativeState';
+import { clearState as clearCombatState, getState as getCombatState } from '../websocket/initiativeState';
 import { isSmtpConfigured, sendCampaignInvitationEmail } from '../services/email';
 import { DEFAULT_VIBE_SETTINGS } from '../utils/vibe-presets';
 import { issueMessages } from '../validators/issueMessages';
@@ -19,6 +19,10 @@ import { saveVibeSettings, vibeAudioRefusal, switchVibe } from '../services/vibe
 import { ATMOSPHERE_EFFECTS, applyAtmosphereEffect, setCampaignAmbientAudio } from '../services/atmosphereAudio';
 import { sendChatMessage } from '../services/chat';
 import { rollForMember } from '../services/dice';
+import {
+  addCombatant, removeCombatant, setInitiative, rollInitiative, reorderCombatants, startCombat, nextTurn, endCombat,
+  initiativeForGM, type InitiativeActor, type InitiativeOutcome,
+} from '../services/initiative';
 import { ChatMessageSchema, CHAT_CONTENT_REFUSAL } from '../validators/chat';
 import { DiceRollSchema } from '../validators/dice';
 import { gmActionLimiter } from '../middleware/gmActionLimiter';
@@ -731,6 +735,164 @@ router.post('/:campaignId/dice-rolls', campaignGM, gmActionLimiter, async (req: 
     return res.status(500).json({ error: 'Internal Server Error', message: 'Failed to roll dice' });
   }
 });
+
+// ---- Initiative over REST -------------------------------------------------
+// The GM's tracker controls, for a script or the MCP bridge that holds no
+// socket. Each calls what its socket event calls (services/initiative.ts),
+// on the same order in memory, so every member is sent `initiative.state`
+// as the socket path sends it. Players roll for their own tokens over the
+// socket only; every route here is the GM's. Each answers with the order as
+// the GM sees it.
+
+const initiativeActor = (req: AuthenticatedRequest): InitiativeActor =>
+  ({ campaignId: req.params.campaignId, userId: req.session.userId!, role: req.campaignMembership!.role });
+
+/** A refusal as the socket words it, or `status` with the order the GM now sees. */
+async function answerInitiative(req: AuthenticatedRequest, res: Response, outcome: InitiativeOutcome, status = 200, extra: object = {}) {
+  if (!outcome.ok) return res.status(outcome.status).json({ error: 'Refused', message: outcome.error });
+  return res.status(status).json({ ...extra, state: await initiativeForGM(req.params.campaignId) });
+}
+
+/** A route's body, with a 500 that names what failed. */
+function initiativeRoute(failure: string, run: (req: AuthenticatedRequest, res: Response) => Promise<unknown>) {
+  return async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      await run(req, res);
+    } catch (error) {
+      logger.error(failure, { err: error });
+      res.status(500).json({ error: 'Internal Server Error', message: failure });
+    }
+  };
+}
+
+/** Answer a body that does not parse with 400 and its first issue; null then. */
+function initiativeBody<T>(schema: z.ZodType<T>, req: AuthenticatedRequest, res: Response): T | null {
+  const parsed = schema.safeParse(req.body ?? {});
+  if (parsed.success) return parsed.data;
+  res.status(400).json({ error: 'Validation Error', message: parsed.error.issues[0]?.message ?? 'Invalid body' });
+  return null;
+}
+
+const tokenOnMap = {
+  tokenId: z.string({ error: 'tokenId and mapId required' }).min(1, { error: 'tokenId and mapId required' }),
+  mapId: z.string({ error: 'tokenId and mapId required' }).min(1, { error: 'tokenId and mapId required' }),
+};
+const AddCombatantSchema = z.object(tokenOnMap);
+const RollInitiativeSchema = z.object({
+  ...tokenOnMap,
+  expression: z.string({ error: 'Invalid expression: it must be text, like 1d20+2' }).optional(),
+});
+const SetInitiativeSchema = z.object({
+  value: z.number({ error: 'value must be a number or null' }).nullable(),
+}, { error: 'value is required' });
+const InitiativeOrderSchema = z.object({
+  tokenIds: z.array(z.string({ error: 'tokenIds must be an array of token ids' }), { error: 'tokenIds must be an array of token ids' }),
+});
+
+/**
+ * GET /api/campaigns/:campaignId/initiative
+ * The order as the GM sees it: every combatant with its token as it is now.
+ * 200 { state } as `initiative.state` sends it to a GM.
+ */
+router.get('/:campaignId/initiative', campaignGM, gmActionLimiter, initiativeRoute('Failed to read initiative', async (req, res) => {
+  res.status(200).json({ state: await initiativeForGM(req.params.campaignId) });
+}));
+
+/**
+ * POST /api/campaigns/:campaignId/initiative/start
+ * Begin combat (GM only), as the socket's initiative.start: round 1, the
+ * first combatant acting. 409 while the order is empty.
+ */
+router.post('/:campaignId/initiative/start', campaignGM, gmActionLimiter, initiativeRoute('Failed to start combat', async (req, res) => {
+  await answerInitiative(req, res, await startCombat(getSocketInstance(), initiativeActor(req)));
+}));
+
+/**
+ * POST /api/campaigns/:campaignId/initiative/next
+ * Pass the turn on (GM only), as the socket's initiative.next; after the
+ * last combatant a new round begins. 409 when combat is not active.
+ */
+router.post('/:campaignId/initiative/next', campaignGM, gmActionLimiter, initiativeRoute('Failed to advance initiative', async (req, res) => {
+  await answerInitiative(req, res, await nextTurn(getSocketInstance(), initiativeActor(req)));
+}));
+
+/**
+ * POST /api/campaigns/:campaignId/initiative/end
+ * End combat and clear the order (GM only), as the socket's initiative.end.
+ */
+router.post('/:campaignId/initiative/end', campaignGM, gmActionLimiter, initiativeRoute('Failed to end combat', async (req, res) => {
+  await answerInitiative(req, res, await endCombat(getSocketInstance(), initiativeActor(req)));
+}));
+
+/**
+ * POST /api/campaigns/:campaignId/initiative/combatants
+ * Add a token to the order (GM only), as the socket's initiative.add; it
+ * joins unrolled, at the bottom. Body: { tokenId, mapId }. 201 { state };
+ * 404 for a map or token not in the campaign, 409 for one already in it.
+ */
+router.post('/:campaignId/initiative/combatants', campaignGM, gmActionLimiter, initiativeRoute('Failed to add to initiative', async (req, res) => {
+  const body = initiativeBody(AddCombatantSchema, req, res);
+  if (!body) return;
+  await answerInitiative(req, res, await addCombatant(getSocketInstance(), initiativeActor(req), body), 201);
+}));
+
+/**
+ * DELETE /api/campaigns/:campaignId/initiative/combatants/:tokenId
+ * Take a combatant out of the order (GM only), as the socket's
+ * initiative.remove: the turn passes on if it was theirs, and an emptied
+ * order ends the fight. 404 when the token is not in the order.
+ */
+router.delete('/:campaignId/initiative/combatants/:tokenId', campaignGM, gmActionLimiter, initiativeRoute('Failed to remove from initiative', async (req, res) => {
+  const outcome = await removeCombatant(getSocketInstance(), initiativeActor(req), { tokenId: req.params.tokenId });
+  if (outcome.ok && !outcome.removed) {
+    return res.status(404).json({ error: 'Not Found', message: 'Token is not in initiative' });
+  }
+  return answerInitiative(req, res, outcome);
+}));
+
+/**
+ * PUT /api/campaigns/:campaignId/initiative/combatants/:tokenId
+ * Set a combatant's initiative by hand, or clear it with null (GM only), as
+ * the socket's initiative.set, on the map the combatant joined from. Body:
+ * { value }. 404 when the token is not in the order; the socket can also set
+ * a token outside it, given its map.
+ */
+router.put('/:campaignId/initiative/combatants/:tokenId', campaignGM, gmActionLimiter, initiativeRoute('Failed to set initiative value', async (req, res) => {
+  const body = initiativeBody(SetInitiativeSchema, req, res);
+  if (!body) return;
+  const { tokenId } = req.params;
+  const combatant = getCombatState(req.params.campaignId).combatants.find((c) => c.tokenId === tokenId);
+  if (!combatant) return res.status(404).json({ error: 'Not Found', message: 'Token is not in initiative' });
+  return answerInitiative(req, res, await setInitiative(getSocketInstance(), initiativeActor(req), { tokenId, mapId: combatant.mapId, value: body.value }));
+}));
+
+/**
+ * POST /api/campaigns/:campaignId/initiative/roll
+ * Roll initiative for a token as the GM, as the socket's initiative.roll:
+ * the server works out what is rolled from the token's sheet or stat block;
+ * `expression` is used only when neither applies. A token not yet in the
+ * order joins it. Dice thrown go to the dice log, as a secret roll when
+ * some player is not sent the token.
+ * Body: { tokenId, mapId, expression? }. 200 { value, rolled, state }.
+ */
+router.post('/:campaignId/initiative/roll', campaignGM, gmActionLimiter, initiativeRoute('Failed to roll initiative', async (req, res) => {
+  const body = initiativeBody(RollInitiativeSchema, req, res);
+  if (!body) return;
+  const outcome = await rollInitiative(getSocketInstance(), initiativeActor(req), body, null);
+  await answerInitiative(req, res, outcome, 200, outcome.ok ? { value: outcome.value, rolled: outcome.rolled } : {});
+}));
+
+/**
+ * PUT /api/campaigns/:campaignId/initiative/order
+ * Put the combatants in this order (GM only), as the socket's
+ * initiative.reorder: combatants left out keep their places after those
+ * named, and an id not in the order is passed over. Body: { tokenIds }.
+ */
+router.put('/:campaignId/initiative/order', campaignGM, gmActionLimiter, initiativeRoute('Failed to reorder initiative', async (req, res) => {
+  const body = initiativeBody(InitiativeOrderSchema, req, res);
+  if (!body) return;
+  await answerInitiative(req, res, await reorderCombatants(getSocketInstance(), initiativeActor(req), { orderedTokenIds: body.tokenIds }));
+}));
 
 /**
  * DELETE /api/campaigns/:campaignId
