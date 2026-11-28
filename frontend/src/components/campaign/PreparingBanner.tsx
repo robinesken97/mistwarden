@@ -128,6 +128,88 @@ export default function PreparingBanner() {
   if (!isPreparing || !viewedMap) return live;
   const short = compact && sideways;
 
+  const help = helpOpen && (
+    <p id="preparing-what-reaches-the-table" className="basis-full text-xs">
+      Edits to this map reach no player. The campaign's own controls still change every player's screen: the
+      Spirit Layer (opening it, its style, who is in the realm), Atmosphere, the vibe and the session controls.
+    </p>
+  );
+  const confirm = (
+    <Modal
+      open={tableSwitch.pending !== null}
+      onClose={tableSwitch.cancel}
+      title="Bring everyone here"
+      size="sm"
+      closeDisabled={tableSwitch.switching}
+    >
+      {tableSwitch.pending && (
+        <TokenTransferConfirmation
+          tokens={tableSwitch.tableTokens}
+          fromMap={currentMap}
+          targetMap={tableSwitch.pending}
+          onConfirm={(ids) => { void tableSwitch.confirm(ids); }}
+          onCancel={tableSwitch.cancel}
+          isSwitching={tableSwitch.switching}
+        />
+      )}
+    </Modal>
+  );
+
+  // The wide layout: one strip under the top bar, over the map only: the
+  // words, What reaches the table?, then the two ways out.
+  if (!compact) {
+    const bar = 'min-h-10 pointer-coarse:min-h-11 px-4! py-0! rounded-xl! text-sm';
+    return (
+      <>
+        {live}
+        <div
+          role="region"
+          aria-label="Preparing a map"
+          className="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 py-2 text-sm text-ink border-b border-[color-mix(in_srgb,var(--color-warning)_45%,transparent)] bg-[color-mix(in_srgb,var(--color-warning)_12%,var(--color-surface))]"
+        >
+          <p className="min-w-0 flex-1 truncate">
+            Preparing <b className="font-semibold text-warning-ink">{viewedMap.name}</b>.{' '}
+            {currentMap
+              ? <>The table is on <b className="font-semibold text-warning-ink">{currentMap.name}</b>.</>
+              : 'The table is on no map.'}
+          </p>
+          <button
+            type="button"
+            onClick={() => setHelpOpen((open) => !open)}
+            aria-expanded={helpOpen}
+            aria-controls={helpOpen ? 'preparing-what-reaches-the-table' : undefined}
+            aria-label="What reaches the table?"
+            title="What reaches the table?"
+            className="-mr-1 inline-flex size-10 pointer-coarse:size-11 shrink-0 items-center justify-center rounded-xl text-ink-muted hover:text-ink hover:bg-ink/5 focus-visible:outline-2 focus-visible:outline-brand"
+          >
+            <Info className="w-5 h-5" aria-hidden="true" />
+          </button>
+          <Button
+            type="button"
+            variant="secondary"
+            className={bar}
+            onClick={() => { void goBack(); }}
+            loading={leaving}
+            title="Show the table's map again; the map you are preparing stays as you left it"
+          >
+            Back to the table
+          </Button>
+          <Button
+            type="button"
+            className={bar}
+            onClick={() => { void tableSwitch.requestSwitch(viewedMap); }}
+            loading={tableSwitch.switching && !tableSwitch.pending}
+            title="Make this the active map, moving every player onto it"
+          >
+            Bring everyone here
+          </Button>
+          {help}
+          {confirm}
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
     {live}
@@ -181,31 +263,8 @@ export default function PreparingBanner() {
           {short ? null : 'What reaches the table?'}
         </Button>
       </div>
-      {helpOpen && (
-        <p id="preparing-what-reaches-the-table" className="basis-full text-xs">
-          Edits to this map reach no player. The campaign's own controls still change every player's screen: the
-          Spirit Layer (opening it, its style, who is in the realm), Atmosphere, the vibe and the session controls.
-        </p>
-      )}
-
-      <Modal
-        open={tableSwitch.pending !== null}
-        onClose={tableSwitch.cancel}
-        title="Bring everyone here"
-        size="sm"
-        closeDisabled={tableSwitch.switching}
-      >
-        {tableSwitch.pending && (
-          <TokenTransferConfirmation
-            tokens={tableSwitch.tableTokens}
-            fromMap={currentMap}
-            targetMap={tableSwitch.pending}
-            onConfirm={(ids) => { void tableSwitch.confirm(ids); }}
-            onCancel={tableSwitch.cancel}
-            isSwitching={tableSwitch.switching}
-          />
-        )}
-      </Modal>
+      {help}
+      {confirm}
     </div>
     </>
   );

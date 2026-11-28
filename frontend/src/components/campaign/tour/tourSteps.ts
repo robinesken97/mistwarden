@@ -52,16 +52,21 @@ export interface TourContext {
 
 // The openers of each place a step can point into, outermost first.
 const MAP = ['bar-map'];
-const MAP_TOOLS = ['bar-map', 'map-controls', 'menu-tools'];
-const RAIL = (tab: string) => ['show-session', `tab-${tab}`, `bar-${tab}`];
-const PARTY = ['show-party', 'bar-party'];
+// On the wide layout the GM tools cell of the map's rail shows the stack.
+const MAP_TOOLS = ['bar-map', 'map-controls', 'menu-tools', 'gm-tools'];
+// The wide layout's tab column, or the compact layout's bar.
+const RAIL = (tab: string) => [`tab-${tab}`, `bar-${tab}`];
+const PARTY = ['tab-party', 'bar-party'];
 const MORE = ['bar-more'];
+// The wide layout's Library ▾ and ⋯ menus in the top bar.
+const LIBRARY = ['library', ...MORE];
+const MORE_MENU = ['more-menu', ...MORE];
 
 const END: TourStep = {
   id: 'end',
   title: 'That is the tour',
-  body: 'The Tour button runs it again whenever you like: in the header, or under More on a small screen.',
-  targets: ['tour-button', 'menu-tour'],
+  body: 'Tour runs it again whenever you like: in the ⋯ menu at the top right, or under More on a small screen.',
+  targets: ['tour-button', 'menu-tour', 'more-menu'],
 };
 
 export const GM_TOUR: readonly TourStep[] = [
@@ -83,7 +88,7 @@ export const GM_TOUR: readonly TourStep[] = [
   {
     id: 'grid',
     title: 'The grid',
-    body: 'Toggle Grid shows or hides the squares, and the button beside it changes their colour. On a small screen both are under More map controls. The square size is the map’s, in the Map Library.',
+    body: 'The Grid button on the map’s right edge opens Toggle Grid, which shows or hides the squares, and their colour. On a small screen both are under More map controls. The square size is the scene’s, in Library › Scenes.',
     task: 'Hide the grid, then show it again.',
     targets: ['grid', 'map-controls'],
     openers: MAP,
@@ -115,15 +120,15 @@ export const GM_TOUR: readonly TourStep[] = [
   {
     id: 'tokens',
     title: 'Tokens',
-    body: 'The Token Manager puts tokens on the map: a picture, a size, a player character or an NPC, shown or hidden. The Creature Library and Token Templates add ready-made ones.',
-    task: 'Open the Token Manager and look through its choices.',
+    body: 'Library › Tokens puts tokens on the map: a picture, a size, a player character or an NPC, shown or hidden. Creatures and Token Templates, also in Library, add ready-made ones.',
+    task: 'Open Library › Tokens and look through its choices.',
     targets: ['tool-tokens', 'menu-tokens'],
-    openers: MORE,
+    openers: LIBRARY,
   },
   {
     id: 'assign',
     title: 'Give a token to a player',
-    body: 'The Token Roster lists the tokens on this map. Edit one and choose who controls it: that player can then move it. A player has to join the campaign first, through Invite in Campaign Info.',
+    body: 'The Token Roster lists the tokens on this map. Edit one and choose who controls it: that player can then move it. A player has to join the campaign first, through Invite Player at the top of Party.',
     task: 'Invite a second account, then edit the Scout and make that player its controller.',
     targets: ['token-roster'],
     openers: PARTY,
@@ -139,8 +144,8 @@ export const GM_TOUR: readonly TourStep[] = [
   {
     id: 'area',
     title: 'Spell areas',
-    body: 'AoE Shape lays a circle, cone, line or square over the map for everyone to see; on a small screen it is under More map controls. A spell on a character sheet places its own area.',
-    task: 'Turn on AoE Shape and put a circle on the courtyard.',
+    body: 'Spell area (the lightning on the map’s right edge) lays a circle, cone, line or square over the map for everyone to see; on a small screen it is AoE Shape under More map controls. A spell on a character sheet places its own area.',
+    task: 'Turn on Spell area and put a circle on the courtyard.',
     targets: ['aoe', 'map-controls'],
     openers: MAP,
   },
@@ -150,7 +155,7 @@ export const GM_TOUR: readonly TourStep[] = [
     body: 'Start Session opens play: players move their tokens only while a session is live. Pause holds the table; End closes the session, with notes for next time.',
     task: 'Start a session.',
     targets: ['start-session', 'panel-session'],
-    openers: ['show-session', 'tab-session', 'bar-more', 'menu-session'],
+    openers: ['tab-session', 'bar-more', 'menu-session'],
   },
   {
     id: 'display',
@@ -158,7 +163,7 @@ export const GM_TOUR: readonly TourStep[] = [
     body: 'How this device draws the table: the fog’s mist, the dice animation, token names, lights while dragging and moving spell areas. Each device keeps its own, so a slow tablet can go plain.',
     task: 'Set Fog to Flat, look at the map, then set it back.',
     targets: ['display-panel', 'display'],
-    openers: MORE,
+    openers: MORE_MENU,
   },
   END,
 ];

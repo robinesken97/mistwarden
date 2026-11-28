@@ -54,8 +54,14 @@ async function makePlayer(admin: APIRequestContext, context: BrowserContext, nam
   return user.id;
 }
 
-/** The session rail's tab, or on a compact layout nothing (this test uses desktop and iPad landscape). */
-const openTab = (page: Page, name: string) => page.getByRole('tab', { name }).click();
+/**
+ * Shows a panel of the wide layout's tab column (this test uses desktop and iPad landscape). A press
+ * on the tab already open folds its panel, so an open one is left as it is.
+ */
+const openTab = async (page: Page, name: string) => {
+  const tab = page.getByRole('tab', { name });
+  if ((await tab.getAttribute('aria-selected')) !== 'true') await tab.click();
+};
 
 test('a GM and four players share one table', async ({ browser, playwright }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', 'Opens its own browsers; once is enough.');
@@ -149,7 +155,8 @@ test('a GM and four players share one table', async ({ browser, playwright }, te
     });
     expect(map.status(), await map.text()).toBe(201);
     const mapId = ((await map.json()) as { map: { id: string } }).map.id;
-    await gm.getByRole('button', { name: 'Map Library' }).click();
+    await gm.getByRole('button', { name: 'Library', exact: true }).click();
+    await gm.getByRole('button', { name: 'Scenes', exact: true }).click();
     await gm.getByRole('button', { name: 'Set Active' }).first().click();
     await gm.keyboard.press('Escape');
     // The table is on it once the campaign says so; only then may a player touch its tokens.

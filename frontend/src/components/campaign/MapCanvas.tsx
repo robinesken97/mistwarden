@@ -6,7 +6,12 @@
 // ============================================
 
 import { useEffect, useEffectEvent, useId, useLayoutEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { ZoomIn, ZoomOut, Maximize2, Grid3x3, Palette, Ghost, Ruler, Zap, MapPin, Pencil, Paintbrush, SlidersHorizontal, Eye, EyeOff, Move } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize2, Grid3x3, Palette, Ghost, Ruler, Zap, MapPin, Pencil, Paintbrush, SlidersHorizontal, Eye, EyeOff, Move, Layers, ScanEye, Settings2 } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { useTableChrome } from '@/stores/tableChromeStore';
+import TopBarMenu, { MenuHeading, MenuRow, MenuSeparator } from './TopBarMenu';
+import { MapRail, RailCell, RailHint, RailPopover, RailReadout, useRailHint } from './map/MapRail';
+import { railTwoColumns, railWidth } from './map/railLayout';
 import { useCampaign } from '@/contexts/CampaignContext';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -236,9 +241,11 @@ interface MapCanvasProps {
   onEditToken?: (token: Token) => void;
   /** The ? key: the page shows the keyboard shortcuts window, which it holds. */
   onShowShortcuts?: () => void;
+  /** The GM's Spirit Layer slide-over, which the page holds; offered by the rail's Spirit Layer cell. */
+  onOpenSpiritLayer?: () => void;
 }
 
-export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasProps) {
+export default function MapCanvas({ onEditToken, onShowShortcuts, onOpenSpiritLayer }: MapCanvasProps) {
   // `currentMap` here is the map this page shows (viewedMap): the table's,
   // or one the GM is preparing. Every emit, request and filter below is for
   // it; the table's own map is the context's to follow (receiveTableMap).
@@ -386,6 +393,14 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   const [toolsShown, setToolsShown] = useState(false);
   const mapControlsButtonRef = useRef<HTMLButtonElement>(null);
   const drawButtonRef = useRef<HTMLButtonElement>(null);
+  // The wide layout's rail: which cell's popover is open, its GM tools cell,
+  // the one-time hint on a touch screen, and where the top bar takes the
+  // map's As player ▾ and Mapmaker (stores/tableChromeStore.ts).
+  const [railPopover, setRailPopover] = useState<'grid' | 'spirit' | null>(null);
+  const gmToolsButtonRef = useRef<HTMLButtonElement>(null);
+  const railHint = useRailHint(coarsePointer);
+  const asPlayerSlot = useTableChrome((st) => st.asPlayerSlot);
+  const mapmakerSlot = useTableChrome((st) => st.mapmakerSlot);
   // The compact layout's dock at the map's foot, and its height.
   const dockContentRef = useRef<HTMLDivElement>(null);
   const dockHeight = useMeasuredHeight(dockContentRef, compact);
@@ -4310,10 +4325,11 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   // under the band there. The AoE panel starts under the band with every
   // pointer, and while both show, under the bar, which would otherwise lie
   // over its shape buttons.
-  const underToolbar = underBand(topBand, coarsePointer || compact);
+  // On the wide layout there is no toolbar on the map: 8 px under its top.
+  const underToolbar = compact ? underBand(topBand, coarsePointer || compact) : BAND_GAP;
   const putBackShown = draggedToken !== null && putBackOffered && !fingerCarrying;
   const heldBarBottom = useMeasuredBottom(heldBarRef, containerRef, putBackShown, underToolbar);
-  const aoeTop = heldBarBottom !== null ? heldBarBottom + BAND_GAP : belowBand(topBand);
+  const aoeTop = heldBarBottom !== null ? heldBarBottom + BAND_GAP : compact ? belowBand(topBand) : BAND_GAP;
 
   /**
    * Open Draw with the pen, putting away what would take its presses (a GM
@@ -4516,18 +4532,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
     </Button>
   );
 
-  // Paint, for the GM, on a map drawn in CozyVTT or one with no picture.
-  const paintButton = paintOffered && (
-    <Button
-      onClick={togglePaint}
-      variant="secondary" iconOnly className={paint.on ? 'bg-moss-green/20' : undefined}
-      aria-label="Mapmaker"
-      aria-pressed={paint.on}
-      title="Mapmaker: draw on the map's picture, on your screen until it is saved"
-    >
-      <Paintbrush className={`w-4 h-4 ${paint.on ? 'text-brand-ink' : ''}`} />
-    </Button>
-  );
+
 
   // The GM's Player Preview controls, offered while dynamic lighting or
   // fog is on, and kept while a preview is on; not while Paint is on.
@@ -4647,9 +4652,11 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   const heldDistanceText = heldDistance && (
     <span className="text-xs text-stone-gray font-semibold tabular-nums">Carried {gridDistanceLabel(heldDistance)}</span>
   );
-  const heldDistanceCard = heldDistanceText && (
-    <div className="glass-panel px-3 py-1.5 bg-parchment/90 backdrop-blur-xs">{heldDistanceText}</div>
-  );
+  // In the compact layout's dock a card of its own; on the wide layout a
+  // pill in the token card's line, once the token has moved.
+  const heldDistanceCard = heldDistanceText && (compact
+    ? <div className="glass-panel px-3 py-1.5 bg-parchment/90 backdrop-blur-xs">{heldDistanceText}</div>
+    : heldDistance.squares > 0 && <span className="rounded-full bg-ink/10 px-2 whitespace-nowrap">{heldDistanceText}</span>);
   const detailsCardShown = (hoverToken !== null && hoverCoords !== null) || selectionDetails !== null;
   const cornerPanelShown = hoverCoordsShown || (heldDistance !== null && !detailsCardShown);
   const cornerPanelText = (
@@ -4658,6 +4665,129 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
       {!detailsCardShown && heldDistanceText}
     </>
   );
+  // ── The wide layout's rail (map/MapRail.tsx), and what it opens ──
+  // One column of 40 px cells (44 on a touch screen), or two where one does
+  // not fit the map's height (map/railLayout.ts); its cells are in rem, so
+  // a 4K screen's larger text scales them, and the sums with them.
+  const rootScale = useMemo(
+    () => (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16) / 16,
+    // The root's size follows the window's width (index.css).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [canvasSize.width],
+  );
+  const railCellPx = (coarsePointer ? 44 : 40) * rootScale;
+  const mapToolsShown = !!currentMap && !paint.on;
+  const railToolCount = (mapToolsShown ? 3 + (drawOffered ? 1 : 0) : 0) + (isGM ? 1 : 0);
+  const railGmCount = isGM && currentMap ? 1 : 0;
+  const railTwoCol = railTwoColumns([5, railToolCount, railGmCount], railCellPx, canvasSize.height);
+  const railPx = railWidth(railTwoCol ? 2 : 1, coarsePointer ? 44 : 40) * rootScale;
+  const zoomCenter = { x: canvasSize.width / 2, y: canvasSize.height / 2 };
+  const closeRailPopover = () => setRailPopover(null);
+  const railView = [
+    <RailCell key="zoom-out" label="Zoom out" icon={ZoomOut} onNameHeld={railHint.dismiss}
+      onClick={() => mapControls.zoomOut(zoomCenter)} disabled={mapControls.zoom <= mapControls.minZoom} />,
+    <RailReadout key="zoom">{Math.round(mapControls.zoom * 100)}%</RailReadout>,
+    <RailCell key="zoom-in" label="Zoom in" icon={ZoomIn} onNameHeld={railHint.dismiss}
+      onClick={() => mapControls.zoomIn(zoomCenter)} disabled={mapControls.zoom >= mapControls.maxZoom} />,
+    <RailCell key="fit" label="Fit map" icon={Maximize2} onNameHeld={railHint.dismiss} onClick={mapControlActions.fit} />,
+    // Pressed while the grid shows; opens the grid's popover (PR C redesigns its rows).
+    <RailCell key="grid" label="Grid" icon={Grid3x3} tour="grid" lit={showGrid} onNameHeld={railHint.dismiss}
+      expanded={railPopover === 'grid'} onClick={() => setRailPopover((open) => (open === 'grid' ? null : 'grid'))}>
+      {railPopover === 'grid' && (
+        <RailPopover label="Grid" onClose={closeRailPopover}>
+          <MenuHeading>Only on your screen</MenuHeading>
+          <MenuRow icon={Grid3x3} label="Toggle Grid" pressed={showGrid} keepOpen onSelect={mapControlActions.toggleGrid} />
+          {showGrid && <MenuRow icon={Palette} label={gridColorName} keepOpen onSelect={mapControlActions.nextGridColor} />}
+          {placeFreelyOffered && !paint.on && (
+            <MenuRow icon={Move} label="Place tokens freely" title={placeFreelyLabel} pressed={placeFreely} keepOpen onSelect={mapControlActions.togglePlaceFreely} />
+          )}
+        </RailPopover>
+      )}
+    </RailCell>,
+  ];
+  const railTools = [
+    ...(mapToolsShown ? [
+      <RailCell key="ruler" label="Measure" icon={Ruler} pressed={showRuler} onNameHeld={railHint.dismiss} onClick={mapControlActions.toggleRuler}>
+        {/* The ruler's colour, beside its cell while it is on (PR C moves it into Measure's card). */}
+        {showRuler && (
+          <div className="absolute right-[calc(100%+8px)] top-0 z-30 rounded-xl border border-ink/15 bg-surface/90 p-1 shadow-lg">
+            <button
+              type="button"
+              onClick={mapControlActions.nextRulerColor}
+              title={rulerColorName}
+              aria-label={rulerColorName}
+              className="flex size-10 pointer-coarse:size-11 items-center justify-center rounded-[10px] hover:bg-ink/5 focus-visible:outline-2 focus-visible:outline-brand"
+            >
+              <Palette className={`w-4 h-4 ${rulerColor === 'purple' ? 'text-spirit-ink' : rulerColor === 'black' ? 'text-stone-gray' : 'text-accent-ink'}`} aria-hidden="true" />
+            </button>
+          </div>
+        )}
+      </RailCell>,
+      <RailCell key="aoe" label="Spell area" icon={Zap} tour="aoe" pressed={showAoE} onNameHeld={railHint.dismiss} onClick={mapControlActions.toggleAoE} />,
+      <RailCell key="ping" label="Ping" icon={MapPin} pressed={pingArmed} onNameHeld={railHint.dismiss} onClick={() => setPingArmed((armed) => !armed)} />,
+      drawOffered && (
+        <RailCell key="draw" label="Draw" icon={Pencil} pressed={drawKind !== null} buttonRef={drawButtonRef} onNameHeld={railHint.dismiss} onClick={toggleDraw} />
+      ),
+    ] : []),
+    isGM && (
+      <RailCell key="spirit" label="Spirit Layer" icon={Ghost} spirit expanded={railPopover === 'spirit'} onNameHeld={railHint.dismiss}
+        onClick={() => setRailPopover((open) => (open === 'spirit' ? null : 'spirit'))}>
+        {railPopover === 'spirit' && (
+          <RailPopover label="Spirit Layer" onClose={closeRailPopover}>
+            <MenuRow icon={Ghost} label={spiritTokensLabel} pressed={gmShowSpiritTokens} keepOpen onSelect={mapControlActions.toggleSpiritTokens} />
+            {onOpenSpiritLayer && (
+              <MenuRow icon={Settings2} label="Spirit Layer settings" more onSelect={() => { closeRailPopover(); onOpenSpiritLayer(); }} />
+            )}
+          </RailPopover>
+        )}
+      </RailCell>
+    ),
+  ];
+  const railGm = [
+    railGmCount > 0 && (
+      <RailCell key="gm-tools" label="GM tools" icon={Layers} tour="gm-tools" expanded={stackShown} buttonRef={gmToolsButtonRef}
+        onNameHeld={railHint.dismiss} onClick={() => (stackShown ? hideTools() : showTools())} />
+    ),
+  ];
+  // As player ▾ in the top bar, for the GM while lighting or fog is on.
+  const startPreview = (selection: PreviewSelection | null) => {
+    setPreviewSelection(selection);
+    setGmPreviewPlayerView(true);
+  };
+  const previewValue = gmPreviewPlayerView && previewSelection ? encodePreviewSelection(previewSelection) : null;
+  const asPlayerMenu = (
+    <TopBarMenu
+      label="As player"
+      icon={ScanEye}
+      text="As player"
+      align="right"
+      tour="as-player"
+      pressed={gmPreviewPlayerView && !isPreparing}
+      disabled={isPreparing}
+      title={isPreparing ? 'As player is off while you prepare a scene the table is not on' : gmPreviewPlayerView ? 'Viewing as a player' : 'View as a player'}
+    >
+      <MenuRow label="Follow my selection" pressed={previewValue === encodePreviewSelection({ kind: 'selected' })} onSelect={() => startPreview({ kind: 'selected' })} />
+      {(['players', 'tokens'] as const).map((group) => {
+        const entries = previewChoices.filter((o) => o.group === group);
+        if (entries.length === 0) return null;
+        return (
+          <div key={group}>
+            <MenuHeading>{group === 'players' ? 'Players' : 'Tokens'}</MenuHeading>
+            {entries.map((o) => (
+              <MenuRow key={o.value} label={o.label} pressed={previewValue === o.value} onSelect={() => startPreview(decodePreviewSelection(o.value))} />
+            ))}
+          </div>
+        );
+      })}
+      {gmPreviewPlayerView && (
+        <>
+          <MenuSeparator />
+          <MenuRow icon={Eye} label="Back to GM view" tone="brand" onSelect={() => setGmPreviewPlayerView(false)} />
+        </>
+      )}
+    </TopBarMenu>
+  );
+
   /**
    * The token's details: in the map's bottom left corner, or `docked` in
    * the compact layout's dock, across the map's foot.
@@ -4849,7 +4979,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
           (map/toolbarLayout.ts). It passes clicks through between the two.
           On the compact layout the toolbar is one row across the map, and
           Map controls opens what that row leaves out. */}
-      <div ref={topBandRef} className={compact ? COMPACT_BAND : 'absolute top-4 left-4 right-0 flex flex-wrap items-start gap-2 pointer-events-none'}>
+      <div ref={topBandRef} className={compact ? COMPACT_BAND : 'absolute top-2 left-2 right-0 flex flex-wrap items-start gap-2 pointer-events-none'}>
         {compact ? (
           // Across the map on a phone, with More at its far end; from a
           // small tablet up as wide as its buttons, More beside Draw.
@@ -4879,136 +5009,14 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
               <span className="ml-1.5 max-[24rem]:sr-only">More</span>
             </Button>
           </div>
-        ) : (
-        /* Toolbar - Glassmorphism */
-        // Mistwarden, 2026-11-27: two groups, the view and the tools, in one row where they
-        // fit; where not, the tools wrap under the view, both starting at the left, so the
-        // buttons stand in columns. The wider gap between the groups replaces the dividers,
-        // which could start a wrapped row and put it out of step.
-        <div ref={toolbarRef} className="glass-panel p-2 flex flex-wrap items-center gap-x-4 gap-y-2 bg-parchment/90 backdrop-blur-xs pointer-events-auto">
-          <div className="flex items-center gap-2">
-            {zoomOutButton}
-            {/* One button cell wide, as an iconOnly Button is (34 px, 2rem and its border, for a
-                mouse; 44 px on a touch screen), so a wrapped row's buttons stand in the view row's
-                columns. "300%" fits in 12 px type in the narrow cell. */}
-            <span className="shrink-0 w-[calc(2rem+2px)] pointer-coarse:w-11 text-xs pointer-coarse:text-sm text-ink-secondary tabular-nums text-center">
-              {Math.round(mapControls.zoom * 100)}%
-            </span>
-            {zoomInButton}
-
-            {/* Reset View — fit and center the map in the canvas */}
-            <Button
-              onClick={mapControlActions.fit}
-              variant="secondary" iconOnly
-              title="Fit to Screen"
-              aria-label="Fit to Screen"
-            >
-              <Maximize2 className="w-4 h-4" />
-            </Button>
-
-            {/* Toggle Grid */}
-            <Button
-              onClick={mapControlActions.toggleGrid}
-              variant="secondary" iconOnly className={showGrid ? 'bg-moss-green/20' : undefined}
-              title="Toggle Grid"
-              aria-label="Toggle Grid"
-              data-tour="grid"
-            >
-              <Grid3x3 className="w-4 h-4" />
-            </Button>
-
-            {/* Grid Color Toggle (only show if grid is enabled) */}
-            {showGrid && (
-              <Button
-                onClick={mapControlActions.nextGridColor}
-                variant="secondary" iconOnly
-                title={gridColorName}
-                aria-label={gridColorName}
-              >
-                <Palette className="w-4 h-4" />
-              </Button>
-            )}
-          </div>
-
-          {/* The tools: the map's, then the GM's spirit tokens */}
-          {(currentMap || userRole === 'GM') && (
-          <div className="flex items-center gap-2">
-          {/* Toggle Ruler */}
-          {currentMap && (
-            <>
-              {/* While Paint is on, its button alone: it takes the map. */}
-              {!paint.on && (<>
-              <Button
-                onClick={mapControlActions.toggleRuler}
-                variant="secondary" iconOnly className={showRuler ? 'bg-moss-green/20' : undefined}
-                title="Ruler — measure distance"
-                aria-label="Ruler — measure distance"
-              >
-                <Ruler className={`w-4 h-4 ${showRuler ? 'text-brand-ink' : ''}`} />
-              </Button>
-              {showRuler && (
-                <Button
-                  onClick={mapControlActions.nextRulerColor}
-                  variant="secondary" iconOnly
-                  title={rulerColorName}
-                  aria-label={rulerColorName}
-                >
-                  <Palette className={`w-4 h-4 ${rulerColor === 'purple' ? 'text-spirit-ink' : rulerColor === 'black' ? 'text-stone-gray' : 'text-accent-ink'}`} />
-                </Button>
-              )}
-
-              {/* Toggle AoE tool */}
-              <Button
-                onClick={mapControlActions.toggleAoE}
-                variant="secondary" iconOnly className={showAoE ? 'bg-moss-green/20' : undefined}
-                title="AoE Shape — area of effect overlay"
-                aria-label="AoE Shape — area of effect overlay"
-                data-tour="aoe"
-              >
-                <Zap className={`w-4 h-4 ${showAoE ? 'text-brand-ink' : ''}`} />
-              </Button>
-
-              {pingButton}
-              {drawButton}
-              </>)}
-              {paintButton}
-            </>
-          )}
-
-          {/* GM-only, on a map whose tokens snap: the GM's moves stop between squares, as with Alt held */}
-          {placeFreelyOffered && !paint.on && (
-              <Button
-                onClick={mapControlActions.togglePlaceFreely}
-                variant="secondary" iconOnly className={placeFreely ? 'bg-moss-green/20' : undefined}
-                title={placeFreelyLabel}
-                aria-label="Place tokens freely"
-                aria-pressed={placeFreely}
-              >
-                <Move className={`w-4 h-4 ${placeFreely ? 'text-brand-ink' : ''}`} />
-              </Button>
-          )}
-
-          {/* GM-only: toggle spirit layer token visibility */}
-          {userRole === 'GM' && (
-              <Button
-                onClick={mapControlActions.toggleSpiritTokens}
-                variant="secondary" iconOnly className={gmShowSpiritTokens ? 'bg-spirit-purple/15' : undefined}
-                title={spiritTokensLabel}
-                aria-label={spiritTokensLabel}
-              >
-                <Ghost className={`w-4 h-4 ${gmShowSpiritTokens ? 'text-spirit-ink' : 'text-stone-gray'}`} />
-              </Button>
-          )}
-          </div>
-          )}
-        </div>
-        )}
+        ) : null}
 
         {/* Spirit Realm indicator — shown to players when in spirit realm (global or personal) */}
         {viewerInSpiritRealm && (
           // An opaque backing under the tint, as the zoom panel has, so the
           // words read over any map.
-          <div className="ml-auto mr-4 z-10 rounded-cozy bg-parchment animate-pulse-soft pointer-events-auto">
+          // On the wide layout at the map's top left, clear of the rail.
+          <div className={`${compact ? 'ml-auto mr-4 ' : ''}z-10 rounded-cozy bg-parchment animate-pulse-soft pointer-events-auto`}>
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-cozy bg-spirit-purple/20 border border-spirit-purple/40">
               <Ghost className="w-3.5 h-3.5 text-spirit-ink" />
               <span className="text-xs font-semibold text-spirit-ink">Spirit Realm</span>
@@ -5016,6 +5024,23 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
           </div>
         )}
       </div>
+
+      {/* The wide layout's rail on the map's right edge, and the map's own
+          rows in the top bar: As player ▾ and ⋯'s Mapmaker. */}
+      {!compact && (
+        <MapRail
+          view={railView}
+          tools={railTools}
+          gm={railGm}
+          twoColumns={railTwoCol}
+          hint={railHint.shown ? <RailHint onDismiss={railHint.dismiss} /> : undefined}
+        />
+      )}
+      {!compact && asPlayerSlot && previewOffered && createPortal(asPlayerMenu, asPlayerSlot)}
+      {!compact && mapmakerSlot && paintOffered && createPortal(
+        <MenuRow icon={Paintbrush} label="Mapmaker" pressed={paint.on} title="Mapmaker: draw on the map's picture, on your screen until it is saved" onSelect={togglePaint} />,
+        mapmakerSlot,
+      )}
 
       {/* Map controls, on the compact layout: what the toolbar's one row
           leaves out, as an action sheet. */}
@@ -5059,11 +5084,14 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
           label={userRole === 'GM' ? 'GM tools' : 'Tools'}
           // On the compact layout it hides behind Tools, in Map controls,
           // and a drag keeps it under the band, where Map controls is.
-          hidden={compact && !stackShown}
-          onHide={compact ? () => {
+          // On the wide layout the GM tools cell shows it, and Draw and Mapmaker
+          // show their own panels in it; it sits left of the rail.
+          hidden={compact ? !stackShown : !(stackShown || drawPanel || paint.on)}
+          onHide={compact || stackShown ? () => {
             hideTools();
-            mapControlsButtonRef.current?.focus({ preventScroll: true });
+            (compact ? mapControlsButtonRef : gmToolsButtonRef).current?.focus({ preventScroll: true });
           } : undefined}
+          corner={compact ? undefined : { top: BAND_GAP, right: BAND_GAP + railPx + BAND_GAP }}
           topLimit={compact ? underToolbar ?? 0 : undefined}
           // Above the dock, Preview and the details card in it, however tall.
           roomBelow={compact && dockHeight !== null ? dockHeight + BAND_GAP : undefined}
@@ -5088,7 +5116,9 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
           )}
           {drawPanel && !compact && <DrawControls {...drawPanel} />}
           {/* On a phone the stack is put away while Paint is on, so the map keeps room to paint on. */}
-          {userRole === 'GM' && !(compact && paint.on) && (<>
+          {userRole === 'GM' && !(compact && paint.on) && (
+          // On the wide layout only while the GM tools cell is on (or a tool armed).
+          <div hidden={!compact && !stackShown || undefined} className="flex flex-col gap-1.5 *:shrink-0">
           <GmFogControls
             fogMode={fogMode}
             fogShape={fogShape}
@@ -5209,7 +5239,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
             placementDefaults={lightPlacementDefaults}
             onDefaultsChange={setLightPlacementDefaults}
           />
-          </>)}
+          </div>)}
         </GmToolPanelContainer>
       )}
 
@@ -5292,17 +5322,13 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
          on, and kept while a preview is on, so turning both off mid-preview
          still leaves the way back to the GM's view. On the compact layout
          it is in the dock at the foot of the map, over the details card. */}
-      {previewOffered && !compact && (
-        <div className="absolute bottom-20 right-2 z-30 flex items-center gap-1">
-          {playerPreviewControls}
-        </div>
-      )}
+      {/* On the wide layout Player Preview is As player ▾ in the top bar (asPlayerMenu). */}
 
       {/* Why a lit map is dark for a player with no token on it, and the
           ruler's hint for one with no token, stacked up from the foot. In
           Player Preview they sit above Preview's controls (bottom-20). */}
       {(noTokenNote || rulerNeedsToken) && !compact && (
-        <div className={`absolute ${previewing ? 'bottom-32' : 'bottom-16'} left-1/2 -translate-x-1/2 w-max max-w-[calc(100%-2rem)] flex flex-col items-center gap-2 pointer-events-none`}>
+        <div className={`absolute bottom-19 left-1/2 -translate-x-1/2 w-max max-w-[calc(100%-2rem)] flex flex-col items-center gap-2 pointer-events-none`}>
           {noTokenNote && <div className={MAP_NOTE}>{noTokenNote}</div>}
           {rulerNeedsToken && <div className={MAP_NOTE}>{RULER_NEEDS_TOKEN}</div>}
         </div>
@@ -5558,7 +5584,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
       {/* Hover Coordinates, unless the selection's details sit there, and
           how far a held token has come */}
       {cornerPanelShown && !compact && (
-        <div className="absolute bottom-4 left-4 glass-panel px-3 py-1.5 bg-parchment/90 backdrop-blur-xs flex items-baseline gap-3">
+        <div className="absolute bottom-2 left-2 glass-panel px-3 py-1.5 bg-parchment/90 backdrop-blur-xs flex items-baseline gap-3">
           {cornerPanelText}
         </div>
       )}

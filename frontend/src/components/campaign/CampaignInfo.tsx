@@ -19,10 +19,41 @@ interface CampaignInfoProps {
   onLeft: (revoked: AccessRevoked) => void;
 }
 
-export default function CampaignInfo({ onLeft }: CampaignInfoProps) {
-  const { campaign, userRole } = useCampaign();
+/**
+ * The GM's Invite Player button and its dialog: in this card, and at the top
+ * of the wide layout's Party tab.
+ */
+export function InvitePlayerButton() {
+  const { campaign } = useCampaign();
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteKey, setInviteKey] = useState(0);
+  return (
+    <>
+      <button
+        onClick={() => { setInviteKey((k) => k + 1); setShowInviteModal(true); }}
+        className="touch-target flex items-center gap-2 px-3 py-2 w-full rounded-lg bg-moss-green/10 text-brand-ink hover:bg-moss-green/15 transition-colors text-sm font-medium"
+      >
+        <UserPlus className="w-4 h-4" />
+        Invite Player
+      </button>
+      {/* Mounted from its first opening on, so it fades out on close. */}
+      {campaign && inviteKey > 0 && (
+        <InvitePlayerModal
+          key={inviteKey}
+          open={showInviteModal}
+          campaignId={campaign.id}
+          onClose={() => setShowInviteModal(false)}
+          // The invite dialog says it was sent. Nothing on the campaign
+          // changes until it is accepted, which the roster hears about.
+          onSuccess={() => setShowInviteModal(false)}
+        />
+      )}
+    </>
+  );
+}
+
+export default function CampaignInfo({ onLeft }: CampaignInfoProps) {
+  const { campaign, userRole } = useCampaign();
 
   if (!campaign) {
     return (
@@ -146,13 +177,7 @@ export default function CampaignInfo({ onLeft }: CampaignInfoProps) {
       {/* GM Actions - Invite Player Button */}
       {userRole === 'GM' && (
         <div className="pt-2 border-t border-moss-green/20">
-          <button
-            onClick={() => { setInviteKey((k) => k + 1); setShowInviteModal(true); }}
-            className="touch-target flex items-center gap-2 px-3 py-2 w-full rounded-lg bg-moss-green/10 text-brand-ink hover:bg-moss-green/15 transition-colors text-sm font-medium"
-          >
-            <UserPlus className="w-4 h-4" />
-            Invite Player
-          </button>
+          <InvitePlayerButton />
         </div>
       )}
 
@@ -180,19 +205,6 @@ export default function CampaignInfo({ onLeft }: CampaignInfoProps) {
         <AboutButton />
       </div>
 
-      {/* Invite Player Modal */}
-      {/* Mounted from its first opening on, so it fades out on close. */}
-      {campaign && inviteKey > 0 && (
-        <InvitePlayerModal
-          key={inviteKey}
-          open={showInviteModal}
-          campaignId={campaign.id}
-          onClose={() => setShowInviteModal(false)}
-          // The invite dialog says it was sent. Nothing on the campaign
-          // changes until it is accepted, which the roster hears about.
-          onSuccess={() => setShowInviteModal(false)}
-        />
-      )}
     </div>
   );
 }

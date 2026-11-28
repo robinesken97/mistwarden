@@ -34,3 +34,10 @@ export const SHORT_SCREEN_QUERY = '(max-height: 499.98px)';
  * for the buttons beside the campaign's name, so it keeps the bar at its foot.
  */
 export const SIDEWAYS_QUERY = `${SHORT_SCREEN_QUERY} and (orientation: landscape)`;
+
+/**
+ * From 1,280 CSS pixels wide (Tailwind's `xl`, 80rem) the wide layout's
+ * panel beside the tab column opens by default and is 384 px wide; below it
+ * the panel starts folded and is 320 px wide (DesktopTable.tsx).
+ */
+export const WIDE_PANEL_OPEN_QUERY = '(width >= 80rem)';

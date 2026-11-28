@@ -31,6 +31,8 @@ import { DISPLAY_NAME_MAX_LENGTH } from '@/constants/accountLimits';
 import { useOnlineUserIds } from '@/stores/gameStore';
 import { whisperTargets, readSlashWhisper, isSlashWhisper, slashWhisperRefusal, byLabel } from '@/utils/chatWhisper';
 import { CAMPAIGN_ROLE_LABEL } from '@/utils/campaignRoles';
+import { createPortal } from 'react-dom';
+import { useTableChrome } from '@/stores/tableChromeStore';
 
 /** Messages per page. The server caps this at MAX_CHAT_HISTORY_PAGE (constants/chatLimits.ts). */
 const PAGE_SIZE = 50;
@@ -137,6 +139,9 @@ export default function ChatPanel() {
   // messages sit closer together, each a denser row (ChatMessage). The log
   // gets the room.
   const compact = useCompactLayout();
+  // On the wide layout the panel's header names the chat and takes its count and eraser.
+  const panelHeader = useTableChrome((st) => st.panelHeader);
+  const wideHeader = !compact && panelHeader?.tab === 'chat' ? panelHeader.el : null;
   const onlineUserIds = useOnlineUserIds();
 
   // Everyone in the campaign, by user id, with the name the chat shows for
@@ -895,8 +900,11 @@ export default function ChatPanel() {
           chat, the panel's heading is read out only, and the count and the
           GM's eraser go at the top of the log beside Load More, where they
           scroll away with the history. */}
-      {compact ? (
-        <h3 className="sr-only">Chat</h3>
+      {compact || wideHeader ? (
+        <>
+          <h3 className="sr-only">Chat</h3>
+          {wideHeader && createPortal(<>{shownCount}{clearJoinsButton}</>, wideHeader)}
+        </>
       ) : (
       <div className="flex items-center gap-2 border-b border-moss-green/20 p-4">
         <MessageCircle className="w-5 h-5 text-brand-ink" />

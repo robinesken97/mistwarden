@@ -11,6 +11,9 @@ import Modal from '@/components/ui/Modal';
 import api from '@/services/api';
 import { apiErrorMessage } from '@/utils/errors';
 
+/** The window event the wide layout's AI button sends; the Notes panel, which saves what is written, opens the dialog on it. */
+export const AI_WRITE_EVENT = 'mistwarden:ai-write';
+
 export type AiKind = 'npc' | 'read-aloud' | 'note';
 
 const KINDS: Array<{ value: AiKind; label: string; title: string; hint: string }> = [

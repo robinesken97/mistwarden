@@ -24,7 +24,7 @@ import { useCampaign } from '@/contexts/CampaignContext';
 import api from '@/services/api';
 import { apiErrorMessage } from '@/utils/errors';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
-import AiWriteDialog from './AiWriteDialog';
+import AiWriteDialog, { AI_WRITE_EVENT } from './AiWriteDialog';
 import { useServerConfigQuery } from '@/hooks/queries';
 import type { PersonalNoteSummary } from '@/types';
 import '@/styles/note-markdown.css';
@@ -61,6 +61,13 @@ export default function PersonalNotes() {
   const { data: serverConfig } = useServerConfigQuery();
   const aiAvailable = userRole === 'GM' && serverConfig?.ai?.enabled === true;
   const [aiOpen, setAiOpen] = useState(false);
+  // The top bar's AI button (DesktopTable.tsx) opens the same dialog.
+  useEffect(() => {
+    if (!aiAvailable) return;
+    const open = () => setAiOpen(true);
+    window.addEventListener(AI_WRITE_EVENT, open);
+    return () => window.removeEventListener(AI_WRITE_EVENT, open);
+  }, [aiAvailable]);
 
   const [notes, setNotes] = useState<PersonalNoteSummary[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);

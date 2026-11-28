@@ -23,7 +23,7 @@ import { placeholderColor } from './map/layers/drawTokens';
 
 interface TokenDetailsCardProps {
   token: Token;
-  /** The square named beside the token's name. */
+  /** The square named under the token's name, in the compact layout's dock. */
   square: Position;
   /**
    * The hit points this viewer may see, as `visibleTokenHp` decides: a
@@ -48,15 +48,14 @@ interface TokenDetailsCardProps {
    */
   docked?: boolean;
   /**
-   * Shown just above the card, and taking no presses: how far a held token
-   * has come (MapCanvas). In the dock it stands before the card in the
-   * dock's column; in the corner, over the card's top edge.
+   * How far a held token has come (MapCanvas), taking no presses: in the
+   * dock it stands before the card; in the corner it is part of the card's
+   * line under the name (Carried, only once the token has moved).
    */
   above?: ReactNode;
 }
 
-/** The card's box in the map's bottom left corner, and in the compact layout's dock. */
-const CORNER_BOX = 'absolute bottom-4 left-4 glass-panel px-4 py-3 bg-parchment/95 backdrop-blur-xs w-88 max-w-[calc(100%-2rem)] shadow-lg';
+/** The card's box in the compact layout's dock. */
 const DOCKED_BOX = 'relative glass-panel px-4 py-3 bg-parchment/95 backdrop-blur-xs w-full sm:w-88 shadow-lg';
 
 /** One labelled row: the label, then its value right after it. */
@@ -79,33 +78,82 @@ export default function TokenDetailsCard({ token, square, hp, imageSrc, mayMove,
   const inTurnOrder = initiative !== undefined;
   const conditions = token.conditions ?? [];
 
+  const symbol = (size: string) => imageSrc ? (
+    <img
+      src={imageSrc}
+      alt=""
+      className={`${size} rounded-cozy object-cover border-2 border-warm-amber/50 shrink-0`}
+    />
+  ) : !(token.obscured && !token.name) ? (
+    <TokenSymbol icon={tokenIcon(token, classIcons)} type={token.type} disposition={token.disposition} className={size} />
+  ) : (
+    <div
+      className={`${size} rounded-cozy border-2 border-warm-amber/50 shrink-0 flex items-center justify-center text-2xl font-semibold text-white`}
+      style={{ backgroundColor: placeholderColor(token) }}
+      aria-hidden="true"
+    >
+      {(token.name || '?').charAt(0).toUpperCase()}
+    </div>
+  );
+
+  // The wide layout: one row at the map's bottom left, as wide as it needs:
+  // the symbol, the name over its hit points (and initiative, conditions,
+  // Carried while a held token has moved), and Close.
+  if (!docked) {
+    return (
+      <div className={`absolute bottom-2 left-2 z-20 flex w-max max-w-[calc(100%-1rem)] items-center gap-3 py-2 pl-2 pr-1 rounded-xl border border-ink/15 bg-surface/90 shadow-lg backdrop-blur-xs${onClose ? ' pointer-events-none' : ''}`}>
+        {symbol('w-11 h-11')}
+        <div className="min-w-0">
+          <div className="truncate text-base leading-5 font-semibold text-brand-ink">{tokenDisplayName(token)}</div>
+          <div className="flex flex-wrap items-baseline gap-x-3 text-[0.8125rem] leading-5 text-ink-muted">
+            {hp && (
+              <span className="whitespace-nowrap">
+                HP <b className="text-[0.9375rem] font-semibold text-ink tabular-nums">{hp.current} / {hp.max}</b>
+                {hp.temp > 0 && <span className="text-info-ink"> +{hp.temp}</span>}
+              </span>
+            )}
+            {inTurnOrder && (
+              <span className="whitespace-nowrap">
+                Initiative <b className="text-[0.9375rem] font-semibold text-ink tabular-nums">{initiative === null ? '—' : initiative}</b>
+              </span>
+            )}
+            {above}
+            {!mayMove && <span className="italic">Not yours to move</span>}
+          </div>
+          {conditions.length > 0 && (
+            <div className="mt-1 flex flex-wrap gap-1" aria-label="Conditions">
+              {conditions.map((condition) => (
+                <span key={condition} className="px-1.5 py-0.5 rounded-cozy bg-warm-amber/20 border border-warm-amber/40 text-xs font-medium text-brand-ink capitalize">
+                  {condition}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close details"
+            title="Close details"
+            className="pointer-events-auto inline-flex size-10 pointer-coarse:size-11 shrink-0 items-center justify-center rounded-xl text-ink-muted hover:text-brand-ink hover:bg-ink/5 focus-visible:outline-2 focus-visible:outline-brand"
+          >
+            <X className="w-4 h-4" aria-hidden="true" />
+          </button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <>
-      {above && docked && <div className="self-start">{above}</div>}
-      <div className={`${docked ? DOCKED_BOX : CORNER_BOX}${onClose ? ' pointer-events-none' : ''}`}>
-        {above && !docked && <div className="absolute bottom-full left-0 mb-2 pointer-events-none">{above}</div>}
+      {above && <div className="self-start">{above}</div>}
+      <div className={`${DOCKED_BOX}${onClose ? ' pointer-events-none' : ''}`}>
         <div className="flex items-start gap-3.5">
           {/* Large enough to actually recognise the art. On the map a token
               is often only a few dozen pixels at play zoom, which is what
               made "token images are hard to see" a real complaint. */}
-          {imageSrc ? (
-            <img
-              src={imageSrc}
-              alt=""
-              className="w-18 h-18 rounded-cozy object-cover border-2 border-warm-amber/50 shrink-0"
-            />
-          ) : !(token.obscured && !token.name) ? (
-            // Mistwarden, 2026-11-27: the symbol the map draws; a masked token keeps its question mark.
-            <TokenSymbol icon={tokenIcon(token, classIcons)} type={token.type} disposition={token.disposition} className="w-18 h-18" />
-          ) : (
-            <div
-              className="w-18 h-18 rounded-cozy border-2 border-warm-amber/50 shrink-0 flex items-center justify-center text-2xl font-semibold text-white"
-              style={{ backgroundColor: placeholderColor(token) }}
-              aria-hidden="true"
-            >
-              {(token.name || '?').charAt(0).toUpperCase()}
-            </div>
-          )}
+          {symbol('w-18 h-18')}
 
           <div className="min-w-0 flex-1">
             {/* The square under the name, so it does not stand apart in the row. */}

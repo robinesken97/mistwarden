@@ -1,4 +1,4 @@
-import { MessageCircle, Dices, ListOrdered, PlayCircle, NotebookPen, Images, type LucideIcon } from 'lucide-react';
+import { MessageCircle, Dices, ListOrdered, PlayCircle, NotebookPen, Images, Users, type LucideIcon } from 'lucide-react';
 
 /**
  * The session panels (`SessionPanels.tsx`), in the order their tabs show
@@ -23,6 +23,21 @@ export const SESSION_TAB_LOOKS: Record<SessionTab, { label: string; icon: Lucide
   // Mistwarden, 2026-11-27: pictures the GM shows to players.
   gallery: { label: 'Gallery', icon: Images },
   session: { label: 'Session', icon: PlayCircle },
+};
+
+/**
+ * The wide layout's tab column (DesktopTable.tsx), top to bottom: the session
+ * panels with Party, today's left column, after Initiative. Session is named
+ * Table there; the compact layout keeps its own bar and names (B2 moves it).
+ */
+export const WIDE_TABS = ['chat', 'dice', 'initiative', 'party', 'notes', 'gallery', 'session'] as const;
+
+export type WideTab = (typeof WIDE_TABS)[number];
+
+export const WIDE_TAB_LOOKS: Record<WideTab, { label: string; icon: LucideIcon }> = {
+  ...SESSION_TAB_LOOKS,
+  party: { label: 'Party', icon: Users },
+  session: { label: 'Table', icon: PlayCircle },
 };
 
 /**
