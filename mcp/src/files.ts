@@ -1,16 +1,13 @@
 // Added for Mistwarden on 2026-11-28.
-// Listing, searching and reading the files under MISTWARDEN_MCP_FILE_ROOT:
-// each entry by its real path, hidden files and folders skipped, text read
-// from text files only, every answer bounded.
+// Listing, searching and reading the text files under MISTWARDEN_MCP_FILE_ROOT:
+// each entry by its real path, hidden files and folders skipped, every
+// answer bounded.
 
 import { readdir, readFile, realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { GuardError, resolveInRoot } from './guards.ts';
 
 export const TEXT_EXTENSIONS = ['.md', '.txt', '.json', '.csv'];
-/** The files the other tools take (pictures, map files): listed and found by name, never read as text here. */
-export const PICTURE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp'];
-export const MAP_FILE_EXTENSIONS = ['.uvtt', '.dd2vtt', '.df2vtt'];
 
 export const FILE_LIMITS = {
   listEntries: 500,
@@ -24,16 +21,9 @@ export const FILE_LIMITS = {
   snippet: 160,
 };
 
-export type FileKind = 'text' | 'picture' | 'map file';
-export interface FileEntry { path: string; bytes: number; kind: FileKind }
+export interface FileEntry { path: string; bytes: number }
 
-const kindOf = (file: string): FileKind | null => {
-  const ext = path.extname(file).toLowerCase();
-  if (TEXT_EXTENSIONS.includes(ext)) return 'text';
-  if (PICTURE_EXTENSIONS.includes(ext)) return 'picture';
-  if (MAP_FILE_EXTENSIONS.includes(ext)) return 'map file';
-  return null;
-};
+const isText = (file: string) => TEXT_EXTENSIONS.includes(path.extname(file).toLowerCase());
 
 async function rootOf(fileRoot: string | null): Promise<string> {
   if (!fileRoot) {
@@ -50,7 +40,7 @@ function inside(root: string, real: string): string | null {
   return relative;
 }
 
-/** The files below a folder of the root, breadth first, up to `maxEntries`. */
+/** The text files below a folder of the root, breadth first, up to `maxEntries`. */
 export async function walkFiles(fileRoot: string | null, folder = '.', maxEntries = FILE_LIMITS.listEntries): Promise<{ files: FileEntry[]; truncated: boolean }> {
   const root = await rootOf(fileRoot);
   let start: string;
@@ -80,10 +70,9 @@ export async function walkFiles(fileRoot: string | null, folder = '.', maxEntrie
           seen.add(real);
           continue;
         }
-        const kind = info?.isFile() ? kindOf(real) : null;
-        if (!info || !kind) continue;
+        if (!info?.isFile() || !isText(real)) continue;
         if (files.length >= maxEntries) return { files, truncated: true };
-        files.push({ path: relative, bytes: info.size, kind });
+        files.push({ path: relative, bytes: info.size });
       }
     }
     level = next;
@@ -91,9 +80,9 @@ export async function walkFiles(fileRoot: string | null, folder = '.', maxEntrie
   return { files, truncated: false };
 }
 
-export interface SearchHit { path: string; kind: FileKind; nameMatches: boolean; lines: Array<{ line: number; text: string }> }
+export interface SearchHit { path: string; nameMatches: boolean; lines: Array<{ line: number; text: string }> }
 
-/** Files whose path contains `query`, and text files with lines that do (any letter case). */
+/** Text files whose path or lines contain `query` (any letter case). */
 export async function searchFiles(fileRoot: string | null, query: string, folder = '.'): Promise<{ hits: SearchHit[]; truncated: boolean }> {
   const needle = query.toLocaleLowerCase();
   if (needle.trim().length < 2) throw new GuardError('Search for at least 2 characters.');
@@ -103,7 +92,7 @@ export async function searchFiles(fileRoot: string | null, query: string, folder
   for (const file of files) {
     const nameMatches = file.path.toLocaleLowerCase().includes(needle);
     const lines: SearchHit['lines'] = [];
-    if (file.kind === 'text' && file.bytes <= FILE_LIMITS.grepBytes) {
+    if (file.bytes <= FILE_LIMITS.grepBytes) {
       const content = await readFile(path.join(root, file.path), 'utf8');
       const all = content.split(/\r?\n/);
       for (let i = 0; i < all.length && lines.length < FILE_LIMITS.matchesPerFile; i++) {
@@ -115,7 +104,7 @@ export async function searchFiles(fileRoot: string | null, query: string, folder
     }
     if (!nameMatches && lines.length === 0) continue;
     if (hits.length >= FILE_LIMITS.searchHits) return { hits, truncated: true };
-    hits.push({ path: file.path, kind: file.kind, nameMatches, lines });
+    hits.push({ path: file.path, nameMatches, lines });
   }
   return { hits, truncated: tooMany };
 }
@@ -126,7 +115,7 @@ export async function readTextFile(fileRoot: string | null, requested: string, o
   const real = await resolveInRoot(fileRoot, requested);
   const relative = inside(root, real);
   if (relative === null) throw new GuardError(`Refused: ${requested} is hidden (a name starting with a dot).`);
-  if (kindOf(real) !== 'text') throw new GuardError(`Refused: only text files are read (${TEXT_EXTENSIONS.join(', ')}).`);
+  if (!isText(real)) throw new GuardError(`Refused: only text files are read (${TEXT_EXTENSIONS.join(', ')}).`);
   const { size } = await stat(real);
   if (size > FILE_LIMITS.readBytes) throw new GuardError(`Refused: ${requested} is ${size} bytes, over the ${FILE_LIMITS.readBytes} read here.`);
   const content = await readFile(real, 'utf8');

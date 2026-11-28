@@ -54,12 +54,7 @@ export interface Context {
 
 // ---- Helpers ----------------------------------------------------------------
 
-const MAX_OUTPUT_CHARS = 100_000;
-const text = (value: unknown) => {
-  let out = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
-  if (out.length > MAX_OUTPUT_CHARS) out = `${out.slice(0, MAX_OUTPUT_CHARS)}\n... (answer cut at ${MAX_OUTPUT_CHARS} characters: ask for less, with a filter or a limit)`;
-  return { content: [{ type: 'text' as const, text: out }] };
-};
+const text = (value: unknown) => ({ content: [{ type: 'text' as const, text: typeof value === 'string' ? value : JSON.stringify(value, null, 2) }] });
 
 /** Runs a tool body; a refusal or a server error comes back as the tool's error text instead of a crash. */
 function handler<A>(fn: (args: A) => Promise<unknown>) {
@@ -380,7 +375,7 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
     return asset.id;
   };
 
-  tool('add_token', `Add a token to a map. Hidden from players by default (visible: false). ${COORDS} Size is in squares (1 = medium, 2 = large, 3 = huge). Not on the map players currently see unless MISTWARDEN_MCP_PLAYER_VISIBLE=1.`, {
+  tool('add_token', `Add a token to a map. Hidden from players by default (visible: false). ${COORDS} Size is in squares (1 = medium, 2 = large, 3 = huge). Not on the map players currently see unless MISTWARDEN_MCP_COGM=1 or MISTWARDEN_MCP_PLAYER_VISIBLE=1.`, {
     campaignId: campaignIdArg, mapId: mapIdArg,
     name: z.string().min(1).max(200),
     ...tokenPosition,
@@ -1066,11 +1061,11 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
 
   // ---- Local files ----
 
-  tool('list_files', 'List the files under MISTWARDEN_MCP_FILE_ROOT (or a folder in it): text files (.md, .txt, .json, .csv), pictures and map files, with sizes. Hidden files and folders are skipped; up to 500 entries.', {
+  tool('list_files', 'List the text files (.md, .txt, .json, .csv) under MISTWARDEN_MCP_FILE_ROOT (or a folder in it), with sizes. Hidden files and folders are skipped; up to 500 entries.', {
     folder: z.string().max(500).optional().describe('A folder relative to the root; default the root.'),
   }, async ({ folder }) => walkFiles(ctx.settings.fileRoot, folder), true);
 
-  tool('search_files', 'Find files under MISTWARDEN_MCP_FILE_ROOT whose path contains the query, and lines of text files that do (any letter case): up to 50 files, 3 lines each.', {
+  tool('search_files', 'Find text files under MISTWARDEN_MCP_FILE_ROOT whose path or lines contain the query (any letter case): up to 50 files, 3 lines each.', {
     query: z.string().min(2).max(200), folder: z.string().max(500).optional(),
   }, async ({ query, folder }) => searchFiles(ctx.settings.fileRoot, query, folder), true);
 

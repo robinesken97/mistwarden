@@ -144,8 +144,8 @@ Every delete also needs a recent backup (below), whatever the switches.
   unshown, notes private to their author, secret rolls the GM's alone.
 - **Files from one folder.** Only files below `MISTWARDEN_MCP_FILE_ROOT` can
   be read. `list_files`, `search_files` and `read_file` check each entry by
-  its real path, skip hidden files and folders (and links into them), read
-  text only from `.md`, `.txt`, `.json` and `.csv` files, and bound what they
+  its real path, skip hidden files and folders (and links into them), see
+  only `.md`, `.txt`, `.json` and `.csv` files, and bound what they
   answer: 500 entries, 50 search hits of 3 lines each, 100,000 characters per
   read (page on with `nextOffset`).
 - **Instance data.** `import_creatures_markdown` and `import_spells_markdown`

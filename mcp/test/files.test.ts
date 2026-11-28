@@ -26,18 +26,14 @@ beforeEach(async () => {
 });
 
 describe('list_files', () => {
-  it('lists text files, pictures and map files, skipping hidden ones and links leading out or into hidden folders', async () => {
+  it('lists text files only, skipping hidden ones and links leading out or into hidden folders', async () => {
     const { files, truncated } = await walkFiles(root);
     expect(truncated).toBe(false);
-    expect(files.map((f) => [f.path, f.kind])).toEqual([
-      [path.join('maps', 'crypt.png'), 'picture'],
-      [path.join('notes', 'npcs.txt'), 'text'],
-      [path.join('notes', 'chapter-1', 'crypt.md'), 'text'],
-    ]);
+    expect(files.map((f) => f.path)).toEqual([path.join('notes', 'npcs.txt'), path.join('notes', 'chapter-1', 'crypt.md')]);
   });
 
   it('caps the entries, and refuses folders outside, hidden or missing', async () => {
-    expect(await walkFiles(root, '.', 1)).toMatchObject({ truncated: true, files: [{ path: path.join('maps', 'crypt.png') }] });
+    expect(await walkFiles(root, '.', 1)).toMatchObject({ truncated: true, files: [{ path: path.join('notes', 'npcs.txt') }] });
     await expect(walkFiles(root, '..')).rejects.toThrow(/outside/);
     await expect(walkFiles(root, '.git')).rejects.toThrow(/hidden/);
     await expect(walkFiles(root, 'nope')).rejects.toThrow(/No such folder/);
@@ -48,11 +44,8 @@ describe('list_files', () => {
 describe('search_files', () => {
   it('finds names and lines, never in hidden files or outside the root', async () => {
     const { hits } = await searchFiles(root, 'IRON');
-    expect(hits).toEqual([{ path: path.join('notes', 'chapter-1', 'crypt.md'), kind: 'text', nameMatches: false, lines: [{ line: 3, text: 'The iron door is locked.' }] }]);
-    expect((await searchFiles(root, 'crypt')).hits.map((h) => [h.path, h.nameMatches])).toEqual([
-      [path.join('maps', 'crypt.png'), true],
-      [path.join('notes', 'chapter-1', 'crypt.md'), true],
-    ]);
+    expect(hits).toEqual([{ path: path.join('notes', 'chapter-1', 'crypt.md'), nameMatches: false, lines: [{ line: 3, text: 'The iron door is locked.' }] }]);
+    expect((await searchFiles(root, 'crypt')).hits.map((h) => [h.path, h.nameMatches])).toEqual([[path.join('notes', 'chapter-1', 'crypt.md'), true]]);
     await expect(searchFiles(root, 'i')).rejects.toThrow(/at least 2/);
   });
 });

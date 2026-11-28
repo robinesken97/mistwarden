@@ -267,6 +267,9 @@ for (const t of PLAYER_TOOLS) assert.ok(openNames.includes(t), `${t} missing wit
 assert.equal((await open.ok('set_current_map', { campaignId, mapId })).currentMapId, mapId);
 await open.ok('add_token', { campaignId, mapId, name: 'Late arrival', x: 2, y: 2 });
 await open.ok('show_gallery_picture', { campaignId, pictureId: picture.pictureId, toAll: true });
+const regridded = await open.ok('update_map_settings', { campaignId, mapId, gridOffsetX: 10, gridType: 'square' });
+assert.deepEqual([regridded.gridOffsetX, regridded.gridType], [10, 'square']);
+await open.ok('update_map_settings', { campaignId, mapId, gridOffsetX: 0 });
 const shownPics = await rest<{ pictures: Array<{ id: string; shownToAll: boolean }> }>('GET', `/api/campaigns/${campaignId}/gallery`);
 assert.equal(shownPics.pictures.find((p) => p.id === picture.pictureId)?.shownToAll, true);
 const shared = await open.ok('share_document', { campaignId, name: 'Mistvale handout', markdown: '# Mistvale\n\nA village in the fog.' });
@@ -330,7 +333,8 @@ for (const t of PLAYER_TOOLS) assert.ok(!cogmNames.includes(t), `${t} is registe
 
 step('local files: list, search, read; hidden ones skipped');
 const listedFiles = await cogm.ok('list_files', {});
-assert.ok(listedFiles.files.some((f: { path: string }) => f.path === 'mistvale-crypt.png'));
+assert.ok(listedFiles.files.some((f: { path: string }) => f.path === path.join('notes', 'chapter-2.md')));
+assert.ok(!listedFiles.files.some((f: { path: string }) => f.path === 'mistvale-crypt.png'), 'a picture was listed');
 assert.ok(!listedFiles.files.some((f: { path: string }) => f.path.includes('.drafts')), 'a hidden file was listed');
 const found = await cogm.ok('search_files', { query: 'iron door' });
 assert.deepEqual(found.hits.map((h: { path: string }) => h.path), [path.join('notes', 'chapter-2.md')]);
@@ -354,6 +358,10 @@ assert.equal((await cogm.ok('get_creature', { campaignId, creatureId: creatures.
 const drake = await cogm.ok('place_creature', { campaignId, mapId, creatureId: creatures.creatures[0].id, x: 6, y: 6 });
 assert.deepEqual([drake.hp, drake.visible, drake.creatureTemplateId], [{ current: 52, max: 52, temp: 0 }, false, creatures.creatures[0].id]);
 await cogm.ok('match_token_pictures', { sourceTag: tag });
+const batch = await cogm.ok('update_tokens', { campaignId, mapId, changes: [{ tokenId: drake.id, rotation: 90 }, { tokenId: foreign.id, conditions: [] }] });
+assert.deepEqual(batch.changed.map((t: { rotation: number; conditions: string[] }) => [t.rotation, t.conditions.length]), [[90, 0], [0, 0]]);
+assert.equal((await cogm.ok('list_tokens', { campaignId, mapId, name: 'thrumwing' }))[0].hp.max, 52);
+assert.ok((await cogm.ok('get_map_summary', { campaignId, mapId })).tokens.total >= 3);
 
 step('an initiative round');
 await cogm.ok('add_to_initiative', { campaignId, mapId, tokenIds: [foreign.id] });
@@ -366,6 +374,9 @@ assert.equal((await cogm.ok('next_turn', { campaignId })).currentTokenId, drake.
 const round2 = await cogm.ok('next_turn', { campaignId });
 assert.deepEqual([round2.round, round2.currentTokenId], [2, foreign.id]);
 assert.equal((await cogm.ok('get_initiative', { campaignId })).round, 2);
+const reordered = await cogm.ok('set_initiative_order', { campaignId, tokenIds: [drake.id, foreign.id] });
+assert.deepEqual(reordered.combatants.map((c: { tokenId: string }) => c.tokenId), [drake.id, foreign.id]);
+assert.equal((await cogm.ok('remove_from_initiative', { campaignId, tokenId: foreign.id })).combatants.length, 1);
 assert.equal((await cogm.ok('end_combat', { campaignId })).active, false);
 
 step('chat, a whisper, and the secret roll kept from the player');
@@ -379,6 +390,12 @@ assert.ok(!playerRolls.rolls.some((r) => r.purpose === SECRET_PURPOSE), 'the pla
 assert.ok((await cogm.ok('get_dice_rolls', { campaignId })).rolls.some((r: { purpose: string | null }) => r.purpose === SECRET_PURPOSE));
 assert.ok((await cogm.ok('get_messages', { campaignId })).messages.length >= 2);
 
+step('time of day, weather, campaign settings, the roster');
+assert.equal((await cogm.ok('set_vibe', { campaignId, period: 'dusk' })).period, 'dusk');
+await cogm.ok('set_atmosphere', { campaignId, effect: null });
+assert.equal((await cogm.ok('update_campaign', { campaignId, description: 'Fog and lanterns.' })).description, 'Fog and lanterns.');
+assert.ok((await cogm.ok('list_characters', { campaignId })).some((m: { userId: string }) => m.userId === created.user.id));
+
 step('a spell area from the stored spell, then removed; exploration reset');
 assert.equal((await cogm.ok('import_spells_markdown', { path: 'spells.md', sourceTag: tag, dryRun: false })).counts.imported, 1);
 const area = await cogm.ok('place_spell_area', { campaignId, mapId, spellName: 'Cinder Fan', anchorX: 300, anchorY: 300, towardX: 600, towardY: 300 });
@@ -388,6 +405,11 @@ const playerAreas = await player<{ areas: Array<{ id: string }> }>('GET', `/api/
 assert.ok(playerAreas.areas.some((a) => a.id === area.areaId), 'the player does not see the area');
 await cogm.ok('remove_area', { campaignId, mapId, areaId: area.areaId });
 assert.equal((await cogm.ok('list_areas', { campaignId, mapId })).length, 0);
+const spells = await cogm.ok('list_spells', { campaignId, query: 'cinder fan' });
+assert.match((await cogm.ok('get_spell', { campaignId, spellId: spells.spells[0].id })).description, /Embers/);
+await cogm.ok('place_area', { campaignId, mapId, shape: 'sphere', sizeFt: 20, anchorX: 500, anchorY: 500, audience: 'GM' });
+await cogm.ok('clear_areas', { campaignId, mapId });
+assert.equal((await cogm.ok('list_areas', { campaignId, mapId })).length, 0);
 await cogm.ok('reset_exploration', { campaignId, mapId });
 
 step('a session, started, paused, resumed and ended');
@@ -395,7 +417,9 @@ await cogm.ok('start_session', { campaignId });
 await cogm.ok('pause_session', { campaignId });
 await cogm.ok('resume_session', { campaignId });
 await cogm.ok('end_session', { campaignId, notes: 'The drake fled.' });
-assert.equal((await cogm.ok('list_sessions', { campaignId }))[0].notes, 'The drake fled.');
+const [lastSession] = await cogm.ok('list_sessions', { campaignId });
+assert.equal(lastSession.notes, 'The drake fled.');
+assert.equal((await cogm.ok('set_session_notes', { campaignId, sessionId: lastSession.id, notes: 'The drake fled north.' })).notes, 'The drake fled north.');
 
 step('the imports deleted again by their tag');
 assert.ok((await cogm.call('delete_imported_creatures', { sourceTag: tag })).isError, 'deleted without confirm');
