@@ -37,7 +37,7 @@ import {
   PanelLeftClose, PauseCircle, Settings, Signpost, Skull, Sparkles, Stamp, Sun, Swords, Wand, type LucideIcon,
 } from 'lucide-react';
 import { useLeavePage } from '@/hooks/useLeaveGuard';
-import { useDockPanel, useWidePanel, type DockSize } from '@/hooks/useWidePanel';
+import { nearestDockSnap, useDockPanel, useWidePanel } from '@/hooks/useWidePanel';
 import type { TableLayout } from '@/constants/layout';
 import { useServerConfigQuery } from '@/hooks/queries';
 import { useCampaign } from '@/contexts/CampaignContext';
@@ -244,10 +244,9 @@ export default function DesktopTable({
     if (!d.moved) { dock.choose({ open: true, party: dock.party, size: dock.size === 'mid' ? 'tall' : 'mid' }); return; }
     const height = Math.max(0, d.height + d.y - e.clientY);
     const { mid, tall } = snapHeights();
-    const nearest = ([['folded', 0], ['mid', mid], ['tall', tall]] as const)
-      .reduce((best, snap) => (Math.abs(snap[1] - height) < Math.abs(best[1] - height) ? snap : best));
-    if (nearest[0] === 'folded') dock.choose({ open: false, party: dock.party });
-    else dock.choose({ open: true, party: dock.party, size: nearest[0] as DockSize });
+    const snap = nearestDockSnap(height, mid, tall);
+    if (snap === 'folded') dock.choose({ open: false, party: dock.party });
+    else dock.choose({ open: true, party: dock.party, size: snap });
   };
   useLayoutEffect(() => {
     const el = dockPanel.current;
@@ -339,14 +338,14 @@ export default function DesktopTable({
   const panelBody = (
     <div className="relative min-h-0 flex-1">
       {/* The session panels are the page's, moved in here (tableHosts.tsx). */}
-      <div ref={sessionSlot.ref} className={cn('absolute inset-0', phone && 'finger-controls', panel.party && 'invisible')} />
+      <div ref={sessionSlot.ref} className={cn('absolute inset-0', layout !== 'wide' && 'finger-controls', panel.party && 'invisible')} />
       {/* The Party content is the page's, moved in here. */}
       <div
         ref={partySlot.ref}
         role="tabpanel"
         aria-labelledby="session-tab-party"
         data-tour="panel-party"
-        className={cn('absolute inset-0 overflow-y-auto p-4', phone && 'finger-controls', !panel.party && 'invisible')}
+        className={cn('absolute inset-0 overflow-y-auto p-4', layout !== 'wide' && 'finger-controls', !panel.party && 'invisible')}
       />
     </div>
   );
@@ -591,7 +590,7 @@ export default function DesktopTable({
         {(layout === 'wide' || layout === 'phone-landscape') && sidePanel}
 
         {/* The map is the page's, moved in here (tableHosts.tsx). */}
-        <main ref={mapSlot.ref} className={cn('relative min-w-0 min-h-0 flex-1 bg-canvas', phone && 'finger-controls')} />
+        <main ref={mapSlot.ref} className={cn('relative min-w-0 min-h-0 flex-1 bg-canvas', layout !== 'wide' && 'finger-controls')} />
 
         {docked && dockSection}
         {docked && tabs}

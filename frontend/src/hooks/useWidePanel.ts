@@ -79,6 +79,12 @@ export function loadDockPanel(): SavedDock | null {
   }
 }
 
+/** Where a dock let go at `height` px settles: the snap nearest it, of folded (0), `mid` and `tall` px. */
+export function nearestDockSnap(height: number, mid: number, tall: number): 'folded' | DockSize {
+  const snaps = [['folded', 0], ['mid', mid], ['tall', tall]] as const;
+  return snaps.reduce((best, snap) => (Math.abs(snap[1] - height) < Math.abs(best[1] - height) ? snap : best))[0];
+}
+
 export function useDockPanel() {
   const [dock, setDock] = useState<SavedDock>(() => loadDockPanel() ?? { open: false, party: false, size: 'mid' });
 

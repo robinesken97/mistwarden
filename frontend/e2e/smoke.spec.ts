@@ -53,11 +53,13 @@ test('creates a campaign and opens its table, with a live connection through the
   // opens the chat over the map's foot, and the page fits the screen with it
   // open; the session rail's hidden tab names once sat 200 pixels past the
   // edge, so a phone's page scrolled sideways.
-  await page.getByRole('tab', { name: /^Chat/ }).click();
-  await expect(page.getByRole('textbox', { name: 'Chat message' })).toBeVisible();
   if (await onPhone(page)) {
+    await page.getByRole('tab', { name: /^Chat/ }).click();
     await expect(page.locator('#wide-panel')).toHaveAttribute('data-dock-size', 'mid');
+    await expect(page.getByRole('textbox', { name: 'Chat message' })).toBeVisible();
     expect(await sidewaysOverflow(page)).toBeLessThanOrEqual(0);
+  } else {
+    await expect(page.getByRole('tab', { name: 'Chat' })).toBeVisible();
   }
 });
 

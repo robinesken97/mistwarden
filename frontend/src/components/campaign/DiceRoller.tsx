@@ -1006,8 +1006,9 @@ export default function DiceRoller() {
                 {secretRoll}
                 <span className="ml-auto flex items-center gap-1.5">
                   {clearFieldsButton}
-                  {secretRollsToggle}
-                  {clearHistoryButton}
+                  {/* Unless the panel's header holds them. */}
+                  {!wideHeader && secretRollsToggle}
+                  {!wideHeader && clearHistoryButton}
                 </span>
               </div>
             )}

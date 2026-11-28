@@ -207,12 +207,15 @@ describe('the phone rail', () => {
     expect(cells()).toEqual(['Fit map', 'Grid', 'Measure', 'Spell area', 'Ping', 'Draw']);
   });
 
-  it('is centred on the map shown above an open dock', () => {
+  it('is centred on the map shown above the dock, and gives way when the dock covers the map', () => {
     render(<MapCanvas />);
-    act(() => { useTableChrome.setState({ mapCover: 338 }); });
-    expect(rail().parentElement).toHaveStyle({ bottom: '338px' });
+    expect(rail().parentElement).toHaveStyle({ bottom: '0px' });
     expect(classesOf(rail().parentElement!)).toEqual(expect.arrayContaining(['absolute', 'top-0', 'items-center']));
+    // jsdom lays nothing out, so any dock covers the whole of its map.
+    act(() => { useTableChrome.setState({ mapCover: 338 }); });
+    expect(screen.queryByRole('navigation', { name: 'Map tools' })).toBeNull();
     act(() => { useTableChrome.setState({ mapCover: 0 }); });
+    expect(rail()).toBeInTheDocument();
   });
 
   it('opens the grid popover beside its cell', () => {

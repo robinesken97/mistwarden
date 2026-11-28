@@ -4881,7 +4881,8 @@ export default function MapCanvas({ onEditToken, onShowShortcuts, onOpenSpiritLa
       {/* The rail on the map's right edge, and the map's own rows in the top
           bar: As player ▾ and ⋯'s Mapmaker. On a phone in two columns the
           Spirit Layer goes out with the GM's layers. */}
-      <MapRail
+      {/* Not while a dock taken up to the top bar leaves no map to work on. */}
+      {!(mapCover > 0 && shownMapHeight < 2 * railCellPx) && <MapRail
           view={railView}
           tools={compact && railTwoCol ? railTools.filter((cell) => cell !== railSpirit) : railTools}
           gm={compact && railTwoCol ? [railSpirit, ...railGm] : railGm}
@@ -4893,7 +4894,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts, onOpenSpiritLa
           // Out of the way of a card or popover beside the rail.
           hint={railHint.shown && !stackShown && !railPopover && !drawKind && !paint.on && !showRuler
             ? <RailHint onDismiss={railHint.dismiss} /> : undefined}
-        />
+        />}
       {asPlayerSlot && previewOffered && createPortal(asPlayerMenu, asPlayerSlot)}
       {mapmakerSlot && paintOffered && createPortal(
         <MenuRow icon={Paintbrush} label="Mapmaker" pressed={paint.on} title="Mapmaker: draw on the map's picture, on your screen until it is saved" onSelect={togglePaint} />,
