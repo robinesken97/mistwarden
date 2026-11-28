@@ -3416,7 +3416,8 @@ paths:
       summary: Update atmosphere (vibe) settings
       description: |
         Replace the campaign's atmosphere periods (GM only). Changing which
-        period is *current* is done over the socket (`vibe.update`), not here.
+        period is *current* is `PUT /api/campaigns/{campaignId}/vibe/current`
+        or the socket's `vibe.update`, not here.
         Each period's `hue` must be a `#RRGGBB` colour and its `filter` may use
         only `brightness()`, `saturate()`, `contrast()` and `hue-rotate()`,
         the functions the atmosphere editor produces. A period's `audio` is
@@ -3514,6 +3515,142 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '403':
           $ref: '#/components/responses/Forbidden'
+
+  /api/campaigns/{campaignId}/vibe/current:
+    put:
+      tags:
+        - Campaigns
+      summary: Switch the vibe period
+      description: |
+        Switch the current period as the socket's `vibe.update` does (GM
+        only), matched ignoring case. Every member is sent `vibe.updated`;
+        the period's track becomes the ambient audio (`atmosphere.audio.updated`),
+        none silencing the table; the chat gets the system message
+        `Time advances to <Period>.` A track that cannot play silences the
+        table and is answered as `audioNotice`. An unknown period is a 400, a
+        campaign with the vibe tracker off a 409.
+        Shares the GM's table-action limit with the other REST table actions:
+        120 requests a minute per user (429 past it).
+      operationId: switchVibe
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CampaignId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [period]
+              properties:
+                period: { type: string }
+      responses:
+        '200':
+          description: Switched.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  period: { type: string, description: The period's name as stored. }
+                  audioNotice: { type: string }
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/campaigns/{campaignId}/atmosphere/effect:
+    put:
+      tags:
+        - Campaigns
+      summary: Set the weather over the map
+      description: |
+        As the socket's `atmosphere.effect.set` does (GM only): every member is
+        sent `atmosphere.effect.updated`. null clears it. An unknown effect is
+        a 400 here, where the socket clears the weather instead.
+        Shares the GM's table-action limit with the other REST table actions:
+        120 requests a minute per user (429 past it).
+      operationId: setAtmosphereEffect
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CampaignId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [effect]
+              properties:
+                effect: { type: string, nullable: true, enum: [rain, mist, leaves, sparkles, snow, wind, null] }
+      responses:
+        '200':
+          description: Set.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/campaigns/{campaignId}/atmosphere/audio:
+    put:
+      tags:
+        - Campaigns
+      summary: Play or stop the ambient track
+      description: |
+        As the socket's `atmosphere.audio.set` does (GM only): every member is
+        sent `atmosphere.audio.updated`. null stops it. A track the GM may not
+        read (admin rights are not counted), or of another campaign, is a 404,
+        as one that does not exist. `volume` is held to 0 to 1 (default 0.5);
+        `loop` defaults to true.
+        Shares the GM's table-action limit with the other REST table actions:
+        120 requests a minute per user (429 past it).
+      operationId: setAtmosphereAudio
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CampaignId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [assetId]
+              properties:
+                assetId: { type: string, format: uuid, nullable: true }
+                volume: { type: number }
+                loop: { type: boolean }
+      responses:
+        '200':
+          description: Set.
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/ServerError'
 
   /api/campaigns/admin/all:
     get:
@@ -3874,6 +4011,63 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '403':
           $ref: '#/components/responses/Forbidden'
+    post:
+      tags:
+        - Messages
+      summary: Send a chat message or whisper as the GM
+      description: >
+        Send as the socket's `chat.message` does (GM only); the message is of
+        type GM, or WHISPER with `recipientId`. Every member is sent
+        `chat.message` with the fields in the body; a whisper only the GM's and
+        the recipient's sockets in this campaign. A recipient who is not a
+        member is a 400. The campaign's chat cooldown holds for the GM here as
+        on the socket and is shared with it (429 with the wait).
+        Shares the GM's table-action limit with the other REST table actions:
+        120 requests a minute per user (429 past it).
+      operationId: sendChatMessageAsGm
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CampaignId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content: { type: string, maxLength: 2000, description: Trimmed before it is stored. }
+                recipientId: { type: string, format: uuid }
+      responses:
+        '201':
+          description: The message as `chat.message` sends it.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: object
+                    properties:
+                      id: { type: string, format: uuid }
+                      userId: { type: string, format: uuid }
+                      userName: { type: string }
+                      content: { type: string }
+                      type: { type: string, enum: [GM, WHISPER] }
+                      timestamp: { type: string, format: date-time }
+                      recipientId: { type: string, format: uuid }
+                      recipientName: { type: string }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/ServerError'
 
   # ============================================
   # PERSONAL NOTES
@@ -9077,7 +9271,8 @@ paths:
         campaign, and to other members for the campaign's current map only
         (404 otherwise, the answer for a map that does not exist). Areas
         are placed, erased and cleared over the live table (`area:add`,
-        `area:remove`, `area:clear`; see the WebSocket guide).
+        `area:remove`, `area:clear`; see the WebSocket guide), or by the GM
+        over REST below.
       operationId: listMapAreas
       security:
         - cookieAuth: []
@@ -9097,6 +9292,165 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    post:
+      tags:
+        - Maps
+      summary: Place a spell area (GM)
+      description: |
+        Place an area as the socket's `area:add` does (GM only). `area:added`
+        goes to each reader the area may be sent to: one whose `audience` is
+        `GM` reaches no player. An anchor off the map is a 400, a full share
+        of the map a 409, a map not in the campaign a 404.
+        Shares the GM's table-action limit with the other REST table actions:
+        120 requests a minute per user (429 past it).
+      operationId: placeMapArea
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [area]
+              properties:
+                area:
+                  type: object
+                  description: The area as `area:add` carries it (see the WebSocket guide); its id, author and time are the server's.
+                  required: [shape, anchorX, anchorY, sizeFt]
+                  properties:
+                    shape: { type: string, enum: [sphere, cylinder, cone, line, cube] }
+                    anchorX: { type: number }
+                    anchorY: { type: number }
+                    angle: { type: number }
+                    sizeFt: { type: integer }
+                    widthFt: { type: integer, nullable: true }
+                    exact: { type: boolean }
+                    element: { type: string }
+                    animated: { type: boolean }
+                    audience: { type: string, enum: [ALL, GM] }
+                    label: { type: string, nullable: true }
+                    spellId: { type: string, nullable: true }
+      responses:
+        '201':
+          description: Placed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    delete:
+      tags:
+        - Maps
+      summary: Clear the spell areas on a map (GM)
+      description: |
+        Clear every area on the map as the socket's `area:clear` does (GM
+        only). `areas:cleared` goes to the readers who had any of them.
+        Shares the GM's table-action limit with the other REST table actions:
+        120 requests a minute per user (429 past it).
+      operationId: clearMapAreas
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Cleared.
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/campaigns/{campaignId}/maps/{id}/areas/{areaId}:
+    parameters:
+      - $ref: '#/components/parameters/CampaignId'
+      - $ref: '#/components/parameters/MapId'
+      - name: areaId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      tags:
+        - Maps
+      summary: Erase a spell area (GM)
+      description: |
+        Erase one area as the socket's `area:remove` does (GM only).
+        `area:removed` goes to the readers who had it. An area not on this
+        map is a 404.
+        Shares the GM's table-action limit with the other REST table actions:
+        120 requests a minute per user (429 past it).
+      operationId: eraseMapArea
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Erased.
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/campaigns/{campaignId}/maps/{id}/exploration/reset:
+    parameters:
+      - $ref: '#/components/parameters/CampaignId'
+      - $ref: '#/components/parameters/MapId'
+    post:
+      tags:
+        - Maps
+      summary: Forget the players' explored memory of a map (GM)
+      description: |
+        As the socket's `exploration:reset` does (GM only): every player's
+        explored memory of the map is deleted, and its readers are sent
+        `exploration:state` with `userId: null` and no cells.
+        Shares the GM's table-action limit with the other REST table actions:
+        120 requests a minute per user (429 past it).
+      operationId: resetMapExploration
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: Reset.
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
         '500':
           $ref: '#/components/responses/ServerError'
 
@@ -13376,6 +13730,65 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+    post:
+      tags: [Campaigns]
+      summary: Roll dice as the GM
+      description: >
+        Roll as the socket's `dice.roll` does (GM only). The roll is stored and
+        sent as `dice.rolled` with the fields in the body; a secret roll goes
+        to the GM's own sockets in this campaign and as `dice.rolled.secret` to
+        any other GM, never to a player. An expression that does not parse is
+        a 400.
+        Shares the GM's table-action limit with the other REST table actions:
+        120 requests a minute per user (429 past it).
+      operationId: rollDiceAsGm
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CampaignId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [expression]
+              properties:
+                expression: { type: string, example: '2d8+3' }
+                secret: { type: boolean }
+                purpose: { type: string, nullable: true, maxLength: 300 }
+                characterName: { type: string, nullable: true, maxLength: 200 }
+      responses:
+        '201':
+          description: The roll as `dice.rolled` sends it.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  roll:
+                    type: object
+                    properties:
+                      id: { type: string, format: uuid }
+                      userId: { type: string, format: uuid }
+                      userName: { type: string }
+                      characterName: { type: string, nullable: true }
+                      expression: { type: string }
+                      result: { type: integer }
+                      breakdown: { type: object }
+                      purpose: { type: string, nullable: true }
+                      timestamp: { type: string, format: date-time }
+                      secret: { type: boolean }
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '500':
+          $ref: '#/components/responses/ServerError'
 
   /api/campaigns/{campaignId}/messages/join-leave:
     delete:
