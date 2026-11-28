@@ -385,6 +385,13 @@ describe('readStatBlockMarkdown', () => {
     expect(row.errors).toEqual(expect.arrayContaining([expect.stringMatching(/^Ability scores/), 'Speed: missing']));
   });
 
+  it('reads a dash as no challenge rating, the same as no Challenge line', () => {
+    for (const md of [GOBLIN.replace('**Challenge** 1/4 (50 XP)', '**Challenge** —'), GOBLIN.replace('**Challenge** 1/4 (50 XP)\n', '')]) {
+      const [row] = only(readStatBlockMarkdown(md).rows, 'creature');
+      expect(row.creature.challengeRating).toBeNull();
+    }
+  });
+
   it('refuses a block the Creature Library would refuse, saying which field', () => {
     const long = GOBLIN.replace('**Nimble Escape.** The goblin', `**Nimble Escape.** ${'x'.repeat(5001)}`);
     const [row] = only(readStatBlockMarkdown(long).rows, 'error');
