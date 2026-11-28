@@ -2,8 +2,9 @@
  * The instance's imported creatures: stat blocks read from Markdown
  * (statblockMarkdown.ts), stored with no campaign under a source tag the
  * administrator gives, as `custom:<tag>`. Every campaign's GM lists them
- * beside the SRD's; players never read the Creature Library, and no campaign
- * archive carries them, since they belong to no campaign.
+ * beside the SRD's; players never read the Creature Library, and a campaign
+ * archive leaves them out, since they belong to no campaign (a Duplicate, and
+ * a placed token's copy of the stat block, are the campaign's own).
  *
  * A creature is the same one again where its tag and its name, case and
  * punctuation aside, are (normaliseCreatureName): importing a file twice

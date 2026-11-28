@@ -139,7 +139,7 @@ function readBonuses(text: string, keyOf: (label: string) => string | null): { v
   const values: Record<string, number> = {};
   const unread: string[] = [];
   for (const part of text.split(/[,;]/).map((p) => p.trim()).filter(Boolean)) {
-    // "Stealth +4 (+6 in dim light)": the bonus is kept, the condition said to be left out.
+    // "Perception +5 (+7 in fog)": the bonus is kept, the condition said to be left out.
     const m = /^(.+?)\s*([+-]\s*\d+)\s*(\(.*\))?$/.exec(normaliseMinus(part));
     const key = m ? keyOf(m[1]) : null;
     if (m && key) values[key] = Number(m[2].replace(/\s/g, ''));
@@ -165,7 +165,9 @@ const isListItem = (text: string): boolean => /^\d+(?:-\d+)?\.\s/.test(normalise
  */
 const continuesRules = (text: string): boolean =>
   /\bDC \d|\b\d+d\d+\b|saving throw|\bsaves?\b|hit points?\b|\bdamage\b|\bAC\b|\bfeet\b|\bft\.|\b(?:restrained|grappled|charmed|frightened|immune|disease)\b|\b(?:its|their) (?:next )?turn\b/i.test(text)
+  && /^[A-Z0-9]/.test(text)
   && !/^[A-Z][\w' -]{0,40}(?: \([^)]*\))?\.\s/.test(text)
+  && !/^(?:Armor Class|Hit Points|Speed|Senses|Languages|Challenge)\b/.test(text)
   && !/\b(?:its|the|a) lair\b|\bregion containing\b|\binitiative count 20\b/i.test(text);
 
 /** One block's lines, from the line after its heading. Returns the row and the index it stopped at. */
@@ -189,9 +191,10 @@ function readBlock(lines: string[], start: number, end: number, name: string, he
     at.anchor = at.last.parts.length;
     at.inSection = true;
   };
+  // The entry before keeps its anchor: a section that gets no entry of its
+  // own leaves the paragraphs before it trailing, to be judged as such.
   const enterSection = (next: typeof section) => {
     section = next;
-    at.anchor = at.last ? at.last.parts.length : 0;
     at.inSection = false;
   };
 

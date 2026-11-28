@@ -10183,7 +10183,9 @@ paths:
         Read the stat blocks of one Markdown file and store them with no
         campaign, which every campaign's GM lists (players never read the
         Creature Library), under `source` `custom:<sourceTag>`. **Platform
-        admins only.** No campaign archive carries them.
+        admins only.** A campaign archive leaves them out; a campaign's
+        copy made with Duplicate, and a token placed from one (its stat block
+        is copied onto the map), are the campaign's own and go with it.
 
         A stat block is a `### Name` heading with a bold `**Armor Class**`
         field (or `- **Armor Class:**`), the six scores as a `| STR | ... |`

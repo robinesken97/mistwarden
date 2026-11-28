@@ -411,6 +411,21 @@ describe('readStatBlockMarkdown', () => {
   });
 });
 
+describe('readStatBlockMarkdown, sections', () => {
+  it('takes another "… Actions" section as legendary-style actions, with its own words first', () => {
+    const markdown = GOBLIN.trimEnd() + '\n\n**Rally Actions**\n\nWhile its banner stands, the goblin can use the options below as legendary actions.\n\n**Regroup.** The goblin moves up to its speed.\n';
+    const { creature: c } = creature(markdown);
+    expect(c.statBlock.legendaryActions?.map((a) => a.name)).toEqual(['Rally Actions', 'Regroup']);
+  });
+
+  it('judges what follows the last action as trailing when a section after it stays empty', () => {
+    const markdown = ADEPT.trimEnd() + '\n\nAt will: stray words left by a scan\n\n#### Actions for Form 2\n\n<!-- p. 9 -->\n';
+    const row = creature(markdown);
+    expect(row.creature.statBlock.bonusActions?.at(-1)?.description).toBe('The adept moves up to half its speed.');
+    expect(row.warnings).toEqual([expect.stringMatching(/^Left out 1 paragraph after "Slither"/)]);
+  });
+});
+
 describe('normaliseCreatureName', () => {
   it('ignores case, accents, spaces and punctuation', () => {
     expect(normaliseCreatureName('Pebble-Hound')).toBe(normaliseCreatureName(' pebble hound '));

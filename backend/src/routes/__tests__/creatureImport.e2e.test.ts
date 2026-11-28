@@ -134,6 +134,14 @@ describe('POST /api/creatures/import-markdown', () => {
     expect(await imported()).toEqual([]);
   });
 
+  it('reads a name twice in one file once, and lists the second', async () => {
+    const res = await admin.agent.post('/api/creatures/import-markdown')
+      .send({ markdown: `${block(`Twin Wisp ${run}`)}\n${block(`twin-wisp ${run}`)}`, sourceTag: tag, dryRun: true });
+    expect(res.body.rows.map((r: { status: string; reason?: string }) => [r.status, r.reason])).toEqual([
+      ['imported', undefined], ['skipped', 'Same name as a stat block earlier in the file: not read twice'],
+    ]);
+  });
+
   it('imports only the blocks under a heading, and updates them in place when run again', async () => {
     const first = await importFile(admin.agent, { onlyUnderHeading: '## Checked Blocks' });
     expect(first.status).toBe(200);
