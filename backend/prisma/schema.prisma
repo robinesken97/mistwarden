@@ -151,6 +151,7 @@ model User {
   diceMacros          DiceMacro[]
   mapExplorations     MapExploration[]
   drawings            MapDrawing[]
+  mapAreas            MapArea[]
   documentLinks       CampaignDocument[]
 
   @@index([email])
@@ -584,6 +585,7 @@ model Map {
   activeCampaigns Campaign[] @relation("CurrentMap")
   explorations    MapExploration[]
   drawings        MapDrawing[]
+  areas           MapArea[]
 
   @@index([campaignId])
 }
@@ -621,6 +623,44 @@ model MapDrawing {
   points    Json
   /// A text label's words; null for every other kind
   text      String?
+  createdAt DateTime        @default(now())
+
+  @@index([mapId])
+}
+
+/// A spell area placed on a map for the table: a template that stays until
+/// erased. Its shape, size, element and label are copied in when it is
+/// placed, so it stands on its own. Sizes are feet, so it is drawn again by
+/// the map's feet per square; the anchor is map pixels, top-left origin, and
+/// the pivot, cone apex and cube squares are worked out from it and the grid
+/// as it is drawn. Who may place, erase and be sent one is utils/drawingRules.ts.
+model MapArea {
+  id        String          @id @default(uuid())
+  mapId     String
+  map       Map             @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  /// Null once the author's account is deleted; the area stays, the GM's to erase.
+  authorId  String?
+  author    User?           @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  audience  DrawingAudience @default(ALL)
+  /// sphere, cylinder, cone, line or cube (validators/areaLimits.ts)
+  shape     String
+  /// Map pixels from the top-left corner: where it was placed
+  anchorX   Float
+  anchorY   Float
+  /// Radians, clockwise from pointing right (y down): a cone's or a line's aim
+  angle     Float           @default(0)
+  /// A sphere's or cylinder's radius, a cone's or line's length, a cube's side
+  sizeFt    Int
+  /// A line's width; null for every other shape
+  widthFt   Int?
+  /// Placed freely, off the grid, rather than on the square it was placed in
+  exact     Boolean         @default(false)
+  /// How it looks, not a damage type (validators/areaLimits.ts AREA_ELEMENTS)
+  element   String          @default("none")
+  animated  Boolean         @default(true)
+  label     String?
+  /// The spell it was cast from, a reference only: no library yet
+  spellId   String?
   createdAt DateTime        @default(now())
 
   @@index([mapId])

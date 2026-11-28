@@ -921,6 +921,14 @@ export async function importCampaign(
                 })),
               });
             }
+            // Likewise its spell areas.
+            if (prepared.areas.length > 0) {
+              await tx.mapArea.createMany({
+                data: prepared.areas.map(({ share, ...area }, n) => ({
+                  ...area, mapId, authorId: share === 'GM' ? importingUserId : null, createdAt: new Date(importedAt + n),
+                })),
+              });
+            }
             firstMapId ??= mapId;
             mapCount++;
             tokenCount += prepared.tokenCount;

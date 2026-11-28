@@ -29,11 +29,18 @@ interface UseMeasureToolsArgs {
   picksUpAt?: (square: Square) => boolean;
   /** A token is held, so a press puts it down; asked at a press. */
   holdsToken?: () => boolean;
+  /**
+   * Place for everyone is on and a press placed the template: where it was
+   * anchored and, for a cone or a line, the point its second press aimed at.
+   */
+  onPlace?: (anchor: AoEAnchor, aim: { x: number; y: number } | null) => void;
 }
 
 const sameSquare = (a: Square, b: Square) => a.x === b.x && a.y === b.y;
 
-export function useMeasureTools({ isGM, markDirty, measuresFromToken = () => false, picksUpAt = () => false, holdsToken = () => false }: UseMeasureToolsArgs) {
+export function useMeasureTools({
+  isGM, markDirty, measuresFromToken = () => false, picksUpAt = () => false, holdsToken = () => false, onPlace,
+}: UseMeasureToolsArgs) {
   const [measureTool, setMeasureTool] = useState<'ruler' | 'aoe' | null>(null);
   const showRuler = measureTool === 'ruler';
   const showAoE = measureTool === 'aoe';
@@ -59,6 +66,10 @@ export function useMeasureTools({ isGM, markDirty, measuresFromToken = () => fal
   // The panel's Snap to grid. Off, a placement is free, as Alt makes it: a
   // finger or a pen has no Alt.
   const [aoeSnap, setAoESnap] = useState(true);
+  // The panel's Place for everyone: a press places a stored area (onPlace)
+  // instead of only showing the template here. A cone or a line takes two:
+  // the first pins it, the second aims and places it.
+  const [aoePersist, setAoEPersist] = useState(false);
   // Whether Alt is down, read off each mousemove so the un-pinned preview shows
   // what a click would actually place. Taking it from the event rather than
   // keydown/keyup means it self-corrects if the window loses focus mid-press.
@@ -186,7 +197,21 @@ export function useMeasureTools({ isGM, markDirty, measuresFromToken = () => fal
       // Held in map pixels so Alt, or Snap to grid off, can place it
       // anywhere, not just on a square.
       if (showAoE) {
-        setAoEAnchor({ point: mapPx, exact: e.altKey || !aoeSnap });
+        const pressed = { point: mapPx, exact: e.altKey || !aoeSnap };
+        // A finger's drag aims or pans the preview; it never places.
+        if (aoePersist && onPlace && via !== 'drag') {
+          const aimed = aoeConfig.shape === 'cone' || aoeConfig.shape === 'line';
+          if (!aimed) {
+            onPlace(pressed, null);
+            return true;
+          }
+          if (aoeAnchor) {
+            onPlace(aoeAnchor, mapPx);
+            setAoEAnchor(null);
+            return true;
+          }
+        }
+        setAoEAnchor(pressed);
         return true;
       }
       return false;
@@ -219,6 +244,6 @@ export function useMeasureTools({ isGM, markDirty, measuresFromToken = () => fal
     tool, track,
     showRuler, showAoE, handleToggleRuler, handleToggleAoE, putRulerAway,
     rulerOrigin, rulerEnd, rulerStartByTouch, rulerColor, setRulerColor,
-    aoeConfig, setAoEConfig, aoeAnchor, setAoEAnchor, aoeAltHeldRef, aoeAimRef, aoeSnap, setAoESnap,
+    aoeConfig, setAoEConfig, aoeAnchor, setAoEAnchor, aoeAltHeldRef, aoeAimRef, aoeSnap, setAoESnap, aoePersist, setAoEPersist,
   };
 }

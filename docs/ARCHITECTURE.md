@@ -592,6 +592,20 @@ erDiagram
         string text
     }
 
+    MapArea {
+        string id PK
+        string mapId FK
+        string authorId FK
+        DrawingAudience audience
+        string shape
+        float anchorX
+        float anchorY
+        float angle
+        int sizeFt
+        string element
+        string label
+    }
+
     Asset {
         string id PK
         AssetType type
@@ -752,6 +766,8 @@ erDiagram
     User ||--o{ MapExploration : "explores"
     Map ||--o{ MapDrawing : "is drawn on in"
     User ||--o{ MapDrawing : "draws"
+    Map ||--o{ MapArea : "holds spell areas"
+    User ||--o{ MapArea : "places"
     Campaign ||--o{ Message : "has"
     User ||--o{ Message : "writes"
     User ||--o{ Message : "receives whispers"

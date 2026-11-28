@@ -231,6 +231,8 @@ export const ImportMapSchema = z.object({
   // writes them under `drawings` and `annotations` empty (campaignExporter.ts).
   drawings: z.unknown().optional(),
   annotations: z.unknown().optional(),
+  // Its spell areas, each checked as area:add checks one (campaignImportContent.ts).
+  areas: z.unknown().optional(),
   wallSegments: z.unknown().optional(),
   fogData: z.unknown().optional(),
   lightingEnabled: z.boolean().optional().catch(undefined),

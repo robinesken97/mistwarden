@@ -28,6 +28,7 @@ import {
 } from '../validators/campaignImport';
 import { MAP_LIMITS, GEOMETRY_MARGIN_SQUARES, wallWithinMap, lightWithinMap } from '../validators/maps';
 import { WallSegmentSchema, LightSourceSchema, MAX_WALL_SEGMENTS, MAX_LIGHT_SOURCES } from '../validators/walls';
+import { NewAreaSchema, areaOutsideMap, AREA_LIMITS, type NewArea } from '../validators/areas';
 import { NewDrawingSchema, drawingOutsideMap, markupLimitReached, archiveShare, DRAWING_LIMITS, MARKUP_SHARES, type MarkupShare } from '../validators/drawings';
 import { clampTokenPosition, roundTokenPosition } from '../utils/mapTokens';
 import { isHexGrid, type GridFrame } from '../utils/tokenCentre';
@@ -160,6 +161,8 @@ export interface PreparedMap {
   tokenCount: number;
   /** Its drawings, in the archive's order, written once the map is. */
   drawings: PreparedDrawing[];
+  /** Its spell areas, in the archive's order, written once the map is. */
+  areas: PreparedArea[];
 }
 
 interface PlacedToken extends Omit<ImportToken, 'position'> {
@@ -219,6 +222,7 @@ export function prepareMap(raw: unknown, ctx: MapContext): PreparedMap | null {
   }
 
   const drawings = prepareDrawings([[map.drawings, 'drawings'], [map.annotations, 'annotations']], map, say);
+  const areas = prepareAreas(map.areas, map, say);
 
   // A map's picture and spirit layer can only be map pictures, as on Create
   // Map. One the archive names that came in as a token picture or a sound
@@ -236,6 +240,7 @@ export function prepareMap(raw: unknown, ctx: MapContext): PreparedMap | null {
   return {
     tokenCount: tokens.length,
     drawings,
+    areas,
     data: {
       name,
       imageUrl,
@@ -455,6 +460,37 @@ function prepareDrawings(sources: Array<[unknown, string]>, map: MapGeometry, sa
     }
   }
   return drawings;
+}
+
+/** An area ready to be written, without its map, id, author and time, and the share it goes back to. */
+export type PreparedArea = NewArea & { share: MarkupShare };
+
+/**
+ * A map's spell areas, from its file's `areas`: each held to what `area:add`
+ * stores, placed on the map, and each share to its room (AREA_LIMITS); the
+ * rest are left out and counted.
+ */
+function prepareAreas(raw: unknown, map: MapGeometry, say: (what: string) => void): PreparedArea[] {
+  if (raw === undefined || raw === null) return [];
+  if (!Array.isArray(raw)) {
+    say('left out its spell areas, which could not be read.');
+    return [];
+  }
+  const areas: PreparedArea[] = [];
+  const held: Record<MarkupShare, number> = { GM: 0, PLAYERS: 0 };
+  let left = 0;
+  for (const entry of raw) {
+    const parsed = NewAreaSchema.safeParse(entry);
+    const share = parsed.success ? archiveShare(entry, parsed.data.audience) : 'PLAYERS';
+    if (!parsed.success || areaOutsideMap(parsed.data, map) || held[share] >= AREA_LIMITS.perShare) {
+      left++;
+      continue;
+    }
+    held[share]++;
+    areas.push({ ...parsed.data, share });
+  }
+  if (left) say(`left out ${count(left, 'spell area')} the app cannot store.`);
+  return areas;
 }
 
 /** A map's lights, each as the light routes store one, with a new id. */

@@ -28,6 +28,7 @@ import { canReadAsset } from './permissions';
 import { IMPORT_LIMITS } from '../validators/campaignImport';
 import { MAX_EXTENSION_LENGTH, MAX_ORIGINAL_NAME_LENGTH, shortenFileName } from '../validators/assets';
 import { DRAWING_ORDER, campaignGmId, drawingForArchive } from './mapDrawings';
+import { areaForArchive } from './mapAreas';
 
 // ── Exported types ──────────────────────────────────────────────────────────
 
@@ -231,6 +232,8 @@ export async function prepareCampaignExport(
       // The map's drawings, in drawing order and without their authors, each
       // with the share of the markup layer it counts to.
       drawings: (await prisma.mapDrawing.findMany({ where: { mapId: map.id }, orderBy: [...DRAWING_ORDER] })).map((row) => drawingForArchive(row, gmId)),
+      // Its spell areas, oldest first, without their authors, each with its share.
+      areas: (await prisma.mapArea.findMany({ where: { mapId: map.id }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] })).map((row) => areaForArchive(row, gmId)),
       wallSegments: map.wallSegments || [],
       fogData: map.fogData || null,
       lightingEnabled: map.lightingEnabled,

@@ -51,6 +51,7 @@ import { sendInitiativeState, resendInitiative } from '../websocket/handlers/ini
 import { currentMapChanged } from '../websocket/handlers/drawings';
 import { readTokens, toJson } from '../utils/prisma-json';
 import { drawingsFor, resendDrawings, scaleDrawings } from '../services/mapDrawings';
+import { areasFor, resendAreas, scaleAreas } from '../services/mapAreas';
 import type { Map as MapRow, Prisma } from '@prisma/client';
 import { cellOnMap, isHexGrid } from '../utils/tokenCentre';
 import { loadFogState, applyWsFogOperation, broadcastFogState, type Token, broadcastMapData, resendSightAfterChange, fogFits, FogTooLargeError } from '../websocket/shared';
@@ -1258,10 +1259,11 @@ router.put('/:id', campaignGM, async (req: AuthenticatedRequest, res: Response) 
       // The drawings in one statement, kept to the region the map's new
       // size lets them reach (validators/maps.ts).
       const drawingsScaled = await scaleDrawings(tx, id, kx, ky, geometryRegion(updated));
+      const areasScaled = await scaleAreas(tx, id, kx, ky, geometryRegion(updated));
       return {
         updatedMap: updated,
         before: current,
-        moved: { wallsBefore: current.wallSegments, walls, lightsBefore: current.lights, lights, drawingsScaled },
+        moved: { wallsBefore: current.wallSegments, walls, lightsBefore: current.lights, lights, drawingsScaled, areasScaled },
       };
     });
 
@@ -1273,6 +1275,7 @@ router.put('/:id', campaignGM, async (req: AuthenticatedRequest, res: Response) 
       await tellMapReadersAs(campaignId, id, 'walls:replaced', (role) => wallsReplacedSentTo(role, id, moved.wallsBefore, moved.walls));
       await tellMapReadersAs(campaignId, id, 'lights:replaced', (role) => lightsReplacedSentTo(role, id, moved.lightsBefore, moved.lights));
       if (moved.drawingsScaled > 0) await resendDrawings(campaignId, id);
+      if (moved.areasScaled > 0) await resendAreas(campaignId, id);
     }
 
     // Any per-map flag change reaches every connected client at once, as one
@@ -2283,6 +2286,25 @@ router.get('/:id/drawings', campaignMember, async (req: AuthenticatedRequest, re
   } catch (error) {
     logger.error('Error fetching drawings', { err: error });
     return res.status(500).json({ error: 'Internal Server Error', message: 'Failed to fetch drawings' });
+  }
+});
+
+/**
+ * GET /api/campaigns/:campaignId/maps/:id/areas
+ * The map's spell areas as the caller may be sent them, oldest first: the
+ * GM every one, anyone else those for everyone (all roles). A map the caller
+ * may not read is answered as one that is not there.
+ */
+router.get('/:id/areas', campaignMember, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { campaignId, id } = req.params;
+    const role = req.campaignMembership!.role;
+    const map = await findMapInCampaign(campaignId, id, res, role);
+    if (!map) return;
+    return res.status(200).json({ areas: await areasFor(id, role) });
+  } catch (error) {
+    logger.error('Error fetching areas', { err: error });
+    return res.status(500).json({ error: 'Internal Server Error', message: 'Failed to fetch areas' });
   }
 });
 

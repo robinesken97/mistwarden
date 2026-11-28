@@ -307,3 +307,45 @@ describe('the drawings on a map', () => {
     expect(drawings.filter((d) => d.authorId === userId)).toHaveLength(gmShare.drawings);
   });
 });
+
+// A map's spell areas travel in its file's `areas`, without their authors,
+// each with its share; one for the GM alone stays the GM's. An import holds
+// each to what `area:add` takes and leaves out and counts the rest.
+describe('the spell areas on a map', () => {
+  const area = (d: Record<string, unknown>) => ({
+    audience: d.audience, shape: d.shape, anchorX: d.anchorX, anchorY: d.anchorY, angle: d.angle, sizeFt: d.sizeFt, widthFt: d.widthFt,
+    exact: d.exact, element: d.element, animated: d.animated, label: d.label, spellId: d.spellId,
+  });
+
+  it('come back oldest first, one for the GM alone still the GM\'s, with new ids', async () => {
+    const { campaignId, mapId } = await campaign('Areas');
+    const made = [
+      await prisma.mapArea.create({ data: { mapId, authorId: null, shape: 'cone', anchorX: 75.5, anchorY: 125, angle: -1.25, sizeFt: 15, element: 'fire', label: 'Breath' } }),
+      await prisma.mapArea.create({ data: { mapId, authorId: userId, audience: 'GM', shape: 'line', anchorX: 10, anchorY: 20, sizeFt: 60, widthFt: 10, exact: true, element: 'lightning', animated: false, spellId: 'srd-bolt' } }),
+    ];
+    const { file, result } = await roundTrip(campaignId);
+    expect(result.warnings).toEqual([]);
+    const [map] = await prisma.map.findMany({ where: { campaignId: result.campaignId } });
+    const areas = await prisma.mapArea.findMany({ where: { mapId: map.id }, orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] });
+    expect(areas.map(area)).toEqual(made.map(area));
+    expect(areas.map((a) => a.authorId)).toEqual([null, userId]);
+    for (const a of areas) expect(made.map((m) => m.id)).not.toContain(a.id);
+    const written = JSON.parse(await mapFile(file)) as { areas: Array<Record<string, unknown>> };
+    expect(written.areas.map((a) => a.share)).toEqual(['PLAYERS', 'GM']);
+    expect(written.areas.every((a) => !('authorId' in a) && !('id' in a))).toBe(true);
+  });
+
+  it('leave out an area that is not one, or off the map, and keep the map', async () => {
+    const file = await oneMapArchive('Odd areas', {
+      areas: [
+        { shape: 'sphere', anchorX: 100, anchorY: 100, sizeFt: 20 },
+        { shape: 'hexagon', anchorX: 100, anchorY: 100, sizeFt: 20 },
+        { shape: 'sphere', anchorX: 1e9, anchorY: 100, sizeFt: 20 },
+      ],
+    });
+    const result = await importCampaign(file, userId);
+    expect(result.warnings).toEqual(['Map "Plan": left out 2 spell areas the app cannot store.']);
+    const [map] = await prisma.map.findMany({ where: { campaignId: result.campaignId } });
+    expect(await prisma.mapArea.count({ where: { mapId: map.id } })).toBe(1);
+  });
+});

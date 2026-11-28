@@ -29,6 +29,7 @@ import { registerExplorationHandlers } from './handlers/exploration';
 import { registerLightHandlers } from './handlers/lights';
 import { registerPingHandlers } from './handlers/pings';
 import { registerDrawingHandlers } from './handlers/drawings';
+import { registerAreaHandlers } from './handlers/areas';
 
 /**
  * WebSocket Event Handlers — orchestrator.
@@ -337,6 +338,7 @@ export function registerEventHandlers(io: Server): void {
     registerLightHandlers(io, socket);
     registerPingHandlers(io, socket);
     registerDrawingHandlers(io, socket);
+    registerAreaHandlers(io, socket);
 
     // ============================================
     // DISCONNECT EVENT
