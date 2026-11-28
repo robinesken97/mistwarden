@@ -116,6 +116,8 @@ export interface NpcProficiencies {
 export interface NpcStatBlock {
   /** Armor Class / Defense rating */
   ac: number;
+  /** What the Armor Class is from, as a stat block prints it: "natural armor". */
+  armorDescription?: string;
   /**
    * Maximum hit points. Optional: stat blocks saved before HP was tracked have
    * none, and callers fall back to a default (see CreatureLibrary placement).

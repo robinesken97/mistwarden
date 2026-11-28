@@ -29,7 +29,7 @@ export default function FifthEditionStatBlock({ statBlock, tokenName }: Props) {
 
       {/* ── Core stats ── */}
       <div className="border-b border-warning/20 pb-1.5 space-y-0.5">
-        <div><span className="font-semibold text-warning-ink">Armor Class</span> {statBlock.ac}</div>
+        <div><span className="font-semibold text-warning-ink">Armor Class</span> {statBlock.ac}{statBlock.armorDescription && ` (${statBlock.armorDescription})`}</div>
         {statBlock.hpMax != null && (
           <div>
             <span className="font-semibold text-warning-ink">Hit Points</span> {statBlock.hpMax}
@@ -135,7 +135,7 @@ function ActionSection({ title, items }: { title: string; items: Array<{ name: s
         {items.map((item, i) => (
           <div key={i} className="leading-snug">
             <span className="font-semibold italic text-ink">{item.name}.</span>{' '}
-            <span className="text-ink-secondary">{item.description}</span>
+            <span className="text-ink-secondary whitespace-pre-line">{item.description}</span>
           </div>
         ))}
       </div>
