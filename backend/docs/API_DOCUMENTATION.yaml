@@ -10453,6 +10453,144 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /api/spells/import-markdown:
+    post:
+      tags: [Spells]
+      summary: Import 5e-style spells from a Markdown file
+      description: |
+        Read the spells of one Markdown file and store them with no campaign,
+        which every campaign lists, under `source` `custom:<sourceTag>`.
+        **Platform admins only.** Players read everything of one but its
+        description (`GET /api/campaigns/{campaignId}/spells/{spellId}` sends
+        it null); no campaign archive carries them; the instance's and the
+        campaign's spell routes cannot change them (404).
+
+        A spell is a heading of any level whose first lines hold the level and
+        school in italics (`*3rd-level evocation*`, `*Evocation cantrip*`,
+        `(ritual)` after the school) and bold fields `**Casting Time:**`,
+        `**Range:**`, `**Components:**`, `**Duration:**`, one per line or as
+        list items. A duration starting with "Concentration" sets
+        `concentration`. The description runs from the first blank line after
+        the fields to the next heading or a page marker `<!-- p. N -->`, with
+        `---` rules left out and LaTeX dice read as plain text. A name in
+        capitals is stored in title case. `area` and `element` are read from
+        the range and description as the SRD seed reads them. A heading with
+        no Casting Time and a Casting Time before the first heading are
+        skipped and listed; a spell the library would refuse, text over its
+        limits included, is listed with each reason, never cut.
+
+        A spell of the tag and name (case and punctuation aside) already
+        stored is updated in place, keeping its id. One of an SRD spell's name
+        is a spell of its own; a name means the imported one. `dryRun`
+        reports the same and writes nothing. One import or SRD seed at a time,
+        under a lock.
+      operationId: importSpellMarkdown
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [markdown, sourceTag]
+              additionalProperties: false
+              properties:
+                markdown:
+                  type: string
+                  maxLength: 900000
+                sourceTag:
+                  type: string
+                  pattern: '^[a-z0-9][a-z0-9-]{0,31}$'
+                  description: Read in lower case.
+                dryRun:
+                  type: boolean
+      responses:
+        '200':
+          description: What was imported, or would be in a dry run
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sourceTag:
+                    type: string
+                  dryRun:
+                    type: boolean
+                  castingTimeLines:
+                    type: integer
+                    description: Bold Casting Time lines read; each is in one imported, updated or refused row, or one skipped as before the first heading or a repeated name.
+                  counts:
+                    type: object
+                    properties:
+                      imported: { type: integer }
+                      updated: { type: integer }
+                      skipped: { type: integer }
+                      errors: { type: integer }
+                  rows:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        line:
+                          type: integer
+                          description: The heading's line in the file.
+                        name:
+                          type: string
+                        status:
+                          type: string
+                          enum: [imported, updated, skipped, error]
+                        reason:
+                          type: string
+                          description: Why a heading was skipped.
+                        errors:
+                          type: array
+                          items: { type: string }
+                          description: Why a spell was refused.
+                        warnings:
+                          type: array
+                          items: { type: string }
+                          description: What was not read, such as a field a spell has no place for or text after a page marker.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/spells/imported/{sourceTag}:
+    delete:
+      tags: [Spells]
+      summary: Delete the spells imported under a source tag
+      description: '**Platform admins only.** Deletes every spell with no campaign whose source is `custom:<sourceTag>`.'
+      operationId: deleteImportedSpells
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: sourceTag
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sourceTag:
+                    type: string
+                  deleted:
+                    type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
   /api/spells:
     post:
       tags: [Spells]
@@ -10599,7 +10737,10 @@ paths:
     get:
       tags: [Spells]
       summary: Read one spell in full
-      description: Any member; a spell of another campaign answers 404.
+      description: >-
+        Any member; a spell of another campaign answers 404. A spell imported
+        from Markdown (`source` `custom:<tag>`) comes with `description` null
+        for anyone but the campaign's GM and a platform admin.
       operationId: getCampaignSpell
       security:
         - cookieAuth: []
@@ -14004,7 +14145,8 @@ components:
           type: string
         source:
           type: string
-          enum: [srd, custom]
+          pattern: '^(srd|custom|custom:[a-z0-9][a-z0-9-]{0,31})$'
+          description: "`srd` for the seeded SRD spells, `custom:<tag>` for one imported from Markdown, `custom` for every other."
         gameSystem:
           type: string
           nullable: true
@@ -14046,6 +14188,8 @@ components:
           properties:
             description:
               type: string
+              nullable: true
+              description: Null for a spell imported from Markdown, read by anyone but the GM or a platform admin.
             createdById:
               type: string
               nullable: true
