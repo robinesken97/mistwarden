@@ -301,6 +301,19 @@ export const SOCKET_CEILINGS = {
   },
   'drawing:clear_mine': drawingClears,
   'drawing:clear': drawingClears,
+  // Spell areas: one add per template placed, one remove per erase.
+  'area:add': {
+    windows: [{ limit: 20, windowMs: SECOND }, { limit: 300, windowMs: MINUTE }],
+    refusal: 'Too many areas at once. Wait a moment, then place it again.',
+  },
+  'area:remove': {
+    windows: [{ limit: 20, windowMs: SECOND }],
+    refusal: 'Too many areas erased at once. Wait a moment, then try again.',
+  },
+  'area:clear': {
+    windows: [{ limit: 5, windowMs: 10 * SECOND }],
+    refusal: 'Too many clears of the areas at once. Wait a few seconds, then try again.',
+  },
   // A check that the connection still answers, which the web client never
   // sends; each is answered with a `pong` to the sender.
   ping: {
@@ -338,7 +351,7 @@ export const SOCKET_EVENTS_PER_SECOND = 500;
  * (SOCKET_CEILINGS, stateRequestAllowed).
  */
 export const REJOIN_EVENTS: ReadonlySet<string> = new Set([
-  'authenticate', 'walls:request', 'lights:request', 'fog:request_state', 'exploration:request', 'drawings:request',
+  'authenticate', 'walls:request', 'lights:request', 'fog:request_state', 'exploration:request', 'drawings:request', 'areas:request',
   'presence.request', 'initiative.request_state',
 ]);
 /** What a socket past it is told, once in REFUSAL_NOTICE_MS. */

@@ -109,6 +109,7 @@ const ANY_MEMBER = [
   'GET /api/campaigns/:campaignId/maps/:id/walls',
   'GET /api/campaigns/:campaignId/maps/:id/lights',
   'GET /api/campaigns/:campaignId/maps/:id/drawings',
+  'GET /api/campaigns/:campaignId/maps/:id/areas',
 ];
 
 const app = createTestApp();

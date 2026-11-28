@@ -126,6 +126,7 @@ const TESTED: Record<string, string> = {
   'DELETE /api/campaigns/:campaignId/maps/:id/tokens/:tokenId': 'websocket/__tests__/initiativeResend.integration.test.ts',
   'GET /api/campaigns/:campaignId/maps/:id/walls': 'routes/__tests__/preparedMapsGmOnly.e2e.test.ts',
   'GET /api/campaigns/:campaignId/maps/:id/drawings': 'routes/__tests__/mapDrawingsRead.e2e.test.ts',
+  'GET /api/campaigns/:campaignId/maps/:id/areas': 'websocket/__tests__/areas.integration.test.ts',
   'PUT /api/campaigns/:campaignId/maps/:id/walls': 'routes/__tests__/wallLightBounds.e2e.test.ts',
   'POST /api/campaigns/:campaignId/maps/:id/walls': 'routes/__tests__/wallRestBroadcast.e2e.test.ts',
   'POST /api/campaigns/:campaignId/maps/:id/walls/batch': 'routes/__tests__/wallBatch.e2e.test.ts',

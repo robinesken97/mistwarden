@@ -123,6 +123,7 @@ describe.each([
   ['exploration:request', 'exploration:state'],
   ['presence.request', 'presence.state'],
   ['drawings:request', 'drawings:state'],
+  ['areas:request', 'areas:state'],
 ])('%s', (request, reply) => {
   it('answers at most five a second per user, and drops the rest silently', async () => {
     const player = await server.connectAndAuth(playerCookie, campaignId);

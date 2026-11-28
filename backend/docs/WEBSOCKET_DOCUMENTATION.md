@@ -821,6 +821,9 @@ Three things decide what a player's map shows, and each has one source of truth.
 | `drawing:remove` | 20 a second | `error` once; through the acknowledgement when there is one |
 | `drawing:clear_mine` | 5 every ten seconds | `error` once; through the acknowledgement when there is one |
 | `drawing:clear` | 5 every ten seconds, a budget of its own | `error` once; through the acknowledgement when there is one |
+| `area:add` | 20 a second and 300 a minute; each is a write under the map's lock | `error` once; an add sent with an acknowledgement is refused through it, every time |
+| `area:remove` | 20 a second | `error` once; through the acknowledgement when there is one |
+| `area:clear` | 5 every ten seconds | `error` once; through the acknowledgement when there is one |
 | `token.move` (drag frames) | 150 a second; the server also passes on at most one frame per 16 ms per socket | dropped silently |
 | `dice.roll` | 50 a second and 200 a minute; a spectator's roll is counted, then refused before its fields are read. A player's `initiative.roll` counts against the same budget, before anything in it is checked | `error` once, starting "Rate limit exceeded"; a roll sent with an acknowledgement is refused through it, every time, which the web client's dice panel waits out |
 | Wall and light edits (`wall:add`, `wall:remove`, `wall:update`, `walls:replace`, `light:add`, `light:remove`, `light:update`, `lights:replace`) | 40 a second between them; a player's edit is counted before it is refused as the GM's, so a player is told "Only GMs can …" at most 40 times a second | dropped silently; a `wall:add`, `walls:replace` or `light:add` sent with an acknowledgement is refused through it, every time |
@@ -916,6 +919,16 @@ A field outside these is refused with a message saying what is wrong, such as `A
 **Previews and the laser pointer.** While a stroke is drawn, the draw tool sends `drawing:preview` with `mapId` and `preview`: `previewId` (1 to 64 letters, digits, hyphens or underscores, the stroke's own label), `kind`, `color`, `width`, `audience`, `laser` (true for the laser pointer, whose stroke is never stored), `points` (at most 64 a frame; a stroke sends the points it added since its last frame) and `end` (true on a stroke's last frame, kept or cancelled, so other screens drop it at once). Nothing is stored. `drawing:previewed` (`mapId`, the sender's `userId`, `preview`) goes to every other socket that may read the map, never back to the socket that sent it (the sender's other tabs are sent it); a player's frames and the laser pointer's are for everyone, the GM's for the GM alone when its `audience` says so. Whether the sender may draw there, and which map the campaign is showing, is decided at most once a second for each stroke, so a pause or **Players may draw** turned off reaches a stroke already under way within a second; a map switch reaches it at its next frame. A frame past the 60 a second one user may send, a refused one and a malformed one are dropped without an answer. An add may carry its stroke's `previewId`, which `drawing:added` echoes, so the other screens put the stored drawing in the preview's place. The app's draw tool sends in each frame of a `pen` stroke, a `polygon` and the laser pointer the points added since the last, and in each frame of a `line`, an `arrow`, a `rect` or an `ellipse` its two points whole, which a page draws in place of the last; a stroke held still, and a polygon between its corners, sends a frame a second (with no points, or the laser's point again), and a page fades a stroke whose frames stop. A polygon whose frames stopped long enough for that ends its preview and starts again under a new `previewId`, every corner in its first frames.
 
 **Asking for a map's drawings.** `drawings:request` with `mapId` is answered with `drawings:state` (`mapId`, `drawings` in drawing order), the drawings the sender may be sent, for a map they may read; for any other map it answers nothing, as `walls:request` does. The server also sends `drawings:state` by itself, to every socket that may read the map and with the drawings each may have, so a page replaces its list: after `PUT /api/campaigns/:campaignId/maps/:id` changes the map's drawn size and so scales its drawings (each point across and down by the map's own two changes, rounded to whole pixels and kept within 500 squares of the resized map's edges, each width by their mean, kept to 1 to 64), and, for the map the campaign is showing, after a member's role changes or the GM's seat is handed over, so a page never keeps a drawing for the GM alone once its role may not have it. That list is read and sent under the map's lock, so a drawing added or erased meanwhile is in it or arrives after it.
+
+## Spell areas on the map
+
+A spell area is a template placed on a map for the table, a row of its own beside the drawings: a `sphere`, `cylinder`, `cone`, `line` or `cube`, drawn in an element's colour and pattern (`fire`, `cold`, `water`, `lightning`, `acid`, `poison`, `necrotic`, `radiant`, `thunder`, `force`, `psychic`, or `none`; how it looks, not a damage type). Who may place, erase and be sent one is the drawings' rule: the GM at any time; a player while **Players may draw** is on and the session is live; a spectator never. A player's is for everyone; one whose `audience` is `GM` goes to the GM's sockets alone, on every path.
+
+**Placing.** `area:add` takes `mapId`, `area` and optionally `opId`. `area` has `shape`, `anchorX` and `anchorY` (map pixels from the top-left corner, within the region a map's walls may reach), `angle` (radians, clockwise from pointing right; a cone's or a line's aim, default 0), `sizeFt` (a radius, length or side, 5 to 500 whole feet), `widthFt` (a line's, 5 to 100; null for every other shape), `exact` (placed freely rather than on the square it was placed in), `element` (default `none`), `animated` (default true), `label` (at most 60 characters, or null), `spellId` (a reference, at most 64 characters, or null) and, for the GM, `audience`. Sizes are feet, so an area is drawn by the map's feet per square; the pivot, a cone's apex and a cube's squares are worked out from the anchor and the grid as it is drawn. Each share of a map, the GM's (areas for the GM alone and the campaign's GM's own) and the players' (every other), holds 100. Answered `{ ok: true, id, opId }`; `area:added` (`mapId`, `area` with `id`, `authorId` and `createdAt`, `opId`) goes to each reader it may be sent to, the sender included.
+
+**Erasing.** `area:remove` takes `mapId` and `areaId`: the GM any, a player their own for everyone, at any time; one the sender is not sent is answered `Area not found`. `area:removed` (`mapId`, `areaId`, `opId`) goes to the readers who had it. `area:clear` takes `mapId` and erases every area for the GM, a player's own for a player, none for a spectator; `areas:cleared` (`mapId`, the player's id as `authorId` for a player's clear, `opId`) goes to the readers who had any of them.
+
+**Asking for a map's areas.** `areas:request` with `mapId` is answered with `areas:state` (`mapId`, `areas`, oldest first), those the sender may be sent, for a map they may read; the REST read is `GET /api/campaigns/:campaignId/maps/:id/areas`. The server sends `areas:state` by itself after Edit Map resizes the map, which moves every anchor with it, and after a role change. Which tokens an area covers is worked out on each screen from the tokens it draws, never on the server.
 
 ## Error Handling
 
@@ -1325,6 +1338,10 @@ _Who may send it is read from the shared permission predicates each handler call
 
 | Event | Who may send it | What it does |
 | --- | --- | --- |
+| `area:add` | Any member | Place a spell area on a map: the GM, or a player while Players may draw is on and the session is live. |
+| `area:clear` | Any member | Clear a map's areas: the GM every one, a player their own; never a spectator. |
+| `area:remove` | Any member | Erase one area: the GM any, a player their own, at any time. |
+| `areas:request` | Any member | Any campaign member asks for a map's areas, on (re)join and on opening a map. |
 | `atmosphere.audio.set` | GM only | GM queues or stops ambient audio for all players. |
 | `atmosphere.effect.set` | GM only | GM sets a visual particle overlay on the map canvas. |
 | `authenticate` | Any member | — |
@@ -1381,6 +1398,10 @@ _Sent to: map readers are every member while the map is the one the campaign is 
 
 | Event | Sent to | Emitted from |
 | --- | --- | --- |
+| `area:added` | Map readers, as their role sees it | `mapAreas.ts` |
+| `area:removed` | Map readers, as their role sees it | `mapAreas.ts` |
+| `areas:cleared` | Map readers, as their role sees it | `mapAreas.ts` |
+| `areas:state` | Map readers, as their role sees it; the sender | `areas.ts` |
 | `atmosphere.audio.updated` | The campaign | `atmosphereAudio.ts` |
 | `atmosphere.effect.updated` | The campaign | `atmosphere.ts` |
 | `authenticated` | The sender | `events.ts` |

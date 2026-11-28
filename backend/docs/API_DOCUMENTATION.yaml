@@ -9060,6 +9060,44 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
 
+  /api/campaigns/{campaignId}/maps/{id}/areas:
+    parameters:
+      - $ref: '#/components/parameters/CampaignId'
+      - $ref: '#/components/parameters/MapId'
+    get:
+      tags:
+        - Maps
+      summary: List the spell areas on a map
+      description: |
+        The map's spell areas as the caller may be sent them, oldest first.
+        The GM is given every area; a player or spectator only those whose
+        `audience` is `ALL`. Available to the GM for any map of the
+        campaign, and to other members for the campaign's current map only
+        (404 otherwise, the answer for a map that does not exist). Areas
+        are placed, erased and cleared over the live table (`area:add`,
+        `area:remove`, `area:clear`; see the WebSocket guide).
+      operationId: listMapAreas
+      security:
+        - cookieAuth: []
+      responses:
+        '200':
+          description: The areas the caller may be sent.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  areas:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MapArea'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
   /api/campaigns/{campaignId}/maps/{id}/lights:
     parameters:
       - $ref: '#/components/parameters/CampaignId'
@@ -14934,6 +14972,69 @@ components:
             * `window` — does not block vision.
       required: [id, x1, y1, x2, y2, type]
 
+    MapArea:
+      type: object
+      description: |
+        One spell area on a map: a template the table sees until it is
+        erased. Placed over the live table with `area:add`, which takes the
+        same fields but `id`, `authorId` and `createdAt`, the server's to set.
+      properties:
+        id:
+          type: string
+          format: uuid
+        authorId:
+          type: string
+          format: uuid
+          nullable: true
+          description: Who placed it; null once that account is deleted.
+        audience:
+          type: string
+          enum: [ALL, GM]
+          description: Who is sent it; a player's is always `ALL`.
+        shape:
+          type: string
+          enum: [sphere, cylinder, cone, line, cube]
+        anchorX:
+          type: number
+          description: Where it was placed, in map pixels from the left edge.
+        anchorY:
+          type: number
+          description: Where it was placed, in map pixels from the top edge.
+        angle:
+          type: number
+          description: A cone's or a line's aim, in radians clockwise from pointing right.
+        sizeFt:
+          type: integer
+          minimum: 5
+          maximum: 500
+          description: A radius, length or side, in feet.
+        widthFt:
+          type: integer
+          minimum: 5
+          maximum: 100
+          nullable: true
+          description: A line's width in feet; null for every other shape.
+        exact:
+          type: boolean
+          description: Placed freely, off the grid, rather than on the square it was placed in.
+        element:
+          type: string
+          enum: [fire, cold, water, lightning, acid, poison, necrotic, radiant, thunder, force, psychic, none]
+          description: How it looks, not a damage type.
+        animated:
+          type: boolean
+        label:
+          type: string
+          nullable: true
+          maxLength: 60
+        spellId:
+          type: string
+          nullable: true
+          maxLength: 64
+          description: A reference to the spell it was cast from.
+        createdAt:
+          type: string
+          format: date-time
     Drawing:
       type: object
       description: |

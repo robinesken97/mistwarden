@@ -10,8 +10,8 @@ import type { AuthenticatedFields } from './auth';
 import { emitNewestState } from './outgoingQueue';
 import { NOT_A_MEMBER_MESSAGE } from '../middleware/rbac';
 
-/** The events that carry a map's whole list of walls, lights or drawings. */
-const WHOLE_LIST_EVENTS: ReadonlySet<string> = new Set(['walls:replaced', 'lights:replaced', 'drawings:state']);
+/** The events that carry a map's whole list of walls, lights, drawings or areas. */
+const WHOLE_LIST_EVENTS: ReadonlySet<string> = new Set(['walls:replaced', 'lights:replaced', 'drawings:state', 'areas:state']);
 
 /**
  * WebSocket Utility Functions

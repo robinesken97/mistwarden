@@ -55,6 +55,7 @@ import { randomUUID } from 'crypto';
 import path from 'path';
 import fsp from 'fs/promises';
 import { resendDrawings } from '../services/mapDrawings';
+import { resendAreas } from '../services/mapAreas';
 const router = Router();
 
 /**
@@ -1082,6 +1083,7 @@ async function followNewRoles(campaignId: string, userIds: string[]): Promise<vo
   // A drawing for the GM alone goes with the seat: the new GM's page is sent
   // it, and the old GM's page is sent the list without it.
   await resendDrawings(campaignId, map.id);
+  await resendAreas(campaignId, map.id);
 }
 
 /**

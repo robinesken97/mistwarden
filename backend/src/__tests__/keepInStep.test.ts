@@ -228,6 +228,7 @@ import { UVTT_IMPORT_MAX_WAIT_MS, UVTT_IMPORT_TIME_LIMIT_MS } from '../services/
 import { Prisma, type MapDrawing } from '@prisma/client';
 import { SUPPORTED_GAME_SYSTEMS, isSupportedGameSystem } from '../game-systems';
 import { drawingForArchive } from '../services/mapDrawings';
+import { NewAreaSchema } from '../validators/areas';
 import { MAP_FIELDS_SENT_TO_EVERYONE, MAP_FIELDS_DECIDED_PER_RECIPIENT, MAP_FIELDS_NEVER_SENT } from '../utils/spirit-layer';
 import { PASSWORD_FIELDS } from '../middleware/nulCharacter';
 import { PICTURE_LIMITS } from '../utils/pictureLimits';
@@ -1480,3 +1481,31 @@ describe('the password fields the U+0000 refusal leaves alone', () => {
   });
 });
 
+
+// A spell area is declared on both sides: the limits file, the shape the
+// server sends (AreaSent) and the page reads (MapArea), and each broadcast.
+describe('the spell areas', () => {
+  const types = read('frontend/src/types/areas.ts');
+  const fieldsOf = (source: string, name: string) => interfaceFields(source, name).map((line) => {
+    const m = /^(\w+)(\??):/.exec(line);
+    if (!m) throw new Error(`${name} has a line this test cannot read: ${line}`);
+    return `${m[1]}${m[2]}`;
+  }).sort();
+
+  it('have the same limits file in the browser and on the server', () => {
+    expect(read('frontend/src/constants/areaLimits.ts')).toBe(read('backend/src/validators/areaLimits.ts'));
+  });
+
+  it('are sent with the fields area:add takes, and the id, author and time the server sets', () => {
+    const sent = fieldsOf(read('backend/src/services/mapAreas.ts'), 'AreaSent');
+    expect(sent).toEqual([...Object.keys(NewAreaSchema.shape), 'authorId', 'createdAt', 'id'].sort());
+    expect(fieldsOf(types, 'MapArea')).toEqual(sent);
+  });
+
+  it.each(['AreaAddedBroadcast', 'AreaRemovedBroadcast', 'AreasClearedBroadcast', 'AreasStateBroadcast'])(
+    '%s has the fields the server sends, the same ones optional',
+    (name) => {
+      expect(fieldsOf(types, name)).toEqual(fieldsOf(read('backend/src/services/mapAreas.ts'), name));
+    },
+  );
+});
