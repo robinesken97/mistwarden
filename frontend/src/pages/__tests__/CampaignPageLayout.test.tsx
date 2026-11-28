@@ -159,7 +159,7 @@ vi.mock('@/components/campaign/NpcQuickEditor', () => ({
   default: ({ token }: { token: Token }) => <div role="dialog" aria-label={`Quick edit ${token.name}`} />,
 }));
 vi.mock('@/components/campaign/MapManager', () => ({
-  default: ({ isOpen }: { isOpen: boolean }) => (isOpen ? <div role="dialog" aria-label="Map Library" /> : null),
+  default: ({ isOpen }: { isOpen: boolean }) => (isOpen ? <div role="dialog" aria-label="Scenes panel" /> : null),
 }));
 
 const nothing = vi.hoisted(() => () => ({ default: () => null }));
@@ -364,7 +364,7 @@ describe('the tablet arrangement, below 1,024 px', () => {
     await openPage();
     openLibrary();
     fireEvent.click(screen.getByRole('button', { name: 'Scenes' }));
-    expect(screen.getByRole('dialog', { name: 'Map Library' })).toBeTruthy();
+    expect(screen.getByRole('dialog', { name: 'Scenes panel' })).toBeTruthy();
   });
 });
 
@@ -412,7 +412,9 @@ describe('a change of arrangement', () => {
     fireEvent.click(screen.getByText('Edit Goblin'));
 
     arrange(true);
-    expect(screen.getByRole('dialog', { name: 'Map Library' })).toBeTruthy();
+    // The Scenes panel moves from the panel slot into the dock's sheet.
+    expect(screen.getByRole('dialog', { name: 'Scenes' })).toBeTruthy();
+    expect(screen.getByRole('dialog', { name: 'Scenes panel' })).toBeTruthy();
     expect(screen.getByRole('dialog', { name: 'Quick edit Goblin' })).toBeTruthy();
     expect(screen.getByLabelText('1 unread messages')).toBeTruthy();
     expect(part('Chat').textContent).toBe('Chat pressed 1');
@@ -426,7 +428,8 @@ describe('a change of arrangement', () => {
     expect(part('Map').textContent).toBe('Map pressed 1');
     expect(screen.getByRole('tab', { name: /^Dice/ }).getAttribute('aria-selected')).toBe('true');
     expect(screen.getByLabelText('1 unread messages')).toBeTruthy();
-    expect(screen.getByRole('dialog', { name: 'Map Library' })).toBeTruthy();
+    // A tab shows its own panel in place of the Library's.
+    expect(screen.queryByRole('dialog', { name: 'Scenes panel' })).toBeNull();
     expect(screen.getByRole('dialog', { name: 'Quick edit Goblin' })).toBeTruthy();
   });
 

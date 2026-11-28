@@ -1214,6 +1214,18 @@ class ApiClient {
     return response.data;
   }
 
+  /** The same copy kept as a scene template: never active, never sent to a player. */
+  async saveMapAsTemplate(campaignId: string, mapId: string, options: DuplicateMapRequest = {}): Promise<{ map: CampaignMap }> {
+    const response = await this.client.post(`/api/campaigns/${campaignId}/maps/${mapId}/save-as-template`, options);
+    return response.data;
+  }
+
+  /** A fresh scene from a scene template; the table stays where it is. */
+  async createMapFromTemplate(campaignId: string, templateId: string, options: DuplicateMapRequest = {}): Promise<{ map: CampaignMap }> {
+    const response = await this.client.post(`/api/campaigns/${campaignId}/maps/${templateId}/create-from-template`, options);
+    return response.data;
+  }
+
   async deleteMap(campaignId: string, mapId: string): Promise<{ message: string }> {
     const response = await this.client.delete(`/api/campaigns/${campaignId}/maps/${mapId}`);
     return response.data;

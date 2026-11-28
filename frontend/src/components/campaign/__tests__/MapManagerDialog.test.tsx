@@ -1,8 +1,7 @@
 /**
- * The Map Library is a dialog: announced by name, closed by Escape and a
- * named Close button. Escape in Create Map or Edit Map closes only that one.
- * A map card's icon buttons are named as their tooltips are, and on a phone
- * each card has a row of its own.
+ * The Scenes panel, shown on its own, is a dialog: announced by name,
+ * closed by Escape and a named Close button. Escape in Create scene or Edit
+ * Map closes only that one. A card's rarer actions are in its ⋯ menu.
  */
 
 import { it, expect, vi, beforeEach, afterEach } from 'vitest';
@@ -49,7 +48,7 @@ afterEach(() => {
 it('is announced by name, and Escape and its Close button close it', async () => {
   const onClose = vi.fn();
   render(<MapManager isOpen onClose={onClose} />);
-  const dialog = screen.getByRole('dialog', { name: 'Map Library' });
+  const dialog = screen.getByRole('dialog', { name: 'Scenes' });
   await screen.findByText('Cave');
 
   fireEvent.keyDown(dialog, { key: 'Escape' });
@@ -60,8 +59,14 @@ it('is announced by name, and Escape and its Close button close it', async () =>
 });
 
 it.each([
-  ['Create Map', () => fireEvent.click(screen.getAllByRole('button', { name: /Create Map/ })[0])],
-  ['Edit Map', () => fireEvent.click(screen.getByTitle('Edit map'))],
+  ['Create scene', () => {
+    fireEvent.click(screen.getByRole('button', { name: /Create scene/ }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'From a map picture' }));
+  }],
+  ['Edit Map', () => {
+    fireEvent.click(screen.getByRole('button', { name: 'More for Cave' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Edit…' }));
+  }],
 ])('closes only %s on Escape', async (name, open) => {
   const onClose = vi.fn();
   render(<MapManager isOpen onClose={onClose} />);
@@ -73,25 +78,15 @@ it.each([
 
   await waitFor(() => expect(screen.queryByRole('dialog', { name })).toBeNull());
   expect(onClose).not.toHaveBeenCalled();
-  expect(screen.getByRole('dialog', { name: 'Map Library' })).toBeInTheDocument();
+  expect(screen.getByRole('dialog', { name: 'Scenes' })).toBeInTheDocument();
 });
 
-// They showed only an icon, with the name in a tooltip.
-it("names a map card's icon buttons as their tooltips do", async () => {
+it("keeps a card's rarer actions in its ⋯ menu", async () => {
   render(<MapManager isOpen onClose={() => {}} />);
   await screen.findByText('Cave');
-
-  for (const title of ['Edit map', 'Export as .uvtt file', 'Delete map']) {
-    expect(screen.getByTitle(title)).toHaveAttribute('aria-label', title);
-  }
-});
-
-it('puts one map card to a row on a phone, so every button of a card is on it', async () => {
-  // Two to a row on a phone 360 px wide left each card about 150 px, and
-  // Set Active, Edit, Export and Delete ran past its edge: Delete was cut off.
-  render(<MapManager isOpen onClose={() => {}} />);
-  await screen.findByText('Cave');
-  const grid = screen.getByTitle('Delete map').closest('.grid');
-  expect(grid?.className.split(/\s+/)).toEqual(expect.arrayContaining(['grid-cols-1', 'sm:grid-cols-2']));
-  expect(grid?.className.split(/\s+/)).not.toContain('grid-cols-2');
+  fireEvent.click(screen.getByRole('button', { name: 'More for Cave' }));
+  const menu = screen.getByRole('menu', { name: 'More for Cave' });
+  expect(within(menu).getAllByRole('menuitem').map((row) => row.textContent)).toEqual(
+    ['Duplicate…', 'Save as template…', 'Edit…', 'Export as .uvtt file', 'Delete…'],
+  );
 });

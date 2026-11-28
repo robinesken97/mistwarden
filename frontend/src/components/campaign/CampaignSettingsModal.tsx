@@ -30,6 +30,7 @@ import InvitePlayerModal from './InvitePlayerModal';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
 import { CampaignRole } from '@/types';
 import type { AccessRevoked, AssignableCampaignRole, CampaignMembership, CampaignInvitationSummary } from '@/types';
+import ChoiceSegments from '@/components/ui/ChoiceSegments';
 import Button from '@/components/ui/Button';
 import SlideOver, { SlideOverClose, SlideOverTitle } from '@/components/ui/SlideOver';
 import { apiErrorMessage } from '@/utils/errors';
@@ -96,6 +97,8 @@ export default function CampaignSettingsModal({
   // What the switch shows while its save is on its way; the campaign's own
   // value otherwise, which the settings broadcast keeps current.
   const [playersMayDrawShown, setPlayersMayDrawShown] = useState<boolean | null>(null);
+  // The same for Creature size from stat block.
+  const [creatureSizeShown, setCreatureSizeShown] = useState<boolean | null>(null);
 
   // ── Chat settings ────────────────────────────
   const [chatCooldownEnabled, setChatCooldownEnabled] = useState(false);
@@ -247,6 +250,19 @@ export default function CampaignSettingsModal({
       showToast(apiErrorMessage(err) ?? 'Could not change who may draw on the map', 'error');
     } finally {
       setPlayersMayDrawShown(null);
+    }
+  };
+
+  const handleUseCreatureSize = async (next: boolean) => {
+    setCreatureSizeShown(next);
+    try {
+      await campaignService.updateCampaign(campaign.id, { useCreatureSize: next });
+      await refreshCampaign();
+      showToast(next ? 'Creatures are placed at their stat block size now' : 'Creatures are placed at one square now', 'success');
+    } catch (err) {
+      showToast(apiErrorMessage(err) ?? 'Could not change how creatures are sized', 'error');
+    } finally {
+      setCreatureSizeShown(null);
     }
   };
 
@@ -536,6 +552,20 @@ export default function CampaignSettingsModal({
                     }`}
                   />
                 </button>
+              </div>
+
+              {/* ── Creature size ── */}
+              <div className="pt-4 mt-4 border-t border-moss-green/15">
+                <ChoiceSegments
+                  label="Creature size from stat block"
+                  value={(creatureSizeShown ?? campaign.useCreatureSize ?? false) ? 'on' : 'off'}
+                  onChange={(v) => void handleUseCreatureSize(v === 'on')}
+                  options={[['off', 'Off'], ['on', 'On']]}
+                  describedBy="cs-creature-size-help"
+                />
+                <p id="cs-creature-size-help" className="text-xs text-warm-gray mt-1">
+                  On, a token placed from a creature takes its stat block's size, such as 2 × 2 for a Large one. Off, it starts at one square. Saved at once.
+                </p>
               </div>
 
               {/* ── Export ── */}

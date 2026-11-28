@@ -43,7 +43,8 @@ import { useServerConfigQuery } from '@/hooks/queries';
 import { useCampaign } from '@/contexts/CampaignContext';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import { useGameStore } from '@/stores/gameStore';
-import { useTableChrome } from '@/stores/tableChromeStore';
+import { closeLibrary, useTableChrome, type LibraryPanel } from '@/stores/tableChromeStore';
+import { useSheet } from '@/components/campaign/compact/BottomSheet';
 import { DisplaySettings, DISPLAY_SETTINGS_LABEL } from '@/components/campaign/DisplaySettings';
 import { startTour } from '@/components/campaign/tour/tourSteps';
 import { type SessionToolKey } from '@/components/campaign/SessionToolbar';
@@ -104,6 +105,11 @@ function StatusChip({ status, dot = false }: { status: CampaignStatus; dot?: boo
 const DOCK_TABS_PHONE = 'calc(57px + env(safe-area-inset-bottom))';
 const DOCK_TABS_TABLET = 'calc(53px + env(safe-area-inset-bottom))';
 
+/** The Library panels' names, for the sheet that shows one on a compact layout. */
+const LIBRARY_NAMES: Record<LibraryPanel, string> = {
+  scenes: 'Scenes', tokens: 'Tokens', creatures: 'Creatures', templates: 'Token Templates', spells: 'Spells',
+};
+
 /** A Library tile at the top of the phone's ⋯ sheet: its icon over a 12 px label, 64 px tall. */
 function LibraryTile({ icon: Icon, label, tour, onSelect }: { icon: LucideIcon; label: string; tour: string; onSelect: () => void }) {
   return (
@@ -137,6 +143,10 @@ export default function DesktopTable({
   const mapSlot = useTableSlot('map');
   const sessionSlot = useTableSlot('session');
   const partySlot = useTableSlot('party');
+  const librarySlot = useTableSlot('library');
+  // A Library panel (Scenes, Tokens, ...) shows in the panel slot, or a sheet
+  // on the dock, without choosing a tab: closing it shows what was there.
+  const library = useTableChrome((s) => s.library);
 
   const sessionTab = useGameStore((s) => s.sessionTab);
   const setSessionTab = useGameStore((s) => s.setSessionTab);
@@ -148,15 +158,21 @@ export default function DesktopTable({
   const dock = useDockPanel();
   const panel = docked ? dock : widePanel;
   const activeTab: WideTab = panel.party ? 'party' : sessionTab;
+  /** The panel beside the tabs shows: a tab's, or a Library panel over it. */
+  const sideShown = panel.open || library !== null;
 
   // The chat counts as read only while its panel shows; folded or on Party,
   // what arrives counts on the Chat tab's badge.
   useEffect(() => {
-    setSessionShown(panel.open && !panel.party);
-  }, [panel.open, panel.party, setSessionShown]);
+    setSessionShown(panel.open && !panel.party && library === null);
+  }, [panel.open, panel.party, library, setSessionShown]);
   // Another page shows the panels again; set directly, so a switch to the
   // compact layout, which sets its own value, does not read the chat as seen.
-  useEffect(() => () => useGameStore.setState({ sessionShown: true }), []);
+  // A Library panel left open is not open on the next table.
+  useEffect(() => () => {
+    useGameStore.setState({ sessionShown: true });
+    closeLibrary();
+  }, []);
 
   // Turning between a panel beside the tabs and the dock with the keyboard
   // in the session panels or Party shows that part, so the control stays in
@@ -170,7 +186,9 @@ export default function DesktopTable({
 
   /** Show `tab`, or fold the panel when `tab` is the one open; a folded dock opens at 40 %. */
   const selectTab = (tab: WideTab) => {
-    if (panel.open && tab === activeTab) {
+    // Over a Library panel a tab shows its own panel, never folds it.
+    if (library !== null) closeLibrary();
+    if (panel.open && tab === activeTab && library === null) {
       panel.choose({ open: false, party: panel.party });
       return;
     }
@@ -199,9 +217,9 @@ export default function DesktopTable({
   // The open panel's header takes its count and actions (ChatPanel, DiceRoller).
   const [headerSlot, setHeaderSlot] = useState<HTMLElement | null>(null);
   useEffect(() => {
-    useTableChrome.setState({ panelHeader: headerSlot && panel.open ? { tab: activeTab, el: headerSlot } : null });
+    useTableChrome.setState({ panelHeader: headerSlot && panel.open && library === null ? { tab: activeTab, el: headerSlot } : null });
     return () => useTableChrome.setState({ panelHeader: null });
-  }, [headerSlot, panel.open, activeTab]);
+  }, [headerSlot, panel.open, activeTab, library]);
 
   // The ⋯ menu shows its rows, or Display on this device in their place.
   const [moreView, setMoreView] = useState<'rows' | 'display'>('rows');
@@ -291,7 +309,7 @@ export default function DesktopTable({
     >
       {WIDE_TABS.map((key, index) => {
         const { label, icon: Icon } = WIDE_TAB_LOOKS[key];
-        const shown = panel.open && activeTab === key;
+        const shown = panel.open && library === null && activeTab === key;
         return (
           <button
             key={key}
@@ -366,15 +384,17 @@ export default function DesktopTable({
   const sidePanel = (
     <section
       id="wide-panel"
-      aria-label={WIDE_TAB_LOOKS[activeTab].label}
-      inert={!panel.open || undefined}
+      aria-label={library ? LIBRARY_NAMES[library] : WIDE_TAB_LOOKS[activeTab].label}
+      inert={!sideShown || undefined}
       className={cn(
         'relative shrink-0 overflow-hidden border-brand/20 bg-[color-mix(in_srgb,var(--color-surface)_30%,var(--color-canvas))]',
-        panel.open ? 'w-80 xl:w-96 border-r' : 'w-0',
+        sideShown ? 'w-80 xl:w-96 border-r' : 'w-0',
       )}
     >
+      {/* A Library panel over the tab's, which stays laid out under it. */}
+      {library && <div ref={librarySlot.ref} className={cn('absolute inset-y-0 left-0 z-10 flex w-80 xl:w-96 flex-col overflow-y-auto bg-inherit', layout !== 'wide' && 'finger-controls')} />}
       {/* 320 px below 1,280 px wide, 384 from there (in rem, so a 4K screen's larger text widens it too). */}
-      <div className="flex h-full w-80 xl:w-96 flex-col">
+      <div className={cn('flex h-full w-80 xl:w-96 flex-col', library && 'invisible')} inert={library !== null || undefined}>
         <div className="flex h-13 shrink-0 items-center gap-2 pl-4 pr-1 border-b border-ink/10">
           {panelHeading}
           <div ref={setHeaderSlot} className="flex shrink-0 items-center gap-1 text-[0.8125rem] text-ink-muted" />
@@ -424,6 +444,29 @@ export default function DesktopTable({
       </div>
       {panelBody}
     </section>
+  );
+
+  // ── A Library panel on the dock: a sheet from 8 px under the bar to the
+  // tab row, over a backdrop; Back, Escape, the backdrop and its × close it,
+  // and a tab shows its own panel in its place.
+  const librarySheetRef = useSheet(docked && library !== null, true, closeLibrary);
+  const librarySheet = docked && library && (
+    <>
+      <div aria-hidden="true" onClick={closeLibrary} style={{ bottom: tabRows }} className="absolute inset-x-0 top-0 z-40 bg-black/40" />
+      <div
+        ref={librarySheetRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={LIBRARY_NAMES[library]}
+        style={{ bottom: tabRows }}
+        className="absolute inset-x-0 top-2 z-40 flex flex-col overflow-hidden rounded-t-2xl border-t border-brand/20 bg-surface shadow-[0_-8px_24px_rgb(0_0_0/0.25)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]"
+      >
+        <div aria-hidden="true" className="flex h-5 shrink-0 items-center justify-center">
+          <span className="h-1 w-9 rounded-full bg-ink/25" />
+        </div>
+        <div ref={librarySlot.ref} className="finger-controls flex min-h-0 flex-1 flex-col overflow-y-auto" />
+      </div>
+    </>
   );
 
   // ── Library: a menu in the bar, or tiles at the top of a phone's ⋯ ──
@@ -593,6 +636,7 @@ export default function DesktopTable({
         <main ref={mapSlot.ref} className={cn('relative min-w-0 min-h-0 flex-1 bg-canvas', layout !== 'wide' && 'finger-controls')} />
 
         {docked && dockSection}
+        {librarySheet}
         {docked && tabs}
       </div>
 

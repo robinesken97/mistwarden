@@ -1,9 +1,9 @@
 /**
- * Deleting a drawn map from the Map Library: the question offers a box,
- * "Also delete its picture from the Asset Library", for a map whose picture
- * Paint made, never for an uploaded one, and unticked. Ticked, the picture
- * goes once the map has, without force, so a picture something else still
- * uses stays, which the library says.
+ * Deleting a drawn scene from the Scenes panel: the question offers a
+ * choice, "Its picture in the Asset Library: Keep | Delete", for a scene
+ * whose picture Paint made, never for an uploaded one, on Keep. On Delete,
+ * the picture goes once the scene has, without force, so a picture
+ * something else still uses stays, which the panel says.
  */
 
 import { it, expect, vi, beforeEach, afterEach, describe } from 'vitest';
@@ -110,32 +110,38 @@ afterEach(() => {
 
 async function askToDelete(name = 'Crypt') {
   const card = (await screen.findByRole('heading', { name })).closest('div.rounded-xl') as HTMLElement;
-  fireEvent.click(within(card).getByRole('button', { name: 'Delete map' }));
-  return screen.getByRole('dialog', { name: 'Delete Map' });
+  fireEvent.click(within(card).getByRole('button', { name: `More for ${name}` }));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Delete…' }));
+  return screen.getByRole('dialog', { name: 'Delete scene' });
 }
 
 async function askToDeleteCrypt() {
   render(<MapManager isOpen onClose={() => {}} />);
   return askToDelete('Crypt');
 }
-const box = () => screen.queryByRole('checkbox', { name: 'Also delete its picture from the Asset Library' });
+const box = () => screen.queryByRole('radiogroup', { name: 'Its picture in the Asset Library' });
+const choose = async (name: 'Keep' | 'Delete') => {
+  const group = await screen.findByRole('radiogroup', { name: 'Its picture in the Asset Library' });
+  fireEvent.click(within(group).getByRole('radio', { name }));
+};
 const confirm = async (dialog: HTMLElement) => {
   await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' })); });
   await act(async () => { await Promise.resolve(); });
 };
 
 describe('deleting a drawn map', () => {
-  it('offers to delete its picture too, unticked, and deletes only the map unless ticked', async () => {
+  it('offers to delete its picture too, unticked, and deletes only the map on Keep', async () => {
     const dialog = await askToDeleteCrypt();
-    expect(await screen.findByRole('checkbox', { name: 'Also delete its picture from the Asset Library' })).not.toBeChecked();
+    const group = await screen.findByRole('radiogroup', { name: 'Its picture in the Asset Library' });
+    expect(within(group).getByRole('radio', { name: 'Keep' })).toHaveAttribute('aria-checked', 'true');
     await confirm(dialog);
     expect(requests).toContain('delete /api/campaigns/campaign-1/maps/crypt');
     expect(requests.filter((r) => r.startsWith('delete /api/assets'))).toEqual([]);
   });
 
-  it('deletes the picture after the map when ticked, without force', async () => {
+  it('deletes the picture after the map on Delete, without force', async () => {
     const dialog = await askToDeleteCrypt();
-    fireEvent.click(await screen.findByRole('checkbox', { name: 'Also delete its picture from the Asset Library' }));
+    await choose('Delete');
     await confirm(dialog);
     const deletes = requests.filter((r) => r.startsWith('delete'));
     expect(deletes).toEqual(['delete /api/campaigns/campaign-1/maps/crypt', `delete /api/assets/${picture}`]);
@@ -144,12 +150,12 @@ describe('deleting a drawn map', () => {
   it('keeps a picture something else uses, and says so', async () => {
     assetDeleteStatus = 409;
     const dialog = await askToDeleteCrypt();
-    fireEvent.click(await screen.findByRole('checkbox', { name: 'Also delete its picture from the Asset Library' }));
+    await choose('Delete');
     await confirm(dialog);
     expect(await screen.findByText('Crypt is deleted. Its picture is used elsewhere, so it stays in the Asset Library.')).toBeInTheDocument();
   });
 
-  it('offers no such box for a map whose picture was uploaded', async () => {
+  it('offers no such choice for a map whose picture was uploaded', async () => {
     tags = ['dungeon'];
     await askToDeleteCrypt();
     await act(async () => { await Promise.resolve(); });
@@ -157,12 +163,12 @@ describe('deleting a drawn map', () => {
     expect(box()).toBeNull();
   });
 
-  it('never shows the box on another map when the answer about the first comes late', async () => {
+  it('never shows the choice on another map when the answer about the first comes late', async () => {
     holdPicture = { release: () => undefined };
     const first = await askToDeleteCrypt();
     // The question is put aside before the drawn picture's tags have come.
     fireEvent.click(within(first).getByRole('button', { name: 'Cancel' }));
-    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Delete Map' })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Delete scene' })).toBeNull());
     await askToDelete('Cave');
     await act(async () => { await Promise.resolve(); });
     await act(async () => { holdPicture?.release(); await Promise.resolve(); await Promise.resolve(); });

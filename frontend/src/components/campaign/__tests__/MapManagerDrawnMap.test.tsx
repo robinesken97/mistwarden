@@ -1,9 +1,8 @@
 /**
  * A map made with Draw a map opens on the GM's screen at once, as Open to
- * prepare opens one, with Mapmaker on, and the Map Library gets out of its
- * way: the players stay where they are. Its picture is known to be drawn
- * without asking. A map made from a picture stays in the library, as
- * before.
+ * prepare opens one, with Mapmaker on, beside the Scenes panel: the players
+ * stay where they are. Its picture is known to be drawn without asking. A
+ * map made from a picture stays in the panel, as before.
  */
 
 import { it, expect, vi, beforeEach, describe } from 'vitest';
@@ -68,18 +67,19 @@ beforeEach(() => {
 
 async function make(onClose = vi.fn()) {
   render(<MapManager isOpen onClose={onClose} />);
-  fireEvent.click((await screen.findAllByRole('button', { name: /Create Map/ }))[0]);
+  fireEvent.click(await screen.findByRole('button', { name: /Create scene/ }));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Blank scene' }));
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Made' })); });
   return onClose;
 }
 
 describe('a map just made', () => {
-  it('opens on this screen to prepare when it was drawn, and the library closes', async () => {
+  it('opens on this screen to prepare when it was drawn, beside the panel', async () => {
     h.created = { map: crypt, picture: drawnPicture };
     const onClose = await make();
     expect(h.upsertCampaignMap).toHaveBeenCalledWith(crypt);
     expect(h.openToPrepare).toHaveBeenCalledWith('crypt');
-    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(onClose).not.toHaveBeenCalled();
     expect(usePaintStore.getState().openOnMapId).toBe('crypt');
   });
 
@@ -109,7 +109,7 @@ describe("a drawn map's card", () => {
   it("loads its thumbnail with the version the map's picture address carries", async () => {
     h.created = { map: { ...crypt, imageUrl: '/api/assets/maps/upload-2?v=1730000000000' } };
     await make();
-    const card = await screen.findByRole('img', { name: 'Crypt' });
-    expect(card.getAttribute('src')).toMatch(/\/api\/assets\/maps\/upload-2\/thumbnail\?v=1730000000000$/);
+    const card = (await screen.findByRole('heading', { name: 'Crypt' })).closest('div.rounded-xl') as HTMLElement;
+    expect(card.querySelector('img')?.getAttribute('src')).toMatch(/\/api\/assets\/maps\/upload-2\/thumbnail\?v=1730000000000$/);
   });
 });

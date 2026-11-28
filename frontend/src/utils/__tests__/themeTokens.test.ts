@@ -193,8 +193,8 @@ describe('themed surfaces use semantic tokens', () => {
       '/src/pages/auth/ChangePasswordPage.tsx': ['text-brand-ink/70'],
       '/src/pages/auth/ForgotPasswordPage.tsx': ['text-brand-ink/70', 'text-brand-ink/70'],
       '/src/pages/auth/ResetPasswordPage.tsx': ['text-brand-ink/70'],
-      // Two decorative map pins, and the disabled Add, Import and Delete buttons.
-      '/src/components/campaign/MapManager.tsx': ['text-stone-gray/30', 'text-brand-ink/50', 'text-info-ink/60', 'text-danger-ink/40', 'text-stone-gray/25'],
+      // The map pin of a scene card without a picture.
+      '/src/components/campaign/MapManager.tsx': ['text-ink-muted/40'],
       // A proficiency box that cannot be ticked.
       '/src/components/campaign/npc-stat-blocks/ProficiencyEditor.tsx': ['text-ink-muted/40'],
     };

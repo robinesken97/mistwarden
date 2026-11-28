@@ -34,6 +34,8 @@ interface CreateMapModalProps {
   onClose: () => void;
   /** The map made, and for a drawn map the picture uploaded for it. */
   onCreated: (map: CampaignMap, drawnPicture?: Asset) => void;
+  /** Chosen before it opened (the Scenes panel's Blank scene or From a map picture): no choice between the two inside. */
+  start?: 'picture' | 'drawing';
 }
 
 /** What a browser that made no PNG of the blank picture is told. */
@@ -50,9 +52,10 @@ export default function CreateMapModal({
   campaignId,
   onClose,
   onCreated,
+  start,
 }: CreateMapModalProps) {
   // From a picture, or drawn in CozyVTT.
-  const [making, setMaking] = useState<'picture' | 'drawing'>('picture');
+  const [making, setMaking] = useState<'picture' | 'drawing'>(start ?? 'picture');
   const drawing = making === 'drawing';
   // A drawn map's pixels per square and colour.
   const [detail, setDetail] = useState(DRAWN_MAP_GRID_SIZE);
@@ -93,7 +96,7 @@ export default function CreateMapModal({
   // Reset all state when the modal closes
   useEffect(() => {
     if (!isOpen) {
-      setMaking('picture');
+      setMaking(start ?? 'picture');
       setDetail(DRAWN_MAP_GRID_SIZE);
       setBackground(DRAWN_MAP_BACKGROUND);
       setMapAssetId(null);
@@ -114,7 +117,7 @@ export default function CreateMapModal({
       setIsDetecting(false);
       setError(null);
     }
-  }, [isOpen]);
+  }, [isOpen, start]);
 
   // When the map image changes, attempt to auto-detect the grid
   useEffect(() => {
@@ -273,13 +276,13 @@ export default function CreateMapModal({
         className="flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-        Create Map
+        Create scene
       </Button>
     </>
   );
 
   return (
-    <Modal open={isOpen} onClose={handleClose} title="Create Map" icon={MapPin} size="xl" closeDisabled={isSubmitting} fitViewport footer={footer}>
+    <Modal open={isOpen} onClose={handleClose} title={start === 'drawing' ? 'Blank scene' : 'Create scene'} icon={MapPin} size="xl" closeDisabled={isSubmitting} fitViewport footer={footer}>
             {/* Body: it scrolls, between the header and the Modal's footer */}
             <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-6">
               {/* Error */}
@@ -289,8 +292,8 @@ export default function CreateMapModal({
                 </div>
               )}
 
-              {/* A picture, or a map drawn here. */}
-              <div role="group" aria-label="How to make the map" className="flex gap-2 flex-wrap">
+              {/* A picture, or a map drawn here, unless chosen before. */}
+              {!start && <div role="group" aria-label="How to make the map" className="flex gap-2 flex-wrap">
                 {([['picture', 'Use a picture'], ['drawing', 'Draw a map']] as const).map(([way, label]) => (
                   <button
                     key={way}
@@ -306,7 +309,7 @@ export default function CreateMapModal({
                     {label}
                   </button>
                 ))}
-              </div>
+              </div>}
 
               {/* Map Image. Upload New offers the GM's personal library,
                   selected at first, or the campaign's. Either way players

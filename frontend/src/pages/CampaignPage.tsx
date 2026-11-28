@@ -8,10 +8,11 @@
 // under one top bar and its panel tabs in a dock, a column or the bar.
 // Everything an arrangement change must keep
 // stays here: the page's listeners, every window and slide-over and whether
-// it is open, and the token quick editor.
+// it is open, the Library panel's content (a table part, shown in the panel
+// slot or a sheet), and the token quick editor.
 // ============================================
 
-import { useState, useEffect, lazy, Suspense, type ReactNode } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { isCampaignOwner } from '@/utils/campaignRoles';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router';
@@ -54,7 +55,9 @@ import ShortcutsPanel from '@/components/campaign/ShortcutsPanel';
 import TableTour from '@/components/campaign/TableTour';
 import SessionPanels from '@/components/campaign/SessionPanels';
 import DesktopTable from '@/components/campaign/DesktopTable';
-import { TableHosts, type TablePart } from '@/components/campaign/tableHosts';
+import { TableHosts, type TableParts } from '@/components/campaign/tableHosts';
+import { InPanelContext } from '@/components/ui/SlideOver';
+import { closeLibrary, openLibrary, useTableChrome } from '@/stores/tableChromeStore';
 import { type SessionToolKey } from '@/components/campaign/SessionToolbar';
 import { CampaignStatus } from '@/types';
 import type { Token } from '@/types';
@@ -125,17 +128,15 @@ function CampaignPageContent() {
     // would silently never happen. (`socket` is a module singleton, so it never
     // changes identity and cannot re-trigger this on its own.)
   }, [socket, refreshCurrentMap]);
-  const [isMapManagerOpen, setIsMapManagerOpen] = useState(false);
-  const [isTokenManagerOpen, setIsTokenManagerOpen] = useState(false);
   const [isSpiritLayerOpen, setIsSpiritLayerOpen] = useState(false);
   const [isAtmospherePanelOpen, setIsAtmospherePanelOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isDocumentsOpen, setIsDocumentsOpen] = useState(false);
   // The keyboard shortcuts window, opened from the header or by ? on the map.
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
-  const [isCreatureLibraryOpen, setIsCreatureLibraryOpen] = useState(false);
-  const [isTokenTemplateLibraryOpen, setIsTokenTemplateLibraryOpen] = useState(false);
-  const [isSpellLibraryOpen, setIsSpellLibraryOpen] = useState(false);
+  // Scenes, Tokens, Creatures, Token Templates and Spells: shown in the
+  // panel slot, or a sheet on a compact layout (DesktopTable).
+  const library = useTableChrome((s) => s.library);
   // The token in the quick editor, with the map it was opened on, which its
   // saves name: the map on screen can change under it (the table moved from
   // elsewhere, the map being prepared deleted).
@@ -148,10 +149,10 @@ function CampaignPageContent() {
   // SessionToolbar reports which tool was clicked; the open/close state
   // for each slide-over stays here.
   const sessionPanelOpeners: Record<SessionToolKey, () => void> = {
-    maps: () => setIsMapManagerOpen(true),
-    tokens: () => setIsTokenManagerOpen(true),
-    creatures: () => setIsCreatureLibraryOpen(true),
-    templates: () => setIsTokenTemplateLibraryOpen(true),
+    maps: () => openLibrary('scenes'),
+    tokens: () => openLibrary('tokens'),
+    creatures: () => openLibrary('creatures'),
+    templates: () => openLibrary('templates'),
     spirit: () => setIsSpiritLayerOpen(true),
     atmosphere: () => setIsAtmospherePanelOpen(true),
     settings: () => setIsSettingsOpen(true),
@@ -248,7 +249,7 @@ function CampaignPageContent() {
   // The map, the session panels and the Party content, each drawn once here
   // and moved into the slots of the arrangement on screen, so a change of
   // arrangement remounts none of them.
-  const tableParts: Record<TablePart, ReactNode> = {
+  const tableParts: TableParts = {
     map: (
       // The banner over a map the GM is preparing, then the map below it.
       <div className="flex h-full w-full flex-col">
@@ -281,6 +282,21 @@ function CampaignPageContent() {
         )}
       </div>
     ),
+    // The Library panel: each library's content, drawn in the panel slot (wide) or a sheet (compact).
+    library: (
+      <InPanelContext.Provider value={true}>
+        {userRole === 'GM' && (
+          <>
+            <MapManager isOpen={library === 'scenes'} onClose={closeLibrary} />
+            <TokenManager isOpen={library === 'tokens'} onClose={closeLibrary} />
+            <CreatureLibrary isOpen={library === 'creatures'} onClose={closeLibrary} />
+            <TokenTemplateLibrary isOpen={library === 'templates'} onClose={closeLibrary} />
+          </>
+        )}
+        {/* Every member reads the Spell Library. */}
+        <SpellLibrary isOpen={library === 'spells'} onClose={closeLibrary} />
+      </InPanelContext.Provider>
+    ),
   };
 
   return (
@@ -298,28 +314,12 @@ function CampaignPageContent() {
           isOwner={isOwner}
           onOpenTool={(key) => sessionPanelOpeners[key]()}
           onOpenDocuments={() => setIsDocumentsOpen(true)}
-          onOpenSpells={() => setIsSpellLibraryOpen(true)}
+          onOpenSpells={() => openLibrary('spells')}
           onOpenShortcuts={() => setIsShortcutsOpen(true)}
           onLeft={endTable}
         />
       </TableHosts>
       </SpellAreaCampaign.Provider>
-
-      {/* Map Manager slide-over panel (GM only) */}
-      {userRole === 'GM' && (
-        <MapManager
-          isOpen={isMapManagerOpen}
-          onClose={() => setIsMapManagerOpen(false)}
-        />
-      )}
-
-      {/* Token Manager slide-over panel (GM only) */}
-      {userRole === 'GM' && (
-        <TokenManager
-          isOpen={isTokenManagerOpen}
-          onClose={() => setIsTokenManagerOpen(false)}
-        />
-      )}
 
       {/* Spirit Layer Controls slide-over panel (GM only) */}
       {userRole === 'GM' && (
@@ -334,22 +334,6 @@ function CampaignPageContent() {
         <AtmospherePanel
           isOpen={isAtmospherePanelOpen}
           onClose={() => setIsAtmospherePanelOpen(false)}
-        />
-      )}
-
-      {/* Creature Library slide-over (GM only) */}
-      {userRole === 'GM' && (
-        <CreatureLibrary
-          isOpen={isCreatureLibraryOpen}
-          onClose={() => setIsCreatureLibraryOpen(false)}
-        />
-      )}
-
-      {/* Token Template Library slide-over (GM only) */}
-      {userRole === 'GM' && (
-        <TokenTemplateLibrary
-          isOpen={isTokenTemplateLibraryOpen}
-          onClose={() => setIsTokenTemplateLibraryOpen(false)}
         />
       )}
 
@@ -388,9 +372,6 @@ function CampaignPageContent() {
           isGM={userRole === 'GM'}
         />
       )}
-
-      {/* Spell Library slide-over: every member reads it */}
-      <SpellLibrary isOpen={isSpellLibraryOpen} onClose={() => setIsSpellLibraryOpen(false)} />
 
       <ShortcutsPanel open={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} role={userRole} />
 

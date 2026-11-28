@@ -46,9 +46,12 @@ import {
 import { createPortal } from 'react-dom';
 
 /** The parts of the table that are drawn once for the page, in the order they are portaled. */
-const TABLE_PARTS = ['map', 'session', 'party'] as const;
+const TABLE_PARTS = ['map', 'session', 'party', 'library'] as const;
 
 export type TablePart = (typeof TABLE_PARTS)[number];
+
+/** What TableHosts draws: every part, the Library panel (Scenes, Tokens, ...) where the page has one. */
+export type TableParts = Record<Exclude<TablePart, 'library'>, ReactNode> & { library?: ReactNode };
 
 interface Placement {
   /** Move `part` into `slot`. The function it returns moves it out again. */
@@ -128,11 +131,12 @@ function makeHost(part: TablePart): HTMLDivElement {
  * Draws each of `parts` once, for as long as it is mounted, in the slot the
  * arrangement among `children` gives it (useTableSlot).
  */
-export function TableHosts({ parts, children }: { parts: Record<TablePart, ReactNode>; children: ReactNode }) {
+export function TableHosts({ parts, children }: { parts: TableParts; children: ReactNode }) {
   const [hosts] = useState<Record<TablePart, HTMLDivElement>>(() => ({
     map: makeHost('map'),
     session: makeHost('session'),
     party: makeHost('party'),
+    library: makeHost('library'),
   }));
   const parkingRef = useRef<HTMLDivElement>(null);
   // Where a parked part's lists stood in the slot it left: parked, it is
@@ -167,7 +171,7 @@ export function TableHosts({ parts, children }: { parts: Record<TablePart, React
     <PlacementContext.Provider value={placement}>
       {children}
       <div ref={parkingRef} style={PARKING_STYLE} />
-      {TABLE_PARTS.map((part) => (placed.has(part) ? createPortal(parts[part], hosts[part], part) : null))}
+      {TABLE_PARTS.map((part) => (placed.has(part) ? createPortal(parts[part] ?? null, hosts[part], part) : null))}
     </PlacementContext.Provider>
   );
 }

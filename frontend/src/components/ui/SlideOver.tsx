@@ -42,6 +42,13 @@ interface SlideOverContextValue {
 
 const SlideOverContext = createContext<SlideOverContextValue | null>(null);
 
+/**
+ * True where a page shows its side panels in a panel of its own (the campaign
+ * page's Library panel slot or sheet): a SlideOver there draws its content in
+ * place, with the same title and close, and no backdrop, motion or trap.
+ */
+export const InPanelContext = createContext(false);
+
 function useSlideOver(part: string): SlideOverContextValue {
   const value = useContext(SlideOverContext);
   if (!value) throw new Error(`${part} must be inside a SlideOver`);
@@ -58,6 +65,17 @@ export default function SlideOver({
 }: SlideOverProps) {
   const titleId = useId();
   const compact = useCompactLayout();
+  const inPanel = useContext(InPanelContext);
+
+  if (inPanel) {
+    return open ? (
+      <SlideOverContext.Provider value={{ titleId, close: onClose }}>
+        <section aria-labelledby={titleId} className={cn(className, 'relative h-full w-full max-w-none bg-transparent shadow-none')}>
+          {children}
+        </section>
+      </SlideOverContext.Provider>
+    ) : null;
+  }
 
   // Portal to <body>: ancestors with transform/filter/backdrop-filter create
   // containing blocks that would trap position:fixed children. `propagate`

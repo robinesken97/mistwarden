@@ -1319,6 +1319,8 @@ export interface UpdateCampaignRequest {
   chatCooldownEnabled?: boolean;
   chatCooldownSeconds?: number;
   playersMayDraw?: boolean;
+  /** A token placed from a creature takes the stat block's size. */
+  useCreatureSize?: boolean;
 }
 
 // Character

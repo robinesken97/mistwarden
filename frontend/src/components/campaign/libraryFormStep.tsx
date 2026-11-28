@@ -9,14 +9,16 @@
  * and back to the control that opened it as it closes, whichever way it
  * closes; when that control has gone, as an Edit button does when its row
  * folds or the panel is closed and opened again, to the list's own create
- * button (`createButtonRef`). The width is the campaign page's (COMPACT_LAYOUT_QUERY). On a wider
- * screen nothing here acts and the form opens under the list.
+ * button (`createButtonRef`). The width is the campaign page's (COMPACT_LAYOUT_QUERY); a library
+ * shown in the page's panel slot or sheet (InPanelContext) counts as narrow at every width. On a
+ * wider screen otherwise nothing here acts and the form opens under the list.
  */
 
-import { useCallback, useEffect, useRef, type RefObject } from 'react';
+import { useCallback, useContext, useEffect, useRef, type RefObject } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { COMPACT_LAYOUT_QUERY } from '@/constants/layout';
+import { InPanelContext } from '@/components/ui/SlideOver';
 
 export interface LibraryFormStep {
   /** The form is open as a step of its own: hide the list and let the form fill the panel. */
@@ -35,7 +37,10 @@ export interface LibraryFormStep {
 
 /** `formOpen` is whether the panel's form is open, at any width. */
 export function useLibraryFormStep(formOpen: boolean): LibraryFormStep {
-  const compact = useMediaQuery(COMPACT_LAYOUT_QUERY);
+  // In the 320 or 384 px panel slot, or a sheet, the form is a step at every width.
+  const narrow = useMediaQuery(COMPACT_LAYOUT_QUERY);
+  const inPanel = useContext(InPanelContext);
+  const compact = narrow || inPanel;
   const headingRef = useRef<HTMLHeadingElement | null>(null);
   const createButtonRef = useRef<HTMLButtonElement | null>(null);
   const opener = useRef<HTMLElement | null>(null);

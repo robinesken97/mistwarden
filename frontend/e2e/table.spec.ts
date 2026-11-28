@@ -157,7 +157,7 @@ test('a GM and four players share one table', async ({ browser, playwright }, te
     const mapId = ((await map.json()) as { map: { id: string } }).map.id;
     await gm.getByRole('button', { name: 'Library', exact: true }).click();
     await gm.getByRole('button', { name: 'Scenes', exact: true }).click();
-    await gm.getByRole('button', { name: 'Set Active' }).first().click();
+    await gm.getByRole('button', { name: 'Set active' }).first().click();
     await gm.keyboard.press('Escape');
     // The table is on it once the campaign says so; only then may a player touch its tokens.
     await expect

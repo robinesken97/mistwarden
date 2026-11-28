@@ -1,5 +1,5 @@
 /**
- * Draw a map, in the Create Map window: a blank map of the size and colour
+ * Draw a map, in the Create scene window: a blank map of the size and colour
  * the GM chooses, which the browser makes as a picture, uploads into the
  * campaign's library tagged DRAWN_MAP_TAG, and then creates the map with.
  *
@@ -95,7 +95,7 @@ const setSlider = (name: string, value: number) => {
 };
 const name = (text: string) => fireEvent.change(screen.getByPlaceholderText(/Tavern Interior/), { target: { value: text } });
 const create = async () => {
-  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Create Map' })); });
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Create scene' })); });
 };
 
 describe('Draw a map', () => {
@@ -121,7 +121,7 @@ describe('Draw a map', () => {
     setSlider('Width (grid squares) slider', 410);
     setSlider('Height (grid squares) slider', 410);
     expect(screen.getByText('A drawn map can have at most 167,772 squares, such as 409 by 409. Choose fewer squares.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Create Map' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Create scene' })).toBeDisabled();
   });
 
   it('makes the blank picture one pixel a square, uploads it to the campaign tagged with DRAWN_MAP_TAG, then creates the map at the pixels per square it is painted at', async () => {
@@ -200,22 +200,22 @@ describe('Draw a map', () => {
   });
 });
 
-describe('Create Map\'s buttons', () => {
+describe('Create scene\'s buttons', () => {
   // They stood in a see-through bar inside the scrolling form, inset from its
   // sides, so on a phone the Grid Size box showed through and around them.
   it('stand under the scrolling form, in the dialog\'s own footer', () => {
     open();
     const form = screen.getByText('Map Dimensions').closest('.overflow-y-auto');
     expect(form).not.toBeNull();
-    const dialog = screen.getByRole('dialog', { name: 'Create Map' });
-    for (const button of ['Cancel', 'Create Map']) {
+    const dialog = screen.getByRole('dialog', { name: 'Create scene' });
+    for (const button of ['Cancel', 'Create scene']) {
       expect(dialog).toContainElement(screen.getByRole('button', { name: button }));
       expect(form).not.toContainElement(screen.getByRole('button', { name: button }));
     }
   });
 });
 
-describe('Create Map\'s size boxes', () => {
+describe('Create scene\'s size boxes', () => {
   // Their labels were tied to nothing, so a screen reader named the boxes nothing.
   it('are named by their labels', () => {
     open();

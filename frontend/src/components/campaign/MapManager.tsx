@@ -1,6 +1,15 @@
 // ============================================
-// MapManager Component
-// Slide-over panel for GMs to manage campaign maps
+// MapManager: the Scenes panel (Library › Scenes)
+//
+// A campaign's maps are its scenes. Shown in the page's panel slot, or a
+// sheet on a compact layout (InPanelContext). Import UVTT | Create scene at
+// the top, a card per scene, and below them the scene templates, a section
+// that folds (kept per device). A scene's card: Set active | Open to
+// prepare, Set active | Back to the table on the scene being prepared, none
+// on the active scene; ⋯ holds Duplicate…, Save as template…, Edit…,
+// Export as .uvtt file and Delete…. A template's: Use template, and ⋯ with
+// Edit…, Duplicate… and Delete…. A template is never active and never
+// reaches players.
 // ============================================
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -13,27 +22,42 @@ import {
   Pencil,
   Trash2,
   CheckCircle,
+  CircleCheck,
   AlertTriangle,
   Upload,
   Download,
   Eye,
+  Copy,
+  BookmarkPlus,
+  LayoutTemplate,
+  Square,
+  Images,
+  Ellipsis,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 import { useCampaign } from '@/contexts/CampaignContext';
+import { useCompactLayout } from '@/contexts/LayoutContext';
 import { useTableSwitch } from '@/hooks/useTableSwitch';
 import { api } from '@/services/api';
 import mapService from '@/services/map.service';
 import type { Asset, CampaignMap } from '@/types';
+import type { MenuItem } from '@/components/ui/menu';
 import CreateMapModal from './CreateMapModal';
 import TokenTransferConfirmation from './TokenTransferConfirmation';
 import EditMapModal from './EditMapModal';
+import ScenesMenu from './ScenesMenu';
+import SceneCopyDialog, { SCENE_BUTTON_PRIMARY, SCENE_BUTTON_SECONDARY, type SceneCopyKind } from './SceneCopyDialog';
 import ConfirmDialog from '@/components/common/ConfirmDialog';
-import Button from '@/components/ui/Button';
+import ChoiceSegments from '@/components/ui/ChoiceSegments';
 import SlideOver, { SlideOverClose, SlideOverTitle } from '@/components/ui/SlideOver';
+import { optionalStorage } from '@/utils/optionalStorage';
 import { assetAddressVersion, extractAssetId } from '@/utils/assetUrl';
 import { pictureIsDrawn, rememberPictureAsset } from './map/paint/mapPicture';
 import { usePaintStore } from '@/stores/paintStore';
 import { dropDrafts, paintDraftStore } from './map/paint/paintDrafts';
 import { apiErrorCode, apiErrorMessage } from '@/utils/errors';
+import { cn } from '@/utils/cn';
 import {
   uvttImportDecision,
   uvttImportMessage,
@@ -47,39 +71,29 @@ interface MapManagerProps {
   onClose: () => void;
 }
 
+/** Whether the Templates section is open, kept per device. */
+export const SCENE_TEMPLATES_KEY = 'mistwarden.sceneTemplates';
+
+/** A scene's grid in short: "24×18 · 70 px". */
+export const sceneGridInfo = (map: CampaignMap) => `${map.width}×${map.height} · ${map.gridSize} px`;
+
+const BADGE = 'inline-flex h-5 items-center gap-1 rounded-full px-2 text-xs font-semibold';
+
 // ============================================
-// Map Card
+// Scene card
 // ============================================
 
-interface MapCardProps {
+interface SceneCardProps {
   map: CampaignMap;
-  isActive: boolean;
-  /** The map the GM has open to prepare on this page. */
-  isPrepared: boolean;
-  onSetActive: (map: CampaignMap) => void;
-  onOpenToPrepare: (map: CampaignMap) => void;
-  onEdit: (map: CampaignMap) => void;
-  onDelete: (map: CampaignMap) => void;
-  onExport: (map: CampaignMap) => void;
-  switchingToId: string | null;
-  openingId: string | null;
+  /** active: the table's scene; preparing: open on the GM's screen only; template: a scene template. */
+  state: 'active' | 'preparing' | 'template' | 'other';
+  menu: MenuItem[];
+  /** The card's action row: none on the active scene. */
+  children?: React.ReactNode;
 }
 
-function MapCard({
-  map,
-  isActive,
-  isPrepared,
-  onSetActive,
-  onOpenToPrepare,
-  onEdit,
-  onDelete,
-  onExport,
-  switchingToId,
-  openingId,
-}: MapCardProps) {
+function SceneCard({ map, state, menu, children }: SceneCardProps) {
   const thumbnailId = extractAssetId(map.imageUrl);
-  const isSwitchingToThis = switchingToId === map.id;
-  const isOpeningThis = openingId === map.id;
   const cardExit = useMotionExit({ opacity: 0, scale: 0.95 });
 
   return (
@@ -88,130 +102,49 @@ function MapCard({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={cardExit}
-      className={`bg-parchment/50 border rounded-xl overflow-hidden shadow-xs transition-shadow hover:shadow-md ${
-        isActive ? 'border-moss-green/60' : isPrepared ? 'border-info/60' : 'border-moss-green/20'
-      }`}
+      className={cn('flex shrink-0 flex-col gap-3 rounded-xl border bg-paper p-3', state === 'active' ? 'border-brand' : 'border-ink/10')}
     >
-      {/* Thumbnail */}
-      <div className="relative h-36 bg-moss-green/10 overflow-hidden">
-        {thumbnailId ? (
-          <img
-            src={api.getAssetThumbnailUrl(thumbnailId, 'maps') + assetAddressVersion(map.imageUrl)}
-            alt={map.name}
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              const t = e.target as HTMLImageElement;
-              t.onerror = null;
-              t.style.display = 'none';
-            }}
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <MapPin className="w-10 h-10 text-stone-gray/30" />
-          </div>
-        )}
-
-        {/* Active badge */}
-        {isActive && (
-          <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 bg-moss-green text-brand-text text-xs font-semibold rounded-full shadow-sm">
-            <CheckCircle className="w-3 h-3" />
-            Active
-          </div>
-        )}
-        {/* The map open on this page to prepare, which the players are not on */}
-        {isPrepared && (
-          <div className="absolute top-2 left-2 flex items-center gap-1 px-2 py-0.5 bg-paper-white text-info-ink border border-info/50 text-xs font-semibold rounded-full shadow-sm">
-            <Eye className="w-3 h-3" />
-            Preparing
-          </div>
-        )}
-      </div>
-
-      {/* Info */}
-      <div className="p-3">
-        <h3 className="font-semibold text-brand-ink truncate text-sm mb-0.5">{map.name}</h3>
-        <p className="text-xs text-stone-gray">
-          {map.width}×{map.height} grid · {map.gridSize}px/sq
-        </p>
-
-        {/* Actions: the two that change what is on screen on a row of
-            their own, as a card two to a row is too narrow for five. */}
-        <div className="flex items-center gap-1.5 mt-3">
-          <button
-            type="button"
-            onClick={() => onSetActive(map)}
-            disabled={isActive || isSwitchingToThis}
-            title={isActive ? 'Already active' : 'Set as active map'}
-            className={`touch-target flex-1 text-xs py-1.5 px-2 rounded-lg transition-colors flex items-center justify-center gap-1 ${
-              isActive
-                ? 'bg-moss-green/10 text-brand-ink/50 cursor-not-allowed'
-                : 'bg-moss-green/10 hover:bg-moss-green/15 text-brand-ink'
-            }`}
-          >
-            {isSwitchingToThis ? (
-              <Loader2 className="w-3 h-3 animate-spin" />
-            ) : (
-              <CheckCircle className="w-3 h-3" />
-            )}
-            {isActive ? 'Active' : 'Set Active'}
-          </button>
-
-          {/* Open it on this page only; the players stay where they are. */}
-          {!isActive && (
-            <button
-              type="button"
-              onClick={() => onOpenToPrepare(map)}
-              disabled={isPrepared || isOpeningThis}
-              title={isPrepared ? 'On your screen now, while the players stay on the active map' : 'Open on your screen only, while the players stay on the active map'}
-              className={`touch-target flex-1 text-xs py-1.5 px-2 rounded-lg transition-colors flex items-center justify-center gap-1 ${
-                isPrepared
-                  ? 'bg-info/10 text-info-ink/60 cursor-not-allowed'
-                  : 'bg-info/10 hover:bg-info/15 text-info-ink'
-              }`}
-            >
-              {isOpeningThis ? <Loader2 className="w-3 h-3 animate-spin" /> : <Eye className="w-3 h-3" />}
-              {isPrepared ? 'Preparing' : 'Open to prepare'}
-            </button>
+      <div className="flex items-start gap-3">
+        <div className="h-16 w-24 shrink-0 overflow-hidden rounded-lg border border-ink/10 bg-canvas">
+          {thumbnailId ? (
+            <img
+              src={api.getAssetThumbnailUrl(thumbnailId, 'maps') + assetAddressVersion(map.imageUrl)}
+              alt=""
+              className="h-full w-full object-cover"
+              onError={(e) => {
+                const t = e.target as HTMLImageElement;
+                t.onerror = null;
+                t.style.display = 'none';
+              }}
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center">
+              <MapPin className="w-6 h-6 text-ink-muted/40" aria-hidden="true" />
+            </div>
           )}
         </div>
-
-        <div className="flex items-center justify-end gap-1.5 mt-1.5">
-          <button
-            type="button"
-            onClick={() => onEdit(map)}
-            title="Edit map"
-            aria-label="Edit map"
-            className="touch-target inline-flex items-center justify-center p-1.5 rounded-lg bg-warm-amber/10 hover:bg-warm-amber/15 text-accent-ink transition-colors"
-          >
-            <Pencil className="w-3.5 h-3.5" />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onExport(map)}
-            title="Export as .uvtt file"
-            aria-label="Export as .uvtt file"
-            className="touch-target inline-flex items-center justify-center p-1.5 rounded-lg bg-moss-green/10 hover:bg-moss-green/15 text-brand-ink transition-colors"
-          >
-            <Download className="w-3.5 h-3.5" />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onDelete(map)}
-            disabled={isActive}
-            title={isActive ? 'Cannot delete the active map' : 'Delete map'}
-            aria-label={isActive ? 'Cannot delete the active map' : 'Delete map'}
-            className={`touch-target inline-flex items-center justify-center p-1.5 rounded-lg transition-colors ${
-              isActive
-                ? 'bg-danger/5 text-danger-ink/40 cursor-not-allowed'
-                : 'bg-danger/10 hover:bg-danger/15 text-danger-ink'
-            }`}
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
+        <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
+          {/* Two lines at most, balanced, never cut short by an ellipsis on one line. */}
+          <h3 className="line-clamp-2 max-w-full font-heading text-base leading-5 font-bold text-brand-ink [overflow-wrap:anywhere] [text-wrap:balance]">{map.name}</h3>
+          <p className="whitespace-nowrap text-xs text-ink-muted">{sceneGridInfo(map)}</p>
+          {state === 'active' && <span className={cn(BADGE, 'bg-brand text-brand-text')}><CircleCheck className="w-3 h-3" aria-hidden="true" />Active</span>}
+          {state === 'preparing' && <span className={cn(BADGE, 'bg-paper text-info-ink ring-1 ring-inset ring-info-ink')}><Eye className="w-3 h-3" aria-hidden="true" />Preparing</span>}
+          {state === 'template' && <span className={cn(BADGE, 'bg-paper text-brand-ink ring-1 ring-inset ring-brand-ink')}><LayoutTemplate className="w-3 h-3" aria-hidden="true" />Template</span>}
         </div>
+        <ScenesMenu
+          label={`More for ${map.name}`}
+          sheetTitle={map.name}
+          title={`More for ${map.name}`}
+          items={menu}
+          buttonClassName={cn(
+            '-mt-1 -mr-1 inline-flex size-10 pointer-coarse:size-11 shrink-0 items-center justify-center rounded-xl text-ink-muted hover:bg-ink/5 hover:text-ink',
+            'focus-visible:outline-2 focus-visible:outline-brand aria-expanded:bg-brand/20 aria-expanded:text-brand-ink aria-expanded:shadow-[inset_0_0_0_1px_var(--color-brand)]',
+          )}
+        >
+          <Ellipsis className="w-5 h-5" aria-hidden="true" />
+        </ScenesMenu>
       </div>
+      {children && <div className="grid grid-cols-2 gap-2">{children}</div>}
     </motion.div>
   );
 }
@@ -221,16 +154,25 @@ function MapCard({
 // ============================================
 
 export default function MapManager({ isOpen, onClose }: MapManagerProps) {
-  const { campaign, currentMap, viewedMap, isPreparing, updateMap, upsertCampaignMap, removeCampaignMap, openToPrepare, mayChangeViewedMap } = useCampaign();
+  const { campaign, currentMap, viewedMap, isPreparing, updateMap, upsertCampaignMap, removeCampaignMap, openToPrepare, backToTable, mayChangeViewedMap } = useCampaign();
   const tableSwitch = useTableSwitch();
+  // On a compact layout the panel is a sheet over the map: it makes way for a scene opened to prepare.
+  const compact = useCompactLayout();
 
   const [maps, setMaps] = useState<CampaignMap[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Modal state
-  const [createModalOpen, setCreateModalOpen] = useState(false);
+  // Create scene: from a picture or blank (drawn), chosen in its menu.
+  const [createStart, setCreateStart] = useState<'picture' | 'drawing' | null>(null);
   const [editingMap, setEditingMap] = useState<CampaignMap | null>(null);
+  // Duplicate…, Save as template…: the dialog and what it copies.
+  const [copying, setCopying] = useState<{ kind: SceneCopyKind; map: CampaignMap } | null>(null);
+  const [templatesOpen, setTemplatesOpen] = useState(() => optionalStorage.getItem(SCENE_TEMPLATES_KEY) === 'open');
+  const showTemplates = (open: boolean) => {
+    setTemplatesOpen(open);
+    optionalStorage.setItem(SCENE_TEMPLATES_KEY, open ? 'open' : 'folded');
+  };
 
   // The map being opened to prepare, while it loads.
   const [openingId, setOpeningId] = useState<string | null>(null);
@@ -241,11 +183,13 @@ export default function MapManager({ isOpen, onClose }: MapManagerProps) {
   const activeMapId = campaign?.currentMapId ?? null;
 
   const preparedMapId = isPreparing ? viewedMap?.id ?? null : null;
+  const scenes = maps.filter((m) => !m.isTemplate);
+  const templates = maps.filter((m) => m.isTemplate);
 
   // Confirm delete
   const [mapToDelete, setMapToDelete] = useState<CampaignMap | null>(null);
   /**
-   * For a drawn map: its picture can go with it, if the GM ticks the box
+   * For a drawn map: its picture can go with it, if the GM says so
    * (null while it is not a drawn map, or not yet known to be one).
    */
   const [deletePicture, setDeletePicture] = useState<boolean | null>(null);
@@ -278,7 +222,7 @@ export default function MapManager({ isOpen, onClose }: MapManagerProps) {
       const fetched = await mapService.getMaps(campaign.id);
       setMaps(fetched);
     } catch {
-      setError('Failed to load maps.');
+      setError('Failed to load scenes.');
     } finally {
       setIsLoading(false);
     }
@@ -292,9 +236,14 @@ export default function MapManager({ isOpen, onClose }: MapManagerProps) {
 
   // ---- CRUD handlers ----
 
-  const handleCreated = (map: CampaignMap, drawnPicture?: Asset) => {
+  /** A copy or a new scene, at the top of its list; a template stays out of the campaign's scenes. */
+  const addMap = (map: CampaignMap) => {
     setMaps((prev) => [map, ...prev]);
-    upsertCampaignMap(map);
+    if (!map.isTemplate) upsertCampaignMap(map);
+  };
+
+  const handleCreated = (map: CampaignMap, drawnPicture?: Asset) => {
+    addMap(map);
     // A drawn map opens on this screen with Paint on, the players staying
     // where they are; its picture is known to be drawn without asking.
     if (drawnPicture) {
@@ -310,7 +259,7 @@ export default function MapManager({ isOpen, onClose }: MapManagerProps) {
 
   const handleUpdated = (updated: CampaignMap) => {
     setMaps((prev) => prev.map((m) => (m.id === updated.id ? updated : m)));
-    upsertCampaignMap(updated);
+    if (!updated.isTemplate) upsertCampaignMap(updated);
     // The table's map or the one being prepared, whichever this is. A map
     // being prepared is told of its edit by nothing else: the server sends
     // map.changed for the table's map alone.
@@ -323,7 +272,44 @@ export default function MapManager({ isOpen, onClose }: MapManagerProps) {
     try {
       await api.downloadUVTTExport(campaign.id, map.id, `${map.name}.uvtt`);
     } catch (err: unknown) {
-      setError(apiErrorMessage(err) || 'Failed to export map.');
+      setError(apiErrorMessage(err) || 'Failed to export scene.');
+    }
+  };
+
+  /**
+   * Duplicate…, Save as template…: the copy the dialog asked for, with all
+   * three of its choices. A copy of a scene opens to prepare; a template's
+   * copy is a template, and a template stays in its list, shown.
+   */
+  const handleCopy = async (kind: SceneCopyKind, source: CampaignMap, request: { name: string; tokens: boolean; fog: boolean; drawings: boolean }): Promise<string | null> => {
+    if (!campaign?.id) return null;
+    try {
+      const { map } = kind === 'saveAsTemplate'
+        ? await api.saveMapAsTemplate(campaign.id, source.id, request)
+        : await api.duplicateMap(campaign.id, source.id, request);
+      addMap(map);
+      setCopying(null);
+      if (map.isTemplate) showTemplates(true);
+      else void handleOpenToPrepare(map);
+      return null;
+    } catch (err: unknown) {
+      return apiErrorMessage(err) || 'Could not copy it. Try again.';
+    }
+  };
+
+  /** Use template: a fresh scene from it, opened to prepare; the table stays where it is. */
+  const handleUseTemplate = async (template: CampaignMap) => {
+    if (!campaign?.id) return;
+    setError(null);
+    setOpeningId(template.id);
+    try {
+      const { map } = await api.createMapFromTemplate(campaign.id, template.id);
+      addMap(map);
+      await handleOpenToPrepare(map);
+    } catch (err: unknown) {
+      setError(apiErrorMessage(err) || 'Could not make a scene from that template.');
+    } finally {
+      setOpeningId((opening) => (opening === template.id ? null : opening));
     }
   };
 
@@ -332,8 +318,8 @@ export default function MapManager({ isOpen, onClose }: MapManagerProps) {
     setDeletePicture(null);
     setNotice(null);
     askedAboutRef.current = map.id;
-    // Only a picture Paint made is offered; the box starts unticked. The
-    // answer counts only while the question is still about this map.
+    // Only a picture Paint made is offered; it starts as Keep. The answer
+    // counts only while the question is still about this map.
     void pictureIsDrawn(map.imageUrl, campaign?.id).then((drawn) => {
       if (drawn && askedAboutRef.current === map.id) setDeletePicture((now) => now ?? false);
     });
@@ -357,7 +343,7 @@ export default function MapManager({ isOpen, onClose }: MapManagerProps) {
       const campaignId = campaign.id;
       void dropDrafts(paintDraftStore(), (draft) => draft.campaignId === campaignId && draft.mapId === map.id);
     } catch (err: unknown) {
-      setError(apiErrorMessage(err) || 'Failed to delete map.');
+      setError(apiErrorMessage(err) || 'Failed to delete scene.');
       return;
     }
     // Without force: a picture something else still uses stays.
@@ -384,8 +370,7 @@ export default function MapManager({ isOpen, onClose }: MapManagerProps) {
     setImportSuccess(null);
     try {
       const result = await mapService.importUVTT(campaign.id, file, undefined, undefined, opts);
-      setMaps((prev) => [result.map, ...prev]);
-      upsertCampaignMap(result.map);
+      addMap(result.map);
       const count = (n: number, noun: string) => `${n} ${noun}${n === 1 ? '' : 's'}`;
       const parts = [count(result.totalSegments, 'wall segment')];
       if (result.portalCount > 0) parts.push(count(result.portalCount, 'door'));
@@ -431,12 +416,12 @@ export default function MapManager({ isOpen, onClose }: MapManagerProps) {
     setError(null);
     setOpeningId(map.id);
     try {
-      // On this page only, so the Map Library gets out of the way of it.
+      // On this page only. Beside the map the panel stays; a sheet over it makes way.
       const opened = await openToPrepare(map.id);
-      if (opened) onClose();
+      if (opened && compact) onClose();
       return opened;
     } catch (err: unknown) {
-      setError(apiErrorMessage(err) || 'Could not open that map. Try again.');
+      setError(apiErrorMessage(err) || 'Could not open that scene. Try again.');
       return false;
     } finally {
       // Only this card's: a second card opened meanwhile keeps its spinner.
@@ -444,125 +429,166 @@ export default function MapManager({ isOpen, onClose }: MapManagerProps) {
     }
   };
 
+  const handleBackToTable = async () => {
+    setError(null);
+    try {
+      await backToTable();
+    } catch (err: unknown) {
+      setError(apiErrorMessage(err) || 'Could not go back to the table. Try again.');
+    }
+  };
+
   if (!campaign) return null;
+
+  const switchingToId = tableSwitch.switching ? tableSwitch.pending?.id ?? null : null;
+  const spinner = <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />;
+
+  const sceneMenu = (map: CampaignMap, active: boolean): MenuItem[] => [
+    { kind: 'command', id: 'duplicate', label: 'Duplicate…', icon: Copy, run: () => setCopying({ kind: 'duplicate', map }) },
+    { kind: 'command', id: 'save-as-template', label: 'Save as template…', icon: BookmarkPlus, run: () => setCopying({ kind: 'saveAsTemplate', map }) },
+    { kind: 'command', id: 'edit', label: 'Edit…', icon: Pencil, run: () => setEditingMap(map) },
+    { kind: 'command', id: 'export', label: 'Export as .uvtt file', icon: Download, run: () => { void handleExport(map); } },
+    { kind: 'separator', id: 'sep' },
+    {
+      kind: 'command', id: 'delete', label: 'Delete…', icon: Trash2, tone: 'danger', run: () => handleDeleteClick(map),
+      busy: { active, label: 'Cannot delete the active scene' },
+    },
+  ];
+  const templateMenu = (map: CampaignMap): MenuItem[] => [
+    { kind: 'command', id: 'edit', label: 'Edit…', icon: Pencil, run: () => setEditingMap(map) },
+    { kind: 'command', id: 'duplicate', label: 'Duplicate…', icon: Copy, run: () => setCopying({ kind: 'duplicateTemplate', map }) },
+    { kind: 'separator', id: 'sep' },
+    { kind: 'command', id: 'delete', label: 'Delete…', icon: Trash2, tone: 'danger', run: () => handleDeleteClick(map) },
+  ];
+  const createMenu: MenuItem[] = [
+    { kind: 'command', id: 'blank', label: 'Blank scene', icon: Square, title: 'An empty scene to draw in Mapmaker', run: () => setCreateStart('drawing') },
+    { kind: 'command', id: 'picture', label: 'From a map picture', icon: Images, title: 'Pick or upload a map picture, then name it', run: () => setCreateStart('picture') },
+    templates.length > 0
+      ? {
+        kind: 'command', id: 'template', label: 'From template', icon: LayoutTemplate,
+        children: templates.map((t) => ({ id: t.id, label: t.name, run: () => { void handleUseTemplate(t); } })),
+      }
+      : { kind: 'command', id: 'template', label: 'From template', icon: LayoutTemplate, run: () => {}, busy: { active: true, label: 'No templates yet' } },
+  ];
 
   return (
     <>
       <SlideOver
         open={isOpen}
         onClose={onClose}
-        className="max-w-xl bg-paper-white shadow-2xl overflow-y-auto"
+        className="flex h-full max-w-xl flex-col overflow-hidden bg-paper-white shadow-2xl"
       >
-        {/* Header */}
-        <div className="sticky top-0 z-10 bg-moss-green/10 backdrop-blur-xs border-b border-moss-green/20 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <MapPin className="w-6 h-6 text-brand-ink" />
-              <div>
-                <SlideOverTitle className="text-xl font-bold text-brand-ink">Map Library</SlideOverTitle>
-                <p className="text-xs text-stone-gray">{campaign.name}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                onClick={() => uvttInputRef.current?.click()}
-                disabled={isImportingUVTT}
-                variant="secondary" className="flex items-center gap-2 text-sm"
-                title="Import a .uvtt or .dd2vtt file (Dungeondraft, DunGen, Dungeon Alchemist, etc.)"
-              >
-                {isImportingUVTT ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Upload className="w-4 h-4" />
-                )}
-                Import UVTT
-              </Button>
-              <input
-                ref={uvttInputRef}
-                type="file"
-                accept=".uvtt,.dd2vtt,.df2vtt"
-                onChange={handleUVTTImport}
-                className="hidden"
-              />
-              <Button
-                type="button"
-                onClick={() => setCreateModalOpen(true)}
-                className="flex items-center gap-2 text-sm"
-              >
-                <Plus className="w-4 h-4" />
-                Create Map
-              </Button>
-              <SlideOverClose
-                className="p-2 hover:bg-moss-green/10 rounded-lg transition-colors"
-                iconClassName="w-5 h-5 text-stone-gray"
-              />
-            </div>
-          </div>
+        {/* Header: the panel's own, as the tab panels' */}
+        <div className="flex h-13 shrink-0 items-center gap-2 pl-4 pr-1 border-b border-ink/10">
+          <SlideOverTitle className="min-w-0 flex-1 truncate font-heading text-xl font-bold text-brand-ink">Scenes</SlideOverTitle>
+          <span className="shrink-0 text-[0.8125rem] text-ink-muted" aria-label={`${scenes.length} scenes`}>{scenes.length}</span>
+          <SlideOverClose
+            className="inline-flex size-10 pointer-coarse:size-11 shrink-0 items-center justify-center rounded-xl text-ink-muted hover:bg-ink/5 hover:text-ink"
+            iconClassName="w-5 h-5"
+            title="Close"
+          />
         </div>
 
-        {/* Content */}
-        <div className="p-6">
-          {(error ?? tableSwitch.error) && (
-            <div className="mb-4 p-3 bg-danger/10 border border-danger/20 rounded-lg text-danger-ink text-sm flex items-start gap-2">
-              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-              {error ?? tableSwitch.error}
-            </div>
-          )}
+        <div className="grid shrink-0 grid-cols-2 gap-2 px-4 pt-4">
+          <button
+            type="button"
+            onClick={() => uvttInputRef.current?.click()}
+            disabled={isImportingUVTT}
+            className={SCENE_BUTTON_SECONDARY}
+            title="Import a .uvtt or .dd2vtt file (Dungeondraft, DunGen, Dungeon Alchemist, etc.)"
+          >
+            {isImportingUVTT ? spinner : <Upload className="w-4 h-4 shrink-0" aria-hidden="true" />}
+            Import UVTT
+          </button>
+          <input
+            ref={uvttInputRef}
+            type="file"
+            accept=".uvtt,.dd2vtt,.df2vtt"
+            onChange={handleUVTTImport}
+            className="hidden"
+          />
+          <ScenesMenu label="Create scene" sheetTitle="Create scene" caption="Start from" subCaption="Templates" align="left" items={createMenu} buttonClassName={SCENE_BUTTON_PRIMARY}>
+            <Plus className="w-4 h-4 shrink-0" aria-hidden="true" />
+            Create scene
+          </ScenesMenu>
+        </div>
 
-          {notice && (
-            <div role="status" className="mb-4 p-3 bg-moss-green/10 border border-moss-green/30 rounded-lg text-brand-ink text-sm flex items-start gap-2">
-              <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              {notice}
-            </div>
-          )}
+        {(error ?? tableSwitch.error ?? notice ?? importSuccess) && (
+          <div className="shrink-0 space-y-2 px-4 pt-3">
+            {(error ?? tableSwitch.error) && (
+              <div className="p-3 bg-danger/10 border border-danger/20 rounded-lg text-danger-ink text-sm flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                {error ?? tableSwitch.error}
+              </div>
+            )}
+            {notice && (
+              <div role="status" className="p-3 bg-brand/10 border border-brand/30 rounded-lg text-brand-ink text-sm flex items-start gap-2">
+                <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                {notice}
+              </div>
+            )}
+            {importSuccess && (
+              <div className="p-3 bg-brand/10 border border-brand/30 rounded-lg text-brand-ink text-sm flex items-start gap-2">
+                <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                {importSuccess}
+              </div>
+            )}
+          </div>
+        )}
 
-          {importSuccess && (
-            <div className="mb-4 p-3 bg-moss-green/10 border border-moss-green/30 rounded-lg text-brand-ink text-sm flex items-start gap-2">
-              <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
-              {importSuccess}
-            </div>
-          )}
-
+        {/* The scenes: they scroll, the templates stay pinned under them */}
+        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain p-4">
+          <div className="text-xs font-medium text-ink-muted">Scenes</div>
           {isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-10 h-10 text-brand-ink animate-spin" />
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-8 h-8 text-brand-ink animate-spin" aria-label="Loading scenes" />
             </div>
-          ) : maps.length === 0 ? (
-            <div className="text-center py-16 space-y-3">
-              <MapPin className="w-14 h-14 mx-auto text-stone-gray/25" />
-              <p className="text-stone-gray font-medium">No maps yet</p>
-              <p className="text-sm text-stone-gray">
-                Create your first map to start your adventure.
-              </p>
-              <Button
-                type="button"
-                onClick={() => setCreateModalOpen(true)}
-                className="inline-flex items-center gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                Create Map
-              </Button>
-            </div>
+          ) : scenes.length === 0 ? (
+            <p className="py-6 text-center text-sm text-ink-muted">No scenes yet. Create scene or Import UVTT makes the first.</p>
           ) : (
-            // One card to a row on a phone: two to a row left each about
-            // 150 px, too narrow for Set Active, Edit, Export and Delete.
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <AnimatePresence>
-                {maps.map((map) => (
-                  <div key={map.id}>
-                    <MapCard
-                      map={map}
-                      isActive={map.id === activeMapId}
-                      isPrepared={map.id === preparedMapId}
-                      onSetActive={(target) => { setError(null); void tableSwitch.requestSwitch(target); }}
-                      onOpenToPrepare={(target) => { void handleOpenToPrepare(target); }}
-                      onEdit={setEditingMap}
-                      onDelete={handleDeleteClick}
-                      onExport={handleExport}
-                      switchingToId={tableSwitch.switching ? tableSwitch.pending?.id ?? null : null}
-                      openingId={openingId}
-                    />
+            <AnimatePresence>
+              {scenes.map((map) => {
+                const active = map.id === activeMapId;
+                const preparing = map.id === preparedMapId;
+                return (
+                  <div key={map.id} className="flex shrink-0 flex-col gap-2">
+                    <SceneCard map={map} state={active ? 'active' : preparing ? 'preparing' : 'other'} menu={sceneMenu(map, active)}>
+                      {!active && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => { setError(null); void tableSwitch.requestSwitch(map); }}
+                            disabled={switchingToId === map.id}
+                            title="Set as active scene"
+                            className={SCENE_BUTTON_SECONDARY}
+                          >
+                            {switchingToId === map.id && spinner}
+                            Set active
+                          </button>
+                          {preparing ? (
+                            <button
+                              type="button"
+                              onClick={() => { void handleBackToTable(); }}
+                              title="Stop preparing and return to the scene the table is on"
+                              className={cn(SCENE_BUTTON_SECONDARY, 'whitespace-normal px-2 text-center leading-[18px] [text-wrap:balance]')}
+                            >
+                              Back to the table
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => { void handleOpenToPrepare(map); }}
+                              disabled={openingId === map.id}
+                              title="Open on your screen only, while the players stay on the active scene"
+                              className={SCENE_BUTTON_SECONDARY}
+                            >
+                              {openingId === map.id && spinner}
+                              Open to prepare
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </SceneCard>
                     {/* Token transfer confirmation (shown under the target card) */}
                     {tableSwitch.pending?.id === map.id && (
                       <TokenTransferConfirmation
@@ -575,22 +601,76 @@ export default function MapManager({ isOpen, onClose }: MapManagerProps) {
                       />
                     )}
                   </div>
-                ))}
-              </AnimatePresence>
-            </div>
+                );
+              })}
+            </AnimatePresence>
           )}
         </div>
+
+        <section
+          aria-label="Templates"
+          className={cn('flex max-h-[60%] shrink-0 flex-col gap-2 overflow-y-auto border-t border-ink/10 bg-surface px-4 pt-1', templatesOpen ? 'pb-3' : 'pb-1')}
+        >
+          <div className="flex min-h-10 pointer-coarse:min-h-11 shrink-0 items-center justify-between text-xs font-medium text-ink-muted">
+            <span>Templates ({templates.length})</span>
+            <button
+              type="button"
+              onClick={() => showTemplates(!templatesOpen)}
+              aria-expanded={templatesOpen}
+              aria-label={templatesOpen ? 'Fold templates' : 'Show templates'}
+              title={templatesOpen ? 'Fold templates' : 'Show templates'}
+              className="-mr-1 inline-flex size-10 pointer-coarse:size-11 items-center justify-center rounded-xl text-ink-muted hover:bg-ink/5 hover:text-ink focus-visible:outline-2 focus-visible:outline-brand"
+            >
+              {templatesOpen ? <ChevronDown className="w-5 h-5" aria-hidden="true" /> : <ChevronRight className="w-5 h-5" aria-hidden="true" />}
+            </button>
+          </div>
+          {templatesOpen && (
+            <>
+              {templates.length === 0 && (
+                <p className="text-[0.8125rem] leading-[18px] text-ink-muted">No templates yet. Save as template… in a scene’s ⋯ keeps one for this campaign.</p>
+              )}
+              {templates.map((map) => (
+                <SceneCard key={map.id} map={map} state="template" menu={templateMenu(map)}>
+                  <button
+                    type="button"
+                    onClick={() => { void handleUseTemplate(map); }}
+                    disabled={openingId === map.id}
+                    title="Makes a fresh copy of this template and opens it on your screen only, to prepare"
+                    className={cn(SCENE_BUTTON_SECONDARY, 'col-span-2')}
+                  >
+                    {openingId === map.id && spinner}
+                    Use template
+                  </button>
+                </SceneCard>
+              ))}
+              <p className="text-[0.8125rem] leading-[18px] text-ink-muted">Templates are never active and never reach players.</p>
+            </>
+          )}
+        </section>
       </SlideOver>
 
-      {/* Create Map Modal */}
-      <CreateMapModal
-        isOpen={createModalOpen}
-        campaignId={campaign.id}
-        onClose={() => setCreateModalOpen(false)}
-        onCreated={handleCreated}
-      />
+      {/* Create scene: blank or from a picture */}
+      {createStart && (
+        <CreateMapModal
+          isOpen
+          start={createStart}
+          campaignId={campaign.id}
+          onClose={() => setCreateStart(null)}
+          onCreated={handleCreated}
+        />
+      )}
 
-      {/* Edit Map Modal */}
+      {copying && (
+        <SceneCopyDialog
+          kind={copying.kind}
+          sourceName={copying.map.name}
+          tableName={currentMap?.name}
+          onSubmit={(request) => handleCopy(copying.kind, copying.map, request)}
+          onClose={() => setCopying(null)}
+        />
+      )}
+
+      {/* Edit scene */}
       {editingMap && (
         <EditMapModal
           isOpen={!!editingMap}
@@ -614,20 +694,17 @@ export default function MapManager({ isOpen, onClose }: MapManagerProps) {
         onCancel={() => setUvttToConfirm(null)}
       >
         {uvttToConfirm && uvttToConfirm.decision.objectWalls > 0 && (
-          <label className="flex items-start gap-2 text-sm text-ink-secondary cursor-pointer">
-            <input
-              type="checkbox"
-              checked={includeObjectWalls}
-              onChange={(e) => setIncludeObjectWalls(e.target.checked)}
-              className="mt-0.5"
-            />
-            <span>Let furniture block sight too</span>
-          </label>
+          <ChoiceSegments
+            label="Furniture"
+            value={includeObjectWalls ? 'block' : 'through'}
+            onChange={(v) => setIncludeObjectWalls(v === 'block')}
+            options={[['through', 'Sight passes'], ['block', 'Blocks sight']]}
+          />
         )}
       </ConfirmDialog>
       <ConfirmDialog
         isOpen={!!mapToDelete}
-        title="Delete Map"
+        title={mapToDelete?.isTemplate ? 'Delete template' : 'Delete scene'}
         message={`Delete "${mapToDelete?.name}"? This cannot be undone.`}
         confirmLabel="Delete"
         variant="danger"
@@ -639,15 +716,12 @@ export default function MapManager({ isOpen, onClose }: MapManagerProps) {
         }}
       >
         {deletePicture !== null && (
-          <label className="flex items-start gap-2 text-sm text-ink-secondary cursor-pointer">
-            <input
-              type="checkbox"
-              checked={deletePicture}
-              onChange={(e) => setDeletePicture(e.target.checked)}
-              className="mt-0.5"
-            />
-            <span>Also delete its picture from the Asset Library</span>
-          </label>
+          <ChoiceSegments
+            label="Its picture in the Asset Library"
+            value={deletePicture ? 'delete' : 'keep'}
+            onChange={(v) => setDeletePicture(v === 'delete')}
+            options={[['keep', 'Keep'], ['delete', 'Delete']]}
+          />
         )}
       </ConfirmDialog>
     </>

@@ -131,6 +131,8 @@ const KEPT: Kept[] = [
   { name: 'cozyvtt.signInNotice', pkg: 'frontend', written: /'cozyvtt\.signInNotice'/ },
   // The table's dock on a tablet or a phone: open or folded, its panel and height.
   { name: 'mistwarden.tableDock', pkg: 'frontend', written: /'mistwarden\.tableDock'/ },
+  // Whether the Scenes panel's Templates section is open on this device.
+  { name: 'mistwarden.sceneTemplates', pkg: 'frontend', written: /'mistwarden\.sceneTemplates'/ },
   { name: 'cozyvtt-preparing-map:', pkg: 'frontend', written: /`cozyvtt-preparing-map:\$\{campaignId\}`/ },
   { name: 'cozyvtt-paint-tab', pkg: 'frontend', written: /'cozyvtt-paint-tab'/ },
   { name: 'cozyvtt-paint-tab:', pkg: 'frontend', written: /'cozyvtt-paint-tab:'/ },

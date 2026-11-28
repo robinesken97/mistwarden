@@ -90,18 +90,18 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-/** Open the Map Library, choose a .uvtt file, and wait `ms` for the answer. */
+/** Open the Scenes panel, choose a .uvtt file, and wait `ms` for the answer. */
 async function importAndWait(ms: number): Promise<void> {
   render(<MapManager isOpen onClose={() => {}} />);
   await act(() => vi.advanceTimersByTimeAsync(0));
-  const input = screen.getByRole('dialog', { name: 'Map Library' }).querySelector<HTMLInputElement>('input[type="file"]');
-  if (!input) throw new Error('The Map Library has no file input');
+  const input = screen.getByRole('dialog', { name: 'Scenes' }).querySelector<HTMLInputElement>('input[type="file"]');
+  if (!input) throw new Error('The Scenes panel has no file input');
   fireEvent.change(input, { target: { files: [new File(['{}'], 'cave.uvtt')] } });
   await act(() => vi.advanceTimersByTimeAsync(0));
   await act(() => vi.advanceTimersByTimeAsync(ms));
 }
 
-describe('importing a Universal VTT file in the Map Library', () => {
+describe('importing a Universal VTT file in the Scenes panel', () => {
   // The busy answer comes 20 seconds after the upload, here a 25-second
   // upload; the time-limit answer up to 50 seconds after it, here a 5-second
   // upload, a full wait and a full run.

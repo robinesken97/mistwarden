@@ -75,7 +75,8 @@ afterEach(() => {
 
 async function exportCave() {
   render(<MapManager isOpen onClose={() => {}} />);
-  fireEvent.click(await screen.findByTitle('Export as .uvtt file'));
+  fireEvent.click(await screen.findByRole('button', { name: /^More for / }));
+  fireEvent.click(screen.getByRole('menuitem', { name: 'Export as .uvtt file' }));
 }
 
 it('shows why the export was refused, and saves nothing', async () => {

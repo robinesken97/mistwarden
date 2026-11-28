@@ -9,6 +9,9 @@
 
 import { create } from 'zustand';
 
+/** A Library row that opens in the panel slot (wide) or a sheet (compact); Documents keeps its window. */
+export type LibraryPanel = 'scenes' | 'tokens' | 'creatures' | 'templates' | 'spells';
+
 interface TableChromeState {
   /** The top bar's place for As player ▾, between AI and ⋯. */
   asPlayerSlot: HTMLElement | null;
@@ -18,6 +21,8 @@ interface TableChromeState {
   panelHeader: { tab: string; el: HTMLElement } | null;
   /** How much of the map's foot an open dock covers, in CSS px: the map keeps its size and view under it, and its controls stand above it. */
   mapCover: number;
+  /** The Library panel shown in the panel slot or the sheet, in place of the tab panels; null: none. */
+  library: LibraryPanel | null;
 }
 
 export const useTableChrome = create<TableChromeState>(() => ({
@@ -25,4 +30,10 @@ export const useTableChrome = create<TableChromeState>(() => ({
   mapmakerSlot: null,
   panelHeader: null,
   mapCover: 0,
+  library: null,
 }));
+
+/** Show `library` in the panel slot, or the sheet on a compact layout. */
+export const openLibrary = (library: LibraryPanel) => useTableChrome.setState({ library });
+/** Close the Library panel: the tab that was open shows again. */
+export const closeLibrary = () => useTableChrome.setState({ library: null });

@@ -74,7 +74,7 @@ afterEach(() => {
 it('stops the switch and says why when the current map\'s tokens cannot be read', async () => {
   render(<MapManager isOpen onClose={() => {}} />);
   // Cave is on screen, so only Forest offers the switch.
-  fireEvent.click(await screen.findByTitle('Set as active map'));
+  fireEvent.click(await screen.findByTitle('Set as active scene'));
 
   expect(await screen.findByText('Too many requests, please slow down')).toBeInTheDocument();
   expect(requests.filter((r) => r.startsWith('put'))).toEqual([]);
