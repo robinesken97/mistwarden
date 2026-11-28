@@ -46,6 +46,7 @@ import TokenRotationField from './TokenRotationField';
 import RemoveTokenDialog from './RemoveTokenDialog';
 import { assetNameFrom } from '@/utils/assetName';
 import { extractAssetId } from '@/utils/assetUrl';
+import { showHpBarByDefault } from '@/utils/tokenFlags';
 
 /** A symbol's name as the editor lists it. */
 const iconLabel = (icon: TokenIcon) => icon.charAt(0).toUpperCase() + icon.slice(1);
@@ -270,13 +271,14 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
     if (!max || max <= 0) return;
     const newHp: TokenHp = { current: max, max, temp: 0 };
     const shownHp = showOwnHp(newHp);
-    const shownBar = showOwnHpBar(true);
+    const bar = showHpBarByDefault(disposition);
+    const shownBar = showOwnHpBar(bar);
     setEnableHpPrompt(false);
     setNewHpMax('');
-    await saveUpdate({ hp: newHp, showHpBar: true });
+    await saveUpdate({ hp: newHp, showHpBar: bar });
     dropOwnHp(shownHp);
     dropOwnHpBar(shownBar);
-  }, [newHpMax, saveUpdate, showOwnHp, dropOwnHp, showOwnHpBar, dropOwnHpBar]);
+  }, [newHpMax, disposition, saveUpdate, showOwnHp, dropOwnHp, showOwnHpBar, dropOwnHpBar]);
 
   // ── Stat block ──
   // Typed into a field at a time, so it is saved once typing pauses, or at

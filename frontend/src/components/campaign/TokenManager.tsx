@@ -32,7 +32,7 @@ import TokenVisionField, { squaresForFeet, useSheetDarkvisionFeet } from './Toke
 import TokenLightField from './TokenLightField';
 import type { CarriedLight } from '@/types/walls';
 import RemoveTokenDialog from './RemoveTokenDialog';
-import { setTokenFlag } from '@/utils/tokenFlags';
+import { setTokenFlag, showHpBarByDefault } from '@/utils/tokenFlags';
 import { tokenControllerStanding } from '@/utils/tokenCopy';
 import { assetNameFrom } from '@/utils/assetName';
 
@@ -89,7 +89,7 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
   const [disposition, setDisposition] = useState<TokenDisposition>(TokenDisposition.HOSTILE);
   const [hpMax, setHpMax] = useState<number>(0);
   const [tokenNotes, setTokenNotes] = useState('');
-  const [showHpBar, setShowHpBar] = useState(true);
+  const [showHpBar, setShowHpBar] = useState(showHpBarByDefault(TokenDisposition.HOSTILE));
   const [initiative, setInitiative] = useState<string>('');
   const [sightRadius, setSightRadius] = useState(0);
   const [light, setLight] = useState<CarriedLight | null>(null);
@@ -268,7 +268,7 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
       setDisplayMode('pog');
       setHpMax(0);
       setTokenNotes('');
-      setShowHpBar(true);
+      setShowHpBar(showHpBarByDefault(TokenDisposition.HOSTILE));
       setInitiative('');
       setSightRadius(0);
       setLight(null);
@@ -582,7 +582,7 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
                   ] as const).map(({ d, label, color }) => (
                     <button
                       key={d}
-                      onClick={() => setDisposition(d)}
+                      onClick={() => { setDisposition(d); setShowHpBar(showHpBarByDefault(d)); }}
                       className={`flex-1 py-1.5 text-xs rounded-cozy border transition-all ${
                         disposition === d
                           ? color === 'teal'  ? DISPOSITION_PICKED.friendly

@@ -763,7 +763,9 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
     const { token } = await ctx.api.json<{ token: TokenRow }>('POST', `/api/campaigns/${a.campaignId}/maps/${a.mapId}/tokens`, {
       json: {
         name: a.name ?? c.name, imageUrl: c.imageUrl || undefined, position, size, type: 'npc', displayMode: c.displayMode ?? 'pog',
-        disposition: a.disposition ?? c.disposition, hp: { current: hpMax, max: hpMax, temp: 0 }, showHpBar: true, visible: a.visible ?? false,
+        disposition: a.disposition ?? c.disposition, hp: { current: hpMax, max: hpMax, temp: 0 },
+        // Players see the HP of friendly and neutral NPCs, not of enemies or monsters.
+        showHpBar: ['friendly', 'neutral'].includes((a.disposition ?? c.disposition) ?? ''), visible: a.visible ?? false,
         conditions: [], statBlock: c.statBlock, creatureTemplateId: c.id, nameHidden: a.nameHidden,
       },
     });

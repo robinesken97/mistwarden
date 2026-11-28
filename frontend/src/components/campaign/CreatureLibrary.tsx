@@ -57,6 +57,7 @@ import { SRD_ATTRIBUTION, SRD_MODIFIED } from '@/constants/gameContentNotices';
 import AssetPicker from '@/components/assets/AssetPicker';
 import { extractAssetId } from '@/utils/assetUrl';
 import { cn } from '@/utils/cn';
+import { showHpBarByDefault } from '@/utils/tokenFlags';
 import { BackToList, useLibraryFormStep } from './libraryFormStep';
 import CreatureMarkdownImport from './CreatureMarkdownImport';
 
@@ -289,7 +290,7 @@ export default function CreatureLibrary({ isOpen, onClose }: CreatureLibraryProp
         displayMode: creature.displayMode || 'pog',
         disposition: creature.disposition,
         hp: { current: hpMax, max: hpMax, temp: 0 },
-        showHpBar: true,
+        showHpBar: showHpBarByDefault(creature.disposition),
         visible: true,
         controlledBy: null,
         conditions: [],
