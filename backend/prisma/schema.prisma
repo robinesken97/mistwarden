@@ -241,6 +241,11 @@ model Campaign {
   // Null means never cleared.
   rollHistoryClearedAt DateTime?
 
+  // Mistwarden, 2026-11-28: the practice campaign a user opens from the
+  // dashboard (services/practiceCampaign.ts). Set by the server alone: no
+  // route or import writes it, and only such a campaign can be reset.
+  isPractice Boolean @default(false)
+
   // Metadata
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
