@@ -7,7 +7,7 @@
  * needs to know which colour the sheet has.
  */
 import type { CSSProperties } from 'react';
-import { sheetAccent } from '@/utils/themeColor';
+import { SHEET_BOX_TINT, sheetAccent } from '@/utils/themeColor';
 import { isHexColor } from '@/utils/styleAllowlists';
 import { PRESET_THEMES } from '@/themes';
 import { COLOR_PRESETS } from './colorPresets';
@@ -58,7 +58,7 @@ export function sheetAccentVariables(themeColor: string | undefined): CSSPropert
   );
   return {
     '--sheet-accent': accent,
-    '--sheet-accent-bg': 'color-mix(in srgb, var(--sheet-accent) 8%, transparent)',
+    '--sheet-accent-bg': `color-mix(in srgb, var(--sheet-accent) ${SHEET_BOX_TINT * 100}%, transparent)`,
     '--sheet-fill': fill,
     '--sheet-on-fill': onFill,
   } as CSSProperties;

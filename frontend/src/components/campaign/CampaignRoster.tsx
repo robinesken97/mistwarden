@@ -366,7 +366,7 @@ export default function CampaignRoster() {
           {/* GM Section */}
           {groupedRoster.GM.length > 0 && (
             <div>
-              <h4 className="text-xs font-semibold text-brand-ink/60 uppercase tracking-wider mb-2">
+              <h4 className="text-xs font-semibold text-brand-ink uppercase tracking-wider mb-2">
                 {CAMPAIGN_ROLE_LABEL[CampaignRole.GM]}
               </h4>
               <div className="space-y-2">
@@ -380,7 +380,7 @@ export default function CampaignRoster() {
           {/* Players Section */}
           {groupedRoster.PLAYER.length > 0 && (
             <div>
-              <h4 className="text-xs font-semibold text-brand-ink/60 uppercase tracking-wider mb-2">
+              <h4 className="text-xs font-semibold text-brand-ink uppercase tracking-wider mb-2">
                 Players
               </h4>
               <div className="space-y-2">
@@ -394,7 +394,7 @@ export default function CampaignRoster() {
           {/* Spectators Section */}
           {groupedRoster.SPECTATOR.length > 0 && (
             <div>
-              <h4 className="text-xs font-semibold text-brand-ink/60 uppercase tracking-wider mb-2">
+              <h4 className="text-xs font-semibold text-brand-ink uppercase tracking-wider mb-2">
                 Spectators
               </h4>
               <div className="space-y-2">

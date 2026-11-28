@@ -854,7 +854,7 @@ export default function ChatPanel() {
 
   // What the panel holds, which in a long session is not all there is.
   const shownCount = messages.length > 0 && (
-    <span className="text-xs text-stone-gray/70 ml-auto">
+    <span className="text-xs text-stone-gray ml-auto">
       {messages.length} shown
     </span>
   );
@@ -1056,7 +1056,7 @@ export default function ChatPanel() {
             </p>
           )}
           {canSend && countedLength < LENGTH_WARNING_AT && (
-            <p id="chat-hint" className={compact ? 'sr-only' : 'text-xs text-stone-gray/70 text-center pointer-coarse:sr-only'}>
+            <p id="chat-hint" className={compact ? 'sr-only' : 'text-xs text-stone-gray text-center pointer-coarse:sr-only'}>
               Press Enter to send, Shift+Enter for new line
             </p>
           )}

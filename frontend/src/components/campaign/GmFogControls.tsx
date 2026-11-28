@@ -101,7 +101,7 @@ export default function GmFogControls({
   };
 
   return (
-    <div data-tour="fog" className="flex flex-col gap-0 bg-stone-800/90 rounded-lg border border-warm-amber/20 min-w-[160px] overflow-hidden">
+    <div data-tour="fog" className="flex flex-col gap-0 bg-stone-800 rounded-lg border border-warm-amber/20 min-w-[160px] overflow-hidden">
       {/* Header with collapse toggle */}
       <button
         type="button"
@@ -224,7 +224,7 @@ export default function GmFogControls({
               ? <>Draw round an area; letting go {fogMode === 'fog-reveal' ? 'reveals' : 'hides'} what is inside.</>
               : <>Drag a box over the map. The selection snaps to whole squares —
                 click a single square to {fogMode === 'fog-reveal' ? 'reveal' : 'hide'} just that one.</>}
-          <span className="block mt-0.5 text-stone-500">Esc or right-drag cancels.</span>
+          <span className="block mt-0.5 text-stone-400">Esc or right-drag cancels.</span>
         </p>
       )}
 
@@ -281,7 +281,7 @@ export default function GmFogControls({
             {confirmReset && <ConfirmPulse ring="ring-warning" />}
             {confirmReset ? 'Confirm?' : 'Reset explored areas'}
           </button>
-          <p className="px-1 mt-1 text-xs leading-snug text-stone-500">
+          <p className="px-1 mt-1 text-xs leading-snug text-stone-400">
             Forgets what every player has seen of this map. Their view now is unchanged.
           </p>
         </div>

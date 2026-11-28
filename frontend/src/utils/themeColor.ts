@@ -8,7 +8,7 @@
  */
 
 import { isHexColor } from './styleAllowlists';
-import { AA_TEXT, ensureReadable, parseRgb, readableTextOn, relativeLuminance, toChannels } from './color';
+import { AA_TEXT, ensureReadable, parseRgb, readableTextOn, relativeLuminance, toChannels, type Rgb } from './color';
 
 /** What the editors say when the hex box holds something that is not a colour. */
 export const HEX_COLOUR_HINT = 'Enter a colour as #rgb or #rrggbb';
@@ -71,22 +71,36 @@ export const THEME_SHEET_ACCENT: SheetAccent = {
   onFill: 'rgb(var(--rgb-accent-text))',
 };
 
+/** The share of the accent in a sheet box's tint (`--sheet-accent-bg` in sheetStyle.ts). */
+export const SHEET_BOX_TINT = 0.08;
+
+/** `colour` moved until it reads on `page` and on `page` tinted with itself, as a box draws it. */
+function readableInBox(colour: Rgb, page: Rgb): Rgb {
+  const tinted = (c: Rgb): Rgb => page.map((v, i) => Math.round(c[i] * SHEET_BOX_TINT + v * (1 - SHEET_BOX_TINT))) as Rgb;
+  let accent = ensureReadable(colour, page, AA_TEXT);
+  // Moving the accent moves its tint a little, so settle it twice.
+  for (let pass = 0; pass < 2; pass++) accent = ensureReadable(accent, tinted(accent), AA_TEXT);
+  return accent;
+}
+
 /**
  * The accent of a sheet whose colour is this `#rrggbb` (a preset's or a custom
  * one), on a page of `pageChannels` ("R G B"): the colour moved, keeping its
  * hue, until it reads as text there, so a dark preset is lightened on a dark
  * theme and left as it is on a light one. Without a colour, the theme's accent
  * (`themeAccentChannels`, when known, moved the same way where it would not read).
+ * It is text inside the sheet's boxes too, on the page tinted with the accent
+ * itself (SHEET_BOX's `--sheet-accent-bg`), so it reads there as well.
  */
 export function sheetAccent(hexColor: string | null | undefined, pageChannels: string, themeAccentChannels?: string): SheetAccent {
   const hex = hexColor ? toStoredHexColor(hexColor) : null;
   const page = parseRgb(pageChannels);
   if (!hex) {
     if (!themeAccentChannels) return THEME_SHEET_ACCENT;
-    const readable = toChannels(ensureReadable(parseRgb(themeAccentChannels), page, AA_TEXT));
+    const readable = toChannels(readableInBox(parseRgb(themeAccentChannels), page));
     return { ...THEME_SHEET_ACCENT, accent: `rgb(${readable})` };
   }
   const colour = parseRgb([1, 3, 5].map((at) => parseInt(hex.slice(at, at + 2), 16)).join(' '));
-  const readable = toChannels(ensureReadable(colour, page, AA_TEXT));
+  const readable = toChannels(readableInBox(colour, page));
   return { accent: `rgb(${readable})`, fill: `rgb(${readable})`, onFill: `rgb(${readableTextOn(readable)})` };
 }

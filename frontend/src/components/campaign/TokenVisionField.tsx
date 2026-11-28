@@ -104,7 +104,7 @@ export default function TokenVisionField({ value, feetPerSquare, onChange, onCom
   return (
     <div className="mb-3">
       <label className="text-xs text-stone-gray font-medium block mb-1">
-        Darkvision <span className="font-normal opacity-60">(squares)</span>
+        Darkvision <span className="font-normal">(squares)</span>
       </label>
       <input
         type="number"
@@ -136,7 +136,7 @@ export default function TokenVisionField({ value, feetPerSquare, onChange, onCom
           </Button>
         </div>
       )}
-      <p className="text-xs text-stone-gray/60 mt-1">
+      <p className="text-xs text-stone-gray mt-1">
         How far this token makes things out with no light. 0 = none, 12 = {12 * feetPerSquare} ft on this map. Lit things are seen at any distance.
       </p>
     </div>
