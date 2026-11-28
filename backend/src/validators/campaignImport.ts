@@ -12,7 +12,7 @@ import { ImportVibeSettingsSchema } from './campaigns';
 import { SPIRIT_STYLE_PATTERN } from '../utils/styleAllowlists';
 import { NpcStatBlockSchema } from './statBlock';
 import { TokenHpSchema, TokenSightRadiusSchema, TokenSizeSchema, TOKEN_TYPES, TOKEN_DISPOSITIONS, TOKEN_DISPLAY_MODES } from './tokens';
-import { MapSideSchema, GridSizeSchema, GridTypeSchema, GridOffsetSchema, FeetPerSquareSchema, DrawnBackgroundSchema, MAP_LIMITS, MAX_FOG_CELLS } from './maps';
+import { MapSideSchema, GridSizeSchema, GridTypeSchema, GridOffsetSchema, FeetPerSquareSchema, DrawnBackgroundSchema, GridColorSchema, GridOpacitySchema, GridLineWidthSchema, MAP_LIMITS, MAX_FOG_CELLS } from './maps';
 import { TOKEN_LIMITS } from './tokenLimits';
 import { CarriedLightSchema } from './walls';
 import { TOKEN_ICONS } from '../utils/tokenIcons';
@@ -229,6 +229,11 @@ export const ImportMapSchema = z.object({
   snapTokens: z.boolean().optional().catch(undefined),
   // Absent in archives from before 1.6.0, and from a map made from a picture.
   drawnBackground: DrawnBackgroundSchema.nullable().optional().catch(null),
+  // Absent in archives from before the grid's look was the map's, and one
+  // that cannot be used: the column default, the look those maps had.
+  gridColor: GridColorSchema.optional().catch(undefined),
+  gridOpacity: GridOpacitySchema.optional().catch(undefined),
+  gridLineWidth: GridLineWidthSchema.optional().catch(undefined),
   tokens: z.unknown().optional(),
   // The map's drawings, each checked as drawing:add checks one. An export
   // writes them under `drawings` and `annotations` empty (campaignExporter.ts).

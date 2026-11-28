@@ -566,6 +566,12 @@ model Map {
   // Mapmaker's eraser paints. Null for a map made from a picture, and for one
   // drawn before this was kept.
   drawnBackground String?
+  // How the grid is drawn, for everyone: its colour as #rrggbb, how opaque
+  // (0.1 to 1) and how wide its lines are on screen (1 thin, 2 medium,
+  // 3 thick pixels). The defaults are the look from before these existed.
+  gridColor     String @default("#000000")
+  gridOpacity   Float  @default(0.4)
+  gridLineWidth Int    @default(2)
 
   // Layers
   baseLayerUrl   String // Main map image

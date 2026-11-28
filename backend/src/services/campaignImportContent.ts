@@ -258,6 +258,10 @@ export function prepareMap(raw: unknown, ctx: MapContext): PreparedMap | null {
       diagonalRule: map.diagonalRule ?? 'flat',
       snapTokens,
       drawnBackground: map.drawnBackground ?? null,
+      // Absent in older archives: leave the column defaults, the look they had.
+      ...(map.gridColor !== undefined ? { gridColor: map.gridColor } : {}),
+      ...(map.gridOpacity !== undefined ? { gridOpacity: map.gridOpacity } : {}),
+      ...(map.gridLineWidth !== undefined ? { gridLineWidth: map.gridLineWidth } : {}),
       tokens: tokens as unknown as Prisma.InputJsonValue,
       // Unused: a map's drawings are rows of MapDrawing.
       annotations: [],

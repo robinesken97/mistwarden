@@ -88,6 +88,7 @@ the session.
 |---|---|---|---|---|
 | Read anything, secret rolls | yes | yes | yes | yes |
 | Create maps, tokens, walls, lights, notes | yes, not on the map players see | also tokens on that map | also on that map | – |
+| Copy a map with `duplicate_scene` | yes, any map, the one players see too | same | same | same |
 | Game state of what this server created | yes, not on the map players see | also on that map | also on that map | – |
 | Game state of anything else | no | yes, also on the map players see | no | yes, not on the map players see |
 | Edit or delete what this server created | yes, not on the map players see | same | also on that map | – |
@@ -113,7 +114,10 @@ Every delete also needs a recent backup (below), whatever the switches.
   `MISTWARDEN_MCP_ALLOW_ANY_EDIT=1`. Changing map settings and the fog count
   as updates: they need a map from the manifest. Adding walls, lights or
   tokens to one of your own maps is allowed; changing the ones already there
-  is not.
+  is not. A copy made with `duplicate_scene` is in the manifest; its walls,
+  lights and tokens are only where the original's were, so a player's token
+  copied along stays out of reach as it was. A copy changes nothing and is
+  seen by no player, so it needs no switch and no backup.
 - **Co-GM mode.** `MISTWARDEN_MCP_COGM=1` lets the game-state tools act on
   everything in the campaign, as a second GM at the table would, but
   renaming, resizing, replacing and deleting stay bound to the manifest. A
@@ -213,8 +217,10 @@ Read: `list_campaigns`, `get_campaign`, `list_maps`, `get_map`,
 `get_map_summary`, `list_tokens`, `list_notes`, `get_note`, `list_gallery`,
 `get_messages`, `get_dice_rolls`, `get_initiative`, `list_sessions`,
 `list_characters`, `get_character`.
-Maps: `create_map_from_image`, `import_uvtt`, `update_map_settings` (also
-grid type, offsets, size), `delete_map`.
+Maps: `create_map_from_image`, `import_uvtt`, `duplicate_scene`,
+`update_map_settings` (also grid type, offsets, size, and the grid's look for
+everyone: `gridColor`, `gridOpacity`, `gridLineWidth`, which `get_map` lists
+as `gridLook`), `delete_map`.
 Tokens: `add_token`, `update_token` (also hit points, conditions, initiative,
 light, rotation, layer, display mode, picture, creature, character),
 `update_tokens` (batch), `delete_token`.

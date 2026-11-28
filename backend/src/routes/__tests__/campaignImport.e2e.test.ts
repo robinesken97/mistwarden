@@ -86,6 +86,8 @@ beforeAll(async () => {
     data: {
       campaignId: sourceCampaignId, name: 'The Keep', imageUrl: `/api/assets/maps/${asset.id}`, baseLayerUrl: `/api/assets/maps/${asset.id}`,
       width: 20, height: 15, gridSize: 50, annotations: [],
+      // Mistwarden, 2026-11-28: a grid look of its own, which the copy keeps.
+      gridColor: '#ffffff', gridOpacity: 0.75, gridLineWidth: 3,
       tokens: [{ id: 't1', name: 'Goblin', imageUrl: '', position: { x: 1, y: 1 }, size: { width: 1, height: 1 }, layer: 'token', visible: true }],
     },
   });
@@ -161,6 +163,7 @@ describe('POST /api/campaigns/import', () => {
     expect(campaign.assets).toHaveLength(1);
     expect(fs.readFileSync(path.resolve(campaign.assets[0].filePath))).toEqual(PNG);
     expect(campaign.maps[0].imageUrl).toBe(`/api/assets/maps/${campaign.assets[0].id}`);
+    expect(campaign.maps[0]).toMatchObject({ gridColor: '#ffffff', gridOpacity: 0.75, gridLineWidth: 3 });
     expect(tempFiles()).toEqual([]);
   });
 

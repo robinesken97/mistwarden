@@ -202,3 +202,26 @@ describe('TokenTemplateImportSchema allowlists', () => {
     expect(t.size).toBeUndefined();
   });
 });
+
+// Mistwarden, 2026-11-28: the grid's look is the map's. An archive from
+// before that says nothing, and its maps keep the look they had: the column
+// defaults (black, 0.4, 2 px), which the importer leaves to the database.
+describe("an imported map's grid look", () => {
+  const map = { name: 'Arena', imageAssetRef: 'assets/arena.png', width: 10, height: 10, gridSize: 50, feetPerSquare: 5 };
+  const prepared = (raw: object) =>
+    prepareMap(raw, { index: 0, importTokens: true, remapAsset: () => null, isMapPicture: () => true, isTokenPicture: () => true, report: new ImportReport() })?.data;
+
+  it('keeps the look an archive names', () => {
+    expect(prepared({ ...map, gridColor: '#ffffff', gridOpacity: 0.75, gridLineWidth: 3 })).toMatchObject({ gridColor: '#ffffff', gridOpacity: 0.75, gridLineWidth: 3 });
+  });
+
+  it('leaves the defaults to an older archive, and to a value it cannot use', () => {
+    for (const raw of [map, { ...map, gridColor: 'url(x)', gridOpacity: 0, gridLineWidth: 9 }]) {
+      const data = prepared(raw);
+      expect(data).toBeDefined();
+      expect(data).not.toHaveProperty('gridColor');
+      expect(data).not.toHaveProperty('gridOpacity');
+      expect(data).not.toHaveProperty('gridLineWidth');
+    }
+  });
+});

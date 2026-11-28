@@ -26,6 +26,12 @@ export const MAP_LIMITS = {
   maxLightSources: 200,
   /** Characters in a map's name. */
   maxNameLength: 200,
+  /** How opaque the grid is drawn, from faint to solid. */
+  minGridOpacity: 0.1,
+  maxGridOpacity: 1,
+  /** The grid's line width on screen, in pixels: 1 thin, 2 medium, 3 thick. */
+  minGridLineWidth: 1,
+  maxGridLineWidth: 3,
 } as const;
 
 /**

@@ -35,6 +35,7 @@ import type {
   CampaignMap,
   CreateMapRequest,
   UpdateMapRequest,
+  DuplicateMapRequest,
   CreateTokenRequest,
   UpdateTokenRequest,
   Token,
@@ -1204,6 +1205,12 @@ class ApiClient {
       formData,
       { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 0 },
     );
+    return response.data;
+  }
+
+  // Mistwarden, 2026-11-28: a copy of a map in the same campaign, not shown to the table.
+  async duplicateMap(campaignId: string, mapId: string, options: DuplicateMapRequest = {}): Promise<{ map: CampaignMap }> {
+    const response = await this.client.post(`/api/campaigns/${campaignId}/maps/${mapId}/duplicate`, options);
     return response.data;
   }
 
