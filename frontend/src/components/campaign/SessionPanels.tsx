@@ -25,7 +25,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useGameStore } from '@/stores/gameStore';
 import { useCompactLayout } from '@/contexts/LayoutContext';
 import { cn } from '@/utils/cn';
-import { SESSION_TAB_LOOKS, type SessionTab } from './sessionTabs';
+import { type SessionTab } from './sessionTabs';
 import ChatPanel from './ChatPanel';
 import GalleryPanel from './GalleryPanel';
 import DiceRoller from './DiceRoller';
@@ -65,14 +65,11 @@ export default function SessionPanels() {
   const compact = useCompactLayout();
   useUnreadChatCount();
 
-  /** What a panel is: a tab panel named by its tab in the rail, or on the compact layout a group with its own name. */
-  const panel = (tab: SessionTab) =>
-    compact
-      ? { role: 'group', 'aria-label': SESSION_TAB_LOOKS[tab].label }
-      : { role: 'tabpanel', 'aria-labelledby': `session-tab-${tab}` };
+  /** What a panel is: a tab panel named by its tab, in the column, the dock or the top bar. */
+  const panel = (tab: SessionTab) => ({ role: 'tabpanel', 'aria-labelledby': `session-tab-${tab}` });
 
-  // In a sheet, under the sheet's own heading, the panels need no space above.
-  const pad = compact ? 'px-2 pb-2' : 'p-3';
+  // Narrow layouts keep a little less room round the panels.
+  const pad = compact ? 'p-2' : 'p-3';
   // A panel that scrolls inside itself clips what is taller than it: the
   // four not shown stay in the page, only invisible, and one taller than the
   // sheet made the sheet itself scroll on past its content, whichever tab was

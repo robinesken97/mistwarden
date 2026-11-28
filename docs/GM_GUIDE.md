@@ -65,7 +65,7 @@ In a campaign of your own the tour only explains. In your practice campaign each
 
 ### The table on a wide screen
 
-On a screen 1,024 pixels wide or more (an iPad held sideways, a laptop, a desktop) the campaign page has three parts. Narrower screens use the compact layout (see [On a phone](#on-a-phone)).
+On a screen 1,024 pixels wide or more (an iPad held sideways, a laptop, a desktop) the campaign page has three parts. Narrower screens keep the top bar and map and put the tabs in a dock (see [On a phone](#on-a-phone)).
 
 - **Top bar:** **Dashboard**, the campaign's title, the **Live**, **Paused** or **Inactive** chip and a sun icon when a vibe is set. A connection status shows only while it connects or is down, with **Retry**. On the right: **Library ▾** (**Scenes**, **Tokens**, **Creatures**, **Token Templates**, **Spells**, **Documents**), **AI** (when the server has an AI set up), **As player ▾** (while the map has dynamic lighting or fog of war on) and **⋯** (**Mapmaker**, **Atmosphere**, **Campaign Settings**, **Keyboard shortcuts**, **Tour**, **Display on this device**, **Campaign info**).
 - **Left tabs:** **Chat**, **Dice**, **Initiative**, **Party**, **Notes**, **Gallery**, **Table**. A tab opens its panel beside the column; press the open tab again, or the panel's fold button, to fold it away. The panel starts folded under 1,280 pixels and open from 1,280; each device remembers your choice.
@@ -265,7 +265,7 @@ If the picture cannot be made, the window says so and nothing is created: "This 
 
 **Mapmaker**, in the **⋯** menu of the top bar, is yours on a map you drew, and on a map with no picture, or whose picture has been deleted from the Asset Library, where it starts a blank parchment picture the map's size: that is how such a map gets a picture again. It is not offered on a map whose picture you uploaded; mark one of those up with **Draw** (see [Drawing on the map](#drawing-on-the-map)).
 
-1. Click **Mapmaker**. Its panel opens at the top of your tool panels (on a phone, **Mapmaker** is in the map's **More**, and its tools are a strip at the foot of the map: see [On a phone](#on-a-phone)), and the map shows its material plane without your fog of war or the spirit layer, so you see the picture as you paint it. **Draw**, the ruler, the area template, **Ping** and **As player** are put away while Mapmaker is on; choosing a wall, fog or light tool puts Mapmaker away.
+1. Click **Mapmaker**. Its panel opens at the top of your tool panels (on a phone its tools are a strip above the dock: see [On a phone](#on-a-phone)), and the map shows its material plane without your fog of war or the spirit layer, so you see the picture as you paint it. **Draw**, the ruler, the area template, **Ping** and **As player** are put away while Mapmaker is on; choosing a wall, fog or light tool puts Mapmaker away.
 2. Choose a tool (below) and a colour: the earth tones first, then the drawing colours, or any colour with **Another colour**. Mapmaker has two colours: **Colour** and **Second colour** above the colours say which one the palette sets. The second colour fills a rectangle, an ellipse, a polygon, a room's floor and a stamp. Set the **Width**, from 1 to 64 pixels, for the tools that paint a line; Select, Fill and the Eyedropper have none, and a stamp has a **Size**.
 3. Paint with the tool. A stroke shows as you drag, and goes into the picture when you let go.
 
@@ -1239,21 +1239,17 @@ A stylus never opens a menu by holding; use a finger.
 
 ### On a phone
 
-On a phone, on most tablets held upright and in a browser window narrower than 1,024 pixels, the campaign page has its compact layout: the map across the screen, a bar of buttons along the bottom and everything else in sheets that rise over the map (see [The campaign page on a phone or tablet](USER_GUIDE.md#the-campaign-page-on-a-phone-or-tablet)). Your tools are all there:
+On a tablet held upright the table keeps the wide layout's top bar and rail, and the tabs move into a dock along the bottom (see [The campaign page on a phone or tablet](USER_GUIDE.md#the-campaign-page-on-a-phone-or-tablet)). On a phone your tools are all there too, in slightly different places:
 
-| On the desktop | On a phone |
+| On a computer or tablet | On a phone |
 |---|---|
-| **Owner Settings**, for the owner once someone else is the GM | **More**, under **Owner**: **Owner Settings** |
-| The top bar's **Library ▾** and **⋯** menus, and **Spirit Layer** on the map's rail: **Scenes**, **Tokens**, **Creatures**, **Token Templates**, **Atmosphere**, **Campaign Settings** | **More**, under **GM tools**. Each opens the same panel, which fills the screen; the phone's **Back** closes it |
-| **Library ▾ › Documents**, **⋯ › Keyboard shortcuts** | **More**: **Documents**, **Shortcuts** |
-| The **Table** tab (session controls, the vibe, past sessions) and **Notes** | **More**: **Session**, **Notes** |
-| The **Party** tab: the **Campaign Roster** and the **Token Roster** (**Campaign info** is in the **⋯** menu) | **Party** |
-| The **Fog of War**, **Walls** and **Lights** panels, shown by **GM tools** on the map's rail | The map's **More**, then **Show tools**. The panels show at the top right, folded, as on the desktop; **Hide tools**, in the map's **More** or on the bar above the panels, puts them away and puts down the tool you had up |
-| The spirit tokens button in the **Spirit Layer** panel on the map's rail | The map's **More**: **Show spirit tokens** |
-| **Draw** | **Draw**, in the map's toolbar: its tools open in a strip across the foot of the map, with the map above it to draw on. **Clear…** offers every drawing or one member's, and asks before it clears |
-| **Mapmaker**, and its panel | The map's **More**: **Mapmaker** (**Put Mapmaker away** while it is on). Its tools open in a strip across the foot of the map, with the map above it to paint on: **Undo**, **Redo**, **Save** and **Done** at its top, the tools in a row that scrolls sideways (an end with more past it fades out under an arrow), the button with the two colours and, for example, **Black, 6 px** on it (a screen reader calls it **Colour and width**), which opens the two colours, the palette and the width over the strip (`Esc` or a tap elsewhere closes it), and **Download picture**. On a phone on its side the tools sit beside **Mapmaker** at the strip's top. Every control is at least 44 pixels |
-| **As player ▾** | Stays on the map, at its bottom right, so the way back is always in sight |
-| The banner over a map you are preparing | The same, across the top of the map: on a phone upright its words take one row and **Back to the table**, **Bring everyone here** and **What reaches the table?** the next; on a phone on its side it is one row, with the buttons reading **Back**, **Bring everyone** and an info button. The phone's **Back** goes back to the table |
+| The top bar's **Library ▾**: **Scenes**, **Tokens**, **Creatures**, **Token Templates**, **Spells**, **Documents** | **⋯**, at the top of its sheet, as tiles |
+| **⋯**: **Mapmaker** (where offered), **Atmosphere**, **Campaign Settings**, **Keyboard shortcuts**, **Tour**, **Display on this device**, **Campaign info**; **Owner Settings** for the owner once someone else is the GM | **⋯**, the same rows under the tiles (**Shortcuts**) |
+| **AI**, **As player ▾** | The same, as icons |
+| The tabs | The dock along the bottom, or the top bar on a phone on its side |
+| The map's rail: zoom, **Grid**, **Measure**, **Spell area**, **Ping**, **Draw**, **Spirit Layer**, **GM tools** | The same rail with eight cells: the zoom is a chip that fits the map (pinch to zoom) |
+| **Draw** and **Mapmaker** open a card beside the rail | They open a strip above the dock, with the map above it to draw or paint on |
+| The banner over a map you are preparing | The same, with **Back to the table** and **Bring everyone here** in a row of their own; on its side they read **Back** and **Bring everyone**. The phone's **Back** goes back to the table |
 
 A token's menu, a door's and a character's open as a list from the bottom of the screen, item for item the menus a right-click opens on the desktop. To put a character on the map, press and hold it in **Party**'s roster and choose **Add to Map**. Turning a tablet between upright and sideways keeps everything as it was, **As player** and **Mapmaker** with what you have painted included, so a tablet propped up for the table stays in the players' view.
 

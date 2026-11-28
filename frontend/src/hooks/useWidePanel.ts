@@ -51,3 +51,51 @@ export function useWidePanel() {
 
   return { open: panel.open, party: panel.party, choose };
 }
+
+// ============================================
+// useDockPanel: the dock's panel on a tablet or a phone held upright, kept
+// per browser: whether it is open, on Party or a session panel, and how
+// tall. Folded by default, to its tab row.
+// ============================================
+
+export const DOCK_PANEL_KEY = 'mistwarden.tableDock';
+
+/** How tall the open dock is: 40 % of the screen, or tall (60 % on a tablet, up to the top bar on a phone). */
+export type DockSize = 'mid' | 'tall';
+
+interface SavedDock extends SavedPanel {
+  size: DockSize;
+}
+
+/** The saved dock, or null for none or one that cannot be read. */
+export function loadDockPanel(): SavedDock | null {
+  try {
+    const saved: unknown = JSON.parse(optionalStorage.getItem(DOCK_PANEL_KEY) ?? 'null');
+    if (typeof saved !== 'object' || saved === null) return null;
+    const { open, party, size } = saved as Record<string, unknown>;
+    return typeof open === 'boolean' ? { open, party: party === true, size: size === 'tall' ? 'tall' : 'mid' } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Where a dock let go at `height` px settles: the snap nearest it, of folded (0), `mid` and `tall` px. */
+export function nearestDockSnap(height: number, mid: number, tall: number): 'folded' | DockSize {
+  const snaps = [['folded', 0], ['mid', mid], ['tall', tall]] as const;
+  return snaps.reduce((best, snap) => (Math.abs(snap[1] - height) < Math.abs(best[1] - height) ? snap : best))[0];
+}
+
+export function useDockPanel() {
+  const [dock, setDock] = useState<SavedDock>(() => loadDockPanel() ?? { open: false, party: false, size: 'mid' });
+
+  /** The user's choice, saved for the next visit; a size left out stays as it was. */
+  const choose = useCallback((next: SavedPanel & { size?: DockSize }) => {
+    setDock((prev) => {
+      const saved = { ...next, size: next.size ?? prev.size };
+      optionalStorage.setItem(DOCK_PANEL_KEY, JSON.stringify(saved));
+      return saved;
+    });
+  }, []);
+
+  return { open: dock.open, party: dock.party, size: dock.size, choose };
+}

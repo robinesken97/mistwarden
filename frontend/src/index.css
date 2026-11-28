@@ -554,17 +554,35 @@
   [class~='text-[34px]'] { font-size: 2.125rem; }
 }
 
-/* A select a finger's size. A height, not a min-height: WebKit ignores
-   min-height on a styled select (it stays 23 px). Outside any layer, so a
-   panel's own height class cannot undo it; a list box keeps its rows. */
+/* The app's one select: drawn by us rather than the browser, 40 px with a
+   mouse and 44 on a touch screen, a chevrons-up-down icon (lucide) 12 px in
+   from its right edge, and its text kept clear of the icon. A height, not a
+   min-height: WebKit ignores min-height on a styled select (it stays 23 px).
+   Outside any layer, so a panel's own height or padding class cannot undo
+   it; a list box keeps its rows. The icon follows the theme's scheme
+   (data-scheme, themes.ts), muted ink on light paper and light on dark. */
+select:not([multiple], [size]) {
+  appearance: none;
+  height: 2.5rem;
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-right: 2.25rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a8a29e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 15 5 5 5-5'/%3E%3Cpath d='m7 9 5-5 5 5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem 1rem;
+}
+[data-scheme='light'] select:not([multiple], [size]) {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2357534e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m7 15 5 5 5-5'/%3E%3Cpath d='m7 9 5-5 5 5'/%3E%3C/svg%3E");
+}
 @media (pointer: coarse) {
   select:not([multiple], [size]) {
     height: 2.75rem;
   }
 }
 
-/* The compact layout's sheets and map (components/campaign/compact/
-   CompactTable.tsx marks them): every control a finger's size, 44 by 44 CSS
+/* The narrow layouts' map and panels (components/campaign/DesktopTable.tsx
+   marks them): every control a finger's size, 44 by 44 CSS
    px, whatever the panel inside was written with for a desktop column and a
    mouse. Outside any layer, so a panel's own height class cannot undo it; a
    switch keeps its drawn pill, and a check box or a radio button is pressed

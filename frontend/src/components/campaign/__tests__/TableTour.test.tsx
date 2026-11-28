@@ -81,14 +81,14 @@ describe('TableTour', () => {
     expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument();
   });
 
-  it("stays above the compact layout's bar at the screen's foot", async () => {
+  it("stays above the dock's tabs at the screen's foot", async () => {
     render(
       <>
-        <nav aria-label="Table"><button data-tour="bar-map">Map</button></nav>
+        <nav aria-label="Panels"><button data-tour="tab-chat">Chat</button></nav>
         {tour()}
       </>,
     );
-    const bar = screen.getByRole('navigation', { name: 'Table' });
+    const bar = screen.getByRole('navigation', { name: 'Panels' });
     bar.getBoundingClientRect = () => ({ top: window.innerHeight - 56, bottom: window.innerHeight, left: 0, right: 390, width: 390, height: 56, x: 0, y: window.innerHeight - 56, toJSON: () => ({}) });
     act(() => startTour());
     fireEvent.click(await screen.findByRole('button', { name: 'Next' }));

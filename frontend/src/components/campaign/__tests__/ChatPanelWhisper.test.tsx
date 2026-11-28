@@ -85,7 +85,7 @@ const stored = (fields: Partial<Message> & Pick<Message, 'id' | 'content'>): Mes
 });
 
 const box = () => screen.getByRole('textbox', { name: 'Chat message' }) as HTMLTextAreaElement;
-const picker = () => screen.getByRole('combobox', { name: 'To' }) as HTMLSelectElement;
+const picker = () => screen.getByRole('combobox', { name: 'Send to' }) as HTMLSelectElement;
 
 async function openPanel() {
   const view = render(<ChatPanel />);

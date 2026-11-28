@@ -103,9 +103,14 @@ function screenIs(compact: boolean) {
 beforeEach(() => { infoProps.length = 0; });
 afterEach(() => { vi.unstubAllGlobals(); });
 
-it("gives the Campaign Info panel the page's own end-of-table handler on the compact layout", () => {
+it("gives the Campaign Info window the page's own end-of-table handler on the compact layout", () => {
   screenIs(true);
   render(<CampaignPage />);
+  // No Party tab holds the card on any layout; ⋯ › Campaign info opens it.
+  expect(infoProps).toHaveLength(0);
+
+  fireEvent.click(screen.getByRole('button', { name: 'More' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Campaign info' }));
 
   expect(infoProps.length).toBeGreaterThan(0);
   expect(infoProps.every((props) => props.onLeft === endTable)).toBe(true);

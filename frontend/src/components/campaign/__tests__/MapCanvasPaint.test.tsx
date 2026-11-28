@@ -3367,37 +3367,29 @@ describe('on the compact layout', () => {
     await act(async () => { await Promise.resolve(); });
     return view;
   }
-  const band = () => screen.getByRole('group', { name: 'Map tools' });
-  const moreSheet = () => screen.getByRole('dialog', { name: 'Map controls' });
-  const pressRow = (label: string) => {
-    if (!screen.queryByRole('dialog', { name: 'Map controls' })) fireEvent.click(screen.getByRole('button', { name: 'More map controls' }));
-    fireEvent.click(within(moreSheet()).getByRole('button', { name: label }));
-  };
+  const rail = () => screen.getByRole('navigation', { name: 'Map tools' });
+  /** ⋯'s Mapmaker row, which the map draws into the top bar's slot. */
+  const mapmakerRow = () => within(mapmakerSlot).getByRole('button', { name: 'Mapmaker' });
   const strip = () => screen.queryByRole('region', { name: 'Mapmaker' });
 
-  it('offers Paint in More, not in the band, and opens its strip at the map\'s foot', async () => {
+  it('offers Mapmaker in ⋯, not on the rail, and opens its strip at the map\'s foot', async () => {
     await showCompact();
-    await waitFor(() => {
-      fireEvent.click(screen.getByRole('button', { name: 'More map controls' }));
-      expect(within(moreSheet()).getByRole('button', { name: 'Mapmaker' })).toBeInTheDocument();
-    });
-    expect(within(band()).queryByRole('button', { name: 'Mapmaker' })).toBeNull();
-    pressRow('Mapmaker');
+    await waitFor(() => expect(mapmakerRow()).toBeInTheDocument());
+    expect(within(rail()).queryByRole('button', { name: 'Mapmaker' })).toBeNull();
+    fireEvent.click(mapmakerRow());
     await waitFor(() => expect(strip()).toBeInTheDocument());
     expect(strip()!.closest('[data-map-dock]')).not.toBeNull();
     expect(strip()!.querySelector('[role="group"][aria-label="Tools"]')).not.toBeNull();
-    // While it is on, More puts it away.
-    pressRow('Put Mapmaker away');
+    // While it is on, its row is pressed and puts it away.
+    expect(mapmakerRow()).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(mapmakerRow());
     await waitFor(() => expect(strip()).toBeNull());
   });
 
   it('paints with one finger under the strip, and Done in the strip puts it away, the paint kept', async () => {
     await showCompact();
-    await waitFor(() => {
-      fireEvent.click(screen.getByRole('button', { name: 'More map controls' }));
-      expect(within(moreSheet()).getByRole('button', { name: 'Mapmaker' })).toBeInTheDocument();
-    });
-    pressRow('Mapmaker');
+    await waitFor(() => expect(mapmakerRow()).toBeInTheDocument());
+    fireEvent.click(mapmakerRow());
     await waitFor(() => expect(strip()).toBeInTheDocument());
     const finger = contact('touch', 3);
     finger.down(input(), { clientX: 100, clientY: 100 });
@@ -3412,11 +3404,8 @@ describe('on the compact layout', () => {
 
   it("asks before the strip's Save writes over the picture, as the panel's does", async () => {
     await showCompact();
-    await waitFor(() => {
-      fireEvent.click(screen.getByRole('button', { name: 'More map controls' }));
-      expect(within(moreSheet()).getByRole('button', { name: 'Mapmaker' })).toBeInTheDocument();
-    });
-    pressRow('Mapmaker');
+    await waitFor(() => expect(mapmakerRow()).toBeInTheDocument());
+    fireEvent.click(mapmakerRow());
     await waitFor(() => expect(strip()).toBeInTheDocument());
     drag({ clientX: 100, clientY: 100 }, { clientX: 300, clientY: 200 });
     await act(async () => { fireEvent.click(within(strip()!).getByRole('button', { name: 'Save' })); });
@@ -3429,11 +3418,8 @@ describe('on the compact layout', () => {
 
   it('keeps the paint, the picture and Paint on as the layout changes, a tablet turned', async () => {
     const view = await showCompact();
-    await waitFor(() => {
-      fireEvent.click(screen.getByRole('button', { name: 'More map controls' }));
-      expect(within(moreSheet()).getByRole('button', { name: 'Mapmaker' })).toBeInTheDocument();
-    });
-    pressRow('Mapmaker');
+    await waitFor(() => expect(mapmakerRow()).toBeInTheDocument());
+    fireEvent.click(mapmakerRow());
     await waitFor(() => expect(strip()).toBeInTheDocument());
     const canvas = pictureCanvas();
     drag({ clientX: 100, clientY: 100 }, { clientX: 300, clientY: 200 });

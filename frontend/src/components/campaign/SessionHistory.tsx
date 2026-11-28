@@ -107,7 +107,7 @@ export default function SessionHistory() {
   const past = sessions.filter((session) => session.endedAt !== null);
 
   return (
-    <div className="glass-panel p-4 space-y-3">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
         <button
           onClick={() => setExpanded((open) => !open)}

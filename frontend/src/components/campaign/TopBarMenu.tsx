@@ -70,6 +70,7 @@ export function MenuRow({ icon: Icon, label, onSelect, more, pressed, keepOpen, 
       type="button"
       onClick={onSelect}
       data-tour={tour}
+      data-menu-row=""
       data-keep-open={keepOpen || undefined}
       aria-pressed={pressed}
       aria-expanded={expanded}
@@ -112,8 +113,10 @@ export interface TopBarMenuProps {
   /** The list's side: under the button's left edge, or its right edge. */
   align?: 'left' | 'right';
   className?: string;
-  /** The list's own classes, such as a wider list. */
+  /** The list's own classes, such as a wider list, or where a sheet stops. */
   listClassName?: string;
+  /** The list rises from the foot of the screen as a sheet, over a backdrop, rather than dropping under the button (a phone). */
+  sheet?: boolean;
   /** The rows; given `close`, for a row that keeps the list open and closes it later. */
   children: ReactNode | ((close: () => void) => ReactNode);
   /** Told as the list opens and closes. */
@@ -122,7 +125,7 @@ export interface TopBarMenuProps {
 }
 
 export default function TopBarMenu({
-  label, icon: Icon, text, pressed = false, disabled, title, tour, align = 'left', className, listClassName, children, onOpenChange, buttonRef,
+  label, icon: Icon, text, pressed = false, disabled, title, tour, align = 'left', className, listClassName, sheet = false, children, onOpenChange, buttonRef,
 }: TopBarMenuProps) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
@@ -190,6 +193,8 @@ export default function TopBarMenu({
         {text && <span>{text}</span>}
         {text && <ChevronDown className="-ml-0.5 w-3 h-3 shrink-0 text-ink-muted" strokeWidth={3} aria-hidden="true" />}
       </button>
+      {/* A sheet's backdrop: a press on it closes the sheet and reaches nothing under it. */}
+      {open && sheet && <div aria-hidden="true" onClick={close} className={cn('fixed inset-x-0 top-0 z-79 bg-black/40', listClassName)} />}
       {open && (
         <div
           ref={list}
@@ -198,12 +203,14 @@ export default function TopBarMenu({
           aria-label={label}
           onKeyDown={moveFocus}
           className={cn(
-            'absolute top-[calc(100%+6px)] z-80 max-w-[calc(100vw-1rem)] max-h-[calc(100dvh-4rem)] overflow-y-auto',
-            'py-1 rounded-xl border border-brand/20 bg-surface/95 shadow-[0_10px_25px_var(--color-canvas)] backdrop-blur-xs',
-            align === 'right' ? 'right-0' : 'left-0',
-            listClassName ?? 'w-60',
+            sheet
+              ? 'fixed inset-x-0 top-auto! z-80 max-h-[calc(100dvh-8rem)] overflow-y-auto overscroll-contain rounded-t-2xl border-t border-brand/20 bg-surface pb-2 shadow-[0_-10px_25px_var(--color-canvas)] [&_[data-menu-row]]:min-h-13'
+              : 'absolute top-[calc(100%+6px)] z-80 max-w-[calc(100vw-1rem)] max-h-[calc(100dvh-4rem)] overflow-y-auto py-1 rounded-xl border border-brand/20 bg-surface/95 shadow-[0_10px_25px_var(--color-canvas)] backdrop-blur-xs',
+            !sheet && (align === 'right' ? 'right-0' : 'left-0'),
+            listClassName ?? (sheet ? undefined : 'w-60'),
           )}
         >
+          {sheet && <div aria-hidden="true" className="mx-auto mt-2 mb-1 h-1 w-9 rounded-full bg-ink/25" />}
           {typeof children === 'function' ? children(close) : children}
         </div>
       )}

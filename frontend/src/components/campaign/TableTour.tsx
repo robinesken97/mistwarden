@@ -40,13 +40,13 @@ const sameBox = (a: Box | null, b: Box | null) =>
   a === b || (!!a && !!b && a.top === b.top && a.left === b.left && a.width === b.width && a.height === b.height);
 
 /**
- * The foot of the card's room: the top of the compact layout's bar where it
- * runs along the screen's foot (on a phone on its side it is in the header),
- * else the window's. The card stood over the bar's buttons.
+ * The foot of the card's room: the top of the dock's tab row where it runs
+ * along the screen's foot (a tablet, a phone upright), else the window's.
+ * The card stood over the tabs.
  */
 function roomFoot(): number {
-  const bar = document.querySelector('[data-tour="bar-map"]')?.closest('nav')?.getBoundingClientRect();
-  return bar && bar.top > window.innerHeight / 2 ? bar.top : window.innerHeight;
+  const tabs = document.querySelector('[data-tour="tab-chat"]')?.closest('nav')?.getBoundingClientRect();
+  return tabs && tabs.top > window.innerHeight / 2 ? tabs.top : window.innerHeight;
 }
 
 /**

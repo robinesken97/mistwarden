@@ -4,10 +4,10 @@
  * step finds what it points at, and where the tour's place is kept.
  *
  * A step points at an anchor, an element marked `data-tour="…"`. It names
- * its anchors in order, as each layout has its own (the desktop's header
- * button, the compact layout's More row), and the first one on screen is
- * the one shown. One that sits in something closed (the rail on another
- * tab, the folded party column, More, the map's tools hidden on a phone)
+ * its anchors in order, as each layout has its own (the top bar's Library
+ * row, a phone's Library tile in ⋯), and the first one on screen is the one
+ * shown. One that sits in something closed (a folded panel, the GM's tool
+ * stack, Library ▾, ⋯)
  * names the anchors that open it, its openers, as a chain: the deepest one
  * on screen is pressed, then the ones after it. An opener already open
  * (aria-expanded or aria-selected) is not pressed, as every one of them is
@@ -50,23 +50,23 @@ export interface TourContext {
   live: boolean;
 }
 
-// The openers of each place a step can point into, outermost first.
-const MAP = ['bar-map'];
-// On the wide layout the GM tools cell of the map's rail shows the stack.
-const MAP_TOOLS = ['bar-map', 'map-controls', 'menu-tools', 'gm-tools'];
-// The wide layout's tab column, or the compact layout's bar.
-const RAIL = (tab: string) => [`tab-${tab}`, `bar-${tab}`];
-const PARTY = ['tab-party', 'bar-party'];
-const MORE = ['bar-more'];
-// The wide layout's Library ▾ and ⋯ menus in the top bar.
-const LIBRARY = ['library', ...MORE];
-const MORE_MENU = ['more-menu', ...MORE];
+// The openers of each place a step can point into, outermost first. The map
+// is on screen in every layout.
+const MAP: string[] = [];
+// The GM tools cell of the map's rail shows the stack.
+const MAP_TOOLS = ['gm-tools'];
+// The panel tabs: a column, the dock's row or the top bar's row.
+const RAIL = (tab: string) => [`tab-${tab}`];
+const PARTY = ['tab-party'];
+// Library ▾ in the top bar, or on a phone its tiles at the top of ⋯.
+const LIBRARY = ['more-menu', 'library'];
+const MORE_MENU = ['more-menu'];
 
 const END: TourStep = {
   id: 'end',
   title: 'That is the tour',
   body: 'Tour runs it again whenever you like: in the ⋯ menu at the top right, or under More on a small screen.',
-  targets: ['tour-button', 'menu-tour', 'more-menu'],
+  targets: ['tour-button', 'more-menu'],
 };
 
 export const GM_TOUR: readonly TourStep[] = [
@@ -88,9 +88,9 @@ export const GM_TOUR: readonly TourStep[] = [
   {
     id: 'grid',
     title: 'The grid',
-    body: 'The Grid button on the map’s right edge opens Toggle Grid, which shows or hides the squares, and their colour. On a small screen both are under More map controls. The square size is the scene’s, in Library › Scenes.',
+    body: 'The Grid button on the map’s right edge opens Toggle Grid, which shows or hides the squares, and their colour. On a phone the Grid button is near the top of the rail too. The square size is the scene’s, in Library › Scenes.',
     task: 'Hide the grid, then show it again.',
-    targets: ['grid', 'map-controls'],
+    targets: ['grid'],
     openers: MAP,
   },
   {
@@ -122,7 +122,7 @@ export const GM_TOUR: readonly TourStep[] = [
     title: 'Tokens',
     body: 'Library › Tokens puts tokens on the map: a picture, a size, a player character or an NPC, shown or hidden. Creatures and Token Templates, also in Library, add ready-made ones.',
     task: 'Open Library › Tokens and look through its choices.',
-    targets: ['tool-tokens', 'menu-tokens'],
+    targets: ['tool-tokens'],
     openers: LIBRARY,
   },
   {
@@ -144,9 +144,9 @@ export const GM_TOUR: readonly TourStep[] = [
   {
     id: 'area',
     title: 'Spell areas',
-    body: 'Spell area (the lightning on the map’s right edge) lays a circle, cone, line or square over the map for everyone to see; on a small screen it is AoE Shape under More map controls. A spell on a character sheet places its own area.',
+    body: 'Spell area (the lightning on the map’s right edge) lays a circle, cone, line or square over the map for everyone to see, on a phone as on a computer. A spell on a character sheet places its own area.',
     task: 'Turn on Spell area and put a circle on the courtyard.',
-    targets: ['aoe', 'map-controls'],
+    targets: ['aoe'],
     openers: MAP,
   },
   {
@@ -155,7 +155,7 @@ export const GM_TOUR: readonly TourStep[] = [
     body: 'Start Session opens play: players move their tokens only while a session is live. Pause holds the table; End closes the session, with notes for next time.',
     task: 'Start a session.',
     targets: ['start-session', 'panel-session'],
-    openers: ['tab-session', 'bar-more', 'menu-session'],
+    openers: ['tab-session'],
   },
   {
     id: 'display',

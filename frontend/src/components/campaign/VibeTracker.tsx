@@ -65,7 +65,7 @@ export default function VibeTracker() {
 
   return (
     <>
-      <div className="glass-panel p-4 space-y-3">
+      <div className="space-y-3">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">

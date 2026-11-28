@@ -120,7 +120,7 @@ export default function DiceRoller() {
   const compact = useCompactLayout();
   // On the wide layout the panel's header names the dice and takes Secret and Clear.
   const panelHeader = useTableChrome((st) => st.panelHeader);
-  const wideHeader = !compact && panelHeader?.tab === 'dice' ? panelHeader.el : null;
+  const wideHeader = panelHeader?.tab === 'dice' ? panelHeader.el : null;
   const [moreOptions, setMoreOptions] = useState(false);
 
   // Roll history state
@@ -859,7 +859,7 @@ export default function DiceRoller() {
       onConfirm={handleConfirmClear}
       onCancel={() => setConfirmClear(false)}
     />
-    <div className="h-full flex flex-col bg-surface/50 backdrop-blur-xs rounded-lg border border-ink-muted/20 relative">
+    <div className="h-full flex flex-col relative">
       {/* Header. The compact layout's sheet names the panel already, so
           there the log starts at the top, and Secret and Clear go under the
           controls. */}
@@ -1006,8 +1006,9 @@ export default function DiceRoller() {
                 {secretRoll}
                 <span className="ml-auto flex items-center gap-1.5">
                   {clearFieldsButton}
-                  {secretRollsToggle}
-                  {clearHistoryButton}
+                  {/* Unless the panel's header holds them. */}
+                  {!wideHeader && secretRollsToggle}
+                  {!wideHeader && clearHistoryButton}
                 </span>
               </div>
             )}

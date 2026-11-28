@@ -129,6 +129,8 @@ const KEPT: Kept[] = [
   // Kept only to delete the old resizable-panel layout a browser may still hold.
   { name: 'cozyvtt-session-layout', pkg: 'frontend', written: /'react-resizable-panels:cozyvtt-session-layout'/ },
   { name: 'cozyvtt.signInNotice', pkg: 'frontend', written: /'cozyvtt\.signInNotice'/ },
+  // The table's dock on a tablet or a phone: open or folded, its panel and height.
+  { name: 'mistwarden.tableDock', pkg: 'frontend', written: /'mistwarden\.tableDock'/ },
   { name: 'cozyvtt-preparing-map:', pkg: 'frontend', written: /`cozyvtt-preparing-map:\$\{campaignId\}`/ },
   { name: 'cozyvtt-paint-tab', pkg: 'frontend', written: /'cozyvtt-paint-tab'/ },
   { name: 'cozyvtt-paint-tab:', pkg: 'frontend', written: /'cozyvtt-paint-tab:'/ },

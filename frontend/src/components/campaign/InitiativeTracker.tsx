@@ -16,8 +16,6 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, useId } from 'react';
 import {
   Swords,
-  ChevronDown,
-  ChevronUp,
   Play,
   SkipForward,
   XCircle,
@@ -57,7 +55,6 @@ import { TokenType } from '@/types';
 import { tokenDisplayName, tokenPublicName, characterRollPublicName } from '@/utils/tokenDisplayName';
 import { controlsToken } from '@/utils/tokenOwnership';
 import { campaignHasCharacter, canRollTokenCharacter } from '@/utils/tokenCharacter';
-import { useCompactLayout } from '@/contexts/LayoutContext';
 import { playedGameSystem } from '@/constants/game-systems';
 
 // ---------------------------------------------------------------------------
@@ -541,8 +538,6 @@ export default function InitiativeTracker() {
   // Cross-highlight: set when a row here is hovered, and when a token is
   // hovered on the map. Either way the matching row tints.
   const peekTokenId = usePeekTokenId();
-  const [collapsed, setCollapsed] = useState(false);
-  const compact = useCompactLayout();
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
 
@@ -828,7 +823,7 @@ export default function InitiativeTracker() {
 
   return (
     <>
-      <div className="bg-soft-cream border border-moss-green/20 rounded-xl shadow-xs overflow-hidden">
+      <div>
         {isGM && (
           <>
             <p id={reorderHintId} className="sr-only">
@@ -837,34 +832,15 @@ export default function InitiativeTracker() {
             <p role="status" aria-live="polite" className="sr-only">{moveAnnouncement}</p>
           </>
         )}
-        {/* Header. The compact layout's sheet names the panel already, and
-            folding the tracker there would only hide it: the round, or the
-            count ready, stands alone. */}
-        {compact ? (
-          (combatState.active || hasCombatants) && (
-            <div className="flex items-center gap-2 px-3 pt-3">
-              {statusBadges}
-            </div>
-          )
-        ) : (
-        <button
-          onClick={() => setCollapsed((c) => !c)}
-          className="w-full flex items-center justify-between px-4 py-3 bg-parchment/40 hover:bg-parchment/60 transition-colors"
-        >
-          <div className="flex items-center gap-2">
-            <Swords className="w-4 h-4 text-brand-ink" />
-            <span className="font-semibold text-brand-ink text-sm">Initiative Tracker</span>
+        {/* The panel's header names it (DesktopTable); the round, or the
+            count ready, stands alone above the list. */}
+        {(combatState.active || hasCombatants) && (
+          <div className="flex items-center gap-2 px-3 pt-3">
             {statusBadges}
           </div>
-          {collapsed ? (
-            <ChevronDown className="w-4 h-4 text-stone-gray" />
-          ) : (
-            <ChevronUp className="w-4 h-4 text-stone-gray" />
-          )}
-        </button>
         )}
 
-        {(compact || !collapsed) && (
+        {(
           <div className="p-3 space-y-3">
             {/* Active turn banner */}
             {combatState.active && currentCombatant && (

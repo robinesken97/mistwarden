@@ -29,9 +29,9 @@ export const SHORT_SCREEN_QUERY = '(max-height: 499.98px)';
 
 /**
  * A short screen wider than it is tall, as a phone turned on its side is: the
- * compact layout then puts the bar's buttons in its header and draws its
- * sheets from the side. A short window narrower than it is tall has no room
- * for the buttons beside the campaign's name, so it keeps the bar at its foot.
+ * table then puts its panel tabs in the top bar and opens a panel on the left,
+ * and the sheets come from the side. A short window narrower than it is tall
+ * has no room for the tabs beside the campaign's name, so it keeps the dock.
  */
 export const SIDEWAYS_QUERY = `${SHORT_SCREEN_QUERY} and (orientation: landscape)`;
 
@@ -41,3 +41,18 @@ export const SIDEWAYS_QUERY = `${SHORT_SCREEN_QUERY} and (orientation: landscape
  * the panel starts folded and is 320 px wide (DesktopTable.tsx).
  */
 export const WIDE_PANEL_OPEN_QUERY = '(width >= 80rem)';
+
+/**
+ * A phone held upright: under 640 CSS pixels wide (Tailwind's `sm`, 40rem).
+ * Below 1,024 px and wider than this the table has the tablet layout, an iPad
+ * held upright: the wide top bar and rail over a dock of tabs. On a phone the
+ * top bar is slimmer, the rail has eight cells and menus are sheets.
+ */
+export const PHONE_QUERY = '(width < 40rem)';
+
+/**
+ * The campaign table's four arrangements (DesktopTable.tsx): the wide one
+ * from 1,024 px, and below it a tablet, a phone upright, or a phone on its
+ * side (SIDEWAYS_QUERY).
+ */
+export type TableLayout = 'wide' | 'tablet' | 'phone' | 'phone-landscape';

@@ -22,14 +22,15 @@
 // ============================================
 
 import { useEffect, useRef, useState } from 'react';
-import { Eye, Info } from 'lucide-react';
+import { Info } from 'lucide-react';
 import { useCampaign, TableKeptMovingError, type PreparingEnded } from '@/contexts/CampaignContext';
-import { useCompactLayout } from '@/contexts/LayoutContext';
+import { isPhoneLayout, useCompactLayout, useTableLayout } from '@/contexts/LayoutContext';
 import { useToast } from '@/contexts/ToastContext';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useTableSwitch } from '@/hooks/useTableSwitch';
 import { SIDEWAYS_QUERY } from '@/constants/layout';
 import Button from '@/components/ui/Button';
+import { cn } from '@/utils/cn';
 import Modal from '@/components/ui/Modal';
 import { dialogOpened, nextOpening } from '@/components/campaign/compact/sheetHistory';
 import { apiErrorMessage } from '@/utils/errors';
@@ -60,6 +61,7 @@ function focusTheMap() {
 export default function PreparingBanner() {
   const { isPreparing, viewedMap, currentMap, backToTable, preparingEnded, clearPreparingEnded } = useCampaign();
   const compact = useCompactLayout();
+  const phone = isPhoneLayout(useTableLayout());
   const sideways = useMediaQuery(SIDEWAYS_QUERY);
   const { showToast } = useToast();
   const tableSwitch = useTableSwitch();
@@ -155,118 +157,66 @@ export default function PreparingBanner() {
     </Modal>
   );
 
-  // The wide layout: one strip under the top bar, over the map only: the
-  // words, What reaches the table?, then the two ways out.
-  if (!compact) {
-    const bar = 'min-h-10 pointer-coarse:min-h-11 px-4! py-0! rounded-xl! text-sm';
-    return (
-      <>
-        {live}
-        <div
-          role="region"
-          aria-label="Preparing a map"
-          // 60 px tall on touch, 56 with a mouse: 8 + the buttons + 8, its 1 px border inside.
-          className="flex flex-wrap items-center gap-x-2 gap-y-1 px-4 pt-2 pb-[7px] text-sm text-ink border-b border-[color-mix(in_srgb,var(--color-warning)_45%,transparent)] bg-[color-mix(in_srgb,var(--color-warning)_12%,var(--color-surface))]"
+  // One strip under the top bar, over the map only: the words, What reaches
+  // the table?, then the two ways out. On a phone upright the two ways out
+  // are a row of their own, two equal buttons; on its side they are short.
+  const bar = 'min-h-10 pointer-coarse:min-h-11 px-4! py-0! rounded-xl! text-sm';
+  return (
+    <>
+      {live}
+      <div
+        role="region"
+        aria-label="Preparing a map"
+        // 60 px tall on touch, 56 with a mouse: 8 + the buttons + 8, its 1 px border inside.
+        className={cn(
+          'flex flex-wrap items-center text-sm text-ink border-b border-[color-mix(in_srgb,var(--color-warning)_45%,transparent)] bg-[color-mix(in_srgb,var(--color-warning)_12%,var(--color-surface))]',
+          // 8 + a row of 44 (+ 8 + the buttons' 44 on a phone upright) + 8, its 1 px border inside.
+          'gap-x-2 px-4 pt-2 pb-[7px]', phone && !short ? 'gap-y-2' : 'gap-y-1',
+        )}
+      >
+        <p className="min-w-0 flex-1 truncate">
+          Preparing <b className="font-semibold text-warning-ink">{viewedMap.name}</b>.{' '}
+          {currentMap
+            ? <>The table is on <b className="font-semibold text-warning-ink">{currentMap.name}</b>.</>
+            : 'The table is on no map.'}
+        </p>
+        <button
+          type="button"
+          onClick={() => setHelpOpen((open) => !open)}
+          aria-expanded={helpOpen}
+          aria-controls={helpOpen ? 'preparing-what-reaches-the-table' : undefined}
+          aria-label="What reaches the table?"
+          title="What reaches the table?"
+          className="-mr-1 inline-flex size-10 pointer-coarse:size-11 shrink-0 items-center justify-center rounded-xl text-ink-muted hover:text-ink hover:bg-ink/5 focus-visible:outline-2 focus-visible:outline-brand"
         >
-          <p className="min-w-0 flex-1 truncate">
-            Preparing <b className="font-semibold text-warning-ink">{viewedMap.name}</b>.{' '}
-            {currentMap
-              ? <>The table is on <b className="font-semibold text-warning-ink">{currentMap.name}</b>.</>
-              : 'The table is on no map.'}
-          </p>
-          <button
-            type="button"
-            onClick={() => setHelpOpen((open) => !open)}
-            aria-expanded={helpOpen}
-            aria-controls={helpOpen ? 'preparing-what-reaches-the-table' : undefined}
-            aria-label="What reaches the table?"
-            title="What reaches the table?"
-            className="-mr-1 inline-flex size-10 pointer-coarse:size-11 shrink-0 items-center justify-center rounded-xl text-ink-muted hover:text-ink hover:bg-ink/5 focus-visible:outline-2 focus-visible:outline-brand"
-          >
-            <Info className="w-5 h-5" aria-hidden="true" />
-          </button>
+          <Info className="w-5 h-5" aria-hidden="true" />
+        </button>
+        <div className={cn('flex gap-2', phone && !short && 'order-last grid basis-full grid-cols-2')}>
           <Button
             type="button"
             variant="secondary"
             className={bar}
             onClick={() => { void goBack(); }}
             loading={leaving}
+            aria-label="Back to the table"
             title="Show the table's map again; the map you are preparing stays as you left it"
           >
-            Back to the table
+            {short ? 'Back' : 'Back to the table'}
           </Button>
           <Button
             type="button"
             className={bar}
             onClick={() => { void tableSwitch.requestSwitch(viewedMap); }}
             loading={tableSwitch.switching && !tableSwitch.pending}
+            aria-label="Bring everyone here"
             title="Make this the active map, moving every player onto it"
           >
-            Bring everyone here
+            {short ? 'Bring everyone' : 'Bring everyone here'}
           </Button>
-          {help}
-          {confirm}
         </div>
-      </>
-    );
-  }
-
-  return (
-    <>
-    {live}
-    <div
-      role="region"
-      aria-label="Preparing a map"
-      className={`flex items-center gap-x-3 gap-y-1 px-3 py-1.5 bg-info/10 border-b border-info/30 text-info-ink ${short ? '' : 'flex-wrap'}`}
-    >
-      <p className={`flex items-center gap-1.5 text-xs min-w-0 ${short ? 'flex-1' : 'basis-full sm:basis-auto sm:flex-1'}`}>
-        <Eye className="w-4 h-4 shrink-0" aria-hidden="true" />
-        <span className="truncate">
-          Preparing <strong className="font-semibold">{viewedMap.name}</strong>.{' '}
-          {currentMap
-            ? <>The table is on <strong className="font-semibold">{currentMap.name}</strong>.</>
-            : 'The table is on no map.'}
-        </span>
-      </p>
-      <div className="flex items-center gap-2 shrink-0">
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={() => { void goBack(); }}
-          loading={leaving}
-          aria-label="Back to the table"
-          title="Show the table's map again; the map you are preparing stays as you left it"
-        >
-          {short ? 'Back' : 'Back to the table'}
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          onClick={() => { void tableSwitch.requestSwitch(viewedMap); }}
-          loading={tableSwitch.switching && !tableSwitch.pending}
-          aria-label="Bring everyone here"
-          title="Make this the active map, moving every player onto it"
-        >
-          {short ? 'Bring everyone' : 'Bring everyone here'}
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          iconOnly={short}
-          icon={Info}
-          onClick={() => setHelpOpen((open) => !open)}
-          aria-expanded={helpOpen}
-          aria-controls={helpOpen ? 'preparing-what-reaches-the-table' : undefined}
-          aria-label="What reaches the table?"
-        >
-          {short ? null : 'What reaches the table?'}
-        </Button>
+        {help}
+        {confirm}
       </div>
-      {help}
-      {confirm}
-    </div>
     </>
   );
 }

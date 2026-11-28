@@ -1,10 +1,9 @@
 /**
- * The campaign page's two arrangements, and a change between them.
+ * The campaign page's wide and tablet arrangements, and a change between them.
  *
- * From 1,024 px wide the page draws the desktop's top bar, a tab column, the
- * panel of the chosen tab and the map; below, the compact arrangement, the
- * map between a header and a bar of sheets. Exactly one is drawn, chosen by
- * the one media query, and a change across the width, a tablet turned or a
+ * From 1,024 px wide the page draws the top bar, a tab column, the panel of
+ * the chosen tab and the map; below, on a tablet, the same top bar over the
+ * map and a dock of the same tabs at its foot. A change across the width, a tablet turned or a
  * window resized, must find everything as it was: the map, the session
  * panels and the Party content mounted once,
  * no socket listener registered again, the open tab and the unread count, a
@@ -15,12 +14,12 @@
  * listener each, keep a number in their own state and hold a list that
  * scrolls; the socket counts every listener registered. The arrangements are
  * the page's own. The Campaign Info card is the one piece of the Party
- * content that differs: the compact Party sheet shows it, while the wide Party
- * tab shows Invite Player in its place and keeps the card in ⋯ › Campaign info.
+ * content that differs: no Party tab shows it; Invite Player heads it, and the
+ * card is in ⋯ › Campaign info.
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, act, cleanup, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, act, cleanup, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { MessageType } from '@/types';
 import type { ChatMessageBroadcast, Token } from '@/types';
@@ -194,7 +193,9 @@ const part = (name: string) => {
   return button;
 };
 const heading = () => screen.queryByRole('heading', { level: 1, name: 'Test' });
-const bar = () => screen.queryByRole('navigation', { name: 'Table' });
+/** The tablet's dock: its panel, open or folded. */
+const dockPanel = () => document.querySelector<HTMLElement>('#wide-panel[data-dock-size]');
+const dockSize = () => dockPanel()?.dataset.dockSize;
 /** The wide arrangement's tab column. */
 const wideTabs = () => screen.queryByRole('tablist', { name: 'Panels' });
 /** The wide arrangement's panel beside the tab column. */
@@ -204,7 +205,6 @@ const info = () => screen.queryByTestId('campaign-info');
 const invite = () => screen.queryByRole('button', { name: 'Invite Player', hidden: true });
 /** Opens the top bar's Library list. */
 const openLibrary = () => fireEvent.click(screen.getByRole('button', { name: 'Library' }));
-const press = (name: string) => fireEvent.click(within(bar()!).getByRole('button', { name: new RegExp(`^${name}`) }));
 /** The screen turns, or the window is resized, across 1,024 px. */
 const arrange = (compact: boolean) => act(() => screenWidth.set(compact));
 const onSheetEntry = () => (window.history.state as Record<string, unknown> | null)?.cozyvttSheet === true;
@@ -251,7 +251,7 @@ afterEach(async () => {
 });
 
 describe('the desktop arrangement, from 1,024 px wide', () => {
-  it('draws the map, the session panels and the Party content beside its tabs, and no bar', async () => {
+  it('draws the map, the session panels and the Party content beside its tabs, and no dock', async () => {
     await openPage();
 
     expect(wideTabs()).not.toBeNull();
@@ -262,7 +262,7 @@ describe('the desktop arrangement, from 1,024 px wide', () => {
     // Invite Player heads the wide Party tab; the Campaign Info card is in ⋯.
     expect(invite()?.closest(partyPanel)).not.toBeNull();
     expect(info()).toBeNull();
-    expect(bar()).toBeNull();
+    expect(dockPanel()).toBeNull();
   });
 
   it("asks whatever holds work on the page before the header's way to the dashboard, and stays on a no", async () => {
@@ -317,23 +317,34 @@ describe('the desktop arrangement, from 1,024 px wide', () => {
   });
 });
 
-describe('the compact arrangement, below 1,024 px', () => {
-  it('draws the map between its header and its bar, the session and Party content in sheets, and no columns', async () => {
+describe('the tablet arrangement, below 1,024 px', () => {
+  it('draws the map between the top bar and a dock of the same tabs, folded, the session and Party content in its panel', async () => {
     screenWidth.state.compact = true;
     await openPage();
 
     expect(heading()).not.toBeNull();
-    expect(bar()).not.toBeNull();
-    expect(wideTabs()).toBeNull();
+    expect(wideTabs()).not.toBeNull();
+    expect(wideTabs()).toHaveAttribute('aria-orientation', 'horizontal');
     expect(part('Map').closest('main')).not.toBeNull();
-    expect(part('Chat').closest('[data-sheet]')).not.toBeNull();
-    expect(part('Roster').closest('[data-sheet]')).not.toBeNull();
-    expect(screen.getByText('Edit Goblin').closest('[data-sheet]')).not.toBeNull();
-    expect(info()?.closest('[data-sheet]')).not.toBeNull();
+    expect(dockSize()).toBe('folded');
+    expect(part('Chat').closest('#wide-panel')).toBe(dockPanel());
+    expect(part('Roster').closest('#wide-panel')).toBe(dockPanel());
+    expect(invite()?.closest('#wide-panel')).toBe(dockPanel());
+    expect(info()).toBeNull();
     for (const name of PARTS) expect(life.mounts[name], name).toBe(1);
   });
 
-  // The page covered a narrow screen with a "Desktop Required" notice until
+  it('opens a tab at 40 %, folds it on a second press, and keeps the dock for the next visit', async () => {
+    screenWidth.state.compact = true;
+    await openPage();
+    fireEvent.click(screen.getByRole('tab', { name: /^Dice/ }));
+    expect(dockSize()).toBe('mid');
+    expect(screen.getByRole('tab', { name: /^Dice/ })).toHaveAttribute('aria-selected', 'true');
+    fireEvent.click(screen.getByRole('tab', { name: /^Dice/ }));
+    expect(dockSize()).toBe('folded');
+    expect(JSON.parse(window.localStorage.getItem('mistwarden.tableDock')!)).toMatchObject({ open: false, size: 'mid' });
+  });
+
   // Continue anyway, which the browser remembered. The compact arrangement
   // takes its place; the remembered choice changes nothing and is not read.
   it('asks no one to continue, and reads no remembered choice', async () => {
@@ -348,11 +359,11 @@ describe('the compact arrangement, below 1,024 px', () => {
     read.mockRestore();
   });
 
-  it("opens the GM's windows from More", async () => {
+  it("opens the GM's windows from the top bar's Library, as on the wide layout", async () => {
     screenWidth.state.compact = true;
     await openPage();
-    press('More');
-    fireEvent.click(screen.getByText('Map Library').closest('button')!);
+    openLibrary();
+    fireEvent.click(screen.getByRole('button', { name: 'Scenes' }));
     expect(screen.getByRole('dialog', { name: 'Map Library' })).toBeTruthy();
   });
 });
@@ -365,18 +376,16 @@ describe('a change of arrangement', () => {
     expect(Object.keys(life.mounts).sort()).toEqual([...PARTS].sort());
 
     arrange(true);
-    expect(bar()).not.toBeNull();
-    expect(wideTabs()).toBeNull();
+    expect(dockPanel()).not.toBeNull();
     expect(part('Map')).toBe(map);
     expect(map.closest('main')).not.toBeNull();
-    expect(part('Chat').closest('[data-sheet]')).not.toBeNull();
-    expect(part('Roster').closest('[data-sheet]')).not.toBeNull();
-    expect(info()?.closest('[data-sheet]')).not.toBeNull();
-    expect(invite()).toBeNull();
+    expect(part('Chat').closest('#wide-panel')).toBe(dockPanel());
+    expect(part('Roster').closest('#wide-panel')).toBe(dockPanel());
+    expect(info()).toBeNull();
 
     arrange(false);
-    expect(bar()).toBeNull();
-    expect(wideTabs()).not.toBeNull();
+    expect(dockPanel()).toBeNull();
+    expect(wideTabs()).toHaveAttribute('aria-orientation', 'vertical');
     expect(map.closest('main')).not.toBeNull();
     expect(part('Chat').closest(widePanel)).not.toBeNull();
     expect(part('Roster').closest(partyPanel)).not.toBeNull();
@@ -405,11 +414,12 @@ describe('a change of arrangement', () => {
     arrange(true);
     expect(screen.getByRole('dialog', { name: 'Map Library' })).toBeTruthy();
     expect(screen.getByRole('dialog', { name: 'Quick edit Goblin' })).toBeTruthy();
-    expect(within(bar()!).getByLabelText('1 unread messages')).toBeTruthy();
+    expect(screen.getByLabelText('1 unread messages')).toBeTruthy();
     expect(part('Chat').textContent).toBe('Chat pressed 1');
-    // The bar opens the panel the rail had open.
-    press('Dice');
-    expect(screen.getByRole('dialog', { name: 'Dice' })).toBeTruthy();
+    // The dock opens the panel the column had chosen.
+    fireEvent.click(screen.getByRole('tab', { name: /^Dice/ }));
+    expect(dockPanel()).toHaveAccessibleName('Dice');
+    expect(dockSize()).toBe('mid');
 
     arrange(false);
     expect(part('Chat').textContent).toBe('Chat pressed 1');
@@ -420,12 +430,12 @@ describe('a change of arrangement', () => {
     expect(screen.getByRole('dialog', { name: 'Quick edit Goblin' })).toBeTruthy();
   });
 
-  it('counts messages on the bar while the session sheet is closed, the chat chosen, and the rail reads them back', async () => {
+  it('counts messages on the Chat tab while the dock is folded, the chat chosen, and the column reads them back', async () => {
     await openPage();
     expect(useGameStore.getState().sessionTab).toBe('chat');
     arrange(true);
     chatArrives('mara');
-    expect(within(bar()!).getByLabelText('1 unread messages')).toBeTruthy();
+    expect(screen.getByLabelText('1 unread messages')).toBeTruthy();
 
     // The wide panel starts folded below 1,280 px, so the count holds until
     // the Chat tab shows the chat.
@@ -445,7 +455,7 @@ describe('a change of arrangement', () => {
     expect(document.activeElement).toBe(part('Map'));
   });
 
-  it("opens the session sheet when the keyboard was in the wide panel, so the control stays in sight", async () => {
+  it("opens the dock when the keyboard was in the wide panel, so the control stays in sight", async () => {
     await openPage();
     // A folded panel is inert and holds no keyboard: open it on the chat first.
     fireEvent.click(screen.getByRole('tab', { name: /^Chat/ }));
@@ -453,12 +463,9 @@ describe('a change of arrangement', () => {
 
     arrange(true);
 
-    const sheet = screen.getByRole('dialog', { name: 'Chat' });
-    expect(sheet).toContainElement(part('Chat'));
-    expect(sheet).toHaveAttribute('data-state', 'open');
-    expect(sheet).not.toHaveAttribute('inert');
-    // The sheet's heading, which takes the focus as a sheet opens, leaves it.
-    await act(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+    expect(dockPanel()).toContainElement(part('Chat'));
+    expect(dockSize()).toBe('mid');
+    expect(dockPanel()).not.toHaveAttribute('inert');
     expect(document.activeElement).toBe(part('Chat'));
   });
 
