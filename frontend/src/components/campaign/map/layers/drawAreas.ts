@@ -7,7 +7,7 @@
 // GM's own view only.
 //
 // Each element's pattern is a small tile painted once per page and repeated
-// (no blur, no filter: Safari 17 has no canvas filter). An animated area
+// (no blur and no canvas filter, so a frame costs a fill). An animated area
 // moves its tile, flickers or sends rings out on the overlay's mist timer,
 // about ten frames a second, and stands still when `now` is null (reduced
 // motion, the device setting off, or the area made still).

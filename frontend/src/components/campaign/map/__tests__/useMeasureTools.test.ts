@@ -212,3 +212,39 @@ describe("the GM's start before its end", () => {
     expect(tools().rulerStartByTouch).toBe(false);
   });
 });
+
+// Place for everyone: the template a press places is handed on (onPlace); a
+// cone or a line takes a second press, which aims it; a finger's drag never places.
+describe('the AoE template placed for everyone', () => {
+  const setup = () => {
+    const onPlace = vi.fn();
+    const { result } = renderHook(() => useMeasureTools({ isGM: true, markDirty: () => undefined, onPlace }));
+    act(() => { result.current.handleToggleAoE(); });
+    act(() => { result.current.setAoEPersist(true); });
+    return { result, onPlace };
+  };
+
+  it('places a circle at the first press', () => {
+    const { result, onPlace } = setup();
+    act(() => { result.current.tool.down?.(on({ x: 2, y: 3 }, 'tap')); });
+    expect(onPlace).toHaveBeenCalledWith({ point: { x: 125, y: 825 }, exact: false }, null);
+    expect(result.current.aoeAnchor).toBeNull();
+  });
+
+  it('pins a cone at the first press and places it at the second, aimed there', () => {
+    const { result, onPlace } = setup();
+    act(() => { result.current.setAoEConfig({ shape: 'cone', sizeFt: 15 }); });
+    act(() => { result.current.tool.down?.(on({ x: 2, y: 3 }, 'mouse')); });
+    expect(onPlace).not.toHaveBeenCalled();
+    act(() => { result.current.tool.down?.(on({ x: 6, y: 3 }, 'mouse')); });
+    expect(onPlace).toHaveBeenCalledWith({ point: { x: 125, y: 825 }, exact: false }, { x: 325, y: 825 });
+    expect(result.current.aoeAnchor).toBeNull();
+  });
+
+  it("never places by a finger's drag", () => {
+    const { result, onPlace } = setup();
+    act(() => { result.current.tool.down?.(on({ x: 2, y: 3 }, 'drag')); });
+    expect(onPlace).not.toHaveBeenCalled();
+    expect(result.current.aoeAnchor).not.toBeNull();
+  });
+});

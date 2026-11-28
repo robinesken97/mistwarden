@@ -2743,7 +2743,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
    * dragged since, and whether its lift clears the selection (a click on
    * empty ground does; a drag never does).
    */
-  const groundPressRef = useRef<{ x: number; y: number; panned: boolean; clears: boolean } | null>(null);
+  const groundPressRef = useRef<{ x: number; y: number; panned: boolean; clears: boolean; mapPx?: { x: number; y: number } } | null>(null);
 
   /**
    * Put a token down on `square`: what a click does with a held token, and
@@ -2838,7 +2838,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
     (placesFreely(e) ? { point: gridPoint, offset: pointOffset } : null);
 
   const tokenTool: MapTool = {
-    down({ e, via, gridCoords, gridPoint }: PointerAt) {
+    down({ e, via, gridCoords, gridPoint, mapPx }: PointerAt) {
       if (!currentMap) return false;
         // If we're already holding a token, place it on this click
         if (draggedToken && dragOffset && heldIdRef.current === draggedToken.id) {
@@ -2916,7 +2916,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
             useGameStore.getState().selectToken(seen.id);
             setSelectionDetailsClosedFor(null);
           }
-          groundPressRef.current = { x: e.clientX, y: e.clientY, panned: false, clears: via !== 'drag' && !seen };
+          groundPressRef.current = { x: e.clientX, y: e.clientY, panned: false, clears: via !== 'drag' && !seen, mapPx };
           // Only start panning if we're not holding a token
           mapControls.startDrag(e);
         }
@@ -2943,8 +2943,9 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
       groundPressRef.current = null;
       if (press?.clears && !press.panned) {
         useGameStore.getState().selectToken(null);
-        // A tap on empty ground picks the placed area there, or puts the picked one down.
-        setSelectedAreaId(at ? areaAt(at.mapPx)?.id ?? null : null);
+        // A tap on empty ground picks the placed area where it landed, or puts the picked one down.
+        const where = press.mapPx ?? at?.mapPx;
+        setSelectedAreaId(where ? areaAt(where)?.id ?? null : null);
       }
     },
     // The browser, a second finger or the window losing focus took the
