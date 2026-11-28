@@ -163,7 +163,10 @@ router.get('/', campaignGM, async (req: AuthenticatedRequest, res: Response) => 
     const [templates, total] = await Promise.all([
       prisma.creatureTemplate.findMany({
         where,
-        orderBy: { name: 'asc' },
+        // Same names together, the campaign's own first, then imported
+        // (custom:<tag>), then the SRD's: a GM picking by name gets the most
+        // particular one first, and paging is stable across them.
+        orderBy: [{ name: 'asc' }, { source: 'asc' }, { id: 'asc' }],
         take,
         skip,
       }),

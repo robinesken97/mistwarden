@@ -1568,6 +1568,33 @@
       ]
     },
     {
+      "method": "POST",
+      "path": "/api/creatures/import-markdown",
+      "handlers": [
+        "requireAuth",
+        "requireAdmin",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/creatures/imported/:sourceTag",
+      "handlers": [
+        "requireAuth",
+        "requireAdmin",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/creatures/match-token-pictures",
+      "handlers": [
+        "requireAuth",
+        "requireAdmin",
+        "<anonymous>"
+      ]
+    },
+    {
       "method": "GET",
       "path": "/api/spells/seed/status",
       "handlers": [
@@ -1880,6 +1907,11 @@
     {
       "name": "router",
       "path": "/api/campaigns/:campaignId/creatures",
+      "route": false
+    },
+    {
+      "name": "router",
+      "path": "/api/creatures",
       "route": false
     },
     {

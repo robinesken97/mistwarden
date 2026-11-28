@@ -37,6 +37,7 @@ import assetRoutes from './routes/assets';
 import mapRoutes from './routes/maps';
 import creatureRoutes from './routes/creatures';
 import spellRoutes from './routes/spells';
+import creatureImportRoutes from './routes/creatureImport';
 import campaignSpellRoutes from './routes/campaignSpells';
 import tokenTemplateRoutes from './routes/tokenTemplates';
 import adminRoutes from './routes/admin';
@@ -259,6 +260,8 @@ export function createApp(options: AppOptions): express.Express {
 
   // Creature Library (nested under campaigns)
   app.use('/api/campaigns/:campaignId/creatures', creatureRoutes);
+  // The instance's imported creatures: Markdown stat blocks, by source tag
+  app.use('/api/creatures', creatureImportRoutes);
 
   // Spell Library: the instance's spells and the SRD import, and each campaign's
   app.use('/api/spells', spellRoutes);
