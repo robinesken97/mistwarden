@@ -13,12 +13,15 @@ import { PRESET_THEMES, applyThemeColors, buildCustomThemeColors } from '../../t
 
 afterEach(() => {
   document.documentElement.removeAttribute('style');
+  document.documentElement.removeAttribute('data-scheme');
 });
 
 describe('color-scheme', () => {
   it.each(PRESET_THEMES.map((theme) => [theme.name, theme] as const))('follows %s', (_name, theme) => {
     applyThemeColors(theme.colors);
     expect(document.documentElement.style.colorScheme).toBe(theme.category === 'dark' ? 'dark' : 'light');
+    // The stylesheet reads it here (the GM's tool panels in index.css).
+    expect(document.documentElement.dataset.scheme).toBe(document.documentElement.style.colorScheme);
   });
 
   // A custom theme on a grey background is built light or dark by the grey,

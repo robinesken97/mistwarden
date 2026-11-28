@@ -82,8 +82,10 @@ export default function DesktopTable({
   const [rightCollapsed, setRightCollapsed] = useState(false);
   // On a very wide screen the side columns stop at 480 pixels and the map
   // takes the rest: at 3840 they were 765 and 956 wide. From 1920 up, where
-  // the rail's quarter reaches 480, so no narrower window changes.
-  const sideMax = useMediaQuery('(min-width: 1920px)') ? '480px' : undefined;
+  // the rail's quarter reaches 480, so no narrower window changes. In rem
+  // (30rem is 480 px), as are the minimums, so a column grows with the page's
+  // text from 2200 px (index.css).
+  const sideMax = useMediaQuery('(min-width: 1920px)') ? '30rem' : undefined;
 
   const togglePanel = (
     panelRef: React.RefObject<PanelImperativeHandle | null>,
@@ -280,7 +282,7 @@ export default function DesktopTable({
           <Panel
             id="party"
             defaultSize={20}
-            minSize="260px"
+            minSize="16.25rem"
             maxSize={sideMax}
             collapsible
             panelRef={leftPanelRef}
@@ -306,7 +308,7 @@ export default function DesktopTable({
           <Panel
             id="rail"
             defaultSize={25}
-            minSize="300px"
+            minSize="18.75rem"
             maxSize={sideMax}
             collapsible
             panelRef={rightPanelRef}

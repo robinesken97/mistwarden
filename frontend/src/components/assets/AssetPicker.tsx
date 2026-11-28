@@ -153,7 +153,7 @@ export default function AssetPicker({
           >
             <div className="border border-moss-green/20 rounded-lg bg-parchment/30 p-3 space-y-3">
               <div className="relative">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-gray/40" />
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-gray" />
                 <input
                   type="text"
                   placeholder={searchPlaceholder}

@@ -355,7 +355,7 @@ export default function MFASetupPage() {
                 </p>
                 <button
                   onClick={copyBackupCodes}
-                  className="flex items-center gap-1 text-xs text-brand-ink hover:text-brand-ink/80 transition-colors"
+                  className="flex items-center gap-1 text-xs text-brand-ink hover:underline transition-colors"
                 >
                   {codesCopy === 'copied' ? (
                     <>

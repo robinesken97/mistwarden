@@ -323,7 +323,7 @@ export default function MFAVerifyPage() {
         <div className="text-center">
           <button
             onClick={toggleInputMode}
-            className="text-sm text-brand-ink hover:text-brand-ink/80 transition-colors"
+            className="text-sm text-brand-ink hover:underline transition-colors"
             disabled={loading}
           >
             {useBackupCode

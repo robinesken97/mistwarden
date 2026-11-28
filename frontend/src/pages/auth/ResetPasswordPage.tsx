@@ -113,7 +113,7 @@ export default function ResetPasswordPage({ invite = false }: ResetPasswordPageP
             {!invite && (
               <Link
                 to="/auth/forgot-password"
-                className="inline-flex items-center gap-1.5 text-sm text-brand-ink hover:text-brand-ink/80 font-medium transition-colors"
+                className="inline-flex items-center gap-1.5 text-sm text-brand-ink hover:underline font-medium transition-colors"
               >
                 Request a new reset link
               </Link>
@@ -229,7 +229,7 @@ export default function ResetPasswordPage({ invite = false }: ResetPasswordPageP
             <div className="text-center">
               <Link
                 to="/auth/login"
-                className="inline-flex items-center gap-1.5 text-sm text-brand-ink hover:text-brand-ink/80 transition-colors"
+                className="inline-flex items-center gap-1.5 text-sm text-brand-ink hover:underline transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" aria-hidden="true" />
                 Back to Sign In

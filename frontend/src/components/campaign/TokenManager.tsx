@@ -418,7 +418,7 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
               ))}
             </div>
             {tokenType === TokenType.PLAYER && (
-              <p className="text-[10px] text-stone-gray/60 mt-1">
+              <p className="text-[10px] text-stone-gray mt-1">
                 A player token stands for a character: the token opens its sheet and rolls with its numbers. For summoned creatures, use NPC type and assign a player as controller.
               </p>
             )}
@@ -447,7 +447,7 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
                   </select>
                 </>
               ) : (
-                <p className="text-[10px] text-stone-gray/60">
+                <p className="text-[10px] text-stone-gray">
                   No characters are in this campaign yet. A player brings one from their Characters page.
                 </p>
               )}
@@ -466,12 +466,12 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
             />
 
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs text-stone-gray">Token image <span className="opacity-50">(optional — uses placeholder if empty)</span>:</p>
+              <p className="text-xs text-stone-gray">Token image <span>(optional — uses placeholder if empty)</span>:</p>
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
                 title="Upload a new token image"
-                className="flex items-center gap-1 text-xs text-brand-ink hover:text-brand-ink/80 disabled:opacity-40 transition-colors"
+                className="flex items-center gap-1 text-xs text-brand-ink hover:underline disabled:opacity-40 transition-colors"
               >
                 {isUploading ? (
                   <Loader2 className="w-3 h-3 animate-spin" />
@@ -559,7 +559,7 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
                 </button>
               ))}
             </div>
-            <p className="text-[10px] text-stone-gray/50 mt-1">
+            <p className="text-[10px] text-stone-gray mt-1">
               {displayMode === 'pog' && 'Classic round token with a colored disposition ring.'}
               {displayMode === 'top-down' && 'Circular crop, ideal for overhead/bird\u2019s-eye art.'}
               {displayMode === 'full-art' && 'Shows full image including transparency — great for standees and monsters.'}
@@ -600,7 +600,7 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
               {/* HP Max */}
               <div className="mb-3">
                 <label className="text-xs text-stone-gray font-medium block mb-1">
-                  HP Max <span className="font-normal opacity-60">(0 = no HP bar)</span>
+                  HP Max <span className="font-normal">(0 = no HP bar)</span>
                 </label>
                 <input
                   type="number"
@@ -625,7 +625,7 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
               {/* Initiative */}
               <div className="mb-3">
                 <label className="text-xs text-stone-gray font-medium block mb-1">
-                  Initiative <span className="font-normal opacity-60">(optional)</span>
+                  Initiative <span className="font-normal">(optional)</span>
                 </label>
                 <input
                   type="number"
@@ -639,7 +639,7 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
               {/* GM Notes */}
               <div className="mb-3">
                 <label className="text-xs text-stone-gray font-medium block mb-1">
-                  GM Notes <span className="font-normal opacity-60">(not shown to players)</span>
+                  GM Notes <span className="font-normal">(not shown to players)</span>
                 </label>
                 <textarea
                   value={tokenNotes}
@@ -664,7 +664,7 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
                 />
                 <span className="text-xs text-stone-gray">Hidden from players on placement</span>
               </label>
-              <p className="text-[10px] text-stone-gray/50 mt-0.5">
+              <p className="text-[10px] text-stone-gray mt-0.5">
                 Reveal later by right-clicking it — useful for a monster waiting in a room, a secret door, a trapped chest.
               </p>
             </div>
@@ -676,7 +676,7 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
               {/* GM Notes */}
               <div className="mb-3">
                 <label className="text-xs text-stone-gray font-medium block mb-1">
-                  GM Notes <span className="font-normal opacity-60">(not shown to players)</span>
+                  GM Notes <span className="font-normal">(not shown to players)</span>
                 </label>
                 <textarea
                   value={tokenNotes}
@@ -708,7 +708,7 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
                     }`}
                   >
                     <span className="block">{opt.label}</span>
-                    <span className="block text-[10px] opacity-60">{opt.sublabel}</span>
+                    <span className="block text-[10px]">{opt.sublabel}</span>
                   </button>
                 );
               })}
@@ -794,7 +794,7 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
             )}
             {isAdding ? 'Placing…' : 'Place on Map'}
           </Button>
-          <p className="text-[10px] text-stone-gray/50 mt-1.5 text-center">
+          <p className="text-[10px] text-stone-gray mt-1.5 text-center">
             Token is placed at the map center — drag it into position afterwards.
           </p>
         </section>
@@ -804,16 +804,16 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
           <h3 className="text-sm font-semibold text-stone-gray uppercase tracking-wide mb-1">
             Tokens on Map
             {tokens.length > 0 && (
-              <span className="ml-2 text-xs font-normal normal-case text-stone-gray/60">
+              <span className="ml-2 text-xs font-normal normal-case text-stone-gray">
                 ({tokens.length})
               </span>
             )}
           </h3>
 
           {!viewedMap ? (
-            <p className="text-sm text-stone-gray/70 italic">No map loaded.</p>
+            <p className="text-sm text-stone-gray italic">No map loaded.</p>
           ) : tokens.length === 0 ? (
-            <p className="text-sm text-stone-gray/70 italic">
+            <p className="text-sm text-stone-gray italic">
               No tokens on this map yet. Add one above.
             </p>
           ) : (
@@ -838,7 +838,7 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
                         />
                       ) : (
                         <div className="w-9 h-9 rounded-full bg-stone-gray/10 flex items-center justify-center shrink-0">
-                          <Swords className="w-4 h-4 text-stone-gray/30" />
+                          <Swords className="w-4 h-4 text-stone-gray" />
                         </div>
                       )}
 
@@ -904,7 +904,7 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
                           ) : token.visible ? (
                             <Eye className="w-3.5 h-3.5 text-brand-ink" />
                           ) : (
-                            <EyeOff className="w-3.5 h-3.5 text-stone-gray/40" />
+                            <EyeOff className="w-3.5 h-3.5 text-stone-gray" />
                           )}
                         </button>
 
@@ -924,7 +924,7 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
                             ) : (
                               <Ghost
                                 className={`w-3.5 h-3.5 ${
-                                  isSpirit ? 'text-spirit-ink' : 'text-stone-gray/30'
+                                  isSpirit ? 'text-spirit-ink' : 'text-stone-gray'
                                 }`}
                               />
                             )}
@@ -940,7 +940,7 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
                             className={`p-1.5 rounded transition-colors ${
                               isShowingMapPicker
                                 ? 'bg-warm-amber/15 text-accent-ink'
-                                : 'hover:bg-warm-amber/10 text-stone-gray/30 hover:text-accent-ink'
+                                : 'hover:bg-warm-amber/10 text-stone-gray hover:text-accent-ink'
                             }`}
                             title="Move to another map"
                             aria-label="Move to another map"
@@ -960,7 +960,7 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
                           {isDeleting ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin text-stone-gray" />
                           ) : (
-                            <Trash2 className="w-3.5 h-3.5 text-danger-ink/60 hover:text-danger-ink transition-colors" />
+                            <Trash2 className="w-3.5 h-3.5 text-danger-ink hover:text-danger-ink transition-colors" />
                           )}
                         </button>
                       </div>
@@ -985,7 +985,7 @@ export default function TokenManager({ isOpen, onClose }: TokenManagerProps) {
                                 onClick={() => handleMoveToMap(token, m.id)}
                                 className="w-full text-left px-2 py-1.5 text-xs text-charcoal hover:bg-moss-green/10 rounded-sm flex items-center gap-1.5 transition-colors"
                               >
-                                <ChevronRight className="w-3 h-3 text-stone-gray/40" />
+                                <ChevronRight className="w-3 h-3 text-stone-gray" />
                                 {m.name}
                               </button>
                             ))}

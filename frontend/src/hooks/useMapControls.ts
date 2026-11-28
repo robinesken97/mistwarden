@@ -39,6 +39,9 @@ interface PanOffset {
   y: number;
 }
 
+/** How far past the whole-map fit a filling fit may zoom (fitToScreen). */
+const FILL_LIMIT = 3;
+
 /**
  * The pan that keeps the map point under the screen point `about` where it
  * is when the zoom is multiplied by `ratio`:
@@ -131,9 +134,18 @@ export function useMapControls(config: MapControlsConfig) {
   /**
    * Fit the entire map within the canvas, centered with a small margin.
    * This is the preferred "reset view" for map switches and the Reset button.
+   * With `fill` (the compact layout) the map fills the canvas's other side
+   * instead, centred, its middle on screen and the rest a pan away: a
+   * landscape map fitted to a phone's width was a fifth of its size, its
+   * tokens 14 px. At most FILL_LIMIT times the whole-map fit, so a long thin
+   * map still shows a third of its length. A filling fit centres on `focus`
+   * (map pixels, y from the top; a player's own token) instead of the map's
+   * middle, as far as the map's edges allow: a side the map overfills keeps
+   * its edges at or past the canvas's, so no more empty space shows than the
+   * centred fit has.
    */
   const fitToScreen = useCallback(
-    (canvasWidth: number, canvasHeight: number) => {
+    (canvasWidth: number, canvasHeight: number, fill = false, focus?: { x: number; y: number }) => {
       if (!canvasWidth || !canvasHeight) return;
 
       const mapWidthPx = mapWidth * gridSize;
@@ -141,16 +153,19 @@ export function useMapControls(config: MapControlsConfig) {
       if (!mapWidthPx || !mapHeightPx) return;
 
       // Scale down to fit entirely inside the canvas with a 5% margin on each side
-      const fitZoom = clampZoom(
-        Math.min(
-          (canvasWidth * 0.9) / mapWidthPx,
-          (canvasHeight * 0.9) / mapHeightPx
-        )
-      );
+      const fitWidth = (canvasWidth * 0.9) / mapWidthPx;
+      const fitHeight = (canvasHeight * 0.9) / mapHeightPx;
+      const whole = Math.min(fitWidth, fitHeight);
+      const fitZoom = clampZoom(fill ? Math.min(Math.max(fitWidth, fitHeight), whole * FILL_LIMIT) : whole);
 
-      // Center the scaled map in the canvas
-      const panX = (canvasWidth - mapWidthPx * fitZoom) / 2;
-      const panY = (canvasHeight - mapHeightPx * fitZoom) / 2;
+      // Center the scaled map in the canvas, or the focus where the map overfills it
+      const along = (canvas: number, size: number, at: number | undefined) => {
+        const centred = (canvas - size * fitZoom) / 2;
+        if (!fill || at === undefined || centred >= 0) return centred;
+        return Math.min(0, Math.max(canvas - size * fitZoom, canvas / 2 - at * fitZoom));
+      };
+      const panX = along(canvasWidth, mapWidthPx, focus?.x);
+      const panY = along(canvasHeight, mapHeightPx, focus?.y);
 
       setView(fitZoom, { x: panX, y: panY });
     },

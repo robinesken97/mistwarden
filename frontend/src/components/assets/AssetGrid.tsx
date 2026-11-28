@@ -173,7 +173,7 @@ export default function AssetGrid({
   }
 
   const emptyNote = filtered.length === 0 && !hideEmptyMessage && (
-    <p className="text-center text-sm text-stone-gray/60 py-4">
+    <p className="text-center text-sm text-stone-gray py-4">
       {searching
         ? 'No results for your search.'
         : emptyMessage ?? 'No assets found. Upload one to get started.'}
@@ -209,7 +209,7 @@ export default function AssetGrid({
                   the button's children itself, React's selection overlay among
                   them, and React then failed to remove that overlay. */}
               {failed.has(asset.id) ? (
-                <span className="flex w-full h-full items-center justify-center bg-moss-green/10 text-xs text-stone-gray/50 p-1 text-center">
+                <span className="flex w-full h-full items-center justify-center bg-moss-green/10 text-xs text-stone-gray p-1 text-center">
                   {asset.name}
                 </span>
               ) : (

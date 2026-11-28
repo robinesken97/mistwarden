@@ -73,7 +73,7 @@ export function BackToList({ onClick }: { onClick: () => void }) {
       <button
         type="button"
         onClick={onClick}
-        className="touch-target inline-flex items-center gap-1.5 text-sm font-medium text-brand-ink hover:text-brand-ink/80 transition-colors"
+        className="touch-target inline-flex items-center gap-1.5 text-sm font-medium text-brand-ink hover:underline transition-colors"
       >
         <ArrowLeft className="w-4 h-4" aria-hidden="true" />
         Back to the list

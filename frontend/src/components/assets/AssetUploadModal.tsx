@@ -409,7 +409,7 @@ export default function AssetUploadModal({
                     >
                       <Icon className="w-5 h-5" />
                       <span className="text-sm font-medium">{label}</span>
-                      <span className="text-xs text-stone-gray/70">{hint}</span>
+                      <span className="text-xs text-stone-gray">{hint}</span>
                     </button>
                   ))}
                 </div>
@@ -469,7 +469,7 @@ export default function AssetUploadModal({
                     </button>
                   )}
                 </div>
-                <p className="mt-2 text-xs text-stone-gray/70">
+                <p className="mt-2 text-xs text-stone-gray">
                   {scopeDescriptions[assetScope]}
                 </p>
               </div>
@@ -503,7 +503,7 @@ export default function AssetUploadModal({
                   ))}
                 </select>
                 {dropdownCampaigns.length === 0 && (
-                  <p className="mt-2 text-sm text-stone-gray/70">
+                  <p className="mt-2 text-sm text-stone-gray">
                     {assetType === AssetType.TOKEN
                       ? 'You need to play in or run a campaign to upload tokens to it.'
                       : 'You need to be a GM of a campaign to upload campaign assets.'}
@@ -516,7 +516,7 @@ export default function AssetUploadModal({
             <div>
               <label className="block text-sm font-medium text-brand-ink mb-2">
                 File
-                <span className="ml-2 font-normal text-xs text-stone-gray/70">
+                <span className="ml-2 font-normal text-xs text-stone-gray">
                   max {formatUploadLimit(getUploadLimit(serverConfig, assetType))}
                 </span>
               </label>
@@ -554,7 +554,7 @@ export default function AssetUploadModal({
                   <>
                     <Upload className="w-12 h-12 mx-auto mb-3 text-stone-gray/40" />
                     <p className="text-stone-gray font-medium mb-1">Drag and drop your file here</p>
-                    <p className="text-sm text-stone-gray/70">or click to browse</p>
+                    <p className="text-sm text-stone-gray">or click to browse</p>
                   </>
                 )}
               </div>

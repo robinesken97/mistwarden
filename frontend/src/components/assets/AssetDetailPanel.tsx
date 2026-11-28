@@ -270,7 +270,7 @@ export default function AssetDetailPanel({ asset, onClose, onDelete, onUpdate }:
                 // In state, as React renders it: the fallback used to
                 // replace React's own nodes here with innerHTML.
                 <div className="flex items-center justify-center h-64">
-                  <div className="text-stone-gray/40">Preview not available</div>
+                  <div className="text-stone-gray">Preview not available</div>
                 </div>
               ) : (
                 <img
@@ -343,7 +343,7 @@ export default function AssetDetailPanel({ asset, onClose, onDelete, onUpdate }:
                 {/* Campaign picker */}
                 {moveScope === AssetScope.CAMPAIGN && (
                   <div>
-                    <label className="block text-sm text-stone-gray/70 mb-1">
+                    <label className="block text-sm text-stone-gray mb-1">
                       Select campaign
                     </label>
                     <select
@@ -403,33 +403,33 @@ export default function AssetDetailPanel({ asset, onClose, onDelete, onUpdate }:
             <h3 className="text-lg font-semibold text-brand-ink mb-3">Metadata</h3>
             <div className="space-y-3">
               <div className="flex items-center gap-3 p-3 bg-parchment/50 border border-moss-green/20 rounded-lg">
-                <HardDrive className="w-5 h-5 text-stone-gray/60" />
+                <HardDrive className="w-5 h-5 text-stone-gray" />
                 <div>
-                  <p className="text-sm text-stone-gray/70">File Size</p>
+                  <p className="text-sm text-stone-gray">File Size</p>
                   <p className="text-stone-gray font-medium">{formatFileSize(currentAsset.fileSize, { decimals: 2, largest: 'MB' })}</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-3 p-3 bg-parchment/50 border border-moss-green/20 rounded-lg">
-                <FileType className="w-5 h-5 text-stone-gray/60" />
+                <FileType className="w-5 h-5 text-stone-gray" />
                 <div>
-                  <p className="text-sm text-stone-gray/70">MIME Type</p>
+                  <p className="text-sm text-stone-gray">MIME Type</p>
                   <p className="text-stone-gray font-medium">{currentAsset.mimeType}</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-3 p-3 bg-parchment/50 border border-moss-green/20 rounded-lg">
-                <FileType className="w-5 h-5 text-stone-gray/60" />
+                <FileType className="w-5 h-5 text-stone-gray" />
                 <div>
-                  <p className="text-sm text-stone-gray/70">Original Filename</p>
+                  <p className="text-sm text-stone-gray">Original Filename</p>
                   <p className="text-stone-gray font-medium break-all">{currentAsset.originalName}</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-3 p-3 bg-parchment/50 border border-moss-green/20 rounded-lg">
-                <User className="w-5 h-5 text-stone-gray/60" />
+                <User className="w-5 h-5 text-stone-gray" />
                 <div>
-                  <p className="text-sm text-stone-gray/70">Uploaded By</p>
+                  <p className="text-sm text-stone-gray">Uploaded By</p>
                   <p className="text-stone-gray font-medium">
                     {user?.id === currentAsset.uploadedById ? 'You' : 'Another user'}
                   </p>
@@ -437,9 +437,9 @@ export default function AssetDetailPanel({ asset, onClose, onDelete, onUpdate }:
               </div>
 
               <div className="flex items-center gap-3 p-3 bg-parchment/50 border border-moss-green/20 rounded-lg">
-                <Calendar className="w-5 h-5 text-stone-gray/60" />
+                <Calendar className="w-5 h-5 text-stone-gray" />
                 <div>
-                  <p className="text-sm text-stone-gray/70">Uploaded On</p>
+                  <p className="text-sm text-stone-gray">Uploaded On</p>
                   <p className="text-stone-gray font-medium">{formatDate(currentAsset.createdAt)}</p>
                 </div>
               </div>
@@ -452,16 +452,16 @@ export default function AssetDetailPanel({ asset, onClose, onDelete, onUpdate }:
             <div className="p-4 bg-parchment/50 border border-moss-green/20 rounded-lg">
               <div className="space-y-2 font-mono text-sm">
                 <div className="flex justify-between">
-                  <span className="text-stone-gray/70">Asset ID:</span>
+                  <span className="text-stone-gray">Asset ID:</span>
                   <span className="text-stone-gray">{currentAsset.id}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-stone-gray/70">Filename:</span>
+                  <span className="text-stone-gray">Filename:</span>
                   <span className="text-stone-gray truncate ml-4">{currentAsset.filename}</span>
                 </div>
                 {currentAsset.campaignId && (
                   <div className="flex justify-between">
-                    <span className="text-stone-gray/70">Campaign ID:</span>
+                    <span className="text-stone-gray">Campaign ID:</span>
                     <span className="text-stone-gray truncate ml-4">{currentAsset.campaignId}</span>
                   </div>
                 )}

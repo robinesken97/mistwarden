@@ -15,6 +15,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import fontsCss from '../assets/fonts/fonts.css?raw';
 import indexHtml from '../../index.html?raw';
+import indexCss from '../index.css?raw';
 import { FONT_OPTIONS, applyFont } from '../themes';
 
 /** The font files beside the stylesheet, by file name. */
@@ -63,5 +64,17 @@ describe('the bundled typefaces', () => {
     for (const font of FONT_OPTIONS) applyFont(font);
     expect(document.head.querySelectorAll('link[rel="stylesheet"]')).toHaveLength(0);
     expect(document.documentElement.style.getPropertyValue('--font-heading')).toBe(FONT_OPTIONS[FONT_OPTIONS.length - 1].heading);
+  });
+
+  // Blackletter and Cinzel's capitals are hard to read in a 12 px uppercase
+  // label, so those two set labels in their text face; the rest keep the
+  // heading face, the default unchanged. Switching away puts it back.
+  it('set small headings and uppercase labels in the text face for Gothic and Scholarly only', () => {
+    const label = () => document.documentElement.style.getPropertyValue('--font-label');
+    for (const font of FONT_OPTIONS) {
+      applyFont(font);
+      expect(label()).toBe(['gothic', 'scholarly'].includes(font.id) ? font.body : font.heading);
+    }
+    expect(fontsCss + indexCss).toMatch(/:is\(h1, h2, h3, h4, h5, h6\):is\(\.uppercase, \.text-xs, \.text-sm\) \{\s*font-family: var\(--font-label, var\(--font-heading\)\);/);
   });
 });

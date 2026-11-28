@@ -17,8 +17,10 @@ import indexCss from '../../index.css?raw';
 
 /**
  * Exempt:
- *  - the map's tool panels, deliberately dark panels floating over the map:
- *    the GM's Fog, Walls and Lights, their stack, the drawing tools and Paint's
+ *  - the map's tool panels, drawn in stone and its hues floating over the map:
+ *    the GM's Fog, Walls and Lights, their stack, the drawing tools and Paint's.
+ *    Dark as drawn on a dark theme; on a light theme index.css turns them
+ *    light (`[data-scheme='light'] .gm-panels`), checked below
  *  - each sheet's header colour presets (`colorPresets.ts`)
  */
 const EXEMPT = [
@@ -145,6 +147,66 @@ describe('themed surfaces use semantic tokens', () => {
       .map(([path, source]) => ({ file: path, count: (source.match(DARK) ?? []).length }))
       .filter((entry) => entry.count > 0)
       .map((entry) => `${entry.file} (${entry.count})`);
+    expect(found).toEqual([]);
+  });
+
+  // On a light theme the panels' stone and hue text shades are remapped to
+  // the theme's paper and ink and to dark hues; a text colour the block does
+  // not remap would stay light on the light panel. Two are labels on a fill
+  // that stays as drawn: stone-900 on the lime, amber and warning fills,
+  // white on the armed red Clear button.
+  it('turns every text colour of the GM tool panels dark on a light theme', () => {
+    const block = /\[data-scheme='light'\] \.gm-panels \{([^}]*)\}/.exec(indexCss)?.[1] ?? '';
+    const remapped = new Set([...block.matchAll(/--color-([a-z]+-\d+):/g)].map((m) => m[1]));
+    const ON_A_FILL = new Set(['stone-900', 'white']);
+    const TEXT = /(?<![\w-])(?:[\w-]+:)*text-((?:stone|amber|red|sky|emerald|green|lime|yellow|orange|violet|teal|blue)-\d+|white)\b/g;
+    const found = EXEMPT.flatMap((path) => [...(SOURCES[path] ?? '').matchAll(TEXT)].map((m) => m[1]))
+      .filter((colour) => !remapped.has(colour) && !ON_A_FILL.has(colour));
+    expect(remapped.size).toBeGreaterThan(10);
+    expect([...new Set(found)]).toEqual([]);
+  });
+
+  // The theme's text tokens are derived to read on its surfaces (4.5:1, the
+  // muted one too); an opacity modifier mixes them back into the background
+  // and undoes that (text-stone-gray/50 was 2.2:1 on a light theme). Text that
+  // should recede takes the muted token, text-stone-gray or text-ink-muted.
+  // Kept: large decorative pictures outside any control (an empty list's or a
+  // drop zone's icon, a page's heading picture), whose meaning is in the text
+  // beside them, and disabled controls. Each is listed with its class; a new
+  // one fails here.
+  it('writes theme text at full strength, without an opacity modifier', () => {
+    const TOKEN = 'stone-gray|warm-gray|charcoal|ink|ink-secondary|ink-muted|brand|brand-ink|brand-text|accent|accent-ink|accent-text|danger|danger-ink|spirit|spirit-ink|success-ink|warning-ink|info-ink|moss-green|forest-shadow|warm-amber|sunset-orange|soft-cream|parchment|paper-white|spirit-red|spirit-purple';
+    const FADED = new RegExp(`(?<![\\w/-])(?:[\\w-]+:)*(?:text|placeholder)-(?:${TOKEN})/\\d+\\b`, 'g');
+    const ALLOWED: Record<string, string[]> = {
+      // Decorative pictures.
+      '/src/components/assets/AssetUploadModal.tsx': ['text-stone-gray/40'],
+      '/src/components/campaign/CampaignImportDialog.tsx': ['text-brand-ink/50'],
+      '/src/components/campaign/ChatPanel.tsx': ['text-brand-ink/30'],
+      '/src/components/campaign/CreatureLibrary.tsx': ['text-brand-ink/30'],
+      '/src/components/campaign/DiceRoller.tsx': ['text-ink-muted/40'],
+      '/src/components/campaign/GalleryPanel.tsx': ['text-warm-gray/40'],
+      '/src/components/campaign/MapCanvas.tsx': ['text-brand-ink/30'],
+      '/src/components/campaign/PersonalNotes.tsx': ['text-warm-gray/40'],
+      '/src/components/campaign/TokenTemplateLibrary.tsx': ['text-brand-ink/30'],
+      '/src/pages/AssetLibraryPage.tsx': ['text-stone-gray/30'],
+      '/src/pages/DocumentsPage.tsx': ['text-brand-ink/50'],
+      '/src/pages/auth/ChangePasswordPage.tsx': ['text-brand-ink/70'],
+      '/src/pages/auth/ForgotPasswordPage.tsx': ['text-brand-ink/70', 'text-brand-ink/70'],
+      '/src/pages/auth/ResetPasswordPage.tsx': ['text-brand-ink/70'],
+      // Two decorative map pins, and the disabled Add, Import and Delete buttons.
+      '/src/components/campaign/MapManager.tsx': ['text-stone-gray/30', 'text-brand-ink/50', 'text-info-ink/60', 'text-danger-ink/40', 'text-stone-gray/25'],
+      // A proficiency box that cannot be ticked.
+      '/src/components/campaign/npc-stat-blocks/ProficiencyEditor.tsx': ['text-ink-muted/40'],
+    };
+    const found: string[] = [];
+    for (const [path, source] of Object.entries(SOURCES)) {
+      const left = [...(ALLOWED[path] ?? [])];
+      for (const [cls] of source.matchAll(FADED)) {
+        const at = left.indexOf(cls);
+        if (at >= 0) left.splice(at, 1);
+        else found.push(`${path}: ${cls}`);
+      }
+    }
     expect(found).toEqual([]);
   });
 

@@ -360,7 +360,7 @@ export default function RegisterPage() {
             Already have an account?{' '}
             <Link
               to="/auth/login"
-              className="text-brand-ink hover:text-brand-ink/80 font-medium transition-colors"
+              className="text-brand-ink hover:underline font-medium transition-colors"
             >
               Sign in
             </Link>

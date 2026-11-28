@@ -155,13 +155,13 @@ function TokenRow({ token, campaignId, mapId, onEditToken }: TokenRowProps) {
 
       {/* Name + HP; on a touch screen it keeps 8rem, and the actions go under it before it is cut shorter */}
       <div className="flex-1 min-w-0 pointer-coarse:min-w-32">
-        <p title={token.name} className={`text-xs font-medium truncate ${!token.visible ? 'text-stone-gray/50' : 'text-charcoal'}`}>
+        <p title={token.name} className={`text-xs font-medium truncate ${!token.visible ? 'text-stone-gray' : 'text-charcoal'}`}>
           {token.name}
-          {!token.visible && <span className="ml-1 text-xs text-stone-gray/40">(hidden)</span>}
-          {token.obscured && <span className="ml-1 text-xs text-stone-gray/40">(obscured)</span>}
+          {!token.visible && <span className="ml-1 text-xs text-stone-gray">(hidden)</span>}
+          {token.obscured && <span className="ml-1 text-xs text-stone-gray">(obscured)</span>}
         </p>
         {hp && (
-          <p className="text-xs text-stone-gray/60">{hp}</p>
+          <p className="text-xs text-stone-gray">{hp}</p>
         )}
       </div>
 
@@ -222,7 +222,7 @@ function TokenRow({ token, campaignId, mapId, onEditToken }: TokenRowProps) {
           disabled={isDeleting}
           title="Remove from map"
           aria-label={`Remove ${token.name} from map`}
-          className="p-1.5 touch-target inline-flex items-center justify-center rounded-sm hover:bg-danger/10 text-danger-ink/60 hover:text-danger-ink transition-colors disabled:opacity-40"
+          className="p-1.5 touch-target inline-flex items-center justify-center rounded-sm hover:bg-danger/10 text-danger-ink hover:text-danger-ink transition-colors disabled:opacity-40"
         >
           {isDeleting ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -262,7 +262,7 @@ function TokenGroup({ label, tokens, campaignId, mapId, onEditToken, defaultOpen
     <div>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="touch-target w-full flex items-center gap-1.5 px-2 py-1 text-xs font-semibold text-stone-gray/70 uppercase tracking-wider hover:text-stone-gray transition-colors"
+        className="touch-target w-full flex items-center gap-1.5 px-2 py-1 text-xs font-semibold text-stone-gray uppercase tracking-wider hover:text-stone-gray transition-colors"
       >
         {isOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
         {label} ({tokens.length})
@@ -312,12 +312,12 @@ export default function TokenRoster({ onEditToken }: TokenRosterProps) {
       >
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-brand-ink">Token Roster</span>
-          <span className="text-xs text-stone-gray/60">({tokens.length})</span>
+          <span className="text-xs text-stone-gray">({tokens.length})</span>
         </div>
         {isCollapsed ? (
-          <ChevronRight className="w-4 h-4 text-stone-gray/60" />
+          <ChevronRight className="w-4 h-4 text-stone-gray" />
         ) : (
-          <ChevronDown className="w-4 h-4 text-stone-gray/60" />
+          <ChevronDown className="w-4 h-4 text-stone-gray" />
         )}
       </button>
 

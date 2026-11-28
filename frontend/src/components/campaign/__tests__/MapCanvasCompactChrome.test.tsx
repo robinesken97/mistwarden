@@ -341,8 +341,9 @@ describe('Map controls', () => {
 
     pressRow('Fit to Screen');
 
-    // 90 percent of the narrower side over the map's 1,000 pixels.
-    expect(toolbar()).toHaveTextContent('36%');
+    // On the compact layout the map fills the longer side: 90 percent of the
+    // 600 pixels over the map's 1,000, its sides a pan away.
+    expect(toolbar()).toHaveTextContent('54%');
     expect(screen.queryByRole('dialog', { name: 'Map controls' })).toBeNull();
   });
 

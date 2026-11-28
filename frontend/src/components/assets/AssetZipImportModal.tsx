@@ -211,7 +211,7 @@ export default function AssetZipImportModal({ isOpen, onClose, onImported }: Ass
 
             <div>
               <label htmlFor="zip-import-tags" className="block text-sm font-medium text-brand-ink mb-2">
-                Extra tags <span className="font-normal text-xs text-stone-gray/70">for every picture, comma-separated</span>
+                Extra tags <span className="font-normal text-xs text-stone-gray">for every picture, comma-separated</span>
               </label>
               <input
                 id="zip-import-tags"
@@ -250,7 +250,7 @@ export default function AssetZipImportModal({ isOpen, onClose, onImported }: Ass
                 onClick={() => fileInputRef.current?.click()}
                 className="w-full min-h-11 border-2 border-dashed border-moss-green/30 hover:border-moss-green/50 rounded-lg p-6 text-center disabled:opacity-50"
               >
-                <FileArchive className="w-10 h-10 mx-auto mb-2 text-stone-gray/50" aria-hidden="true" />
+                <FileArchive className="w-10 h-10 mx-auto mb-2 text-stone-gray" aria-hidden="true" />
                 {file ? (
                   <span className="block">
                     <span className="block text-brand-ink font-medium">{file.name}</span>
@@ -308,7 +308,7 @@ export default function AssetZipImportModal({ isOpen, onClose, onImported }: Ass
                   ))}
                 </ul>
                 {job.skippedCount > job.skipped.length && (
-                  <p className="text-xs text-stone-gray/70 mt-1">and {(job.skippedCount - job.skipped.length).toLocaleString()} more</p>
+                  <p className="text-xs text-stone-gray mt-1">and {(job.skippedCount - job.skipped.length).toLocaleString()} more</p>
                 )}
               </details>
             )}

@@ -51,7 +51,7 @@ export default function TokenTransferConfirmation({
           <p className="text-sm font-medium text-stone-gray">
             {fromMap ? <>{fromMap.name}, the table&apos;s map,</> : <>The table&apos;s map</>} has {tokens.length} token{tokens.length !== 1 ? 's' : ''}
           </p>
-          <p className="text-xs text-stone-gray/70">
+          <p className="text-xs text-stone-gray">
             Select which to transfer to <span className="font-medium">{targetMap.name}</span>
           </p>
         </div>
@@ -61,7 +61,7 @@ export default function TokenTransferConfirmation({
         <button type="button" onClick={selectAll} className="touch-target text-brand-ink hover:underline">
           Select all
         </button>
-        <span className="text-stone-gray/40 self-center">·</span>
+        <span className="text-stone-gray self-center">·</span>
         <button type="button" onClick={selectNone} className="touch-target text-stone-gray hover:underline">
           Select none
         </button>

@@ -745,7 +745,7 @@ export default function ProfilePage() {
                   />
                 ) : (
                   <div className="w-20 h-20 rounded-full bg-moss-green/20 flex items-center justify-center border-2 border-moss-green/30">
-                    <User className="w-9 h-9 text-brand-ink/60" aria-hidden="true" />
+                    <User className="w-9 h-9 text-brand-ink" aria-hidden="true" />
                   </div>
                 )}
                 <div className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity flex items-center justify-center">
@@ -797,7 +797,7 @@ export default function ProfilePage() {
                       className="input-cozy w-full"
                       autoFocus
                     />
-                    <p className="text-xs text-warm-gray/70 mt-0.5 text-right">{displayName.length}/{DISPLAY_NAME_MAX_LENGTH}</p>
+                    <p className="text-xs text-warm-gray mt-0.5 text-right">{displayName.length}/{DISPLAY_NAME_MAX_LENGTH}</p>
                   </>
                 ) : (
                   <p className="text-brand-ink font-medium">{user?.displayName}</p>
@@ -841,11 +841,11 @@ export default function ProfilePage() {
                       placeholder="Tell the table a bit about yourself..."
                       className="input-cozy w-full resize-none text-sm"
                     />
-                    <p className="text-xs text-warm-gray/70 mt-0.5 text-right">{bio.length}/500</p>
+                    <p className="text-xs text-warm-gray mt-0.5 text-right">{bio.length}/500</p>
                   </>
                 ) : (
                   <p className="text-sm text-warm-gray">
-                    {user?.bio || <span className="italic opacity-60">No bio yet.</span>}
+                    {user?.bio || <span className="italic">No bio yet.</span>}
                   </p>
                 )}
               </div>
@@ -899,7 +899,7 @@ export default function ProfilePage() {
                   <button
                     type="button"
                     onClick={() => setShowPwCurrent((v) => !v)}
-                    className="touch-target inline-flex items-center justify-center absolute right-0 top-1/2 -translate-y-1/2 px-3 text-stone-gray/50 hover:text-stone-gray"
+                    className="touch-target inline-flex items-center justify-center absolute right-0 top-1/2 -translate-y-1/2 px-3 text-stone-gray hover:text-stone-gray"
                     aria-label={showPwCurrent ? 'Hide current password' : 'Show current password'}
                   >
                     {showPwCurrent ? <EyeOff className="w-4 h-4" aria-hidden="true" /> : <Eye className="w-4 h-4" aria-hidden="true" />}
@@ -921,7 +921,7 @@ export default function ProfilePage() {
                   <button
                     type="button"
                     onClick={() => setShowPwNew((v) => !v)}
-                    className="touch-target inline-flex items-center justify-center absolute right-0 top-1/2 -translate-y-1/2 px-3 text-stone-gray/50 hover:text-stone-gray"
+                    className="touch-target inline-flex items-center justify-center absolute right-0 top-1/2 -translate-y-1/2 px-3 text-stone-gray hover:text-stone-gray"
                     aria-label={showPwNew ? 'Hide new password' : 'Show new password'}
                   >
                     {showPwNew ? <EyeOff className="w-4 h-4" aria-hidden="true" /> : <Eye className="w-4 h-4" aria-hidden="true" />}

@@ -343,7 +343,7 @@ function SectionHeader({
     <button
       type="button"
       onClick={() => toggle(section)}
-      className="flex items-center gap-1 w-full text-left py-1 text-[10px] font-semibold text-brand-ink uppercase tracking-wide hover:text-brand-ink/80 transition-colors"
+      className="flex items-center gap-1 w-full text-left py-1 text-[10px] font-semibold text-brand-ink uppercase tracking-wide hover:underline transition-colors"
     >
       {expanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
       {title}
@@ -406,7 +406,7 @@ function ActionListEditor({
         type="button"
         onClick={addItem}
         disabled={items.length >= STAT_BLOCK_LIMITS.maxListEntries}
-        className="flex items-center gap-1 text-[10px] text-brand-ink hover:text-brand-ink/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="flex items-center gap-1 text-[10px] text-brand-ink hover:underline transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <Plus className="w-3 h-3" /> Add entry
       </button>

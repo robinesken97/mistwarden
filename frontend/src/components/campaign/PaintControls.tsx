@@ -132,17 +132,17 @@ export default function PaintControls({ settings, onSettingsChange, canUndo, can
   return (
     <section
       aria-label="Mapmaker"
-      className="flex flex-col gap-2 p-2 bg-stone-800/90 rounded-lg border border-amber-400/20 w-full text-stone-300"
+      className="flex flex-col gap-2 p-2 bg-stone-800 rounded-lg border border-amber-400/20 w-full text-stone-300"
     >
       {/* Save and Done head the panel, as the phone's strip has them: at the
           foot, under every tool's settings, Save scrolled out of sight. */}
       <div className="flex items-center gap-1.5">
-        <h2 className="flex-1 text-xs text-amber-400/70 font-medium uppercase tracking-wide">Mapmaker</h2>
+        <h2 className="flex-1 text-xs text-amber-300 font-medium uppercase tracking-wide">Mapmaker</h2>
         <button
           type="button"
           onClick={onSave}
           disabled={!unsaved || saving}
-          className="touch-target inline-flex items-center justify-center gap-1.5 h-7 px-3 rounded border text-[11px] font-semibold bg-amber-400 text-stone-900 border-amber-300 hover:bg-amber-300 disabled:bg-transparent disabled:text-stone-400 disabled:border-stone-600/60 disabled:cursor-not-allowed"
+          className="touch-target inline-flex items-center justify-center gap-1.5 h-7 px-3 rounded border text-[11px] font-semibold bg-amber-400 text-stone-900 border-amber-300 hover:brightness-110 disabled:bg-transparent disabled:text-stone-400 disabled:border-stone-600/60 disabled:cursor-not-allowed"
         >
           {saving && <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />}
           {saving ? 'Saving…' : 'Save'}
@@ -152,14 +152,14 @@ export default function PaintControls({ settings, onSettingsChange, canUndo, can
           onClick={onClose}
           aria-label="Done painting"
           title="Put Mapmaker away; what is not saved stays on the map"
-          className="touch-target inline-flex items-center justify-center gap-1 h-7 px-2 rounded border border-stone-600/60 text-[11px] text-stone-300 hover:text-white hover:bg-stone-700"
+          className="touch-target inline-flex items-center justify-center gap-1 h-7 px-2 rounded border border-stone-600/60 text-[11px] text-stone-300 hover:text-stone-100 hover:bg-stone-700"
         >
           <X className="w-3.5 h-3.5" aria-hidden="true" />
           Done
         </button>
       </div>
       {unsaved && !saving && (
-        <p className="text-[11px] leading-snug text-amber-200/80">Not saved yet: on your screen only. Done keeps it on the map until you save.</p>
+        <p className="text-[11px] leading-snug text-amber-200">Not saved yet: on your screen only. Done keeps it on the map until you save.</p>
       )}
       {signedOut && unsaved && <SignedOutNotice />}
 

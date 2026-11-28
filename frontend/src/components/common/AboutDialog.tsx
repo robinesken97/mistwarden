@@ -31,7 +31,7 @@ export const SOURCE_CODE_URL = 'https://github.com/robinesken97/mistwarden';
 export const UPSTREAM_URL = 'https://github.com/CheekyChinchilla/CozyVTT';
 
 const LINK_CLASS =
-  'underline underline-offset-2 text-brand-ink hover:text-brand-ink/80 focus:outline-hidden focus:ring-2 focus:ring-brand rounded-xs';
+  'underline underline-offset-2 text-brand-ink hover:decoration-2 focus:outline-hidden focus:ring-2 focus:ring-brand rounded-xs';
 
 /** A part of the window, named by its heading. */
 function Part({ title, children }: { title: string; children: React.ReactNode }) {

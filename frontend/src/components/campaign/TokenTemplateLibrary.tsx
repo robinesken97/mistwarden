@@ -255,7 +255,7 @@ export default function TokenTemplateLibrary({ isOpen, onClose }: TokenTemplateL
       <div className="flex items-center gap-3 px-5 py-4 border-b border-moss-green/20 bg-parchment/60 sticky top-0 z-10">
         <Stamp className="w-5 h-5 text-brand-ink shrink-0" />
         <SlideOverTitle className="flex-1 text-base font-bold text-brand-ink">Token Templates</SlideOverTitle>
-        <span className="text-xs text-stone-gray/60">
+        <span className="text-xs text-stone-gray">
           {total} template{total !== 1 ? 's' : ''}
         </span>
         <SlideOverClose className="btn-secondary p-1.5 shrink-0" iconClassName="w-4 h-4" title="Close" />
@@ -270,7 +270,7 @@ export default function TokenTemplateLibrary({ isOpen, onClose }: TokenTemplateL
       {/* Search & Filters */}
       <div className="px-4 py-3 border-b border-moss-green/10 space-y-2">
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-gray/50" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-gray" />
           <input
             type="text"
             value={searchQuery}
@@ -294,7 +294,7 @@ export default function TokenTemplateLibrary({ isOpen, onClose }: TokenTemplateL
           <button
             ref={formCreateButtonRef}
             onClick={(e) => { setEditingTemplate(null); setShowForm(true); formOpened(e.currentTarget); }}
-            className="flex items-center gap-1 text-xs text-brand-ink hover:text-brand-ink/80 transition-colors"
+            className="flex items-center gap-1 text-xs text-brand-ink hover:underline transition-colors"
           >
             <Plus className="w-3 h-3" /> New Template
           </button>
@@ -323,10 +323,10 @@ export default function TokenTemplateLibrary({ isOpen, onClose }: TokenTemplateL
         ) : templates.length === 0 ? (
           <div className="text-center py-12 px-6">
             <Stamp className="w-8 h-8 text-brand-ink/30 mx-auto mb-2" />
-            <p className="text-sm text-stone-gray/70">
+            <p className="text-sm text-stone-gray">
               {searchQuery ? 'No templates match your search.' : 'No saved token templates yet.'}
             </p>
-            <p className="text-xs text-stone-gray/50 mt-1">
+            <p className="text-xs text-stone-gray mt-1">
               Save tokens from the map or create a new template to get started.
             </p>
           </div>
@@ -454,7 +454,7 @@ function TemplateRow({
 
         <div className="flex-1 min-w-0">
           <div className="text-sm font-medium text-ink-black truncate">{template.name}</div>
-          <div className="text-[10px] text-stone-gray/60">
+          <div className="text-[10px] text-stone-gray">
             {template.size.width}x{template.size.height}
             {template.notes && <span className="ml-1 truncate">&middot; {template.notes}</span>}
           </div>
@@ -465,9 +465,9 @@ function TemplateRow({
         </span>
 
         {isExpanded ? (
-          <ChevronDown className="w-4 h-4 text-stone-gray/40 shrink-0" />
+          <ChevronDown className="w-4 h-4 text-stone-gray shrink-0" />
         ) : (
-          <ChevronRight className="w-4 h-4 text-stone-gray/40 shrink-0" />
+          <ChevronRight className="w-4 h-4 text-stone-gray shrink-0" />
         )}
       </button>
 
@@ -499,7 +499,7 @@ function TemplateRow({
               </button>
               {showCopyMenu && gmCampaigns.length > 0 && (
                 <div className="absolute left-0 top-full mt-1 z-20 bg-paper-white border border-moss-green/20 rounded-cozy shadow-lg py-1 min-w-[180px] max-h-48 overflow-y-auto">
-                  <div className="px-2 py-1 text-[9px] text-stone-gray/60 uppercase tracking-wide font-semibold">
+                  <div className="px-2 py-1 text-[9px] text-stone-gray uppercase tracking-wide font-semibold">
                     Copy to campaign
                   </div>
                   {gmCampaigns.map((c) => (
@@ -516,7 +516,7 @@ function TemplateRow({
               )}
               {showCopyMenu && gmCampaigns.length === 0 && (
                 <div className="absolute left-0 top-full mt-1 z-20 bg-paper-white border border-moss-green/20 rounded-cozy shadow-lg p-3 min-w-[180px]">
-                  <p className="text-[10px] text-stone-gray/60">No other campaigns where you are GM.</p>
+                  <p className="text-[10px] text-stone-gray">No other campaigns where you are GM.</p>
                 </div>
               )}
             </div>
@@ -536,7 +536,7 @@ function TemplateRow({
             </div>
           )}
           {template.hp && (
-            <div className="text-[10px] text-stone-gray/60">
+            <div className="text-[10px] text-stone-gray">
               HP: {template.hp.current}/{template.hp.max}{template.hp.temp > 0 && ` (+${template.hp.temp} temp)`}
             </div>
           )}
@@ -742,7 +742,7 @@ function TemplateForm({ campaignId, editingTemplate, asStep, headingRef, onCreat
         </h3>
         {/* As a step, Back to the list above the form does this. */}
         {!asStep && (
-          <button onClick={onCancel} aria-label="Close form" className="text-stone-gray hover:text-stone-gray/80 p-0.5">
+          <button onClick={onCancel} aria-label="Close form" className="text-stone-gray hover:text-ink p-0.5">
             <X className="w-4 h-4" />
           </button>
         )}
@@ -769,11 +769,11 @@ function TemplateForm({ campaignId, editingTemplate, asStep, headingRef, onCreat
             />
           ) : (
             <div className="w-10 h-10 rounded-full bg-stone-gray/10 flex items-center justify-center border border-dashed border-stone-gray/30">
-              <Upload className="w-4 h-4 text-stone-gray/40" />
+              <Upload className="w-4 h-4 text-stone-gray" />
             </div>
           )}
           <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={handleImageUpload} className="hidden" />
-          <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="text-[10px] text-brand-ink hover:text-brand-ink/80 flex items-center gap-1">
+          <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="text-[10px] text-brand-ink hover:underline flex items-center gap-1">
             {isUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
             {imageUrl ? 'Change' : 'Upload'}
           </button>
@@ -859,11 +859,11 @@ function TemplateForm({ campaignId, editingTemplate, asStep, headingRef, onCreat
               if (!statBlock) setStatBlock(defaultStatBlockForNpc());
               setShowStatBlock((prev) => !prev);
             }}
-            className="flex items-center gap-1 w-full text-left py-1 text-[10px] font-semibold text-brand-ink uppercase tracking-wide hover:text-brand-ink/80 transition-colors"
+            className="flex items-center gap-1 w-full text-left py-1 text-[10px] font-semibold text-brand-ink uppercase tracking-wide hover:underline transition-colors"
           >
             {showStatBlock ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
             Stat Block
-            {!statBlock && <span className="ml-1 text-stone-gray/60 normal-case font-normal">(none)</span>}
+            {!statBlock && <span className="ml-1 text-stone-gray normal-case font-normal">(none)</span>}
           </button>
           {showStatBlock && statBlock && (
             <div className="pl-1 pt-1">

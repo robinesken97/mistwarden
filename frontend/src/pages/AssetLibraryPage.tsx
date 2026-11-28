@@ -192,7 +192,7 @@ export default function AssetLibraryPage() {
                 </Button>
               </div>
             ) : (
-              <div className="px-4 py-2 text-sm text-stone-gray/60 italic hidden sm:block">
+              <div className="px-4 py-2 text-sm text-stone-gray italic hidden sm:block">
                 Managed by administrators
               </div>
             )}
@@ -206,19 +206,19 @@ export default function AssetLibraryPage() {
           <div className="flex flex-col lg:flex-row gap-4">
             {/* Search */}
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-gray/40" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-gray" />
               <input
                 type="search"
                 aria-label="Search assets"
                 placeholder="Search by name or tag..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-9 py-2 bg-paper-white border border-moss-green/20 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-moss-green text-stone-gray placeholder-stone-gray/50"
+                className="w-full pl-10 pr-9 py-2 bg-paper-white border border-moss-green/20 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-moss-green text-stone-gray placeholder:text-ink-muted"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-gray/40 hover:text-stone-gray transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-gray hover:text-stone-gray transition-colors"
                   aria-label="Clear search"
                 >
                   <X className="w-4 h-4" />
@@ -299,7 +299,7 @@ export default function AssetLibraryPage() {
         {!loading && (
           <div className="flex flex-col gap-2 mb-6">
             {/* Result count */}
-            <p className="text-sm text-stone-gray/60">
+            <p className="text-sm text-stone-gray">
               {filteredAssets.length === 0
                 ? 'No assets found'
                 : filteredAssets.length === totalCount
@@ -310,8 +310,8 @@ export default function AssetLibraryPage() {
             {/* Tag chips */}
             {availableTags.length > 0 && (
               <div className="flex items-center gap-2 flex-wrap">
-                <Tag className="w-4 h-4 text-stone-gray/40 shrink-0" aria-hidden="true" />
-                <span className="text-xs text-stone-gray/60">Tags on this page:</span>
+                <Tag className="w-4 h-4 text-stone-gray shrink-0" aria-hidden="true" />
+                <span className="text-xs text-stone-gray">Tags on this page:</span>
                 {availableTags.map((tag) => (
                   <button
                     key={tag}
@@ -328,7 +328,7 @@ export default function AssetLibraryPage() {
                 {selectedTags.length > 0 && (
                   <button
                     onClick={() => setSelectedTags([])}
-                    className="text-xs text-stone-gray/60 hover:text-stone-gray underline ml-1 transition-colors"
+                    className="text-xs text-stone-gray hover:text-stone-gray underline ml-1 transition-colors"
                   >
                     Clear tags
                   </button>

@@ -53,6 +53,12 @@ export interface FontOption {
   heading: string;
   body: string;
   mono: string;
+  /**
+   * Small uppercase headings: a menu's section labels, a roster's groups.
+   * The heading font when left out; the text font for a display face that
+   * reads badly small and in capitals (blackletter, Cinzel's all-caps).
+   */
+  label?: string;
 }
 
 // ────────────────────────────────────────────────────
@@ -527,6 +533,7 @@ export const FONT_OPTIONS: FontOption[] = [
     heading: "'Cinzel', serif",
     body: "'EB Garamond', serif",
     mono: "'JetBrains Mono', monospace",
+    label: "'EB Garamond', serif",
   },
   {
     id: 'gothic',
@@ -534,6 +541,7 @@ export const FONT_OPTIONS: FontOption[] = [
     heading: "'UnifrakturMaguntia', cursive",
     body: "'Crimson Text', serif",
     mono: "'JetBrains Mono', monospace",
+    label: "'Crimson Text', serif",
   },
 ];
 
@@ -666,19 +674,24 @@ export function applyThemeColors(colors: ThemeColors): void {
   // The browser draws its own controls (text boxes, checkboxes, a dropdown's
   // open list) for the scheme it is told; a dark paper is a dark theme,
   // custom ones included.
-  root.style.colorScheme = relativeLuminance(parseRgb(colors.paper)) < 0.18 ? 'dark' : 'light';
+  // data-scheme carries it to the stylesheet: the GM's tool panels turn light
+  // on a light theme (index.css, .gm-panels).
+  const scheme = relativeLuminance(parseRgb(colors.paper)) < 0.18 ? 'dark' : 'light';
+  root.style.colorScheme = scheme;
+  root.dataset.scheme = scheme;
 }
 
 /**
  * Every family is declared in the bundled font stylesheet, and the browser
  * downloads a family's files only once the page uses it, so switching fonts
- * is only a matter of the three variables.
+ * is only a matter of the four variables.
  */
 export function applyFont(font: FontOption): void {
   const root = document.documentElement;
   root.style.setProperty('--font-heading', font.heading);
   root.style.setProperty('--font-body', font.body);
   root.style.setProperty('--font-mono', font.mono);
+  root.style.setProperty('--font-label', font.label ?? font.heading);
 }
 
 export function buildCustomThemeColors(customColors: {

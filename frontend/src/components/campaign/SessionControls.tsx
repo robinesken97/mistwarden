@@ -174,7 +174,7 @@ export default function SessionControls() {
               <span className="font-medium">{activeSession.sessionNumber}</span>
               {isRunning && elapsed && (
                 <>
-                  <span className="text-brand-ink/30">·</span>
+                  <span className="text-brand-ink">·</span>
                   <span className="font-mono text-brand-ink">{elapsed}</span>
                 </>
               )}

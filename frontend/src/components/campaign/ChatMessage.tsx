@@ -132,7 +132,7 @@ function ChatMessageInner({ message, isCurrentUser = false, isPending = false, n
     message.metadata.action !== 'session.ended' &&
     message.metadata.action !== 'session.resumed' && (
       <div className="mt-2 pt-2 border-t">
-        <pre className="text-xs opacity-70 font-mono">
+        <pre className="text-xs font-mono">
           {JSON.stringify(message.metadata, null, 2)}
         </pre>
       </div>
@@ -204,12 +204,12 @@ function ChatMessageInner({ message, isCurrentUser = false, isPending = false, n
           {notSentReason ? null : isPending ? (
             <>
               {' '}
-              <span className="whitespace-nowrap text-xs text-stone-gray/50 italic">sending…</span>
+              <span className="whitespace-nowrap text-xs text-stone-gray italic">sending…</span>
             </>
           ) : (
             <>
               {' '}
-              <span className="whitespace-nowrap text-xs text-stone-gray/70" title={sentAt}>
+              <span className="whitespace-nowrap text-xs text-stone-gray" title={sentAt}>
                 {messageAge(message.createdAt, now)}
               </span>
             </>
@@ -266,9 +266,9 @@ function ChatMessageInner({ message, isCurrentUser = false, isPending = false, n
 
         {/* Timestamp / pending indicator */}
         {notSentReason ? null : isPending ? (
-          <span className="shrink-0 whitespace-nowrap text-xs text-stone-gray/50 italic">sending…</span>
+          <span className="shrink-0 whitespace-nowrap text-xs text-stone-gray italic">sending…</span>
         ) : (
-          <span className="shrink-0 whitespace-nowrap text-xs text-stone-gray/70" title={sentAt}>
+          <span className="shrink-0 whitespace-nowrap text-xs text-stone-gray" title={sentAt}>
             {messageAge(message.createdAt, now)}
           </span>
         )}

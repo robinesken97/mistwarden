@@ -209,6 +209,12 @@ describe('form controls on a coarse pointer', () => {
       return atRules(blocks)
         .filter(({ block }) => block.declarations.has('font-size'))
         .filter(({ within }) => !(file === '/src/index.css' && within.includes('@media (pointer: coarse)')))
+        // The wide-screen root size only grows the page, from the browser's
+        // own size up (clamp from 100 %), so a raised control stays 16 px or more.
+        .filter(({ within, block }) => !(file === '/src/index.css' && block.prelude === 'html' && within.includes('@media (min-width: 2200px)') && /^clamp\(100%,/.test(block.declarations.get('font-size') ?? '')))
+        // The same screens' small pixel sizes in rem, so they grow with it: a
+        // form control's coarse-pointer rule is more specific and still wins.
+        .filter(({ within, block }) => !(file === '/src/index.css' && within.includes('@media (min-width: 2200px)') && /^\[class~='text-\[\d+px\]'\]$/.test(block.prelude)))
         .map(({ block }) => `${file}: ${block.prelude}`);
     });
     expect(sized).toEqual([]);

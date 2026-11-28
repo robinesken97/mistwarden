@@ -439,7 +439,7 @@ export default function CreatureLibrary({ isOpen, onClose }: CreatureLibraryProp
         <SlideOverTitle className="flex-1 text-base font-bold text-brand-ink">
           Creature Library
         </SlideOverTitle>
-        <span className="text-xs text-stone-gray/60">
+        <span className="text-xs text-stone-gray">
           {total} creature{total !== 1 ? 's' : ''}
         </span>
         <SlideOverClose className="btn-secondary p-1.5 shrink-0" iconClassName="w-4 h-4" title="Close" />
@@ -455,7 +455,7 @@ export default function CreatureLibrary({ isOpen, onClose }: CreatureLibraryProp
       <div className="px-4 py-3 border-b border-moss-green/10 space-y-2">
         {/* Search bar */}
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-gray/50" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-gray" />
           <input
             type="text"
             value={searchQuery}
@@ -468,7 +468,7 @@ export default function CreatureLibrary({ isOpen, onClose }: CreatureLibraryProp
         {/* Filter toggle */}
         <button
           onClick={() => setShowFilters(!showFilters)}
-          className="touch-target flex items-center gap-1 text-xs text-brand-ink hover:text-brand-ink/80 transition-colors"
+          className="touch-target flex items-center gap-1 text-xs text-brand-ink hover:underline transition-colors"
         >
           {showFilters ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
           Filters
@@ -522,7 +522,7 @@ export default function CreatureLibrary({ isOpen, onClose }: CreatureLibraryProp
           <button
             ref={formCreateButtonRef}
             onClick={(e) => { setEditingCreature(null); setShowCreateForm(true); formOpened(e.currentTarget); }}
-            className="touch-target flex items-center gap-1 text-xs text-brand-ink hover:text-brand-ink/80 transition-colors"
+            className="touch-target flex items-center gap-1 text-xs text-brand-ink hover:underline transition-colors"
           >
             <Plus className="w-3 h-3" /> Create Custom
           </button>
@@ -571,12 +571,12 @@ export default function CreatureLibrary({ isOpen, onClose }: CreatureLibraryProp
               <span className="text-xs font-semibold text-stone-gray uppercase tracking-wide">
                 Favorites
               </span>
-              <span className="text-[10px] text-stone-gray/50">({favoriteCreatures.length})</span>
+              <span className="text-[10px] text-stone-gray">({favoriteCreatures.length})</span>
             </div>
             {showFavorites ? (
-              <ChevronDown className="w-3.5 h-3.5 text-stone-gray/40" />
+              <ChevronDown className="w-3.5 h-3.5 text-stone-gray" />
             ) : (
-              <ChevronRight className="w-3.5 h-3.5 text-stone-gray/40" />
+              <ChevronRight className="w-3.5 h-3.5 text-stone-gray" />
             )}
           </button>
           {showFavorites && (
@@ -604,7 +604,7 @@ export default function CreatureLibrary({ isOpen, onClose }: CreatureLibraryProp
                   />
                 ))
               )}
-              <p className="text-[9px] text-stone-gray/40 px-4 py-1.5 italic">
+              <p className="text-[9px] text-stone-gray px-4 py-1.5 italic">
                 Favorites are per campaign
               </p>
             </div>
@@ -622,14 +622,14 @@ export default function CreatureLibrary({ isOpen, onClose }: CreatureLibraryProp
         ) : creatures.length === 0 ? (
           <div className="text-center py-12 px-6">
             <Skull className="w-8 h-8 text-brand-ink/30 mx-auto mb-2" />
-            <p className="text-sm text-stone-gray/70">
+            <p className="text-sm text-stone-gray">
               {searchQuery ? 'No creatures match your search.' : 'No creatures in the library yet.'}
             </p>
             {/* The likeliest reason a non-5E campaign looks empty: only
                 5E ships SRD content, and the library defaults to this
                 campaign's system. Say so rather than looking broken. */}
             {!searchQuery && matchGameSystem && campaignSystem && (srdCount ?? 0) > 0 && (
-              <p className="mt-2 text-xs text-stone-gray/60">
+              <p className="mt-2 text-xs text-stone-gray">
                 Showing {GAME_SYSTEM_SHORT_LABELS[campaignSystem]} creatures only.{' '}
                 <button
                   type="button"
@@ -642,14 +642,14 @@ export default function CreatureLibrary({ isOpen, onClose }: CreatureLibraryProp
               </p>
             )}
             {!searchQuery && srdCount === 0 && !canSeed && (
-              <p className="mt-4 text-xs text-stone-gray/60">
+              <p className="mt-4 text-xs text-stone-gray">
                 The ~320 {SRD_SYSTEM_LABEL} SRD creatures have not been imported on this server.
                 Only an administrator can import them, since every campaign shares them. Ask an administrator to import them.
               </p>
             )}
             {!searchQuery && srdCount === 0 && canSeed && (
               <div className="mt-4 space-y-2">
-                <p className="text-xs text-stone-gray/60">
+                <p className="text-xs text-stone-gray">
                   Import ~320 {SRD_SYSTEM_LABEL} SRD creatures with full stat blocks, for every campaign on this server.
                 </p>
                 <Button
@@ -667,7 +667,7 @@ export default function CreatureLibrary({ isOpen, onClose }: CreatureLibraryProp
               </div>
             )}
             {!searchQuery && (srdCount === null || srdCount > 0) && (
-              <p className="text-xs text-stone-gray/50 mt-1">
+              <p className="text-xs text-stone-gray mt-1">
                 Try adjusting your filters, or create a custom creature.
               </p>
             )}
@@ -821,7 +821,7 @@ function CreatureRow({
 
           <div className="flex-1 min-w-0">
             <div className="text-sm font-medium text-ink-black truncate">{creature.name}</div>
-            <div className="text-[10px] text-stone-gray/60 flex gap-2">
+            <div className="text-[10px] text-stone-gray flex gap-2">
               {/* A rating kept from before on a creature of a system with none (creatureModel) stays stored, unshown. */}
               {creature.challengeRating && creatureModel(creature.gameSystem) !== 'printed' && <span>CR {creature.challengeRating}</span>}
               {statBlock.creatureType && <span className="truncate">{statBlock.creatureType}</span>}
@@ -842,9 +842,9 @@ function CreatureRow({
 
           {/* Expand icon */}
           {isExpanded ? (
-            <ChevronDown className="w-4 h-4 text-stone-gray/40 shrink-0" />
+            <ChevronDown className="w-4 h-4 text-stone-gray shrink-0" />
           ) : (
-            <ChevronRight className="w-4 h-4 text-stone-gray/40 shrink-0" />
+            <ChevronRight className="w-4 h-4 text-stone-gray shrink-0" />
           )}
         </button>
 
@@ -860,7 +860,7 @@ function CreatureRow({
           <Star className={`w-3.5 h-3.5 transition-colors ${
             isFavorite
               ? 'text-warning-ink fill-warning'
-              : 'text-stone-gray/30 hover:text-warning-ink'
+              : 'text-stone-gray hover:text-warning-ink'
           }`} />
         </button>
       </div>
@@ -945,7 +945,7 @@ function NameDescriptionList({
           type="button"
           onClick={() => onChange([...items, { name: '', description: '' }])}
           disabled={items.length >= STAT_BLOCK_LIMITS.maxListEntries}
-          className="text-[10px] text-brand-ink hover:text-brand-ink/80 flex items-center gap-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="text-[10px] text-brand-ink hover:underline flex items-center gap-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Plus className="w-2.5 h-2.5" /> Add
         </button>
@@ -1183,7 +1183,7 @@ function CreatureForm({ campaignId, gameSystem, editingCreature, asStep, heading
         </h3>
         {/* As a step, Back to the list above the form does this. */}
         {!asStep && (
-          <button onClick={onCancel} aria-label="Close form" className="text-stone-gray hover:text-stone-gray/80 p-0.5">
+          <button onClick={onCancel} aria-label="Close form" className="text-stone-gray hover:text-ink p-0.5">
             <X className="w-4 h-4" />
           </button>
         )}
@@ -1435,7 +1435,7 @@ function CreatureForm({ campaignId, gameSystem, editingCreature, asStep, heading
         <button
           type="button"
           onClick={() => setShowAdvanced(!showAdvanced)}
-          className="flex items-center gap-1 text-[10px] text-brand-ink hover:text-brand-ink/80 font-medium"
+          className="flex items-center gap-1 text-[10px] text-brand-ink hover:underline font-medium"
         >
           {showAdvanced ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
           Advanced Stats
@@ -1503,7 +1503,7 @@ function CreatureForm({ campaignId, gameSystem, editingCreature, asStep, heading
       </div>
 
       {!isEdit && (
-        <p className="text-[9px] text-stone-gray/50">
+        <p className="text-[9px] text-stone-gray">
           Expand "Advanced Stats" to add traits, actions, and detailed stat block fields.
         </p>
       )}

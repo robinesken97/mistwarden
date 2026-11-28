@@ -464,8 +464,30 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /* A very wide screen at 100 % (a 4K monitor) scales the page up: from
+     2200 px the root font grows 1 px per 180 px of width, 112.5 % at 2560,
+     and stops at 150 % (3640 px and up, 3840 included). Every rem size
+     follows; the media queries do not, being in the browser's own rem, so
+     the layouts switch at the same widths. A % of the browser's text size,
+     so a reader's larger default stays the floor. Below 2200 nothing
+     changes. __tests__/wideScreenScale.test.ts holds the numbers. */
+  @media (min-width: 2200px) {
+    html {
+      font-size: clamp(100%, calc(100% + (100vw - 2200px) / 180), 150%);
+    }
+  }
+
   h1, h2, h3, h4, h5, h6 {
     @apply font-heading;
+  }
+
+  /* A small heading, uppercase or 12 to 14 px (More's "At the table", the
+     roster's "GM", a popover's title), is a label: the font choice's label
+     face, which is the heading face unless the choice names another
+     (FontOption.label in themes.ts). A heading class (font-heading) is a
+     utility and still wins. */
+  :is(h1, h2, h3, h4, h5, h6):is(.uppercase, .text-xs, .text-sm) {
+    font-family: var(--font-label, var(--font-heading));
   }
 
   * {
@@ -510,6 +532,26 @@
   }
 }
 
+/* On a very wide screen the sizes the components write in pixels
+   (text-[10px] and the like, about 190 places, and a sheet's 22 and 30 px
+   name and tiles) grow with the root font as the rem sizes do (the
+   wide-screen rule in the base layer), so the sheet keeps its hierarchy;
+   below 2200 px they stay as written. Outside any layer, so it wins over the class it names; the
+   coarse-pointer rule above for a form control is more specific and keeps
+   its 16 px. */
+@media (min-width: 2200px) {
+  [class~='text-[7px]'] { font-size: 0.4375rem; }
+  [class~='text-[8px]'] { font-size: 0.5rem; }
+  [class~='text-[9px]'] { font-size: 0.5625rem; }
+  [class~='text-[10px]'] { font-size: 0.625rem; }
+  [class~='text-[11px]'] { font-size: 0.6875rem; }
+  [class~='text-[17px]'] { font-size: 1.0625rem; }
+  [class~='text-[19px]'] { font-size: 1.1875rem; }
+  [class~='text-[22px]'] { font-size: 1.375rem; }
+  [class~='text-[30px]'] { font-size: 1.875rem; }
+  [class~='text-[34px]'] { font-size: 2.125rem; }
+}
+
 /* A select a finger's size. A height, not a min-height: WebKit ignores
    min-height on a styled select (it stays 23 px). Outside any layer, so a
    panel's own height class cannot undo it; a list box keeps its rows. */
@@ -542,6 +584,74 @@
 }
 .finger-controls label:has(> input:is([type='checkbox'], [type='radio'])) {
   min-height: 2.75rem;
+}
+
+/* The GM's tool panels (GmToolPanelContainer and the Fog, Walls, Lights,
+   Draw and Paint cards in it) are drawn in Tailwind's stone and its hues, a
+   dark island over the map. On a light theme (data-scheme, set by
+   applyThemeColors) they follow the theme instead: the stone shades become
+   the theme's paper and ink, the hues' text shades (100 to 400) their
+   readable 800, and the dark hue washes (700, 900) light ones. A dark theme
+   keeps the island as drawn. Each shade below has one role in those files
+   (text, or fill and border); utils/__tests__/themeTokens.test.ts checks
+   that every palette colour the panels use is either here or a fill that
+   reads on a light panel as it is. */
+[data-scheme='light'] .gm-panels {
+  --color-stone-100: rgb(var(--rgb-ink));
+  --color-stone-200: rgb(var(--rgb-ink));
+  --color-stone-300: rgb(var(--rgb-ink-secondary));
+  --color-stone-400: rgb(var(--rgb-ink-muted));
+  --color-stone-500: color-mix(in srgb, rgb(var(--rgb-ink)) 45%, rgb(var(--rgb-paper)));
+  --color-stone-600: color-mix(in srgb, rgb(var(--rgb-ink)) 28%, rgb(var(--rgb-paper)));
+  --color-stone-700: color-mix(in srgb, rgb(var(--rgb-ink)) 12%, rgb(var(--rgb-paper)));
+  --color-stone-800: rgb(var(--rgb-paper));
+  --color-amber-100: #92400e;
+  --color-amber-200: #92400e;
+  --color-amber-300: #92400e;
+  --color-blue-300: #1e40af;
+  --color-emerald-300: #065f46;
+  --color-emerald-400: #065f46;
+  --color-green-400: #166534;
+  --color-lime-300: #3f6212;
+  --color-lime-400: #3f6212;
+  --color-orange-400: #9a3412;
+  --color-red-300: #991b1b;
+  --color-red-400: #991b1b;
+  --color-sky-300: #075985;
+  --color-sky-400: #075985;
+  --color-teal-400: #115e59;
+  --color-violet-400: #5b21b6;
+  --color-yellow-400: #854d0e;
+  --color-lime-700: #bef264;
+  --color-red-700: #fca5a5;
+  --color-red-900: #fecaca;
+  --color-sky-700: #7dd3fc;
+}
+
+/* A pressed tool or chosen chip in those panels is marked by a pale tint and
+   a half-strength border, which on the dark island read at 3 to 4:1 and on a
+   light panel at 1.3 to 2.7:1. On a light theme its border takes its text
+   colour, the dark shade above, so the state reads at 3:1 and more. */
+[data-scheme='light'] .gm-panels button:is(
+    [aria-pressed='true'],
+    [class~='bg-amber-400/15'],
+    [class~='bg-amber-400/25'],
+    [class~='bg-amber-400/30'],
+    [class~='bg-blue-400/20'],
+    [class~='bg-emerald-600/30'],
+    [class~='bg-green-500/20'],
+    [class~='bg-lime-600/30'],
+    [class~='bg-orange-500/20'],
+    [class~='bg-orange-600/30'],
+    [class~='bg-red-500/20'],
+    [class~='bg-red-600/30'],
+    [class~='bg-sky-600/30'],
+    [class~='bg-stone-600/60'],
+    [class~='bg-teal-600/30'],
+    [class~='bg-violet-500/20'],
+    [class~='bg-yellow-600/30']
+  ) {
+  border-color: currentColor;
 }
 
 /* Panel resize separator styles (react-resizable-panels v4 renders

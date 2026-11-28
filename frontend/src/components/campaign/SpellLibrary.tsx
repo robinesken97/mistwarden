@@ -35,7 +35,7 @@ interface SpellLibraryProps {
 const LEVELS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 const SHAPE_LABELS: Record<AreaShape, string> = { sphere: 'Circle', cylinder: 'Cylinder', cone: 'Cone', line: 'Line', cube: 'Cube' };
 const ROW = 'touch-target min-h-11 w-full flex items-center gap-2 px-4 py-2 text-left hover:bg-moss-green/5 transition-colors';
-const SMALL_ACTION = 'touch-target inline-flex items-center gap-1 text-xs text-brand-ink hover:text-brand-ink/80 transition-colors';
+const SMALL_ACTION = 'touch-target inline-flex items-center gap-1 text-xs text-brand-ink hover:underline transition-colors';
 
 /** The form's state: text fields as typed, numbers as text until saved. */
 interface Draft {
@@ -183,7 +183,7 @@ function SpellLibraryContent() {
       <div className="flex items-center gap-3 px-5 py-4 border-b border-moss-green/20 bg-parchment/60 sticky top-0 z-10">
         <Sparkles className="w-5 h-5 text-brand-ink shrink-0" aria-hidden="true" />
         <SlideOverTitle className="flex-1 text-base font-bold text-brand-ink">Spell Library</SlideOverTitle>
-        <span className="text-xs text-stone-gray/60">{shown.length} spell{shown.length === 1 ? '' : 's'}</span>
+        <span className="text-xs text-stone-gray">{shown.length} spell{shown.length === 1 ? '' : 's'}</span>
         <SlideOverClose className="btn-secondary p-1.5 shrink-0" iconClassName="w-4 h-4" title="Close" />
       </div>
 
@@ -196,7 +196,7 @@ function SpellLibraryContent() {
         <>
           <div className="px-4 py-3 border-b border-moss-green/10 space-y-2">
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-gray/50" aria-hidden="true" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-gray" aria-hidden="true" />
               <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search spells..." aria-label="Search spells" className="input-cozy w-full pl-8 text-sm" />
             </div>
             <div className="flex gap-2">

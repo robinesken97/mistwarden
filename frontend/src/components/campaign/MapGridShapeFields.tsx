@@ -94,7 +94,7 @@ export default function MapGridShapeFields({
           ))}
         </div>
         {gridType !== 'square' && (
-          <p className="text-xs text-stone-gray/50 mt-1">
+          <p className="text-xs text-stone-gray mt-1">
             Grid Size is the distance between neighbouring hex centres. Fog stays in squares, and templates are placed freely.
           </p>
         )}
@@ -103,16 +103,16 @@ export default function MapGridShapeFields({
       <div>
         <span className="block text-xs font-medium text-stone-gray mb-2">Grid Offset (px)</span>
         <div className="flex gap-2">
-          <label htmlFor={xId} className="flex items-center gap-1.5 text-xs text-stone-gray/70">
+          <label htmlFor={xId} className="flex items-center gap-1.5 text-xs text-stone-gray">
             X
             <OffsetBox id={xId} value={offsetX} onChange={onOffsetX} />
           </label>
-          <label htmlFor={yId} className="flex items-center gap-1.5 text-xs text-stone-gray/70">
+          <label htmlFor={yId} className="flex items-center gap-1.5 text-xs text-stone-gray">
             Y
             <OffsetBox id={yId} value={offsetY} onChange={onOffsetY} />
           </label>
         </div>
-        <p className="text-xs text-stone-gray/50 mt-1">Where the grid starts, from the picture&apos;s top-left corner.</p>
+        <p className="text-xs text-stone-gray mt-1">Where the grid starts, from the picture&apos;s top-left corner.</p>
       </div>
     </>
   );

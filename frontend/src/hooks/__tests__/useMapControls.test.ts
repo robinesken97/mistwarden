@@ -217,3 +217,58 @@ describe('panning by an amount', () => {
     expect(result.current.panOffset).toEqual({ x: 15, y: 5 });
   });
 });
+
+describe('fitting the map', () => {
+  // 20 × 15 squares at 50 px: a 1000 × 750 px map, wider than tall.
+  const fitted = (width: number, height: number, fill?: boolean, config = CONFIG, focus?: { x: number; y: number }) => {
+    const { result } = renderHook(() => useMapControls({ ...config, minZoom: 0.1, maxZoom: 3 }));
+    act(() => result.current.fitToScreen(width, height, fill, focus));
+    return { zoom: result.current.zoom, pan: result.current.panOffset };
+  };
+
+  it('shows the whole map, centred, by default', () => {
+    expect(fitted(1200, 800).zoom).toBeCloseTo(0.96);
+    // On a phone the whole of a wide map is a strip across its middle.
+    expect(fitted(390, 700).zoom).toBeCloseTo(0.351);
+  });
+
+  it('fills a phone held upright to its height, the middle of the map on screen', () => {
+    const { zoom, pan } = fitted(390, 700, true);
+    expect(zoom).toBeCloseTo(0.84); // 630 of 750 px
+    expect(pan.x).toBeCloseTo((390 - 1000 * 0.84) / 2);
+    expect(pan.y).toBeCloseTo((700 - 750 * 0.84) / 2);
+  });
+
+  it('fills a phone on its side to its width', () => {
+    expect(fitted(844, 300, true).zoom).toBeCloseTo((844 * 0.9) / 1000);
+  });
+
+  it('zooms a long thin map no more than three times its whole-map fit', () => {
+    const corridor = { gridSize: 50, mapWidth: 60, mapHeight: 4 };
+    const whole = fitted(390, 700, false, corridor).zoom;
+    expect(fitted(390, 700, true, corridor).zoom).toBeCloseTo(whole * 3);
+  });
+
+  // A player's own token: the filling fit centres on it where the map
+  // overfills the canvas, its edge never coming inside the canvas's.
+  describe('round a focus', () => {
+    // At 0.84 the map is 840 by 630 px on a 390 by 700 canvas.
+    const zoom = 0.84;
+
+    it('centres on a token in the middle of the overfilled side', () => {
+      const { pan } = fitted(390, 700, true, CONFIG, { x: 400, y: 100 });
+      expect(pan.x).toBeCloseTo(195 - 400 * zoom);
+      // The height is fitted, not overfilled: it stays centred.
+      expect(pan.y).toBeCloseTo((700 - 750 * zoom) / 2);
+    });
+
+    it('stops at the map edge for a token near it', () => {
+      expect(fitted(390, 700, true, CONFIG, { x: 75, y: 375 }).pan.x).toBeCloseTo(0);
+      expect(fitted(390, 700, true, CONFIG, { x: 990, y: 375 }).pan.x).toBeCloseTo(390 - 1000 * zoom);
+    });
+
+    it('is left alone by the whole-map fit', () => {
+      expect(fitted(390, 700, false, CONFIG, { x: 75, y: 375 }).pan).toEqual(fitted(390, 700, false).pan);
+    });
+  });
+});

@@ -216,7 +216,7 @@ export default function InvitePlayerModal({
                   <img src={user.avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover" />
                 ) : (
                   <span className="w-8 h-8 rounded-full bg-moss-green/20 flex items-center justify-center" aria-hidden="true">
-                    <UserIcon className="w-4 h-4 text-brand-ink/60" />
+                    <UserIcon className="w-4 h-4 text-brand-ink" />
                   </span>
                 )}
                 <span className="text-sm text-ink break-all">{user.displayName}</span>

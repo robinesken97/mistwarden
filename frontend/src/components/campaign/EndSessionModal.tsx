@@ -118,7 +118,7 @@ export default function EndSessionModal({
               className="input-cozy w-full resize-none text-sm"
             />
             <p className="text-xs text-warm-gray mt-1 text-right">{notes.length}/2000</p>
-            <p className="text-xs text-warm-gray/70 mt-1">
+            <p className="text-xs text-warm-gray mt-1">
               Saved with this session and shown to everyone in the campaign under
               <span className="font-medium"> Session → Past Sessions</span>, so your players
               can read back what happened.

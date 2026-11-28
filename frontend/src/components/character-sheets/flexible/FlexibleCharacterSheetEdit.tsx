@@ -232,7 +232,7 @@ export const FlexibleCharacterSheetEdit: React.FC<FlexibleCharacterSheetEditProp
                 />
               ) : (
                 <div className="w-16 h-16 rounded-full border-2 border-moss-green/30 bg-moss-green/10 flex items-center justify-center">
-                  <User className="w-8 h-8 text-brand-ink/40" />
+                  <User className="w-8 h-8 text-brand-ink" />
                 </div>
               )}
               <div className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">

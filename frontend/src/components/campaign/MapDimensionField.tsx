@@ -28,7 +28,7 @@ export default function MapDimensionField({
   const read = (raw: string) => (decimals ? Math.round(parseFloat(raw) * 100) / 100 : parseInt(raw));
   return (
     <div>
-      <label htmlFor={boxId} className="block text-xs text-stone-gray/70 mb-1">{label}</label>
+      <label htmlFor={boxId} className="block text-xs text-stone-gray mb-1">{label}</label>
       <input
         id={boxId}
         type="number"
