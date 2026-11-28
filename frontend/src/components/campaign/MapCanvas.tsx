@@ -4461,9 +4461,8 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
       <ZoomOut className="w-4 h-4" />
     </Button>
   );
-  // 48 pixels on a touch screen, room for "300%", so a GM's toolbar of
-  // 44-pixel buttons keeps one row on an iPad in landscape with both side
-  // panels at their minimums.
+  // The compact layout's readout: 48 pixels on a touch screen, room for
+  // "300%". The desk toolbar draws its own, one button cell wide.
   const zoomReadout = (
     <span className="text-sm text-ink-secondary tabular-nums min-w-16 pointer-coarse:min-w-12 text-center">
       {Math.round(mapControls.zoom * 100)}%
@@ -4879,8 +4878,12 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
         <div ref={toolbarRef} className="glass-panel p-2 flex flex-wrap items-center gap-x-4 gap-y-2 bg-parchment/90 backdrop-blur-xs pointer-events-auto">
           <div className="flex items-center gap-2">
             {zoomOutButton}
-            {/* Two button cells wide (34 or 44 px each and the 8 px gap), so the buttons stand in columns. */}
-            <div className="shrink-0 w-[76px] pointer-coarse:w-[96px] flex justify-center">{zoomReadout}</div>
+            {/* One button cell wide, as an iconOnly Button is (34 px, 2rem and its border, for a
+                mouse; 44 px on a touch screen), so a wrapped row's buttons stand in the view row's
+                columns. "300%" fits in 12 px type in the narrow cell. */}
+            <span className="shrink-0 w-[calc(2rem+2px)] pointer-coarse:w-11 text-xs pointer-coarse:text-sm text-ink-secondary tabular-nums text-center">
+              {Math.round(mapControls.zoom * 100)}%
+            </span>
             {zoomInButton}
 
             {/* Reset View — fit and center the map in the canvas */}

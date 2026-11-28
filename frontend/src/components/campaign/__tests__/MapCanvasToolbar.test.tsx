@@ -333,9 +333,9 @@ describe('the toolbar on a narrow map', () => {
     for (const name of ['Zoom In', 'Fit to Screen', 'Toggle Grid']) {
       expect(screen.getByRole('button', { name }).parentElement).toBe(view);
     }
-    // The readout is two button cells wide, in the view's row.
-    expect(screen.getByText(/^\d+%$/).parentElement!.parentElement).toBe(view);
-    expect(classesOf(screen.getByText(/^\d+%$/).parentElement!)).toEqual(expect.arrayContaining(['w-[76px]', 'pointer-coarse:w-[96px]']));
+    // The readout is one button cell wide (an iconOnly Button's 34 or 44 px), in the view's row.
+    expect(screen.getByText(/^\d+%$/).parentElement).toBe(view);
+    expect(classesOf(screen.getByText(/^\d+%$/))).toEqual(expect.arrayContaining(['w-[calc(2rem+2px)]', 'pointer-coarse:w-11']));
     for (const name of ['Ruler — measure distance', 'AoE Shape — area of effect overlay']) {
       expect(screen.getByRole('button', { name }).parentElement).toBe(tools);
     }
@@ -346,11 +346,14 @@ describe('the toolbar on a narrow map', () => {
 
   // At 44 pixels a button, a GM's toolbar was 3 pixels too wide for one row
   // on an iPad Pro 11 in landscape with both side panels at their minimums.
-  // Its zoom readout, 64 pixels for at most "300%", is 48 there.
-  it('narrows the zoom readout on a touch screen', () => {
+  // Its zoom readout, once 64 pixels and then two button cells, is one cell:
+  // "300%" in 12 px type in a mouse's 34 px, in 14 px in a finger's 44.
+  it('fits the zoom readout in one button cell, its type no smaller than 12 px', () => {
     render(<MapCanvas />);
 
-    expect(classesOf(screen.getByText(/^\d+%$/))).toEqual(expect.arrayContaining(['min-w-16', 'pointer-coarse:min-w-12']));
+    const readout = classesOf(screen.getByText(/^\d+%$/));
+    expect(readout).toEqual(expect.arrayContaining(['text-xs', 'pointer-coarse:text-sm']));
+    expect(readout.filter((c) => /^(pointer-coarse:)?min-w-/.test(c))).toEqual([]);
   });
 
   // The band spans the map's width under the toolbar. The strip of it beside
