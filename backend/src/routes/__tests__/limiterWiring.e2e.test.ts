@@ -55,6 +55,7 @@ import {
 import { invitationEmailLimiter } from '../../middleware/invitationEmailLimiter';
 import { aiLimiter } from '../campaignAi';
 import { leftNotesDownloadLimiter } from '../../middleware/leftNotesDownloadLimiter';
+import { gmActionLimiter, GM_ACTIONS_PER_MINUTE } from '../../middleware/gmActionLimiter';
 
 jest.setTimeout(60000);
 
@@ -75,6 +76,7 @@ const LIMITERS = new Map<RequestHandler, string>([
   [invitationEmailLimiter, 'invitationEmailLimiter'],
   [leftNotesDownloadLimiter, 'leftNotesDownloadLimiter'],
   [aiLimiter, 'aiLimiter'],
+  [gmActionLimiter, 'gmActionLimiter'],
 ]);
 
 /** What a row's requests are sent with. */
@@ -105,6 +107,8 @@ interface Row {
 }
 
 const WRONG = 'wrong-password';
+/** A map id no map has. */
+const NO_MAP = '00000000-0000-4000-8000-000000000000';
 
 const ROWS: Row[] = [
   { route: 'POST /api/auth/register', limiter: 'accountCreationLimiter', limit: 10, send: (c) => c.client.post('/api/auth/register').send({}) },
@@ -134,6 +138,16 @@ const ROWS: Row[] = [
   { route: 'POST /api/campaigns/:campaignId/invite', limiter: 'invitationEmailLimiter', limit: 20, testedIn: 'routes/__tests__/campaignInvite.e2e.test.ts' },
   { route: 'GET /api/campaigns/left/:campaignId/notes', limiter: 'leftNotesDownloadLimiter', limit: 60, send: (c) => c.agent.get(`/api/campaigns/left/${c.campaignId}/notes`) },
   { route: 'POST /api/campaigns/:campaignId/ai/write', limiter: 'aiLimiter', limit: 10, send: (c) => c.agent.post(`/api/campaigns/${c.campaignId}/ai/write`).send({}) },
+  // Each refused before it is acted on: a body that does not validate, or a map that is not there.
+  { route: 'PUT /api/campaigns/:campaignId/vibe/current', limiter: 'gmActionLimiter', limit: GM_ACTIONS_PER_MINUTE, send: (c) => c.agent.put(`/api/campaigns/${c.campaignId}/vibe/current`).send({}) },
+  { route: 'PUT /api/campaigns/:campaignId/atmosphere/effect', limiter: 'gmActionLimiter', limit: GM_ACTIONS_PER_MINUTE, send: (c) => c.agent.put(`/api/campaigns/${c.campaignId}/atmosphere/effect`).send({}) },
+  { route: 'PUT /api/campaigns/:campaignId/atmosphere/audio', limiter: 'gmActionLimiter', limit: GM_ACTIONS_PER_MINUTE, send: (c) => c.agent.put(`/api/campaigns/${c.campaignId}/atmosphere/audio`).send({}) },
+  { route: 'POST /api/campaigns/:campaignId/messages', limiter: 'gmActionLimiter', limit: GM_ACTIONS_PER_MINUTE, send: (c) => c.agent.post(`/api/campaigns/${c.campaignId}/messages`).send({}) },
+  { route: 'POST /api/campaigns/:campaignId/dice-rolls', limiter: 'gmActionLimiter', limit: GM_ACTIONS_PER_MINUTE, send: (c) => c.agent.post(`/api/campaigns/${c.campaignId}/dice-rolls`).send({}) },
+  { route: 'POST /api/campaigns/:campaignId/maps/:id/areas', limiter: 'gmActionLimiter', limit: GM_ACTIONS_PER_MINUTE, send: (c) => c.agent.post(`/api/campaigns/${c.campaignId}/maps/${NO_MAP}/areas`).send({}) },
+  { route: 'DELETE /api/campaigns/:campaignId/maps/:id/areas/:areaId', limiter: 'gmActionLimiter', limit: GM_ACTIONS_PER_MINUTE, send: (c) => c.agent.delete(`/api/campaigns/${c.campaignId}/maps/${NO_MAP}/areas/${NO_MAP}`) },
+  { route: 'DELETE /api/campaigns/:campaignId/maps/:id/areas', limiter: 'gmActionLimiter', limit: GM_ACTIONS_PER_MINUTE, send: (c) => c.agent.delete(`/api/campaigns/${c.campaignId}/maps/${NO_MAP}/areas`) },
+  { route: 'POST /api/campaigns/:campaignId/maps/:id/exploration/reset', limiter: 'gmActionLimiter', limit: GM_ACTIONS_PER_MINUTE, send: (c) => c.agent.post(`/api/campaigns/${c.campaignId}/maps/${NO_MAP}/exploration/reset`) },
 ];
 
 const rowKey = (route: string, limiter: string) => `${route} ${limiter}`;

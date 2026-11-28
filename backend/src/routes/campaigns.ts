@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
+import { z } from 'zod';
 import { AuthenticatedRequest, NOT_A_MEMBER_MESSAGE } from '../middleware/rbac';
 import { authenticated, campaignMember, campaignGM, adminOnly } from '../middleware/compose';
 import { prisma } from '../config/database';
@@ -14,7 +15,13 @@ import { clearState as clearCombatState } from '../websocket/initiativeState';
 import { isSmtpConfigured, sendCampaignInvitationEmail } from '../services/email';
 import { DEFAULT_VIBE_SETTINGS } from '../utils/vibe-presets';
 import { issueMessages } from '../validators/issueMessages';
-import { saveVibeSettings, vibeAudioRefusal } from '../services/vibeSave';
+import { saveVibeSettings, vibeAudioRefusal, switchVibe } from '../services/vibeSave';
+import { ATMOSPHERE_EFFECTS, applyAtmosphereEffect, setCampaignAmbientAudio } from '../services/atmosphereAudio';
+import { sendChatMessage } from '../services/chat';
+import { rollForMember } from '../services/dice';
+import { ChatMessageSchema, CHAT_CONTENT_REFUSAL } from '../validators/chat';
+import { DiceRollSchema } from '../validators/dice';
+import { gmActionLimiter } from '../middleware/gmActionLimiter';
 import { prepareCampaignExport, ExportTooLargeError, type PreparedExport } from '../services/campaignExporter';
 import { CAMPAIGN_ARCHIVE_MAX_BYTES, megabytes } from '../utils/campaignArchiveSize';
 import { previewCampaignImport, importCampaign, importTempDirectory, IMPORT_FAILED_MESSAGE } from '../services/campaignImporter';
@@ -589,6 +596,139 @@ router.put('/:campaignId/vibe', campaignGM, async (req: AuthenticatedRequest, re
       error: 'Internal Server Error',
       message: 'Failed to update vibe settings',
     });
+  }
+});
+
+/**
+ * PUT /api/campaigns/:campaignId/vibe/current
+ * Switch the vibe to a period (GM only), as the socket's vibe.update does:
+ * every member is sent `vibe.updated`, the period's track becomes the
+ * ambient audio, and the chat gets a system message.
+ * Body: { period }. 200 { period, audioNotice? }; audioNotice when the
+ * period's track could not play and the table was silenced instead.
+ */
+router.put('/:campaignId/vibe/current', campaignGM, gmActionLimiter, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const period: unknown = req.body?.period;
+    if (!period || typeof period !== 'string') {
+      return res.status(400).json({ error: 'Validation Error', message: 'period (string) is required' });
+    }
+    const outcome = await switchVibe(getSocketInstance(), req.params.campaignId, req.session.userId!, period);
+    if (!outcome.ok) return res.status(outcome.status).json({ error: 'Refused', message: outcome.error });
+    return res.status(200).json({ period: outcome.period, ...(outcome.audioNotice ? { audioNotice: outcome.audioNotice } : {}) });
+  } catch (error) {
+    logger.error('Error switching the vibe', { err: error });
+    return res.status(500).json({ error: 'Internal Server Error', message: 'Failed to update vibe' });
+  }
+});
+
+const AtmosphereEffectSchema = z.object({
+  effect: z.enum(ATMOSPHERE_EFFECTS, { error: `effect must be one of ${ATMOSPHERE_EFFECTS.join(', ')}, or null` }).nullable(),
+}, { error: 'effect is required' });
+
+/**
+ * PUT /api/campaigns/:campaignId/atmosphere/effect
+ * Set the weather over the map, or clear it with null (GM only), as the
+ * socket's atmosphere.effect.set does. An unknown effect is refused here,
+ * where the socket clears the weather instead.
+ */
+router.put('/:campaignId/atmosphere/effect', campaignGM, gmActionLimiter, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const parsed = AtmosphereEffectSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Validation Error', message: parsed.error.issues[0]?.message ?? 'Invalid effect' });
+    }
+    await applyAtmosphereEffect(getSocketInstance(), req.params.campaignId, req.session.userId!, parsed.data.effect);
+    return res.status(200).json({ effect: parsed.data.effect });
+  } catch (error) {
+    logger.error('Error setting the atmosphere effect', { err: error });
+    return res.status(500).json({ error: 'Internal Server Error', message: 'Failed to set atmosphere effect' });
+  }
+});
+
+const AtmosphereAudioSchema = z.object({
+  assetId: z.uuid({ error: 'assetId must be an audio asset id, or null' }).nullable(),
+  volume: z.number({ error: 'volume must be a number from 0 to 1' }).optional(),
+  loop: z.boolean({ error: 'loop must be true or false' }).optional(),
+}, { error: 'assetId is required' });
+
+/**
+ * PUT /api/campaigns/:campaignId/atmosphere/audio
+ * Play an audio asset as the table's ambient track, or stop it with null
+ * (GM only), as the socket's atmosphere.audio.set does: a track the GM may
+ * not read is answered as one that does not exist.
+ * Body: { assetId, volume?, loop? }; volume is held to 0 to 1, loop defaults to true.
+ */
+router.put('/:campaignId/atmosphere/audio', campaignGM, gmActionLimiter, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const parsed = AtmosphereAudioSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Validation Error', message: parsed.error.issues[0]?.message ?? 'Invalid audio' });
+    }
+    const { assetId, volume, loop } = parsed.data;
+    const result = await setCampaignAmbientAudio(getSocketInstance(), req.params.campaignId, req.session.userId!, assetId, { volume, loop });
+    if (!result.ok) return res.status(404).json({ error: 'Not Found', message: result.message ?? 'Audio asset not found' });
+    return res.status(200).json({ assetId });
+  } catch (error) {
+    logger.error('Error setting the atmosphere audio', { err: error });
+    return res.status(500).json({ error: 'Internal Server Error', message: 'Failed to set atmosphere audio' });
+  }
+});
+
+/** What the GM may send to the chat over REST: the socket's message, without its type and clientId. */
+const RestChatMessageSchema = ChatMessageSchema.pick({ content: true, recipientId: true });
+
+/**
+ * POST /api/campaigns/:campaignId/messages
+ * Send a chat message as the GM, or with recipientId a whisper to that
+ * member, as the socket's chat.message does: a whisper reaches its sender's
+ * and recipient's sockets only. The campaign's chat cooldown holds for the
+ * GM here as on the socket, and the two share it.
+ * Body: { content, recipientId? }. 201 { message } as `chat.message` sends it.
+ */
+router.post('/:campaignId/messages', campaignGM, gmActionLimiter, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const parsed = RestChatMessageSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Validation Error', message: parsed.error.issues[0]?.message ?? CHAT_CONTENT_REFUSAL });
+    }
+    const outcome = await sendChatMessage(
+      getSocketInstance(),
+      { campaignId: req.params.campaignId, userId: req.session.userId!, role: req.campaignMembership!.role },
+      parsed.data,
+    );
+    if (!outcome.ok) return res.status(outcome.status).json({ error: 'Refused', message: outcome.error });
+    return res.status(201).json({ message: outcome.message });
+  } catch (error) {
+    logger.error('Error sending a chat message', { err: error });
+    return res.status(500).json({ error: 'Internal Server Error', message: 'Failed to send chat message' });
+  }
+});
+
+/**
+ * POST /api/campaigns/:campaignId/dice-rolls
+ * Roll dice as the GM, as the socket's dice.roll does. A secret roll goes
+ * to the GM's own sockets in the campaign (and as the audit copy to any
+ * other GM), never to a player.
+ * Body: { expression, secret?, purpose?, characterName? }. 201 { roll } as `dice.rolled` sends it.
+ */
+router.post('/:campaignId/dice-rolls', campaignGM, gmActionLimiter, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    // Checked before the roll needs the socket server.
+    const parsed = DiceRollSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Validation Error', message: parsed.error.issues[0]?.message ?? 'Dice expression required' });
+    }
+    const outcome = await rollForMember(
+      getSocketInstance(),
+      { campaignId: req.params.campaignId, userId: req.session.userId! },
+      parsed.data,
+    );
+    if (!outcome.ok) return res.status(outcome.status).json({ error: 'Refused', message: outcome.error });
+    return res.status(201).json({ roll: outcome.roll });
+  } catch (error) {
+    logger.error('Error rolling dice', { err: error });
+    return res.status(500).json({ error: 'Internal Server Error', message: 'Failed to roll dice' });
   }
 });
 
