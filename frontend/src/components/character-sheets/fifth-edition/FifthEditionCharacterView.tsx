@@ -187,7 +187,7 @@ export const FifthEditionCharacterView: React.FC<FifthEditionCharacterViewProps>
             <div className={`mt-3.5 grid grid-cols-6 gap-2.5 ${portrait ? '' : `@min-[37rem]:[&>*]:col-span-1 ${ROW_OF[tiles.length]}`}`}>
               {tiles.map((tile, index) => (
                 <div key={tile.label} className={`${tileSpan(index)} min-h-16 rounded-[10px] bg-black/20 px-1 py-1.5 text-center`}>
-                  <div className="text-[11px] uppercase tracking-[.06em] text-ink-secondary">{tile.label}</div>
+                  <div className="text-xs uppercase tracking-[.06em] text-ink-secondary">{tile.label}</div>
                   <div className="font-heading text-[22px] leading-[1.2] font-semibold text-ink">{tile.value}</div>
                   {tile.note && <div className="text-xs text-ink-secondary">{tile.note}</div>}
                 </div>

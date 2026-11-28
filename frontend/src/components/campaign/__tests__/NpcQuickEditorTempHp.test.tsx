@@ -84,3 +84,8 @@ it('heals current hit points only', async () => {
   await waitFor(() => expect(sent()).toHaveLength(1));
   expect(sent()[0]).toEqual({ current: 25, max: 30, temp: 8 });
 });
+
+it('names its temporary hit points field for a screen reader', () => {
+  open();
+  expect(screen.getByRole('spinbutton', { name: 'Temp HP' })).toHaveValue(8);
+});

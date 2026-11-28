@@ -11,6 +11,7 @@
 
 import { useState, useRef, useCallback, useEffect, useId } from 'react';
 import type { LightSource } from '@/types/walls';
+import { useCoarsePointer } from '@/hooks/useMediaQuery';
 
 export type LightToolMode = 'light-place' | 'light-select' | null;
 
@@ -113,6 +114,8 @@ export default function GmLightControls({
   // table wants to see the map, not three open panels over it.
   const [collapsed, setCollapsed] = useState(true);
   const bodyId = useId();
+  // A finger's size for every control where the pointer is coarse, as in the compact layout's map (index.css).
+  const coarsePointer = useCoarsePointer();
 
   const handleClearAll = () => {
     if (!confirmClear) { setConfirmClear(true); return; }
@@ -178,7 +181,7 @@ export default function GmLightControls({
   const displayColor = isEditing ? selectedLight.color : placementDefaults.color;
 
   return (
-    <div data-tour="lights" className="flex flex-col gap-0 bg-stone-800/90 rounded-lg border border-warm-amber/20 min-w-[200px] overflow-hidden">
+    <div data-tour="lights" className={`flex flex-col gap-0 bg-stone-800/90 rounded-lg border border-warm-amber/20 min-w-[200px] overflow-hidden${coarsePointer ? ' finger-controls' : ''}`}>
       {/* Header with collapse toggle */}
       <button
         type="button"
@@ -204,7 +207,7 @@ export default function GmLightControls({
         <div id={bodyId} className="flex flex-col gap-2 p-2 pt-1">
           {/* Warning when lighting is off */}
           {!lightingEnabled && (
-            <div className="text-[10px] text-amber-400/60 bg-amber-400/5 rounded-sm px-1.5 py-1 border border-amber-400/10">
+            <div className="text-xs text-amber-400/60 bg-amber-400/5 rounded-sm px-1.5 py-1 border border-amber-400/10">
               Dynamic lighting is off. Enable it in Edit Map for lights to affect player visibility.
             </div>
           )}
@@ -212,7 +215,7 @@ export default function GmLightControls({
           {/* Global Illumination: everything in line of sight counts as lit.
               Off, lights and darkvision decide, which is when lights matter. */}
           {onGlobalIlluminationChange && (
-            <label className="flex items-center gap-2 px-0.5 text-[11px] text-stone-300 cursor-pointer select-none">
+            <label className="flex items-center gap-2 px-0.5 text-xs text-stone-300 cursor-pointer select-none">
               <input
                 type="checkbox"
                 className="w-3.5 h-3.5 accent-amber-400"
@@ -225,7 +228,7 @@ export default function GmLightControls({
             </label>
           )}
           {lightingEnabled && !globalIllumination && lightCount === 0 && (
-            <div className="text-[10px] text-amber-400/60 bg-amber-400/5 rounded-sm px-1.5 py-1 border border-amber-400/10">
+            <div className="text-xs text-amber-400/60 bg-amber-400/5 rounded-sm px-1.5 py-1 border border-amber-400/10">
               No lights placed and Global Illumination is off: players see only their darkvision.
             </div>
           )}
@@ -235,7 +238,7 @@ export default function GmLightControls({
             <button
               type="button"
               onClick={() => toggleMode('light-place')}
-              className={`flex-1 text-[11px] py-1.5 rounded transition-colors ${
+              className={`flex-1 text-xs py-1.5 rounded transition-colors ${
                 lightMode === 'light-place'
                   ? 'bg-amber-400/30 text-amber-300 border border-amber-400/50'
                   : 'bg-stone-700/60 text-stone-300 border border-stone-600/50 hover:bg-stone-700'
@@ -247,7 +250,7 @@ export default function GmLightControls({
             <button
               type="button"
               onClick={() => toggleMode('light-select')}
-              className={`flex-1 text-[11px] py-1.5 rounded transition-colors ${
+              className={`flex-1 text-xs py-1.5 rounded transition-colors ${
                 lightMode === 'light-select'
                   ? 'bg-amber-400/30 text-amber-300 border border-amber-400/50'
                   : 'bg-stone-700/60 text-stone-300 border border-stone-600/50 hover:bg-stone-700'
@@ -261,7 +264,7 @@ export default function GmLightControls({
           {/* Light property editor — shows for BOTH place mode (defaults) and select mode (editing) */}
           {lightMode && (
             <div className="flex flex-col gap-2 bg-stone-700/40 rounded-sm p-2 border border-stone-600/40">
-              <div className="text-[10px] text-stone-400 uppercase tracking-wide">
+              <div className="text-xs text-stone-400 uppercase tracking-wide">
                 {isEditing ? 'Edit Light' : 'New Light Settings'}
               </div>
 
@@ -274,7 +277,7 @@ export default function GmLightControls({
                     onChange={(e) => updateSelected({ enabled: e.target.checked })}
                     className="rounded-sm accent-amber-400"
                   />
-                  <span className="text-[11px] text-stone-300">
+                  <span className="text-xs text-stone-300">
                     {selectedLight.enabled ? 'Enabled' : 'Disabled (extinguished)'}
                   </span>
                 </label>
@@ -282,7 +285,7 @@ export default function GmLightControls({
 
               {/* Preset buttons */}
               <div>
-                <span className="text-[10px] text-stone-400 block mb-1">Presets</span>
+                <span className="text-xs text-stone-400 block mb-1">Presets</span>
                 <div className="flex flex-wrap gap-1">
                   {LIGHT_PRESETS.map((p) => {
                     const isActive = displayBright === p.bright && displayDim === p.dim;
@@ -297,7 +300,7 @@ export default function GmLightControls({
                             updateDefaults({ brightRadius: p.bright, dimRadius: p.dim });
                           }
                         }}
-                        className={`text-[10px] px-1.5 py-0.5 rounded transition-colors ${
+                        className={`text-xs px-1.5 py-0.5 rounded transition-colors ${
                           isActive
                             ? 'bg-amber-400/25 text-amber-300 border border-amber-400/40'
                             : 'bg-stone-700/60 text-stone-400 border border-stone-600/40 hover:text-stone-300 hover:bg-stone-700'
@@ -314,8 +317,8 @@ export default function GmLightControls({
               {/* Bright radius slider */}
               <div>
                 <div className="flex justify-between mb-0.5">
-                  <span className="text-[10px] text-stone-400">Bright</span>
-                  <span className="text-[10px] text-stone-300">{displayBright.toFixed(1)} sq</span>
+                  <span className="text-xs text-stone-400">Bright</span>
+                  <span className="text-xs text-stone-300">{displayBright.toFixed(1)} sq</span>
                 </div>
                 <input
                   type="range"
@@ -341,8 +344,8 @@ export default function GmLightControls({
               {/* Dim radius slider */}
               <div>
                 <div className="flex justify-between mb-0.5">
-                  <span className="text-[10px] text-stone-400">Dim</span>
-                  <span className="text-[10px] text-stone-300">{displayDim.toFixed(1)} sq</span>
+                  <span className="text-xs text-stone-400">Dim</span>
+                  <span className="text-xs text-stone-300">{displayDim.toFixed(1)} sq</span>
                 </div>
                 <input
                   type="range"
@@ -367,7 +370,7 @@ export default function GmLightControls({
 
               {/* Color presets */}
               <div>
-                <span className="text-[10px] text-stone-400 block mb-1">Color</span>
+                <span className="text-xs text-stone-400 block mb-1">Color</span>
                 <div className="flex flex-wrap gap-1">
                   {LIGHT_COLOR_PRESETS.map((c) => (
                     <button
@@ -396,7 +399,7 @@ export default function GmLightControls({
                       if (isEditing) updateSelected({ color: e.target.value });
                       else updateDefaults({ color: e.target.value });
                     }}
-                    className="w-5 h-5 rounded-sm cursor-pointer border-0 bg-transparent"
+                    className="touch-target w-5 h-5 rounded-sm cursor-pointer border-0 bg-transparent"
                     title="Pick custom color"
                   />
                   <input
@@ -414,7 +417,7 @@ export default function GmLightControls({
                     }}
                     onBlur={() => setColourDraft(null)}
                     aria-label="Light colour"
-                    className="flex-1 text-[10px] bg-stone-800 border border-stone-600 rounded-sm px-1.5 py-0.5 text-stone-300 font-mono"
+                    className="flex-1 text-xs bg-stone-800 border border-stone-600 rounded-sm px-1.5 py-0.5 text-stone-300 font-mono"
                     maxLength={7}
                     placeholder="#ffcc66"
                   />
@@ -426,7 +429,7 @@ export default function GmLightControls({
                 <button
                   type="button"
                   onClick={onDeleteSelected}
-                  className="text-[11px] py-1 rounded-sm bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25 transition-colors"
+                  className="text-xs py-1 rounded-sm bg-red-500/15 text-red-400 border border-red-500/30 hover:bg-red-500/25 transition-colors"
                 >
                   Delete Light
                 </button>
@@ -440,7 +443,7 @@ export default function GmLightControls({
               type="button"
               onClick={handleClearAll}
               onBlur={() => setConfirmClear(false)}
-              className={`text-[11px] py-1 rounded transition-colors ${
+              className={`text-xs py-1 rounded transition-colors ${
                 confirmClear
                   ? 'bg-red-500/20 text-red-400 border border-red-500/40'
                   : 'bg-stone-700/60 text-stone-400 border border-stone-600/40 hover:text-stone-300'

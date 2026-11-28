@@ -67,12 +67,16 @@ export default function SessionSidebar() {
                 'text-xs font-medium transition-colors duration-150',
                 'focus:outline-hidden focus-visible:ring-2 focus-visible:ring-brand',
                 active
-                  ? 'text-brand-ink bg-surface-light/70 border-b-2 border-brand -mb-px'
+                  // Where its label shows on a touch screen, the open tab is as wide as
+                  // the label: the others' 44 px minimum let it be squeezed narrower.
+                  ? 'text-brand-ink bg-surface-light/70 border-b-2 border-brand -mb-px pointer-coarse:@min-[23rem]:min-w-max'
                   : 'text-ink-muted hover:text-ink hover:bg-surface/60'
               )}
             >
               <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
-              <span className={active ? undefined : 'sr-only @min-[26rem]:not-sr-only'}>{label}</span>
+              {/* The open tab's label too goes where it would not fit: a rail
+                  under 19rem, or 23rem where the other tabs are a finger's size. */}
+              <span className={active ? '@max-[19rem]:sr-only pointer-coarse:@max-[23rem]:sr-only' : 'sr-only @min-[26rem]:not-sr-only'}>{label}</span>
               {key === 'chat' && unreadChat > 0 && (
                 <span
                   className="min-w-[18px] h-[18px] px-1 rounded-full bg-brand text-brand-text text-[10px] font-bold flex items-center justify-center"

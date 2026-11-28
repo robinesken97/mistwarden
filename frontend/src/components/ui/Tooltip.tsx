@@ -47,6 +47,9 @@ export default function Tooltip({ content, delay = 400, side = 'top', children }
       onMouseLeave={hide}
       onFocus={show}
       onBlur={hide}
+      // A tap sends a hover with no leave after it, so the label went only
+      // when something else was pressed: a press has read it, and it goes.
+      onClick={hide}
       aria-describedby={visible ? id : undefined}
     >
       {children}

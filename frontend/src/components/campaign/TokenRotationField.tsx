@@ -43,7 +43,7 @@ export default function TokenRotationField({ value, onCommit }: TokenRotationFie
         aria-label="Facing in degrees clockwise"
         className="input-cozy input-cozy-number w-full text-sm"
       />
-      <p className="text-[10px] text-stone-gray/60 mt-1">
+      <p className="text-xs text-stone-gray/60 mt-1">
         Turns the token's picture clockwise: 0 is as uploaded, 90 a quarter turn right. Right-click the token on the map to turn it in steps of 45.
       </p>
     </div>

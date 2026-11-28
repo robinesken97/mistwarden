@@ -148,7 +148,7 @@ export default function CampaignInfo({ onLeft }: CampaignInfoProps) {
         <div className="pt-2 border-t border-moss-green/20">
           <button
             onClick={() => { setInviteKey((k) => k + 1); setShowInviteModal(true); }}
-            className="flex items-center gap-2 px-3 py-2 w-full rounded-lg bg-moss-green/10 text-brand-ink hover:bg-moss-green/15 transition-colors text-sm font-medium"
+            className="touch-target flex items-center gap-2 px-3 py-2 w-full rounded-lg bg-moss-green/10 text-brand-ink hover:bg-moss-green/15 transition-colors text-sm font-medium"
           >
             <UserPlus className="w-4 h-4" />
             Invite Player

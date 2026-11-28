@@ -110,7 +110,7 @@ export default function TokenLightField({ value, onChange, disabled }: TokenLigh
           </div>
         </div>
       )}
-      <p className="text-[10px] text-stone-gray/60 mt-1">
+      <p className="text-xs text-stone-gray/60 mt-1">
         Lit at the token and moves with it. Players see by it only while they can see the token.
       </p>
     </div>

@@ -119,7 +119,7 @@ function OfferedCondition({ name, active, onToggle, full }: {
       disabled={off}
       aria-describedby={off ? full : undefined}
       onClick={() => onToggle(name)}
-      className={`px-2 py-1 text-xs rounded-cozy border transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+      className={`touch-target px-2 py-1 text-xs rounded-cozy border transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
         active
           ? 'border-warning/50 bg-warning/15 text-warning-ink'
           : 'border-moss-green/20 hover:border-moss-green/40 text-stone-gray'
@@ -659,11 +659,11 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
           // min-w-0 is load-bearing: a flex child defaults to min-width:auto,
           // and an <input>'s intrinsic minimum is wide enough that a long
           // token name pushed the badge and close button off the panel edge.
-          className="flex-1 min-w-0 text-ellipsis text-base font-bold text-brand-ink bg-transparent border-b border-transparent hover:border-moss-green/30 focus:border-moss-green focus:outline-hidden px-0"
+          className="flex-1 min-w-0 pointer-coarse:min-h-11 text-ellipsis text-base font-bold text-brand-ink bg-transparent border-b border-transparent hover:border-moss-green/30 focus:border-moss-green focus:outline-hidden px-0"
         />
 
         {/* Badge */}
-        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
+        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full shrink-0 ${
           tokenType === TokenType.OBJECT
             ? 'bg-stone-gray/10 text-stone-gray'
             : 'bg-moss-green/10 text-brand-ink'
@@ -689,7 +689,7 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
                 <button
                   onClick={() => imageFileRef.current?.click()}
                   disabled={isUploadingImage}
-                  className="flex items-center gap-1 text-[10px] text-brand-ink hover:text-brand-ink/80 disabled:opacity-40 transition-colors"
+                  className="flex items-center gap-1 text-xs text-brand-ink hover:text-brand-ink/80 disabled:opacity-40 transition-colors"
                 >
                   {isUploadingImage ? (
                     <Loader2 className="w-3 h-3 animate-spin" />
@@ -701,7 +701,7 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
                 <span className="text-ink-muted">·</span>
                 <button
                   onClick={() => setShowImagePicker(false)}
-                  className="text-[10px] text-stone-gray hover:text-stone-gray/80 transition-colors"
+                  className="text-xs text-stone-gray hover:text-stone-gray/80 transition-colors"
                 >
                   Cancel
                 </button>
@@ -749,16 +749,16 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
               <div className="mt-2 space-y-1.5">
                 {showDuplicateNamePrompt ? (
                   <div className="rounded-cozy border border-moss-green/30 bg-parchment/40 p-2.5 space-y-2">
-                    <p className="text-[11px] text-stone-gray">
+                    <p className="text-xs text-stone-gray">
                       This is an SRD creature. A custom copy will be created in your campaign library.
                     </p>
                     {duplicateWarning && (
-                      <p className="text-[11px] text-warning-ink bg-warning/10 rounded-sm px-2 py-1">
+                      <p className="text-xs text-warning-ink bg-warning/10 rounded-sm px-2 py-1">
                         {duplicateWarning}
                       </p>
                     )}
                     <div>
-                      <label className="text-[10px] text-stone-gray block mb-0.5">
+                      <label className="text-xs text-stone-gray block mb-0.5">
                         Name for the custom creature:
                       </label>
                       <input
@@ -774,7 +774,7 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
                       <button
                         onClick={handleConfirmDuplicate}
                         disabled={isSavingToCreature || !duplicateName.trim()}
-                        className="flex-1 py-1.5 text-[10px] rounded-cozy bg-moss-green/10 border border-moss-green/30 hover:bg-moss-green/15 text-brand-ink transition-colors font-medium disabled:opacity-40"
+                        className="flex-1 py-1.5 text-xs rounded-cozy bg-moss-green/10 border border-moss-green/30 hover:bg-moss-green/15 text-brand-ink transition-colors font-medium disabled:opacity-40"
                       >
                         {isSavingToCreature ? (
                           <span className="flex items-center justify-center gap-1">
@@ -786,7 +786,7 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
                       </button>
                       <button
                         onClick={() => { setShowDuplicateNamePrompt(false); setDuplicateWarning(null); }}
-                        className="px-3 py-1.5 text-[10px] rounded-cozy border border-moss-green/20 hover:bg-moss-green/5 text-stone-gray transition-colors"
+                        className="px-3 py-1.5 text-xs rounded-cozy border border-moss-green/20 hover:bg-moss-green/5 text-stone-gray transition-colors"
                       >
                         Cancel
                       </button>
@@ -850,7 +850,7 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
                     <button
                       key={d}
                       onClick={() => adjustHp(d)}
-                      className="flex-1 py-1.5 text-xs rounded-cozy border border-danger/30 hover:bg-danger/10 text-danger-ink transition-colors font-medium"
+                      className="touch-target flex-1 py-1.5 text-xs rounded-cozy border border-danger/30 hover:bg-danger/10 text-danger-ink transition-colors font-medium"
                     >
                       {d}
                     </button>
@@ -859,7 +859,7 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
                     <button
                       key={d}
                       onClick={() => adjustHp(d)}
-                      className="flex-1 py-1.5 text-xs rounded-cozy border border-success/30 hover:bg-success/10 text-success-ink transition-colors font-medium"
+                      className="touch-target flex-1 py-1.5 text-xs rounded-cozy border border-success/30 hover:bg-success/10 text-success-ink transition-colors font-medium"
                     >
                       +{d}
                     </button>
@@ -874,6 +874,7 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
                     min={0}
                     value={hp.temp}
                     onChange={(e) => setTempHp(parseInt(e.target.value, 10) || 0)}
+                    aria-label="Temp HP"
                     className="input-cozy input-cozy-number w-20 text-sm text-center"
                   />
                 </div>
@@ -942,14 +943,14 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
                       flushStatBlock();
                       setEditingStatBlock(!editingStatBlock);
                     }}
-                    className="text-[10px] text-brand-ink hover:text-brand-ink/80 transition-colors"
+                    className="text-xs text-brand-ink hover:text-brand-ink/80 transition-colors"
                   >
                     {editingStatBlock ? 'View' : 'Edit'}
                   </button>
                   <span className="text-ink-muted">·</span>
                   <button
                     onClick={handleRemoveStatBlock}
-                    className="text-[10px] text-danger-ink hover:text-danger-ink transition-colors"
+                    className="text-xs text-danger-ink hover:text-danger-ink transition-colors"
                   >
                     Remove
                   </button>
@@ -1030,7 +1031,7 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
                   key={d}
                   onClick={() => setTokenDisposition(d)}
                   aria-pressed={disposition === d}
-                  className={`flex-1 py-1.5 text-xs rounded-cozy border transition-all ${
+                  className={`touch-target flex-1 py-1.5 text-xs rounded-cozy border transition-all ${
                     disposition === d
                       ? activeClass
                       : 'border-moss-green/20 hover:border-moss-green/40 text-stone-gray'
@@ -1109,7 +1110,7 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
 
           {/* Always there, empty until the token is full, so a screen reader
               reads the note out when it appears. */}
-          <p id={conditionsFullId} role="status" className={`text-[11px] text-stone-gray italic ${conditionsFull ? 'mb-2' : ''}`}>
+          <p id={conditionsFullId} role="status" className={`text-xs text-stone-gray italic ${conditionsFull ? 'mb-2' : ''}`}>
             {conditionsFull ? CONDITIONS_FULL_NOTE : null}
           </p>
 
@@ -1123,7 +1124,7 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
           )}
           {offeredEffects.length > 0 && (
             <div role="group" aria-labelledby={effectsHeadingId} className="mb-2">
-              <h4 id={effectsHeadingId} className="text-[11px] font-semibold text-stone-gray mb-1">Effects</h4>
+              <h4 id={effectsHeadingId} className="text-xs font-semibold text-stone-gray mb-1">Effects</h4>
               <div className="flex flex-wrap gap-1">
                 {offeredEffects.map((c) => (
                   <OfferedCondition key={c} name={c} active={carries(c)} onToggle={toggleListed} full={conditionsFull ? conditionsFullId : undefined} />
@@ -1154,7 +1155,7 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
               disabled={!canAddCondition}
               aria-label="Add condition"
               aria-describedby={conditionsFull ? conditionsFullId : undefined}
-              className="px-2 py-1 text-xs rounded-cozy border border-moss-green/30 text-brand-ink hover:bg-moss-green/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="touch-target px-2 py-1 text-xs rounded-cozy border border-moss-green/30 text-brand-ink hover:bg-moss-green/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Plus className="w-3.5 h-3.5" />
             </button>
@@ -1202,7 +1203,7 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
             />
             Hide name from players
           </label>
-          <p className="text-[10px] text-stone-gray/60 mt-1">
+          <p className="text-xs text-stone-gray/60 mt-1">
             Players see no name plate and the order calls it an unknown creature.
           </p>
         </section>
@@ -1235,12 +1236,12 @@ export default function NpcQuickEditor({ token, campaignId, mapId, onClose, onTo
               ))}
           </select>
           {controller.kind === 'player' && (
-            <p className="text-[10px] text-stone-gray/60 mt-1">
+            <p className="text-xs text-stone-gray/60 mt-1">
               This player can move the token on the map.
             </p>
           )}
           {controller.kind === 'not a player' && (
-            <p className="text-[10px] text-warning-ink mt-1">
+            <p className="text-xs text-warning-ink mt-1">
               {controller.name ?? 'They'} {controller.name ? 'is' : 'are'} no longer a player here, so they cannot move the token. Choose a player, or Nobody.
             </p>
           )}

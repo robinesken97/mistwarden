@@ -81,6 +81,23 @@ describe('TableTour', () => {
     expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument();
   });
 
+  it("stays above the compact layout's bar at the screen's foot", async () => {
+    render(
+      <>
+        <nav aria-label="Table"><button data-tour="bar-map">Map</button></nav>
+        {tour()}
+      </>,
+    );
+    const bar = screen.getByRole('navigation', { name: 'Table' });
+    bar.getBoundingClientRect = () => ({ top: window.innerHeight - 56, bottom: window.innerHeight, left: 0, right: 390, width: 390, height: 56, x: 0, y: window.innerHeight - 56, toJSON: () => ({}) });
+    act(() => startTour());
+    fireEvent.click(await screen.findByRole('button', { name: 'Next' }));
+    // No map on this page: the card in the bottom left corner of the room above the bar.
+    const card = await screen.findByRole('dialog', { name: 'The map' });
+    expect(card.style.top).toBe(`${window.innerHeight - 56 - 16}px`);
+    expect((card.parentElement as HTMLElement).style.bottom).toBe('56px');
+  });
+
   it('comes back to the step it was on after a reload', async () => {
     saveTour('c1', 'gm', 0);
     render(tour());

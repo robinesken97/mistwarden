@@ -59,11 +59,11 @@ interface TokenDetailsCardProps {
 const CORNER_BOX = 'absolute bottom-4 left-4 glass-panel px-4 py-3 bg-parchment/95 backdrop-blur-xs w-88 max-w-[calc(100%-2rem)] shadow-lg';
 const DOCKED_BOX = 'relative glass-panel px-4 py-3 bg-parchment/95 backdrop-blur-xs w-full sm:w-88 shadow-lg';
 
-/** One labelled row. The labels line up, so the panel reads as a list. */
+/** One labelled row: the label, then its value right after it. */
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex items-baseline gap-2">
-      <span className="w-19 shrink-0 text-[11px] uppercase tracking-wide text-warm-gray">
+      <span className="shrink-0 text-xs uppercase tracking-wide text-warm-gray">
         {label}
       </span>
       <span className="min-w-0 text-sm text-brand-ink">{children}</span>
@@ -108,11 +108,12 @@ export default function TokenDetailsCard({ token, square, hp, imageSrc, mayMove,
           )}
 
           <div className="min-w-0 flex-1">
-            <div className="flex items-baseline justify-between gap-2 mb-1.5">
-              <span className="text-sm font-semibold text-brand-ink truncate">
+            {/* The square under the name, so it does not stand apart in the row. */}
+            <div className="mb-1.5">
+              <span className="block text-sm font-semibold text-brand-ink truncate">
                 {tokenDisplayName(token)}
               </span>
-              <span className="text-xs text-stone-gray font-mono shrink-0">
+              <span className="block text-xs text-stone-gray font-mono">
                 ({square.x}, {square.y})
               </span>
             </div>
@@ -133,7 +134,7 @@ export default function TokenDetailsCard({ token, square, hp, imageSrc, mayMove,
                     {conditions.map((condition) => (
                       <span
                         key={condition}
-                        className="px-1.5 py-0.5 rounded-cozy bg-warm-amber/20 border border-warm-amber/40 text-[11px] font-medium text-brand-ink capitalize"
+                        className="px-1.5 py-0.5 rounded-cozy bg-warm-amber/20 border border-warm-amber/40 text-xs font-medium text-brand-ink capitalize"
                       >
                         {condition}
                       </span>
@@ -152,7 +153,7 @@ export default function TokenDetailsCard({ token, square, hp, imageSrc, mayMove,
             </div>
 
             {!mayMove && (
-              <div className="mt-1.5 text-[11px] text-warm-gray italic">
+              <div className="mt-1.5 text-xs text-warm-gray italic">
                 Not yours to move
               </div>
             )}

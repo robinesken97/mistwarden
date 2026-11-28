@@ -176,7 +176,7 @@ export default function GalleryPanel() {
               placeholder="Folder for new pictures"
               aria-label="Folder for new pictures"
               maxLength={80}
-              className={`${field} flex-1 min-w-0`}
+              className={`${field} flex-1 min-w-0 pointer-coarse:min-h-11`}
             />
             <datalist id="gallery-folders">
               {folders.filter(Boolean).map((f) => <option key={f} value={f} />)}
