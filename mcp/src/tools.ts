@@ -12,8 +12,11 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { Settings } from './config.ts';
 import { assertPlaceable, cellFromTop, fogCellsInRect, gridForPicture, isHexMap, topRowOf } from './coords.ts';
-import { assertEditable, assertNewName, assertUuid, GuardError, inMap, Manifest, resolveInRoot } from './guards.ts';
-import { type Api, ApiError } from './http.ts';
+import { readTextFile, searchFiles, walkFiles } from './files.ts';
+import {
+  assertBackedUp, assertEditable, assertNewName, assertNotLive, assertPlayable, assertTableAction, assertUuid, GuardError, inMap, Manifest, resolveInRoot,
+} from './guards.ts';
+import { type Api, ApiError, callScope, newCallScope } from './http.ts';
 import { pictureInfo } from './image.ts';
 
 // ---- Shapes the server answers with (only the fields used here) -----------
@@ -26,11 +29,20 @@ interface MapRow {
   tokens?: TokenRow[]; wallSegments?: WallRow[]; lights?: LightRow[];
 }
 interface Campaign { id: string; name: string; userRole: string; currentMapId: string | null; memberships: Member[]; maps: MapRow[] }
+interface CarriedLight { brightRadius: number; dimRadius: number; color: string; enabled: boolean }
 interface TokenRow {
   id: string; name: string; position: { x: number; y: number }; size: { width: number; height: number };
   visible: boolean; controlledBy: string | null; sightRadius?: number; type?: string; disposition?: string | null; layer?: string;
   mountedOn?: string | null;
+  hp?: { current: number; max: number; temp: number } | null; conditions?: string[]; initiative?: number | null; rotation?: number;
+  light?: CarriedLight | null; showHpBar?: boolean; displayMode?: string; creatureTemplateId?: string | null; characterId?: string | null;
 }
+interface Creature {
+  id: string; name: string; source: string; challengeRating: string | null; creatureType: string | null; imageUrl: string | null;
+  size: { width: number; height: number } | null; disposition: string | null; displayMode: string | null; statBlock: { hpMax?: number } | null;
+}
+interface SpellArea { shape: string; sizeFt: number; widthFt?: number | null }
+interface Spell { id: string; name: string; source: string; campaignId: string | null; level: number; school: string | null; area: SpellArea | null; element: string; concentration: boolean }
 interface WallRow { id: string; x1: number; y1: number; x2: number; y2: number; type: string }
 interface LightRow { id: string; x: number; y: number; brightRadius: number; dimRadius: number; color: string; enabled: boolean }
 interface FogState { fogCols: number; fogRows: number; revealed: boolean[] }
@@ -42,13 +54,19 @@ export interface Context {
 
 // ---- Helpers ----------------------------------------------------------------
 
-const text = (value: unknown) => ({ content: [{ type: 'text' as const, text: typeof value === 'string' ? value : JSON.stringify(value, null, 2) }] });
+const MAX_OUTPUT_CHARS = 100_000;
+const text = (value: unknown) => {
+  let out = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+  if (out.length > MAX_OUTPUT_CHARS) out = `${out.slice(0, MAX_OUTPUT_CHARS)}\n... (answer cut at ${MAX_OUTPUT_CHARS} characters: ask for less, with a filter or a limit)`;
+  return { content: [{ type: 'text' as const, text: out }] };
+};
 
 /** Runs a tool body; a refusal or a server error comes back as the tool's error text instead of a crash. */
 function handler<A>(fn: (args: A) => Promise<unknown>) {
   return async (args: A) => {
     try {
-      return text(await fn(args));
+      // Each call gets its own request budget and its own cache of reads.
+      return text(await callScope.run(newCallScope(), () => fn(args)));
     } catch (err) {
       const message = err instanceof GuardError || err instanceof ApiError || err instanceof RangeError ? err.message : String(err instanceof Error ? err.message : err);
       return { ...text(message), isError: true };
@@ -62,27 +80,32 @@ const mapIdArg = id('Map id (from list_maps).');
 const pixel = (what: string) => z.number().finite().describe(`${what}, in MAP PIXELS (origin top-left, y grows downward).`);
 
 const BACKUP_FIRST = 'Before a batch of changes to a campaign, call create_backup once: there is no undo.';
+const BACKUP_NEEDED = 'Refused unless create_backup succeeded for this campaign within the last hours (MISTWARDEN_MCP_BACKUP_MAX_AGE_HOURS, default 6).';
+
+/** A read made once per tool call: later uses in the same call get the same answer. */
+function once<T>(key: string, load: () => Promise<T>): Promise<T> {
+  const memo = callScope.getStore()?.memo;
+  if (!memo) return load();
+  let hit = memo.get(key) as Promise<T> | undefined;
+  if (!hit) {
+    hit = load();
+    memo.set(key, hit);
+    hit.catch(() => memo.delete(key));
+  }
+  return hit;
+}
 
 async function campaignAsGm(ctx: Context, campaignId: string): Promise<{ campaign: Campaign; manifest: Manifest }> {
   assertUuid(campaignId, 'campaignId');
-  const { campaign } = await ctx.api.json<{ campaign: Campaign }>('GET', `/api/campaigns/${campaignId}`);
+  const { campaign } = await once(`campaign:${campaignId}`, () => ctx.api.json<{ campaign: Campaign }>('GET', `/api/campaigns/${campaignId}`));
   if (campaign.userRole !== 'GM') throw new GuardError(`Refused: this account is not the GM of "${campaign.name}".`);
   return { campaign, manifest: await Manifest.load(ctx.settings.stateDir, campaignId) };
 }
 
-/** A change on the map the players are looking at reaches them at once; that needs the player-visible switch. */
-function assertNotLive(ctx: Context, campaign: Campaign, mapId: string): void {
-  if (!ctx.settings.playerVisible && campaign.currentMapId === mapId) {
-    throw new GuardError(
-      'Refused: this is the map the players currently see, so the change would reach them immediately. ' +
-        'Work on another map, or start the server with MISTWARDEN_MCP_PLAYER_VISIBLE=1.',
-    );
-  }
-}
-
+/** Read before any change in the call; a change made in the call is not in it. */
 async function getMap(ctx: Context, campaignId: string, mapId: string): Promise<MapRow> {
   assertUuid(mapId, 'mapId');
-  return (await ctx.api.json<{ map: MapRow }>('GET', `/api/campaigns/${campaignId}/maps/${mapId}`)).map;
+  return (await once(`map:${campaignId}/${mapId}`, () => ctx.api.json<{ map: MapRow }>('GET', `/api/campaigns/${campaignId}/maps/${mapId}`))).map;
 }
 
 async function readLocal(ctx: Context, requested: string): Promise<{ file: string; bytes: Buffer }> {
@@ -108,6 +131,15 @@ function tokenSummary(t: TokenRow, map: MapRow) {
     topRow: isHexMap(map) ? null : topRowOf(t.position.y, t.size.height, map.height),
     size: t.size.width, visible: t.visible, controlledBy: t.controlledBy, darkvision: t.sightRadius ?? 0, type: t.type, layer: t.layer,
     mountedOn: t.mountedOn ?? null,
+  };
+}
+
+/** A token with its game state, for list_tokens and the token update tools. */
+function tokenDetail(t: TokenRow, map: MapRow, manifest: Manifest) {
+  return {
+    ...tokenSummary(t, map), disposition: t.disposition ?? null, hp: t.hp ?? null, conditions: t.conditions ?? [], initiative: t.initiative ?? null,
+    rotation: t.rotation ?? 0, light: t.light ?? null, showHpBar: t.showHpBar, displayMode: t.displayMode,
+    creatureTemplateId: t.creatureTemplateId ?? null, characterId: t.characterId ?? null, createdByThisServer: manifest.has('token', inMap(map.id, t.id)),
   };
 }
 
@@ -201,8 +233,8 @@ export function registerTools(server: McpServer, ctx: Context): string[] {
 
   // ---- Backup ----
 
-  tool('create_backup', `Download an export of the campaign (maps with their pictures, tokens, notes) to a local folder. The gallery is not in it: a picture shown only in the gallery is lost with its file, and a map picture keeps its file but not its gallery name, folder or sharing. ${BACKUP_FIRST} The server allows only a few exports per hour.`, { campaignId: campaignIdArg }, async ({ campaignId }) => {
-    const { campaign } = await campaignAsGm(ctx, campaignId);
+  tool('create_backup', `Download an export of the campaign (maps with their pictures, tokens, notes) to a local folder. The gallery is not in it: a picture shown only in the gallery is lost with its file, and a map picture keeps its file but not its gallery name, folder or sharing. Nor are the instance's imported creatures and spells (undo an import with delete_imported_creatures / delete_imported_spells). ${BACKUP_FIRST} The delete tools refuse without a recent one. The server allows only a few exports per hour.`, { campaignId: campaignIdArg }, async ({ campaignId }) => {
+    const { campaign, manifest } = await campaignAsGm(ctx, campaignId);
     const started = Date.now();
     const res = await ctx.api.request('GET', `/api/campaigns/${campaignId}/export`);
     if (!res.ok || !res.body) throw new ApiError(res.status, `Export failed (${res.status}): ${await res.text()}`, null);
@@ -211,6 +243,7 @@ export function registerTools(server: McpServer, ctx: Context): string[] {
     const file = path.join(ctx.settings.backupDir, `campaign-${campaignId}-${stamp}.zip`);
     await pipeline(Readable.fromWeb(res.body as import('node:stream/web').ReadableStream), createWriteStream(file, { mode: 0o600 }));
     const { size } = await stat(file);
+    await manifest.recordBackup();
     return { campaign: campaign.name, file, bytes: size, seconds: (Date.now() - started) / 1000 };
   });
 
@@ -278,7 +311,7 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
     return { mapId: map.id, name: map.name, width: map.width, height: map.height, gridSize: map.gridSize, walls: body.wallCount, doors: body.portalCount, lights: body.lightCount };
   });
 
-  tool('update_map_settings', `Change a map's name or settings. Only maps this server created (unless MISTWARDEN_MCP_ALLOW_ANY_EDIT=1), and not the map the players currently see (unless MISTWARDEN_MCP_PLAYER_VISIBLE=1). Turning fog on starts with everything hidden.`, {
+  tool('update_map_settings', `Change a map's name, size, grid or settings. Only maps this server created (unless MISTWARDEN_MCP_ALLOW_ANY_EDIT=1), and not the map the players currently see (unless MISTWARDEN_MCP_PLAYER_VISIBLE=1). Turning fog on starts with everything hidden. Changing width, height or gridSize changes the map-pixel frame that walls, lights and fog use.`, {
     campaignId: campaignIdArg, mapId: mapIdArg,
     name: z.string().min(1).max(200).optional(),
     feetPerSquare: z.number().int().min(1).max(100).optional(),
@@ -288,20 +321,31 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
     globalIllumination: z.boolean().optional().describe('Everything lit, as by daylight.'),
     explorationEnabled: z.boolean().optional().describe('Remember what player tokens have seen.'),
     snapTokens: z.boolean().optional().describe('Tokens stand on whole squares (default). Off lets tokens stop between squares; turning it on moves every token to its nearest square. A hex map always snaps.'),
+    gridType: z.enum(['square', 'hexPointy', 'hexFlat']).optional(),
+    gridOffsetX: z.number().finite().optional().describe('Moves the grid (and fog squares) right, in map pixels.'),
+    gridOffsetY: z.number().finite().optional().describe('Moves the grid (and fog squares) down, in map pixels.'),
+    width: z.number().int().min(1).max(500).optional().describe('Map width in squares.'),
+    height: z.number().int().min(1).max(500).optional().describe('Map height in squares.'),
+    gridSize: z.number().int().min(10).max(500).optional().describe('Map pixels per square.'),
   }, async ({ campaignId, mapId, ...changes }) => {
     const { campaign, manifest } = await campaignAsGm(ctx, campaignId);
     assertEditable(manifest, 'map', mapId, ctx.settings.allowAnyEdit);
-    assertNotLive(ctx, campaign, mapId);
+    assertNotLive(ctx.settings, campaign.currentMapId, mapId);
     const { map } = await ctx.api.json<{ map: MapRow }>('PUT', `/api/campaigns/${campaignId}/maps/${mapId}`, { json: changes });
-    return { id: map.id, name: map.name, lightingEnabled: map.lightingEnabled, fogEnabled: map.fogEnabled, globalIllumination: map.globalIllumination, explorationEnabled: map.explorationEnabled, snapTokens: map.snapTokens ?? true };
+    return {
+      id: map.id, name: map.name, width: map.width, height: map.height, gridSize: map.gridSize, gridType: map.gridType ?? 'square',
+      gridOffsetX: map.gridOffsetX ?? 0, gridOffsetY: map.gridOffsetY ?? 0,
+      lightingEnabled: map.lightingEnabled, fogEnabled: map.fogEnabled, globalIllumination: map.globalIllumination, explorationEnabled: map.explorationEnabled, snapTokens: map.snapTokens ?? true,
+    };
   });
 
-  tool('delete_map', `Delete a map with its tokens, walls and lights. Only maps this server created (unless MISTWARDEN_MCP_ALLOW_ANY_EDIT=1); never the map players currently see without MISTWARDEN_MCP_PLAYER_VISIBLE=1. Cannot be undone. ${BACKUP_FIRST}`, {
+  tool('delete_map', `Delete a map with its tokens, walls and lights. Only maps this server created (unless MISTWARDEN_MCP_ALLOW_ANY_EDIT=1); never the map players currently see without MISTWARDEN_MCP_PLAYER_VISIBLE=1. Cannot be undone. ${BACKUP_NEEDED}`, {
     campaignId: campaignIdArg, mapId: mapIdArg,
   }, async ({ campaignId, mapId }) => {
     const { campaign, manifest } = await campaignAsGm(ctx, campaignId);
     assertEditable(manifest, 'map', mapId, ctx.settings.allowAnyEdit);
-    assertNotLive(ctx, campaign, mapId);
+    assertNotLive(ctx.settings, campaign.currentMapId, mapId);
+    assertBackedUp(manifest, ctx.settings.backupMaxAgeHours);
     await ctx.api.json('DELETE', `/api/campaigns/${campaignId}/maps/${mapId}`);
     await manifest.remove('map', [mapId]);
     return { deleted: mapId };
@@ -329,6 +373,13 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
     nameHidden: z.boolean().optional().describe('Keep the name from players: they see no name plate and an unknown creature.'),
   };
 
+  const uploadTokenPicture = async (manifest: Manifest, campaignId: string, name: string, imagePath: string): Promise<string> => {
+    const { file, bytes } = await readLocal(ctx, imagePath);
+    const asset = await uploadPicture(ctx, campaignId, 'TOKEN', name, file, bytes, pictureInfo(bytes).mime);
+    await manifest.add('asset', [asset.id]);
+    return asset.id;
+  };
+
   tool('add_token', `Add a token to a map. Hidden from players by default (visible: false). ${COORDS} Size is in squares (1 = medium, 2 = large, 3 = huge). Not on the map players currently see unless MISTWARDEN_MCP_PLAYER_VISIBLE=1.`, {
     campaignId: campaignIdArg, mapId: mapIdArg,
     name: z.string().min(1).max(200),
@@ -344,17 +395,12 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
     ...tokenLook,
   }, async (a) => {
     const { campaign, manifest } = await campaignAsGm(ctx, a.campaignId);
-    assertNotLive(ctx, campaign, a.mapId);
+    // Placing a token is part of running the game: co-GM mode may do it on the map the players see.
+    assertNotLive(ctx.settings, campaign.currentMapId, a.mapId, true);
     const map = await getMap(ctx, a.campaignId, a.mapId);
     const size = a.size ?? 1;
     const position = toCell(map, a.x, a.y, a.origin, size);
-    let imageUrl: string | undefined;
-    if (a.imagePath) {
-      const { file, bytes } = await readLocal(ctx, a.imagePath);
-      const asset = await uploadPicture(ctx, a.campaignId, 'TOKEN', a.name, file, bytes, pictureInfo(bytes).mime);
-      await manifest.add('asset', [asset.id]);
-      imageUrl = asset.id;
-    }
+    const imageUrl = a.imagePath ? await uploadTokenPicture(manifest, a.campaignId, a.name, a.imagePath) : undefined;
     const { token } = await ctx.api.json<{ token: TokenRow }>('POST', `/api/campaigns/${a.campaignId}/maps/${a.mapId}/tokens`, {
       json: {
         name: a.name, position, size: { width: size, height: size }, imageUrl, visible: a.visible ?? false,
@@ -366,8 +412,8 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
     return tokenSummary(token, map);
   });
 
-  tool('update_token', `Move or change a token this server created. ${COORDS} Give x and y together to move it.`, {
-    campaignId: campaignIdArg, mapId: mapIdArg, tokenId: id('Token id (from get_map).'),
+  const tokenChange = {
+    tokenId: z.string().min(1).max(100).describe('Token id (from get_map or list_tokens).'),
     name: z.string().min(1).max(200).optional(),
     x: tokenPosition.x.optional(), y: tokenPosition.y.optional(), origin: tokenPosition.origin,
     size: z.number().int().min(1).max(10).optional(),
@@ -380,33 +426,98 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
     mountedOn: z.string().min(1).max(100).nullable().optional()
       .describe('Id of a token on the same map and plane for this one to ride (they then move as one); null gets off.'),
     ...tokenLook,
-  }, async (a) => {
-    const { campaign, manifest } = await campaignAsGm(ctx, a.campaignId);
-    assertEditable(manifest, 'token', inMap(a.mapId, a.tokenId), ctx.settings.allowAnyEdit);
+    hp: z.object({ current: z.number().int().min(0).max(99999).optional(), max: z.number().int().min(1).max(99999).optional(), temp: z.number().int().min(0).optional() })
+      .nullable().optional().describe('Hit points; fields left out keep their value (a token without hit points needs max). null removes them.'),
+    conditions: z.array(z.string().min(1).max(100)).max(50).optional().describe('REPLACES the whole list of conditions.'),
+    initiative: z.number().nullable().optional().describe('The initiative value kept on the token.'),
+    rotation: z.number().min(0).max(360).optional().describe('Facing in degrees.'),
+    light: z.object({
+      brightRadius: z.number().min(0).max(100), dimRadius: z.number().min(0.5).max(100),
+      color: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(), enabled: z.boolean().optional(),
+    }).nullable().optional().describe('A light the token carries (radii in squares, default colour #ffd9a0); null takes it away.'),
+    lightEnabled: z.boolean().optional().describe('Light the carried light, or put it out (game state).'),
+    showHpBar: z.boolean().optional(),
+    layer: z.enum(['token', 'spirit']).optional(),
+    displayMode: z.enum(['pog', 'top-down', 'full-art']).optional(),
+    imagePath: z.string().optional().describe('A new picture under MISTWARDEN_MCP_FILE_ROOT.'),
+    imageUrl: z.string().max(500).nullable().optional().describe('A token picture already on the server (for example a creature\'s imageUrl); null removes the picture.'),
+    creatureTemplateId: z.string().uuid().nullable().optional(),
+    characterId: z.string().uuid().nullable().optional().describe('Bind the token to a character of this campaign.'),
+  };
+  type TokenChange = z.infer<z.ZodObject<typeof tokenChange>>;
+  // Running the game; every other field changes what the token is.
+  const TOKEN_GAME_STATE = new Set(['tokenId', 'x', 'y', 'origin', 'visible', 'hp', 'conditions', 'initiative', 'rotation', 'lightEnabled']);
+  const TOKEN_RULES = `Changing only game state (x/y, visible, hp, conditions, initiative, rotation, lightEnabled) needs a token this server created, or MISTWARDEN_MCP_COGM=1 (then also on the map the players see). Any other field needs a token this server created (or MISTWARDEN_MCP_ALLOW_ANY_EDIT=1), not on the map the players see (unless MISTWARDEN_MCP_PLAYER_VISIBLE=1).`;
+
+  /** Refuses the change before anything is sent; answers the token as it is now. */
+  const checkTokenChange = (campaign: Campaign, manifest: Manifest, map: MapRow, c: TokenChange): TokenRow => {
+    const key = inMap(map.id, c.tokenId);
+    const gameState = Object.entries(c).every(([k, v]) => v === undefined || TOKEN_GAME_STATE.has(k));
+    if (gameState) assertPlayable(manifest, 'token', key, ctx.settings);
+    else assertEditable(manifest, 'token', key, ctx.settings.allowAnyEdit);
     // A rider moves its mount, so the mount must be this server's to change too.
-    if (a.mountedOn) assertEditable(manifest, 'token', inMap(a.mapId, a.mountedOn), ctx.settings.allowAnyEdit);
-    assertNotLive(ctx, campaign, a.mapId);
-    const map = await getMap(ctx, a.campaignId, a.mapId);
-    const current = (map.tokens ?? []).find((t) => t.id === a.tokenId);
-    if (!current) throw new GuardError('No such token on this map.');
-    if ((a.x === undefined) !== (a.y === undefined)) throw new GuardError('Give x and y together.');
-    const size = a.size ?? current.size.width;
+    if (c.mountedOn) assertEditable(manifest, 'token', inMap(map.id, c.mountedOn), ctx.settings.allowAnyEdit);
+    assertNotLive(ctx.settings, campaign.currentMapId, map.id, gameState);
+    const current = (map.tokens ?? []).find((t) => t.id === c.tokenId);
+    if (!current) throw new GuardError(`No token ${c.tokenId} on this map.`);
+    if ((c.x === undefined) !== (c.y === undefined)) throw new GuardError('Give x and y together.');
+    if (c.lightEnabled !== undefined && !c.light && !current.light) throw new GuardError(`Token ${c.tokenId} carries no light: give light to add one.`);
+    if (c.imagePath && c.imageUrl !== undefined) throw new GuardError('Give imagePath or imageUrl, not both.');
+    if (c.x !== undefined && c.y !== undefined) toCell(map, c.x, c.y, c.origin, c.size ?? current.size.width);
+    return current;
+  };
+
+  const applyTokenChange = async (campaignId: string, manifest: Manifest, map: MapRow, current: TokenRow, c: TokenChange): Promise<TokenRow> => {
+    const size = c.size ?? current.size.width;
+    const imageUrl = c.imagePath ? await uploadTokenPicture(manifest, campaignId, c.name ?? current.name, c.imagePath) : c.imageUrl;
+    const baseLight = c.light ? { color: '#ffd9a0', enabled: true, ...c.light } : c.light === null ? null : current.light;
     const body: Record<string, unknown> = {
-      name: a.name, visible: a.visible, sightRadius: a.darkvision, type: a.type, disposition: a.disposition, controlledBy: a.controlledBy, notes: a.notes, mountedOn: a.mountedOn,
-      icon: a.icon, nameHidden: a.nameHidden,
-      size: a.size !== undefined ? { width: size, height: size } : undefined,
-      position: a.x !== undefined && a.y !== undefined ? toCell(map, a.x, a.y, a.origin, size) : undefined,
+      name: c.name, visible: c.visible, sightRadius: c.darkvision, type: c.type, disposition: c.disposition, controlledBy: c.controlledBy, notes: c.notes, mountedOn: c.mountedOn,
+      icon: c.icon, nameHidden: c.nameHidden,
+      size: c.size !== undefined ? { width: size, height: size } : undefined,
+      position: c.x !== undefined && c.y !== undefined ? toCell(map, c.x, c.y, c.origin, size) : undefined,
+      hp: c.hp === null ? null : c.hp ? { temp: 0, ...(current.hp ?? {}), ...c.hp } : undefined,
+      conditions: c.conditions, initiative: c.initiative, rotation: c.rotation,
+      light: c.lightEnabled !== undefined && baseLight ? { ...baseLight, enabled: c.lightEnabled } : c.light !== undefined ? baseLight : undefined,
+      showHpBar: c.showHpBar, layer: c.layer, displayMode: c.displayMode, imageUrl, creatureTemplateId: c.creatureTemplateId, characterId: c.characterId,
     };
-    const { token } = await ctx.api.json<{ token: TokenRow }>('PUT', `/api/campaigns/${a.campaignId}/maps/${a.mapId}/tokens/${a.tokenId}`, { json: body });
-    return tokenSummary(token, map);
+    const { token } = await ctx.api.json<{ token: TokenRow }>('PUT', `/api/campaigns/${campaignId}/maps/${map.id}/tokens/${encodeURIComponent(c.tokenId)}`, { json: body });
+    return token;
+  };
+
+  tool('update_token', `Move or change a token. ${COORDS} Give x and y together to move it. ${TOKEN_RULES}`, {
+    campaignId: campaignIdArg, mapId: mapIdArg, ...tokenChange,
+  }, async ({ campaignId, mapId, ...change }) => {
+    const { campaign, manifest } = await campaignAsGm(ctx, campaignId);
+    const map = await getMap(ctx, campaignId, mapId);
+    const current = checkTokenChange(campaign, manifest, map, change);
+    return tokenDetail(await applyTokenChange(campaignId, manifest, map, current, change), map, manifest);
   });
 
-  tool('delete_token', 'Remove a token this server created from a map. Cannot be undone.', {
+  tool('update_tokens', `Change several tokens of one map in one call (up to 90), each as update_token takes it. Every change is checked before any is sent; if the server refuses one part-way, the answer says which were changed. ${TOKEN_RULES}`, {
+    campaignId: campaignIdArg, mapId: mapIdArg, changes: z.array(z.object(tokenChange)).min(1).max(90),
+  }, async ({ campaignId, mapId, changes }) => {
+    const { campaign, manifest } = await campaignAsGm(ctx, campaignId);
+    const map = await getMap(ctx, campaignId, mapId);
+    const currents = changes.map((c) => checkTokenChange(campaign, manifest, map, c));
+    const changed: unknown[] = [];
+    for (const [i, c] of changes.entries()) {
+      try {
+        changed.push(tokenDetail(await applyTokenChange(campaignId, manifest, map, currents[i], c), map, manifest));
+      } catch (err) {
+        throw new GuardError(`Changed ${i} of ${changes.length} tokens, then token ${c.tokenId} failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+    return { changed };
+  });
+
+  tool('delete_token', `Remove a token this server created from a map. Cannot be undone. ${BACKUP_NEEDED}`, {
     campaignId: campaignIdArg, mapId: mapIdArg, tokenId: id('Token id.'),
   }, async ({ campaignId, mapId, tokenId }) => {
     const { campaign, manifest } = await campaignAsGm(ctx, campaignId);
     assertEditable(manifest, 'token', inMap(mapId, tokenId), ctx.settings.allowAnyEdit);
-    assertNotLive(ctx, campaign, mapId);
+    assertNotLive(ctx.settings, campaign.currentMapId, mapId);
+    assertBackedUp(manifest, ctx.settings.backupMaxAgeHours);
     await ctx.api.json('DELETE', `/api/campaigns/${campaignId}/maps/${mapId}/tokens/${tokenId}`);
     await manifest.remove('token', [inMap(mapId, tokenId)]);
     return { deleted: tokenId };
@@ -421,7 +532,7 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
     walls: z.array(z.object({ x1: pixel('Start x'), y1: pixel('Start y'), x2: pixel('End x'), y2: pixel('End y'), type: wallType.optional().describe('Default wall.') })).min(1).max(5000),
   }, async ({ campaignId, mapId, walls }) => {
     const { campaign, manifest } = await campaignAsGm(ctx, campaignId);
-    assertNotLive(ctx, campaign, mapId);
+    assertNotLive(ctx.settings, campaign.currentMapId, mapId);
     const segments = walls.map((w) => ({ id: randomUUID(), ...w, type: w.type ?? 'wall' }));
     const answer = await ctx.api.json<{ added: WallRow[]; skipped: Array<{ index: number; reason: string }>; total: number }>(
       'POST', `/api/campaigns/${campaignId}/maps/${mapId}/walls/batch`, { json: { segments } });
@@ -429,21 +540,26 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
     return { added: answer.added.map((w) => ({ id: w.id, type: w.type })), skipped: answer.skipped, totalOnMap: answer.total };
   });
 
-  tool('update_wall', 'Change the type of a wall segment this server created (for example open, close or lock a door). Its position cannot be changed: delete it and add a new one.', {
+  tool('update_wall', 'Change the type of a wall segment (for example open, close or lock a door). Its position cannot be changed: delete it and add a new one. Opening, closing or locking a door is game state: with MISTWARDEN_MCP_COGM=1 any door, also on the map the players see. Any other change needs a segment this server created (or MISTWARDEN_MCP_ALLOW_ANY_EDIT=1), not on the map the players see.', {
     campaignId: campaignIdArg, mapId: mapIdArg, wallId: id('Wall segment id.'), type: wallType,
   }, async ({ campaignId, mapId, wallId, type }) => {
     const { campaign, manifest } = await campaignAsGm(ctx, campaignId);
-    assertEditable(manifest, 'wall', inMap(mapId, wallId), ctx.settings.allowAnyEdit);
-    assertNotLive(ctx, campaign, mapId);
+    const wall = ((await getMap(ctx, campaignId, mapId)).wallSegments ?? []).find((w) => w.id === wallId);
+    if (!wall) throw new GuardError('No such wall segment on this map.');
+    const doorState = wall.type.startsWith('door-') && type.startsWith('door-');
+    if (doorState) assertPlayable(manifest, 'wall', inMap(mapId, wallId), ctx.settings);
+    else assertEditable(manifest, 'wall', inMap(mapId, wallId), ctx.settings.allowAnyEdit);
+    assertNotLive(ctx.settings, campaign.currentMapId, mapId, doorState);
     return (await ctx.api.json<{ segment: WallRow }>('PATCH', `/api/campaigns/${campaignId}/maps/${mapId}/walls/${wallId}`, { json: { type } })).segment;
   });
 
-  tool('delete_walls', 'Delete wall segments this server created, by id. Each is checked before any is deleted. Cannot be undone.', {
-    campaignId: campaignIdArg, mapId: mapIdArg, wallIds: z.array(z.string().uuid()).min(1).max(5000),
+  tool('delete_walls', `Delete wall segments this server created, by id, up to 95 per call (one request each). Each is checked before any is deleted. Cannot be undone. ${BACKUP_NEEDED}`, {
+    campaignId: campaignIdArg, mapId: mapIdArg, wallIds: z.array(z.string().uuid()).min(1).max(95),
   }, async ({ campaignId, mapId, wallIds }) => {
     const { campaign, manifest } = await campaignAsGm(ctx, campaignId);
     for (const w of wallIds) assertEditable(manifest, 'wall', inMap(mapId, w), ctx.settings.allowAnyEdit);
-    assertNotLive(ctx, campaign, mapId);
+    assertNotLive(ctx.settings, campaign.currentMapId, mapId);
+    assertBackedUp(manifest, ctx.settings.backupMaxAgeHours);
     const deleted: string[] = [];
     for (const w of wallIds) {
       await ctx.api.json('DELETE', `/api/campaigns/${campaignId}/maps/${mapId}/walls/${w}`);
@@ -465,7 +581,7 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
     campaignId: campaignIdArg, mapId: mapIdArg, ...lightShape,
   }, async ({ campaignId, mapId, ...l }) => {
     const { campaign, manifest } = await campaignAsGm(ctx, campaignId);
-    assertNotLive(ctx, campaign, mapId);
+    assertNotLive(ctx.settings, campaign.currentMapId, mapId);
     const { light } = await ctx.api.json<{ light: LightRow }>('POST', `/api/campaigns/${campaignId}/maps/${mapId}/lights`, {
       json: { id: randomUUID(), x: l.x, y: l.y, brightRadius: l.brightRadius, dimRadius: l.dimRadius, color: l.color ?? '#ffd9a0', enabled: l.enabled ?? true },
     });
@@ -473,23 +589,26 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
     return light;
   });
 
-  tool('update_light', 'Change a light this server created. Position in MAP PIXELS (origin top-left), radii in SQUARES.', {
+  tool('update_light', 'Change a light. Position in MAP PIXELS (origin top-left), radii in SQUARES. Turning it on or off (enabled alone) is game state: with MISTWARDEN_MCP_COGM=1 any light, also on the map the players see. Any other change needs a light this server created (or MISTWARDEN_MCP_ALLOW_ANY_EDIT=1), not on the map the players see.', {
     campaignId: campaignIdArg, mapId: mapIdArg, lightId: id('Light id.'),
     x: lightShape.x.optional(), y: lightShape.y.optional(), brightRadius: lightShape.brightRadius.optional(), dimRadius: lightShape.dimRadius.optional(),
     color: lightShape.color, enabled: lightShape.enabled,
   }, async ({ campaignId, mapId, lightId, ...changes }) => {
     const { campaign, manifest } = await campaignAsGm(ctx, campaignId);
-    assertEditable(manifest, 'light', inMap(mapId, lightId), ctx.settings.allowAnyEdit);
-    assertNotLive(ctx, campaign, mapId);
+    const onOff = Object.entries(changes).every(([k, v]) => v === undefined || k === 'enabled');
+    if (onOff) assertPlayable(manifest, 'light', inMap(mapId, lightId), ctx.settings);
+    else assertEditable(manifest, 'light', inMap(mapId, lightId), ctx.settings.allowAnyEdit);
+    assertNotLive(ctx.settings, campaign.currentMapId, mapId, onOff);
     return (await ctx.api.json<{ light: LightRow }>('PATCH', `/api/campaigns/${campaignId}/maps/${mapId}/lights/${lightId}`, { json: changes })).light;
   });
 
-  tool('delete_light', 'Delete a light this server created. Cannot be undone.', {
+  tool('delete_light', `Delete a light this server created. Cannot be undone. ${BACKUP_NEEDED}`, {
     campaignId: campaignIdArg, mapId: mapIdArg, lightId: id('Light id.'),
   }, async ({ campaignId, mapId, lightId }) => {
     const { campaign, manifest } = await campaignAsGm(ctx, campaignId);
     assertEditable(manifest, 'light', inMap(mapId, lightId), ctx.settings.allowAnyEdit);
-    assertNotLive(ctx, campaign, mapId);
+    assertNotLive(ctx.settings, campaign.currentMapId, mapId);
+    assertBackedUp(manifest, ctx.settings.backupMaxAgeHours);
     await ctx.api.json('DELETE', `/api/campaigns/${campaignId}/maps/${mapId}/lights/${lightId}`);
     await manifest.remove('light', [inMap(mapId, lightId)]);
     return { deleted: lightId };
@@ -497,10 +616,12 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
 
   // ---- Fog ----
 
-  const fogGuard = async (campaignId: string, mapId: string) => {
+  // Fog, explored areas and spell areas are game state.
+  const mapStateGuard = async (campaignId: string, mapId: string) => {
     const { campaign, manifest } = await campaignAsGm(ctx, campaignId);
-    assertEditable(manifest, 'map', mapId, ctx.settings.allowAnyEdit);
-    assertNotLive(ctx, campaign, mapId);
+    assertPlayable(manifest, 'map', mapId, ctx.settings);
+    assertNotLive(ctx.settings, campaign.currentMapId, mapId, true);
+    return { campaign, manifest };
   };
   const fogOp = async (campaignId: string, mapId: string, body: unknown) =>
     fogSummary((await ctx.api.json<{ fogState: FogState }>('POST', `/api/campaigns/${campaignId}/maps/${mapId}/fog/operation`, { json: body })).fogState);
@@ -508,13 +629,13 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
     x: pixel('Left edge'), y: pixel('Top edge'),
     width: z.number().positive().describe('Width in map pixels.'), height: z.number().positive().describe('Height in map pixels.'),
   };
-  const FOG = 'Needs fogEnabled on the map (update_map_settings). Only maps this server created, not the map players currently see.';
+  const FOG = 'Needs fogEnabled on the map (update_map_settings). Only maps this server created, not the map players currently see; with MISTWARDEN_MCP_COGM=1 any map, that one too.';
 
   for (const [name, op, verb] of [['fog_reveal_rect', 'reveal', 'Reveal'], ['fog_hide_rect', 'hide', 'Hide']] as const) {
     tool(name, `${verb} the fog over every square a rectangle touches. Rectangle in MAP PIXELS, origin top-left. ${FOG}`, {
       campaignId: campaignIdArg, mapId: mapIdArg, ...rect,
     }, async ({ campaignId, mapId, ...r }) => {
-      await fogGuard(campaignId, mapId);
+      await mapStateGuard(campaignId, mapId);
       const map = await getMap(ctx, campaignId, mapId);
       const cells = fogCellsInRect(map, r);
       if (cells.length === 0) throw new GuardError('The rectangle does not touch the map.');
@@ -523,7 +644,7 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
   }
   for (const [name, op, verb] of [['fog_reveal_all', 'reveal_all', 'Reveal'], ['fog_hide_all', 'hide_all', 'Hide']] as const) {
     tool(name, `${verb} the whole map under fog. ${FOG}`, { campaignId: campaignIdArg, mapId: mapIdArg }, async ({ campaignId, mapId }) => {
-      await fogGuard(campaignId, mapId);
+      await mapStateGuard(campaignId, mapId);
       return fogOp(campaignId, mapId, { op });
     });
   }
@@ -567,6 +688,429 @@ Limits: 1-500 squares per side, 10-500 pixels per square. Refuses a name already
     await manifest.add('gallery', [picture.id]);
     return { pictureId: picture.id, name: picture.name, folder: picture.folder, shown: false };
   });
+
+  // ---- Map at a glance ----
+
+  tool('get_map_summary', 'One map in brief: size, grid, settings, whether players see it now, and counts of tokens (visible and hidden), walls by type, doors, lights and spell areas. Use get_map or list_tokens for the objects themselves.', {
+    campaignId: campaignIdArg, mapId: mapIdArg,
+  }, async ({ campaignId, mapId }) => {
+    const { campaign, manifest } = await campaignAsGm(ctx, campaignId);
+    const map = await getMap(ctx, campaignId, mapId);
+    const { areas } = await ctx.api.json<{ areas: unknown[] }>('GET', `/api/campaigns/${campaignId}/maps/${mapId}/areas`);
+    const tokens = map.tokens ?? [];
+    const walls: Record<string, number> = {};
+    for (const w of map.wallSegments ?? []) walls[w.type] = (walls[w.type] ?? 0) + 1;
+    return {
+      id: map.id, name: map.name, width: map.width, height: map.height, gridSize: map.gridSize, gridType: map.gridType ?? 'square',
+      current: map.id === campaign.currentMapId, createdByThisServer: manifest.has('map', map.id),
+      settings: { lightingEnabled: map.lightingEnabled, fogEnabled: map.fogEnabled, globalIllumination: map.globalIllumination, explorationEnabled: map.explorationEnabled, snapTokens: map.snapTokens ?? true },
+      tokens: { total: tokens.length, visible: tokens.filter((t) => t.visible).length, hidden: tokens.filter((t) => !t.visible).length },
+      wallCounts: walls, lights: (map.lights ?? []).length, areas: areas.length,
+    };
+  }, true);
+
+  tool('list_tokens', `The tokens of a map with their game state: hit points, conditions, initiative, light, layer, and whether this server created each. ${COORDS}`, {
+    campaignId: campaignIdArg, mapId: mapIdArg,
+    name: z.string().max(200).optional().describe('Only tokens whose name contains this (any letter case).'),
+  }, async ({ campaignId, mapId, name }) => {
+    const { manifest } = await campaignAsGm(ctx, campaignId);
+    const map = await getMap(ctx, campaignId, mapId);
+    const needle = name?.toLocaleLowerCase();
+    return (map.tokens ?? []).filter((t) => !needle || t.name.toLocaleLowerCase().includes(needle)).map((t) => tokenDetail(t, map, manifest));
+  }, true);
+
+  // ---- Creatures and spells ----
+
+  tool('search_creatures', 'Search the creatures this campaign may use (the SRD, the instance\'s imported ones, the campaign\'s own) by name, challenge rating or source. Answers the first page (limit, offset) and the total.', {
+    campaignId: campaignIdArg,
+    query: z.string().max(200).optional().describe('Part of the name.'),
+    challengeRating: z.string().max(10).optional().describe('Exactly, for example "1/4" or "5".'),
+    source: z.string().max(100).optional().describe('"srd", "custom", or "custom:<tag>" for an import.'),
+    limit: z.number().int().min(1).max(100).optional(), offset: z.number().int().min(0).optional(),
+  }, async (a) => {
+    await campaignAsGm(ctx, a.campaignId);
+    const q = new URLSearchParams();
+    if (a.query) q.set('search', a.query);
+    if (a.challengeRating) q.set('cr', a.challengeRating);
+    if (a.source) q.set('source', a.source);
+    q.set('limit', String(a.limit ?? 25));
+    q.set('offset', String(a.offset ?? 0));
+    const page = await ctx.api.json<{ creatures: Creature[]; total: number }>('GET', `/api/campaigns/${a.campaignId}/creatures?${q}`);
+    return {
+      total: page.total,
+      creatures: page.creatures.map((c) => ({
+        id: c.id, name: c.name, source: c.source, challengeRating: c.challengeRating, creatureType: c.creatureType,
+        size: c.size?.width ?? 1, hpMax: c.statBlock?.hpMax ?? null, hasPicture: !!c.imageUrl,
+      })),
+    };
+  }, true);
+
+  tool('get_creature', 'One creature in full, with its stat block.', { campaignId: campaignIdArg, creatureId: id('Creature id (from search_creatures).') }, async ({ campaignId, creatureId }) => {
+    await campaignAsGm(ctx, campaignId);
+    return ctx.api.json('GET', `/api/campaigns/${campaignId}/creatures/${creatureId}`);
+  }, true);
+
+  tool('place_creature', `Put a creature on a map as a token, as the creature library does: its picture, size, stat block, full hit points and hit point bar; the symbol comes from the stat block. Hidden from players by default. ${COORDS} Not on the map players currently see unless MISTWARDEN_MCP_COGM=1 or MISTWARDEN_MCP_PLAYER_VISIBLE=1.`, {
+    campaignId: campaignIdArg, mapId: mapIdArg, creatureId: id('Creature id (from search_creatures).'),
+    ...tokenPosition,
+    name: z.string().min(1).max(200).optional().describe('Default: the creature\'s name.'),
+    visible: z.boolean().optional().describe('Seen by players. Default false (GM only).'),
+    disposition: z.enum(['friendly', 'neutral', 'hostile']).optional().describe('Default: the creature\'s.'),
+    nameHidden: tokenLook.nameHidden,
+  }, async (a) => {
+    const { campaign, manifest } = await campaignAsGm(ctx, a.campaignId);
+    assertNotLive(ctx.settings, campaign.currentMapId, a.mapId, true);
+    const map = await getMap(ctx, a.campaignId, a.mapId);
+    const c = await ctx.api.json<Creature>('GET', `/api/campaigns/${a.campaignId}/creatures/${a.creatureId}`);
+    const size = c.size ?? { width: 1, height: 1 };
+    const position = toCell(map, a.x, a.y, a.origin, size.width);
+    const hpMax = c.statBlock?.hpMax ?? 10;
+    const { token } = await ctx.api.json<{ token: TokenRow }>('POST', `/api/campaigns/${a.campaignId}/maps/${a.mapId}/tokens`, {
+      json: {
+        name: a.name ?? c.name, imageUrl: c.imageUrl || undefined, position, size, type: 'npc', displayMode: c.displayMode ?? 'pog',
+        disposition: a.disposition ?? c.disposition, hp: { current: hpMax, max: hpMax, temp: 0 }, showHpBar: true, visible: a.visible ?? false,
+        conditions: [], statBlock: c.statBlock, creatureTemplateId: c.id, nameHidden: a.nameHidden,
+      },
+    });
+    await manifest.add('token', [inMap(a.mapId, token.id)]);
+    return tokenDetail(token, map, manifest);
+  });
+
+  const listSpells = async (campaignId: string) => (await ctx.api.json<{ spells: Spell[] }>('GET', `/api/campaigns/${campaignId}/spells`)).spells;
+  const sameName = (a: string, b: string) => a.trim().toLocaleLowerCase() === b.trim().toLocaleLowerCase();
+
+  tool('list_spells', 'The spells this campaign may use (the SRD, the instance\'s imported ones, the campaign\'s own), filtered here by name and level: id, name, source, level, school, area ({ shape, sizeFt, widthFt } or null) and element.', {
+    campaignId: campaignIdArg,
+    query: z.string().max(200).optional().describe('Part of the name.'),
+    level: z.number().int().min(0).max(9).optional().describe('0 for cantrips.'),
+    limit: z.number().int().min(1).max(200).optional().describe('Default 50.'),
+  }, async ({ campaignId, query, level, limit }) => {
+    await campaignAsGm(ctx, campaignId);
+    const needle = query?.toLocaleLowerCase();
+    const found = (await listSpells(campaignId)).filter((s) => (!needle || s.name.toLocaleLowerCase().includes(needle)) && (level === undefined || s.level === level));
+    return {
+      total: found.length,
+      spells: found.slice(0, limit ?? 50).map((s) => ({ id: s.id, name: s.name, source: s.source, level: s.level, school: s.school, area: s.area, element: s.element, concentration: s.concentration })),
+    };
+  }, true);
+
+  tool('get_spell', 'One spell in full, with its description.', { campaignId: campaignIdArg, spellId: id('Spell id (from list_spells).') }, async ({ campaignId, spellId }) => {
+    await campaignAsGm(ctx, campaignId);
+    return ctx.api.json('GET', `/api/campaigns/${campaignId}/spells/${spellId}`);
+  }, true);
+
+  // ---- Spell areas (game state) ----
+
+  const areaLook = {
+    anchorX: pixel('Anchor x: the centre of a sphere, cylinder or cube, the point a cone or line starts from'),
+    anchorY: pixel('Anchor y'),
+    towardX: pixel('Aim x: a cone or line points from the anchor toward this point').optional(),
+    towardY: pixel('Aim y').optional(),
+    angleDegrees: z.number().min(-360).max(360).optional().describe('Instead of toward: the direction in degrees, 0 = right, 90 = down (y grows downward).'),
+    element: z.enum(['fire', 'cold', 'water', 'lightning', 'acid', 'poison', 'necrotic', 'radiant', 'thunder', 'force', 'psychic', 'none']).optional().describe('How it looks.'),
+    label: z.string().max(60).optional(),
+    audience: z.enum(['ALL', 'GM']).optional().describe('ALL (default): every reader of the map sees it. GM: only the GM.'),
+  };
+  const areaShape = {
+    shape: z.enum(['sphere', 'cylinder', 'cone', 'line', 'cube']),
+    sizeFt: z.number().int().min(5).max(500).describe('Radius (sphere, cylinder), length (cone, line) or side (cube), in feet.'),
+    widthFt: z.number().int().min(5).max(100).optional().describe('A line\'s width in feet.'),
+  };
+  const AREAS = `Areas are game state: on maps this server created, or with MISTWARDEN_MCP_COGM=1 on any map, the one players see too. Anchor in MAP PIXELS (origin top-left).`;
+  type AreaLook = { anchorX: number; anchorY: number; towardX?: number; towardY?: number; angleDegrees?: number; element?: string; label?: string; audience?: string };
+
+  const placeArea = async (campaignId: string, mapId: string, look: AreaLook, shape: SpellArea, spellId: string | null, element: string | undefined, label: string | undefined) => {
+    const { manifest } = await mapStateGuard(campaignId, mapId);
+    if ((look.towardX === undefined) !== (look.towardY === undefined)) throw new GuardError('Give towardX and towardY together.');
+    const angle = look.towardX !== undefined && look.towardY !== undefined
+      ? Math.atan2(look.towardY - look.anchorY, look.towardX - look.anchorX)
+      : ((look.angleDegrees ?? 0) * Math.PI) / 180;
+    const area = {
+      shape: shape.shape, anchorX: look.anchorX, anchorY: look.anchorY, angle, sizeFt: shape.sizeFt,
+      widthFt: shape.shape === 'line' ? (shape.widthFt ?? 5) : null, element: element ?? 'none', label: label ?? null, spellId, audience: look.audience ?? 'ALL',
+    };
+    const { id: areaId } = await ctx.api.json<{ id: string }>('POST', `/api/campaigns/${campaignId}/maps/${mapId}/areas`, { json: { area } });
+    await manifest.add('area', [inMap(mapId, areaId)]);
+    return { areaId, ...area };
+  };
+
+  tool('place_area', `Place a spell-area template on a map. ${AREAS}`, {
+    campaignId: campaignIdArg, mapId: mapIdArg, ...areaShape, ...areaLook,
+  }, async ({ campaignId, mapId, shape, sizeFt, widthFt, ...look }) =>
+    placeArea(campaignId, mapId, look, { shape, sizeFt, widthFt }, null, look.element, look.label));
+
+  tool('place_spell_area', `Place the area of a spell, by spellId or spellName, as the server stores it; shape and sizeFt override it, and are needed for a spell with no area. A name used by more than one spell is refused with the candidates. ${AREAS}`, {
+    campaignId: campaignIdArg, mapId: mapIdArg,
+    spellId: id('Spell id (from list_spells).').optional(), spellName: z.string().min(1).max(200).optional(),
+    shape: areaShape.shape.optional(), sizeFt: areaShape.sizeFt.optional(), widthFt: areaShape.widthFt,
+    ...areaLook,
+  }, async ({ campaignId, mapId, spellId, spellName, shape, sizeFt, widthFt, ...look }) => {
+    await campaignAsGm(ctx, campaignId);
+    let spell: Spell;
+    if (spellId) {
+      spell = await ctx.api.json<Spell>('GET', `/api/campaigns/${campaignId}/spells/${spellId}`);
+    } else if (spellName) {
+      const matches = (await listSpells(campaignId)).filter((s) => sameName(s.name, spellName));
+      if (matches.length === 0) throw new GuardError(`No spell named "${spellName}". Find it with list_spells.`);
+      if (matches.length > 1) {
+        throw new GuardError(`More than one spell is named "${spellName}"; call again with spellId: ${JSON.stringify(matches.map((s) => ({ id: s.id, source: s.source, area: s.area })))}`);
+      }
+      spell = matches[0];
+    } else {
+      throw new GuardError('Give spellId or spellName.');
+    }
+    const stored = spell.area;
+    const areaOf: SpellArea | null = shape && sizeFt ? { shape, sizeFt, widthFt } : stored ? { ...stored, ...(shape ? { shape } : {}), ...(sizeFt ? { sizeFt } : {}), ...(widthFt ? { widthFt } : {}) } : null;
+    if (!areaOf) throw new GuardError(`"${spell.name}" has no area stored: give shape and sizeFt (and widthFt for a line).`);
+    return placeArea(campaignId, mapId, look, areaOf, spell.id, look.element ?? spell.element, look.label ?? spell.name.slice(0, 60));
+  });
+
+  tool('list_areas', 'The spell areas on a map, with their ids.', { campaignId: campaignIdArg, mapId: mapIdArg }, async ({ campaignId, mapId }) => {
+    const { manifest } = await campaignAsGm(ctx, campaignId);
+    const { areas } = await ctx.api.json<{ areas: Array<{ id: string }> }>('GET', `/api/campaigns/${campaignId}/maps/${mapId}/areas`);
+    return areas.map((a) => ({ ...a, createdByThisServer: manifest.has('area', inMap(mapId, a.id)) }));
+  }, true);
+
+  tool('remove_area', 'Erase one spell area: one this server placed, or with MISTWARDEN_MCP_COGM=1 any.', {
+    campaignId: campaignIdArg, mapId: mapIdArg, areaId: id('Area id (from list_areas).'),
+  }, async ({ campaignId, mapId, areaId }) => {
+    const { campaign, manifest } = await campaignAsGm(ctx, campaignId);
+    assertPlayable(manifest, 'area', inMap(mapId, areaId), ctx.settings);
+    assertNotLive(ctx.settings, campaign.currentMapId, mapId, true);
+    await ctx.api.json('DELETE', `/api/campaigns/${campaignId}/maps/${mapId}/areas/${areaId}`);
+    await manifest.remove('area', [inMap(mapId, areaId)]);
+    return { removed: areaId };
+  });
+
+  tool('clear_areas', 'Erase every spell area on a map, the players\' too. Needs MISTWARDEN_MCP_COGM=1 or MISTWARDEN_MCP_ALLOW_ANY_EDIT=1.', {
+    campaignId: campaignIdArg, mapId: mapIdArg,
+  }, async ({ campaignId, mapId }) => {
+    const { campaign, manifest } = await campaignAsGm(ctx, campaignId);
+    if (!ctx.settings.coGm && !ctx.settings.allowAnyEdit) throw new GuardError('Refused: clearing removes areas this server did not place. Use remove_area, or start the server with MISTWARDEN_MCP_COGM=1.');
+    assertNotLive(ctx.settings, campaign.currentMapId, mapId, true);
+    await ctx.api.json('DELETE', `/api/campaigns/${campaignId}/maps/${mapId}/areas`);
+    await manifest.remove('area', manifest.ids('area').filter((k) => k.startsWith(`${mapId}/`)));
+    return { cleared: mapId };
+  });
+
+  tool('reset_exploration', 'Forget what the players have explored on a map (their greyed-in memory). Game state: maps this server created, or with MISTWARDEN_MCP_COGM=1 any map, the one players see too.', {
+    campaignId: campaignIdArg, mapId: mapIdArg,
+  }, async ({ campaignId, mapId }) => {
+    await mapStateGuard(campaignId, mapId);
+    await ctx.api.json('POST', `/api/campaigns/${campaignId}/maps/${mapId}/exploration/reset`);
+    return { reset: mapId };
+  });
+
+  // ---- Table: chat, dice, initiative, sessions, time of day ----
+
+  const TABLE = 'Seen by the whole table: only with MISTWARDEN_MCP_COGM=1 or MISTWARDEN_MCP_PLAYER_VISIBLE=1.';
+  const tableTools = ctx.settings.coGm || ctx.settings.playerVisible;
+
+  tool('roll_dice', 'Roll dice as the GM, for example "1d20+5" or "4d6kh3". A secret roll (secret: true) goes to the GM alone and needs no switch; a public one is seen by the table and needs MISTWARDEN_MCP_COGM=1 or MISTWARDEN_MCP_PLAYER_VISIBLE=1.', {
+    campaignId: campaignIdArg, expression: z.string().min(1).max(200),
+    secret: z.boolean().optional().describe('Default false.'),
+    purpose: z.string().max(200).optional().describe('What the roll is for, shown with it.'),
+    characterName: z.string().max(200).optional().describe('Who rolls, shown with it.'),
+  }, async ({ campaignId, ...roll }) => {
+    await campaignAsGm(ctx, campaignId);
+    if (!roll.secret) assertTableAction(ctx.settings, 'a public roll');
+    return (await ctx.api.json<{ roll: unknown }>('POST', `/api/campaigns/${campaignId}/dice-rolls`, { json: roll })).roll;
+  });
+
+  tool('get_messages', 'The newest chat messages (whispers only where this account sent or received them), newest first; pass the answer\'s cursor for older ones.', {
+    campaignId: campaignIdArg, limit: z.number().int().min(1).max(100).optional().describe('Default 30.'), cursor: z.string().max(500).optional(),
+  }, async ({ campaignId, limit, cursor }) => {
+    await campaignAsGm(ctx, campaignId);
+    const q = new URLSearchParams({ limit: String(limit ?? 30) });
+    if (cursor) q.set('cursor', cursor);
+    return ctx.api.json('GET', `/api/campaigns/${campaignId}/messages?${q}`);
+  }, true);
+
+  tool('get_dice_rolls', 'The newest dice rolls, secret ones included (the GM sees all).', {
+    campaignId: campaignIdArg, limit: z.number().int().min(1).max(100).optional().describe('Default 30.'), offset: z.number().int().min(0).optional(),
+  }, async ({ campaignId, limit, offset }) => {
+    await campaignAsGm(ctx, campaignId);
+    return ctx.api.json('GET', `/api/campaigns/${campaignId}/dice-rolls?${new URLSearchParams({ limit: String(limit ?? 30), offset: String(offset ?? 0) })}`);
+  }, true);
+
+  tool('get_initiative', 'The initiative order as the GM sees it: round, whose turn, each combatant with its token.', { campaignId: campaignIdArg }, async ({ campaignId }) => {
+    await campaignAsGm(ctx, campaignId);
+    return (await ctx.api.json<{ state: unknown }>('GET', `/api/campaigns/${campaignId}/initiative`)).state;
+  }, true);
+
+  tool('list_sessions', 'The campaign\'s sessions, newest first (up to 50), with their recaps; one without endedAt is still open (running or paused, see the campaign status).', { campaignId: campaignIdArg }, async ({ campaignId }) => {
+    await campaignAsGm(ctx, campaignId);
+    return (await ctx.api.json<{ sessions: unknown[] }>('GET', `/api/campaigns/${campaignId}/sessions`)).sessions;
+  }, true);
+
+  if (tableTools) {
+    type WithCampaign<S extends z.ZodRawShape> = z.infer<z.ZodObject<S>> & { campaignId: string };
+    const table = <S extends z.ZodRawShape>(name: string, description: string, shape: S, fn: (args: WithCampaign<S>) => Promise<unknown>) =>
+      tool(name, `TABLE: ${description} ${TABLE}`, { campaignId: campaignIdArg, ...shape }, async (args) => {
+        const a = args as unknown as WithCampaign<S>;
+        await campaignAsGm(ctx, a.campaignId);
+        return fn(a);
+      });
+    const post = async (route: string, json?: unknown) => ctx.api.json<Record<string, unknown>>('POST', route, { json });
+    const put = async (route: string, json?: unknown) => ctx.api.json<Record<string, unknown>>('PUT', route, { json });
+    const c = (args: { campaignId: string }) => `/api/campaigns/${args.campaignId}`;
+    const openSession = async (campaignId: string) => {
+      const { sessions } = await ctx.api.json<{ sessions: Array<{ id: string; endedAt: string | null }> }>('GET', `/api/campaigns/${campaignId}/sessions`);
+      const open = sessions.find((s) => !s.endedAt);
+      if (!open) throw new GuardError('No session is open: start one with start_session.');
+      return open.id;
+    };
+
+    table('send_chat', 'Send a chat message as the GM to everyone in the campaign.', { content: z.string().min(1).max(2000) }, async (a) =>
+      (await post(`${c(a)}/messages`, { content: a.content })).message);
+    table('send_whisper', 'Whisper a chat message to one member (user id from get_campaign); only they and the GM see it.', {
+      recipientId: z.string().uuid(), content: z.string().min(1).max(2000),
+    }, async (a) => (await post(`${c(a)}/messages`, { content: a.content, recipientId: a.recipientId })).message);
+
+    const tokenOnMap = { mapId: mapIdArg, tokenIds: z.array(z.string().min(1).max(100)).min(1).max(50).describe('Token ids (from list_tokens).') };
+    table('start_combat', 'Begin combat with the combatants in the order: round 1, the first one acting.', {}, async (a) => (await post(`${c(a)}/initiative/start`)).state);
+    table('next_turn', 'Pass the turn to the next combatant; after the last a new round begins.', {}, async (a) => (await post(`${c(a)}/initiative/next`)).state);
+    table('end_combat', 'End combat and clear the order.', {}, async (a) => (await post(`${c(a)}/initiative/end`)).state);
+    table('add_to_initiative', 'Add tokens of one map to the order, unrolled, at the bottom.', tokenOnMap, async (a) => {
+      let state: unknown;
+      for (const tokenId of a.tokenIds) state = (await post(`${c(a)}/initiative/combatants`, { tokenId, mapId: a.mapId })).state;
+      return state;
+    });
+    table('roll_initiative', 'Roll initiative for tokens of one map, as the GM: the server works out the roll from the token\'s sheet or stat block (expression only where neither applies); a token not yet in the order joins it.', {
+      ...tokenOnMap, expression: z.string().max(100).optional().describe('For example "1d20+2"; used only for a token without sheet or stat block.'),
+    }, async (a) => {
+      const rolled: unknown[] = [];
+      let state: unknown;
+      for (const tokenId of a.tokenIds) {
+        const answer = await post(`${c(a)}/initiative/roll`, { tokenId, mapId: a.mapId, expression: a.expression });
+        rolled.push({ tokenId, value: answer.value, rolled: answer.rolled });
+        state = answer.state;
+      }
+      return { rolled, state };
+    });
+    table('remove_from_initiative', 'Take a combatant out of the order; the turn passes on if it was theirs.', { tokenId: z.string().min(1).max(100) }, async (a) =>
+      (await ctx.api.json<{ state: unknown }>('DELETE', `${c(a)}/initiative/combatants/${encodeURIComponent(a.tokenId)}`)).state);
+    table('set_initiative', 'Set a combatant\'s initiative by hand, or clear it with null.', { tokenId: z.string().min(1).max(100), value: z.number().nullable() }, async (a) =>
+      (await put(`${c(a)}/initiative/combatants/${encodeURIComponent(a.tokenId)}`, { value: a.value })).state);
+    table('set_initiative_order', 'Put the combatants in this order; those left out keep their places after the ones named.', {
+      tokenIds: z.array(z.string().min(1).max(100)).min(1).max(200),
+    }, async (a) => (await put(`${c(a)}/initiative/order`, { tokenIds: a.tokenIds })).state);
+
+    table('set_vibe', 'Switch the time of day (vibe period) by name: its colour and track reach every member, and the chat gets a note.', { period: z.string().min(1).max(100) }, async (a) =>
+      put(`${c(a)}/vibe/current`, { period: a.period }));
+    table('set_atmosphere', 'Set the weather over the map (effect, null clears it) and/or the ambient track (audioAssetId of an audio asset, null stops it).', {
+      effect: z.string().max(50).nullable().optional().describe('A weather effect name; the server lists the allowed ones when refusing.'),
+      audioAssetId: z.string().uuid().nullable().optional(), volume: z.number().min(0).max(1).optional(), loop: z.boolean().optional(),
+    }, async (a) => {
+      if (a.effect === undefined && a.audioAssetId === undefined) throw new GuardError('Give effect and/or audioAssetId.');
+      const out: Record<string, unknown> = {};
+      if (a.effect !== undefined) Object.assign(out, await put(`${c(a)}/atmosphere/effect`, { effect: a.effect }));
+      if (a.audioAssetId !== undefined) Object.assign(out, await put(`${c(a)}/atmosphere/audio`, { assetId: a.audioAssetId, volume: a.volume, loop: a.loop }));
+      return out;
+    });
+    table('update_campaign', 'Change the campaign\'s name, description, status (PREPARATION, COMPLETED or ARCHIVED, between sessions only), whether players may draw, the chat cooldown, or the vibe settings (vibeSettings REPLACES the periods: read them first).', {
+      name: z.string().min(1).max(200).optional(), description: z.string().max(5000).nullable().optional(),
+      status: z.enum(['PREPARATION', 'COMPLETED', 'ARCHIVED']).optional(), playersMayDraw: z.boolean().optional(),
+      chatCooldownEnabled: z.boolean().optional(), chatCooldownSeconds: z.number().int().min(1).max(300).optional(),
+      vibeSettings: z.object({ enabled: z.boolean().optional(), periods: z.array(z.object({ name: z.string(), hue: z.string(), filter: z.string(), audio: z.string().nullable().optional() })).min(1) }).passthrough().optional(),
+    }, async ({ campaignId, name, description, status, playersMayDraw, chatCooldownEnabled, chatCooldownSeconds, vibeSettings }) => {
+      // Only these fields: no game system, no spirit layer, nothing about members.
+      const { campaign } = await put(`/api/campaigns/${campaignId}`, { name, description, status, playersMayDraw, chatCooldownEnabled, chatCooldownSeconds, vibeSettings });
+      return campaign;
+    });
+
+    table('start_session', 'Start a new session (none may be open).', {}, async (a) => (await post(`${c(a)}/sessions`)).session);
+    table('pause_session', 'Pause the open session.', {}, async (a) => put(`${c(a)}/sessions/${await openSession(a.campaignId)}/pause`));
+    table('resume_session', 'Resume the paused session.', {}, async (a) => (await put(`${c(a)}/resume`)).session);
+    table('end_session', 'End the open session, with an optional recap every member can read.', {
+      notes: z.string().max(10_000).optional(), saveState: z.boolean().optional().describe('Default true: token positions are saved with it.'),
+    }, async (a) => put(`${c(a)}/sessions/${await openSession(a.campaignId)}/end`, { notes: a.notes, saveState: a.saveState }));
+    table('set_session_notes', 'Rewrite the recap of an ended session (empty clears it); every member can read it.', {
+      sessionId: id('Session id (from list_sessions).'), notes: z.string().max(10_000),
+    }, async (a) => (await put(`${c(a)}/sessions/${a.sessionId}/notes`, { notes: a.notes })).session);
+  }
+
+  // ---- Characters ----
+
+  tool('list_characters', 'The campaign\'s members with their characters (id, name, hit points, picture); no sheets.', { campaignId: campaignIdArg }, async ({ campaignId }) => {
+    await campaignAsGm(ctx, campaignId);
+    return (await ctx.api.json<{ roster: unknown[] }>('GET', `/api/campaigns/${campaignId}/characters`)).roster;
+  }, true);
+
+  const characterIn = async (campaignId: string, characterId: string) => {
+    assertUuid(characterId, 'characterId');
+    const { character } = await ctx.api.json<{ character: { campaignId: string | null; updatedAt: string } }>('GET', `/api/characters/${characterId}`);
+    if (character.campaignId !== campaignId) throw new GuardError('That character is not in this campaign.');
+    return character;
+  };
+
+  tool('get_character', 'One character of the campaign with its whole sheet (data) and updatedAt, which update_character needs.', {
+    campaignId: campaignIdArg, characterId: id('Character id (from list_characters).'),
+  }, async ({ campaignId, characterId }) => {
+    await campaignAsGm(ctx, campaignId);
+    return characterIn(campaignId, characterId);
+  }, true);
+
+  tool('update_character', 'Change a player character\'s name or sheet as the GM. data REPLACES the whole sheet: read it with get_character, change it, send it back with the updatedAt that get_character gave (a character changed since is refused). Players see it at once: needs MISTWARDEN_MCP_COGM=1 or MISTWARDEN_MCP_ALLOW_ANY_EDIT=1.', {
+    campaignId: campaignIdArg, characterId: id('Character id.'),
+    updatedAt: z.string().max(40).describe('updatedAt from get_character.'),
+    name: z.string().min(1).max(200).optional(), data: z.record(z.string(), z.unknown()).optional().describe('The whole sheet.'),
+  }, async ({ campaignId, characterId, updatedAt, name, data }) => {
+    await campaignAsGm(ctx, campaignId);
+    if (!ctx.settings.coGm && !ctx.settings.allowAnyEdit) {
+      throw new GuardError('Refused: a character is not created by this server. Start the server with MISTWARDEN_MCP_COGM=1 to change characters.');
+    }
+    await characterIn(campaignId, characterId);
+    return (await ctx.api.json<{ character: unknown }>('PUT', `/api/characters/${characterId}`, { json: { name, data, updatedAt } })).character;
+  });
+
+  // ---- Local files ----
+
+  tool('list_files', 'List the files under MISTWARDEN_MCP_FILE_ROOT (or a folder in it): text files (.md, .txt, .json, .csv), pictures and map files, with sizes. Hidden files and folders are skipped; up to 500 entries.', {
+    folder: z.string().max(500).optional().describe('A folder relative to the root; default the root.'),
+  }, async ({ folder }) => walkFiles(ctx.settings.fileRoot, folder), true);
+
+  tool('search_files', 'Find files under MISTWARDEN_MCP_FILE_ROOT whose path contains the query, and lines of text files that do (any letter case): up to 50 files, 3 lines each.', {
+    query: z.string().min(2).max(200), folder: z.string().max(500).optional(),
+  }, async ({ query, folder }) => searchFiles(ctx.settings.fileRoot, query, folder), true);
+
+  tool('read_file', 'Read a text file (.md, .txt, .json, .csv) under MISTWARDEN_MCP_FILE_ROOT, up to 100000 characters at a time; pass nextOffset for the rest.', {
+    path: z.string().max(1000), offset: z.number().int().min(0).optional(), maxChars: z.number().int().min(1).max(100_000).optional(),
+  }, async (a) => readTextFile(ctx.settings.fileRoot, a.path, a.offset, a.maxChars), true);
+
+  // ---- Instance library (platform admins only) ----
+
+  const sourceTag = z.string().regex(/^[a-z0-9][a-z0-9-]{0,31}$/).describe('1 to 32 lower-case letters, digits and dashes: the imports\' name, and the way to delete them again.');
+  const INSTANCE = 'INSTANCE-WIDE (platform admins only): every campaign of the instance sees what is imported. create_backup does NOT cover it; the way back is the delete tool for the same sourceTag.';
+  const importReport = (body: { rows?: unknown[] } & Record<string, unknown>) => ({ ...body, rows: body.rows?.slice(0, 100), rowsShown: Math.min(body.rows?.length ?? 0, 100) });
+  const importBody = async (file: string) => {
+    const read = await readTextFile(ctx.settings.fileRoot, file, 0, 900_000);
+    if (read.truncated) throw new GuardError(`Refused: ${file} holds more than 900000 characters, the most one import takes. Split it.`);
+    return read.text;
+  };
+
+  tool('import_creatures_markdown', `Import stat blocks from a Markdown file under MISTWARDEN_MCP_FILE_ROOT into the instance's creatures, under a sourceTag. DRY RUN by default (dryRun: true): answers what would be imported, updated and skipped; call again with dryRun: false to write. ${INSTANCE}`, {
+    path: z.string().max(1000), sourceTag, onlyUnderHeading: z.string().max(200).optional().describe('Only the blocks under this heading.'),
+    dryRun: z.boolean().optional().describe('Default true.'),
+  }, async (a) => importReport(await ctx.api.json('POST', '/api/creatures/import-markdown', {
+    json: { markdown: await importBody(a.path), sourceTag: a.sourceTag, onlyUnderHeading: a.onlyUnderHeading, dryRun: a.dryRun ?? true },
+  })));
+
+  tool('import_spells_markdown', `Import spells from a Markdown file under MISTWARDEN_MCP_FILE_ROOT into the instance's spells, under a sourceTag. DRY RUN by default (dryRun: true); call again with dryRun: false to write. ${INSTANCE}`, {
+    path: z.string().max(1000), sourceTag, dryRun: z.boolean().optional().describe('Default true.'),
+  }, async (a) => importReport(await ctx.api.json('POST', '/api/spells/import-markdown', {
+    json: { markdown: await importBody(a.path), sourceTag: a.sourceTag, dryRun: a.dryRun ?? true },
+  })));
+
+  for (const [name, route, what] of [['delete_imported_creatures', '/api/creatures/imported/', 'creatures'], ['delete_imported_spells', '/api/spells/imported/', 'spells']] as const) {
+    tool(name, `Delete every ${what} imported under a sourceTag. Cannot be undone; needs confirm: true. ${INSTANCE}`, {
+      sourceTag, confirm: z.literal(true).describe('Must be true.'),
+    }, async (a) => ctx.api.json('DELETE', `${route}${a.sourceTag}`));
+  }
+
+  tool('match_token_pictures', `Give imported creatures without a picture the server's token picture of their name (all imports, or one sourceTag). ${INSTANCE}`, {
+    sourceTag: sourceTag.optional(),
+  }, async ({ sourceTag: tag }) => ctx.api.json('POST', '/api/creatures/match-token-pictures', { json: { sourceTag: tag } }));
 
   // ---- Player-visible (behind MISTWARDEN_MCP_PLAYER_VISIBLE=1) ----
 
