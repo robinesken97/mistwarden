@@ -9,6 +9,7 @@ import { DiceParserError } from '../../utils/dice-parser';
 import logger from '../../utils/logger';
 import { withinCeiling } from '../shared';
 import { rollForMember } from '../../services/dice';
+import { canRollDice } from '../../services/permissions';
 import { ackFrom, refuseRequest } from '../ack';
 
 export function registerDiceHandlers(io: Server, socket: AuthenticatedSocket): void {
@@ -33,9 +34,15 @@ export function registerDiceHandlers(io: Server, socket: AuthenticatedSocket): v
       // same ceiling and does not draw an error apiece.
       if (!withinCeiling(socket, 'dice.roll', ack)) return;
 
-      // Spectators, the payload and the expression are checked in the
-      // service (services/dice.ts), which the REST route shares.
-      const outcome = await rollForMember(io, { campaignId: socket.campaignId, userId: socket.userId!, role: socket.role }, data, socket);
+      // Spectators watch: they may talk in chat, and they may not roll.
+      if (!canRollDice(socket.role)) {
+        refuse('Spectators cannot roll dice');
+        return;
+      }
+
+      // The payload and the expression are checked in the service
+      // (services/dice.ts), which the REST route shares.
+      const outcome = await rollForMember(io, { campaignId: socket.campaignId, userId: socket.userId! }, data, socket);
       if (!outcome.ok) {
         refuse(outcome.error);
         return;

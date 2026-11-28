@@ -12,7 +12,6 @@ import type { Server } from 'socket.io';
 import { prisma } from '../config/database';
 import { rollDice, parseDiceExpression, DiceParserError, type RollResult } from '../utils/dice-parser';
 import { toJson } from '../utils/prisma-json';
-import { canRollDice } from './permissions';
 import { campaignSockets } from '../websocket/utils';
 import type { AuthenticatedSocket } from '../websocket/auth';
 import { DiceRollSchema } from '../validators/dice';
@@ -20,7 +19,6 @@ import { DiceRollSchema } from '../validators/dice';
 export interface DiceRoller {
   campaignId: string;
   userId: string;
-  role: string | undefined;
 }
 
 /** A roll as `dice.rolled` sends it. */
@@ -39,10 +37,11 @@ export interface RollSent {
 
 export type DiceOutcome =
   | { ok: true; roll: RollSent }
-  | { ok: false; status: 400 | 403 | 404; error: string };
+  | { ok: false; status: 400 | 404; error: string };
 
 /**
- * Roll `data` (a DiceRollSchema payload) for `roller`. `rollerSocket` is the
+ * Roll `data` (a DiceRollSchema payload) for `roller`, who the caller has
+ * checked may roll (canRollDice). `rollerSocket` is the
  * socket that asked, which alone is sent the roller's copy of a secret roll.
  */
 export async function rollForMember(
@@ -51,11 +50,6 @@ export async function rollForMember(
   data: unknown,
   rollerSocket?: { emit(event: string, data: unknown): unknown },
 ): Promise<DiceOutcome> {
-  // Spectators watch: they may talk in chat, and they may not roll.
-  if (!canRollDice(roller.role)) {
-    return { ok: false, status: 403, error: 'Spectators cannot roll dice' };
-  }
-
   // The labels are stored with the roll and sent to every member, so
   // they are bounded here (validators/dice.ts).
   const parsed = DiceRollSchema.safeParse(data);
