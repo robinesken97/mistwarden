@@ -170,7 +170,8 @@ export default function PreparingBanner() {
         // 60 px tall on touch, 56 with a mouse: 8 + the buttons + 8, its 1 px border inside.
         className={cn(
           'flex flex-wrap items-center text-sm text-ink border-b border-[color-mix(in_srgb,var(--color-warning)_45%,transparent)] bg-[color-mix(in_srgb,var(--color-warning)_12%,var(--color-surface))]',
-          phone && !short ? 'gap-x-2 gap-y-2 px-4 pt-2 pb-[11px]' : 'gap-x-2 gap-y-1 px-4 pt-2 pb-[7px]',
+          // 8 + a row of 44 (+ 8 + the buttons' 44 on a phone upright) + 8, its 1 px border inside.
+          'gap-x-2 px-4 pt-2 pb-[7px]', phone && !short ? 'gap-y-2' : 'gap-y-1',
         )}
       >
         <p className="min-w-0 flex-1 truncate">
