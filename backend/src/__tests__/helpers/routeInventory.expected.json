@@ -1444,6 +1444,28 @@
       ]
     },
     {
+      "method": "POST",
+      "path": "/api/campaigns/:campaignId/maps/:id/save-as-template",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireGM",
+        "<anonymous>",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/campaigns/:campaignId/maps/:id/create-from-template",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireGM",
+        "<anonymous>",
+        "<anonymous>"
+      ]
+    },
+    {
       "method": "PUT",
       "path": "/api/campaigns/:campaignId/maps/:id/set-current",
       "handlers": [

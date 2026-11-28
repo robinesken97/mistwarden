@@ -557,7 +557,7 @@ router.put('/:campaignId', campaignGM, async (req: AuthenticatedRequest, res: Re
         message: parsed.error.issues[0]?.message ?? 'Invalid campaign data',
       });
     }
-    const { name, description, status, vibeSettings, spiritLayerEnabled, spiritLayerStyle, gameSystem, chatCooldownEnabled, chatCooldownSeconds, playersMayDraw } = parsed.data;
+    const { name, description, status, vibeSettings, spiritLayerEnabled, spiritLayerStyle, gameSystem, chatCooldownEnabled, chatCooldownSeconds, playersMayDraw, useCreatureSize } = parsed.data;
 
     const updateData: Prisma.CampaignUpdateInput = {};
     if (name !== undefined) updateData.name = name;
@@ -575,6 +575,7 @@ router.put('/:campaignId', campaignGM, async (req: AuthenticatedRequest, res: Re
     if (chatCooldownEnabled !== undefined) updateData.chatCooldownEnabled = chatCooldownEnabled;
     if (chatCooldownSeconds !== undefined) updateData.chatCooldownSeconds = chatCooldownSeconds;
     if (playersMayDraw !== undefined) updateData.playersMayDraw = playersMayDraw;
+    if (useCreatureSize !== undefined) updateData.useCreatureSize = useCreatureSize;
 
     // Handle gameSystem update
     if (gameSystem !== undefined) {

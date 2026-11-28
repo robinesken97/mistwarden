@@ -229,6 +229,7 @@ export async function prepareCampaignExport(
       gridColor: map.gridColor,
       gridOpacity: map.gridOpacity,
       gridLineWidth: map.gridLineWidth,
+      isTemplate: map.isTemplate,
       tokens,
       // Empty: releases up to 1.5.4 store an archive's annotations and send
       // them to every member of the campaign, so a drawing for the GM alone
@@ -352,6 +353,7 @@ export async function prepareCampaignExport(
     spiritLayerEnabled: campaign.spiritLayerEnabled,
     spiritLayerStyle: campaign.spiritLayerStyle,
     playersMayDraw: campaign.playersMayDraw,
+    useCreatureSize: campaign.useCreatureSize,
   };
 
   // 10. The archive's data files, written before the pictures.

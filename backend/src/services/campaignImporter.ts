@@ -850,6 +850,7 @@ export async function importCampaign(
               spiritLayerEnabled: campaignSettings.spiritLayerEnabled ?? false,
               spiritLayerStyle: campaignSettings.spiritLayerStyle ?? 'wispy',
               playersMayDraw: campaignSettings.playersMayDraw ?? true,
+              useCreatureSize: campaignSettings.useCreatureSize ?? false,
             },
           });
           await tx.campaignMembership.create({
@@ -930,11 +931,12 @@ export async function importCampaign(
                 })),
               });
             }
-            firstMapId ??= mapId;
+            // A template is never the current map.
+            if (!prepared.data.isTemplate) firstMapId ??= mapId;
             mapCount++;
             tokenCount += prepared.tokenCount;
           }
-          // The first map imported is the one the campaign opens on.
+          // The first scene imported is the one the campaign opens on.
           if (firstMapId) {
             await tx.campaign.update({ where: { id: newCampaignId }, data: { currentMapId: firstMapId } });
           }

@@ -69,6 +69,8 @@ const GM_ONLY = [
   'PUT /api/campaigns/:campaignId/maps/:id',
   'DELETE /api/campaigns/:campaignId/maps/:id',
   'POST /api/campaigns/:campaignId/maps/:id/duplicate',
+  'POST /api/campaigns/:campaignId/maps/:id/save-as-template',
+  'POST /api/campaigns/:campaignId/maps/:id/create-from-template',
   'PUT /api/campaigns/:campaignId/maps/:id/set-current',
   'POST /api/campaigns/:campaignId/maps/:id/tokens',
   'POST /api/campaigns/:campaignId/maps/:id/tokens/move',

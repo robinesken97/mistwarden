@@ -88,7 +88,7 @@ the session.
 |---|---|---|---|---|
 | Read anything, secret rolls | yes | yes | yes | yes |
 | Create maps, tokens, walls, lights, notes | yes, not on the map players see | also tokens on that map | also on that map | – |
-| Copy a map with `duplicate_scene` | yes, any map, the one players see too | same | same | same |
+| Copy a map with `duplicate_scene`, `save_scene_as_template`, `create_scene_from_template` | yes, any map, the one players see too | same | same | same |
 | Game state of what this server created | yes, not on the map players see | also on that map | also on that map | – |
 | Game state of anything else | no | yes, also on the map players see | no | yes, not on the map players see |
 | Edit or delete what this server created | yes, not on the map players see | same | also on that map | – |
@@ -117,7 +117,10 @@ Every delete also needs a recent backup (below), whatever the switches.
   is not. A copy made with `duplicate_scene` is in the manifest; its walls,
   lights and tokens are only where the original's were, so a player's token
   copied along stays out of reach as it was. A copy changes nothing and is
-  seen by no player, so it needs no switch and no backup.
+  seen by no player, so it needs no switch and no backup. The same holds for
+  `save_scene_as_template` and `create_scene_from_template`. A scene template
+  (`isTemplate` in `list_maps`, `get_map`, `get_campaign`) is never shown to
+  players: `set_current_map` on one is refused by the server.
 - **Co-GM mode.** `MISTWARDEN_MCP_COGM=1` lets the game-state tools act on
   everything in the campaign, as a second GM at the table would, but
   renaming, resizing, replacing and deleting stay bound to the manifest. A
@@ -218,13 +221,17 @@ Read: `list_campaigns`, `get_campaign`, `list_maps`, `get_map`,
 `get_messages`, `get_dice_rolls`, `get_initiative`, `list_sessions`,
 `list_characters`, `get_character`.
 Maps: `create_map_from_image`, `import_uvtt`, `duplicate_scene`,
+`save_scene_as_template`, `create_scene_from_template` (scene templates: maps
+kept to make scenes from, never shown to players),
 `update_map_settings` (also grid type, offsets, size, and the grid's look for
 everyone: `gridColor`, `gridOpacity`, `gridLineWidth`, which `get_map` lists
 as `gridLook`), `delete_map`.
 Tokens: `add_token`, `update_token` (also hit points, conditions, initiative,
 light, rotation, layer, display mode, picture, creature, character),
 `update_tokens` (batch), `delete_token`.
-Creatures and spells: `search_creatures`, `get_creature`, `place_creature`,
+Creatures and spells: `search_creatures`, `get_creature`, `place_creature`
+(the creature's size only while the campaign's `useCreatureSize` is on, else
+1×1),
 `list_spells`, `get_spell`.
 Spell areas: `place_area`, `place_spell_area` (the spell's area as the server
 stores it, or shape and size given), `list_areas`, `remove_area`,
@@ -244,7 +251,8 @@ Table, with co-GM or player-visible: `send_chat`, `send_whisper`,
 `start_combat`, `next_turn`, `end_combat`, `add_to_initiative`,
 `roll_initiative`, `remove_from_initiative`, `set_initiative`,
 `set_initiative_order`, `set_vibe`, `set_atmosphere`, `update_campaign` (name,
-description, status, drawing, chat cooldown, vibe settings only),
+description, status, drawing, `useCreatureSize`, chat cooldown, vibe settings
+only),
 `start_session`, `pause_session`, `resume_session`, `end_session`,
 `set_session_notes`.
 Player-visible, with that switch: `set_current_map`, `show_gallery_picture`,

@@ -27,7 +27,6 @@ type Route = (body: Record<string, unknown> | undefined) => unknown;
 
 function harness(switches: Partial<Settings> = {}, extra: Record<string, Route> = {}) {
   const routes: Record<string, Route> = {
-    ...extra,
     [`GET /api/campaigns/${C}`]: () => ({ campaign: { id: C, name: 'Mistvale', userRole: 'GM', currentMapId: MAP, memberships: [], maps: [] } }),
     [`GET /api/campaigns/${C}/maps/${MAP}`]: () => ({
       map: {
@@ -40,6 +39,8 @@ function harness(switches: Partial<Settings> = {}, extra: Record<string, Route> 
     [`PATCH /api/campaigns/${C}/maps/${MAP}/walls/${DOOR}`]: (b) => ({ segment: { id: DOOR, ...b } }),
     [`POST /api/campaigns/${C}/dice-rolls`]: (b) => ({ roll: { total: 7, secret: b?.secret ?? false } }),
     'POST /api/creatures/import-markdown': (b) => ({ dryRun: b?.dryRun, rows: [] }),
+    // A test's own routes win over these.
+    ...extra,
   };
   const calls: Array<{ route: string; body?: Record<string, unknown> }> = [];
   const fetchImpl = (async (url: string, init?: RequestInit) => {
@@ -217,6 +218,59 @@ describe('duplicate_scene', () => {
     expect((await h.call('duplicate_scene', { campaignId: C, mapId: MAP, name: 'Crypt, later' })).isError).toBe(false);
     expect(h.sent(`POST /api/campaigns/${C}/maps/${MAP}/duplicate`)[0].body).toEqual({ name: 'Crypt, later' });
     expect(manifest.has('token', inMap(COPY, COPIED_TOKEN))).toBe(true);
+  });
+});
+
+// Mistwarden, 2026-11-28: scene templates, and the creature size setting.
+describe('scene templates', () => {
+  const COPY = '77777777-7777-4777-8777-000000000001';
+  const copied = (isTemplate: boolean) => () => ({ map: { id: COPY, name: 'Crypt', width: 10, height: 10, gridSize: 50, tokens: [], wallSegments: [], lights: [], isTemplate } });
+
+  it('saves a map as a template and makes a scene from one through their routes, owning the copy', async () => {
+    const h = harness({}, {
+      [`POST /api/campaigns/${C}/maps/${MAP}/save-as-template`]: copied(true),
+      [`POST /api/campaigns/${C}/maps/${MAP}/create-from-template`]: copied(false),
+    });
+    const saved = await h.call('save_scene_as_template', { campaignId: C, mapId: MAP, tokens: false });
+    expect(JSON.parse(saved.text)).toMatchObject({ mapId: COPY, isTemplate: true, current: false });
+    expect(h.sent(`POST /api/campaigns/${C}/maps/${MAP}/save-as-template`)[0].body).toEqual({ tokens: false });
+    const made = await h.call('create_scene_from_template', { campaignId: C, mapId: MAP });
+    expect(JSON.parse(made.text)).toMatchObject({ mapId: COPY, isTemplate: false });
+    expect((await Manifest.load(dir, C)).has('map', COPY)).toBe(true);
+  });
+
+  it('lists maps with isTemplate', async () => {
+    const h = harness({}, {
+      [`GET /api/campaigns/${C}/maps`]: () => ({ maps: [{ id: MAP, name: 'Crypt', width: 10, height: 10, gridSize: 50 }, { id: COPY, name: 'Inn', width: 10, height: 10, gridSize: 50, isTemplate: true }] }),
+    });
+    const listed = JSON.parse((await h.call('list_maps', { campaignId: C })).text);
+    expect(listed.map((m: { isTemplate: boolean }) => m.isTemplate)).toEqual([false, true]);
+  });
+});
+
+describe('place_creature and useCreatureSize', () => {
+  const CREATURE = 'dddddddd-0000-4000-8000-000000000001';
+  const placed = (useCreatureSize: boolean | undefined) => harness({ coGm: true }, {
+    [`GET /api/campaigns/${C}`]: () => ({ campaign: { id: C, name: 'Mistvale', userRole: 'GM', currentMapId: null, useCreatureSize, memberships: [], maps: [] } }),
+    [`GET /api/campaigns/${C}/creatures/${CREATURE}`]: () => ({ id: CREATURE, name: 'Ogre', size: { width: 2, height: 2 }, statBlock: { hpMax: 59 }, disposition: 'hostile' }),
+    [`POST /api/campaigns/${C}/maps/${MAP}/tokens`]: (b) => ({ token: { ...token, ...b, id: TOKEN } }),
+  });
+  const sentSize = async (useCreatureSize: boolean | undefined) => {
+    const h = placed(useCreatureSize);
+    expect((await h.call('place_creature', { campaignId: C, mapId: MAP, creatureId: CREATURE, x: 2, y: 2 })).isError).toBe(false);
+    return h.sent(`POST /api/campaigns/${C}/maps/${MAP}/tokens`)[0].body?.size;
+  };
+
+  it("places 1x1 while the setting is off or absent, and the stat block's size while it is on", async () => {
+    expect(await sentSize(false)).toEqual({ width: 1, height: 1 });
+    expect(await sentSize(undefined)).toEqual({ width: 1, height: 1 });
+    expect(await sentSize(true)).toEqual({ width: 2, height: 2 });
+  });
+
+  it('sets it with update_campaign', async () => {
+    const h = harness({ coGm: true }, { [`PUT /api/campaigns/${C}`]: (b) => ({ campaign: { id: C, ...b } }) });
+    await h.call('update_campaign', { campaignId: C, useCreatureSize: true });
+    expect(h.sent(`PUT /api/campaigns/${C}`)[0].body).toEqual({ useCreatureSize: true });
   });
 });
 

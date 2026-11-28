@@ -175,6 +175,8 @@ const TESTED: Record<string, string> = {
   'DELETE /api/campaigns/:campaignId/maps/:id/areas': 'routes/__tests__/gmTableActionsRest.e2e.test.ts',
   'POST /api/campaigns/:campaignId/maps/:id/exploration/reset': 'routes/__tests__/gmTableActionsRest.e2e.test.ts',
   'POST /api/campaigns/:campaignId/maps/:id/duplicate': 'routes/__tests__/mapDuplicate.e2e.test.ts',
+  'POST /api/campaigns/:campaignId/maps/:id/save-as-template': 'routes/__tests__/sceneTemplates.e2e.test.ts',
+  'POST /api/campaigns/:campaignId/maps/:id/create-from-template': 'routes/__tests__/sceneTemplates.e2e.test.ts',
   'PUT /api/campaigns/:campaignId/maps/:id/lighting': 'routes/__tests__/mapSettings.e2e.test.ts',
   'POST /api/characters': 'routes/__tests__/characterValidate.e2e.test.ts',
   'GET /api/characters/:id': 'routes/__tests__/memberRemovalCharacters.e2e.test.ts',

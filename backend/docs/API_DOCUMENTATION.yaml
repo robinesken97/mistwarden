@@ -2524,6 +2524,7 @@ paths:
                                 fogEnabled: { type: boolean }
                                 globalIllumination: { type: boolean }
                                 explorationEnabled: { type: boolean }
+                                isTemplate: { type: boolean, description: "A scene template (GM only: a player is never sent one)." }
                                 createdAt: { type: string, format: date-time }
                                 updatedAt: { type: string, format: date-time }
                           characters:
@@ -2672,6 +2673,15 @@ paths:
                     drawings stay theirs to erase while it is off. Anything
                     but `true` or `false` answers 400 with "playersMayDraw
                     must be true or false".
+                useCreatureSize:
+                  type: boolean
+                  description: >-
+                    Use creature size from stat block: a token placed from a
+                    creature (the creature library, the MCP server's
+                    `place_creature`) takes the creature's size; off (the
+                    default), it starts at 1x1. The token route itself takes
+                    whatever size it is sent. Anything but `true` or `false`
+                    answers 400 with "useCreatureSize must be true or false".
       responses:
         '200':
           description: Campaign updated
@@ -8326,6 +8336,7 @@ paths:
                         fogEnabled: { type: boolean }
                         globalIllumination: { type: boolean }
                         explorationEnabled: { type: boolean }
+                        isTemplate: { type: boolean, description: "A scene template (GM only: a player is never sent one)." }
                         spiritLayerUrl:
                           type: string
                           nullable: true
@@ -8812,7 +8823,8 @@ paths:
         tokens, walls or lights than a map may (one stored before the
         limits) answers 400 (`Limit Exceeded`) and copies nothing; a copy
         without its tokens may still be made. Counts against the GM's table
-        action limit (120 a minute).
+        action limit (120 a minute). The copy of a scene template is a
+        template, of a scene a scene.
       operationId: duplicateMap
       security:
         - cookieAuth: []
@@ -8868,6 +8880,131 @@ paths:
         '429':
           $ref: '#/components/responses/RateLimited'
 
+  /api/campaigns/{campaignId}/maps/{id}/save-as-template:
+    post:
+      tags:
+        - Maps
+      summary: Save map as scene template
+      description: |
+        Copy a map as a scene template (GM only), as `duplicate` copies it
+        and with the same options, the copy stored with `isTemplate` true.
+        The source is left as it was. A template is never the current map
+        (setting it current answers 409), so no player is ever sent it; it
+        is listed for the GM with `isTemplate`. Counts against the GM's
+        table action limit (120 a minute).
+      operationId: saveMapAsTemplate
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CampaignId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                name:
+                  type: string
+                  description: Trimmed, 1 to 200 characters. Default the source's name, with ` (copy)` only when another template of the campaign has it.
+                tokens:
+                  type: boolean
+                  default: true
+                fog:
+                  type: boolean
+                  default: true
+                drawings:
+                  type: boolean
+                  default: true
+      responses:
+        '201':
+          description: The copy, as stored.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  map:
+                    $ref: '#/components/schemas/Map'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+  /api/campaigns/{campaignId}/maps/{id}/create-from-template:
+    post:
+      tags:
+        - Maps
+      summary: Create scene from template
+      description: |
+        Copy a scene template as an ordinary scene (GM only), as `duplicate`
+        copies it and with the same options, the copy stored with
+        `isTemplate` false. Not made current; the template stays a template.
+        A map that is not a template answers 409. Counts against the GM's
+        table action limit (120 a minute).
+      operationId: createSceneFromTemplate
+      security:
+        - cookieAuth: []
+      parameters:
+        - $ref: '#/components/parameters/CampaignId'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                name:
+                  type: string
+                  description: Trimmed, 1 to 200 characters. Default the template's name, with ` (copy)` only when another scene of the campaign has it.
+                tokens:
+                  type: boolean
+                  default: true
+                fog:
+                  type: boolean
+                  default: true
+                drawings:
+                  type: boolean
+                  default: true
+      responses:
+        '201':
+          description: The copy, as stored.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  map:
+                    $ref: '#/components/schemas/Map'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
   /api/campaigns/{campaignId}/maps/{id}/set-current:
     put:
       tags:
@@ -8879,7 +9016,9 @@ paths:
         current map, so while anything is in the initiative order it is sent
         again to every connected member (`initiative.state`). Every connected
         member is sent the new map as they may see it (`map.changed`), so
-        every open page moves onto it, whoever made the request.
+        every open page moves onto it, whoever made the request. A scene
+        template (`isTemplate`) is never the current map: it answers 409 and
+        the table stays where it was.
       operationId: setCurrentMap
       security:
         - cookieAuth: []
@@ -8909,6 +9048,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
 
   /api/campaigns/{campaignId}/maps/{id}/tokens:
     post:
@@ -12334,10 +12475,12 @@ paths:
         in an archive made before names were carried, is named after its
         file without the extension, and one with no description has none.
 
-        The campaign starts in PREPARATION with the first imported map as its
-        current map, and with `playersMayDraw` as the archive's
-        `campaign.json` gives it: on for an archive made before the
-        setting existed. Maps and assets are created in the archive's order, each
+        The campaign starts in PREPARATION with the first imported map that
+        is not a scene template as its current map (a map keeps `isTemplate`,
+        false for an archive made before templates), and with
+        `playersMayDraw` and `useCreatureSize` as the archive's
+        `campaign.json` gives them: on and off for an archive made before
+        the settings existed. Maps and assets are created in the archive's order, each
         a millisecond after the last, and an export lists maps oldest first,
         so the map list comes back in the original's order and the first map
         is the oldest. Imported tokens are linked to no character and
@@ -15418,6 +15561,10 @@ components:
           type: boolean
           default: true
           description: Whether players may draw on the map while the session is live; the GM always may.
+        useCreatureSize:
+          type: boolean
+          default: false
+          description: A token placed from a creature takes the stat block's size; off, it starts at 1x1.
         rollHistoryClearedAt:
           type: string
           format: date-time
@@ -16000,6 +16147,9 @@ components:
         explorationEnabled:
           type: boolean
           description: Explored areas are remembered per player and greyed in when out of sight. Maps from before 1.5.0 have it on; new maps start with it off.
+        isTemplate:
+          type: boolean
+          description: A scene template, which the GM makes scenes from. Never the current map (making it current answers 409), so never sent to a player. Set only when the map is made (save-as-template, create-from-template, a copy of a template, an import); default false.
         wallSegments:
           type: array
           items:
