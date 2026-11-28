@@ -833,7 +833,7 @@ function CreatureRow({
               ? 'bg-info/10 text-info-ink'
               : 'bg-moss-green/10 text-brand-ink'
           }`}>
-            {creature.source === 'srd' ? 'SRD' : creature.source.startsWith('custom:') ? creature.source.slice('custom:'.length) : 'Custom'}
+            {creature.source === 'srd' ? 'SRD' : creature.source?.startsWith('custom:') ? creature.source.slice('custom:'.length) : 'Custom'}
           </span>
 
           {/* Room for the favourite star: a finger's width on a touch screen. */}
