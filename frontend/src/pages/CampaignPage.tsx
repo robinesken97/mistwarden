@@ -43,6 +43,8 @@ import DiceOverlay from '@/components/campaign/DiceOverlay';
 import TableRefusals from '@/components/campaign/TableRefusals';
 import NpcQuickEditor from '@/components/campaign/NpcQuickEditor';
 import CreatureLibrary from '@/components/campaign/CreatureLibrary';
+import SpellLibrary from '@/components/campaign/SpellLibrary';
+import { SpellAreaCampaign } from '@/utils/spells';
 import TokenTemplateLibrary from '@/components/campaign/TokenTemplateLibrary';
 import TokenRoster from '@/components/campaign/TokenRoster';
 import CampaignSettingsModal from '@/components/campaign/CampaignSettingsModal';
@@ -132,6 +134,7 @@ function CampaignPageContent() {
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
   const [isCreatureLibraryOpen, setIsCreatureLibraryOpen] = useState(false);
   const [isTokenTemplateLibraryOpen, setIsTokenTemplateLibraryOpen] = useState(false);
+  const [isSpellLibraryOpen, setIsSpellLibraryOpen] = useState(false);
   // The token in the quick editor, with the map it was opened on, which its
   // saves name: the map on screen can change under it (the table moved from
   // elsewhere, the map being prepared deleted).
@@ -281,6 +284,8 @@ function CampaignPageContent() {
     // which put the bottom of the page under the toolbar. Its top clears a
     // notch or a home-screen app's status bar (index.css pads the other pages).
     <div data-table-page="" className="h-dvh pt-[env(safe-area-inset-top)] flex flex-col bg-linear-to-br/srgb from-soft-cream via-parchment to-warm-amber/20">
+      {/* A sheet's Place area places on the map shown (utils/spells.ts). */}
+      <SpellAreaCampaign.Provider value={viewedMap && campaign ? campaign.id : null}>
       <TableHosts parts={tableParts}>
         {compact ? (
           <CompactTable
@@ -288,6 +293,7 @@ function CampaignPageContent() {
             isOwner={isOwner}
             onOpenTool={(key) => sessionPanelOpeners[key]()}
             onOpenDocuments={() => setIsDocumentsOpen(true)}
+            onOpenSpells={() => setIsSpellLibraryOpen(true)}
             onOpenShortcuts={() => setIsShortcutsOpen(true)}
           />
         ) : (
@@ -305,10 +311,12 @@ function CampaignPageContent() {
             }}
             onOpenTool={(key) => sessionPanelOpeners[key]()}
             onOpenDocuments={() => setIsDocumentsOpen(true)}
+            onOpenSpells={() => setIsSpellLibraryOpen(true)}
             onOpenShortcuts={() => setIsShortcutsOpen(true)}
           />
         )}
       </TableHosts>
+      </SpellAreaCampaign.Provider>
 
       {/* Map Manager slide-over panel (GM only) */}
       {userRole === 'GM' && (
@@ -393,6 +401,9 @@ function CampaignPageContent() {
           isGM={userRole === 'GM'}
         />
       )}
+
+      {/* Spell Library slide-over: every member reads it */}
+      <SpellLibrary isOpen={isSpellLibraryOpen} onClose={() => setIsSpellLibraryOpen(false)} />
 
       <ShortcutsPanel open={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} role={userRole} />
 

@@ -5,6 +5,7 @@ import { loadPage } from '@/services/pageLoad';
 import { rememberSignInNotice } from '@/services/signInNotice';
 import { signInPath } from '@/utils/returnTo';
 import type { WallSegment, WallsAdded } from '@/types/walls';
+import type { SpellInput, SpellSeedStatus, SpellSummary, SpellTemplate } from '@/types/spells';
 import type {
   User,
   AdminListedUser,
@@ -1343,6 +1344,60 @@ class ApiClient {
 
   async seedSrdCreatures(campaignId: string): Promise<{ message: string; fetched: number; created: number; updated: number; skipped: number; alreadyExisted: number; rejected: number }> {
     const response = await this.client.post(`/api/campaigns/${campaignId}/creatures/seed`);
+    return response.data;
+  }
+
+  // ============================================
+  // Spell Library
+  // ============================================
+
+  /** Every spell a campaign may use, the SRD's and the instance's included, without descriptions. */
+  async listCampaignSpells(campaignId: string): Promise<SpellSummary[]> {
+    const response = await this.client.get(`/api/campaigns/${campaignId}/spells`);
+    return response.data.spells;
+  }
+
+  async getCampaignSpell(campaignId: string, spellId: string): Promise<SpellTemplate> {
+    const response = await this.client.get(`/api/campaigns/${campaignId}/spells/${spellId}`);
+    return response.data;
+  }
+
+  async createCampaignSpell(campaignId: string, data: SpellInput): Promise<SpellTemplate> {
+    const response = await this.client.post(`/api/campaigns/${campaignId}/spells`, data);
+    return response.data;
+  }
+
+  async updateCampaignSpell(campaignId: string, spellId: string, data: Partial<SpellInput>): Promise<SpellTemplate> {
+    const response = await this.client.put(`/api/campaigns/${campaignId}/spells/${spellId}`, data);
+    return response.data;
+  }
+
+  async deleteCampaignSpell(campaignId: string, spellId: string): Promise<void> {
+    await this.client.delete(`/api/campaigns/${campaignId}/spells/${spellId}`);
+  }
+
+  /** The instance's own spells, an administrator's. */
+  async createInstanceSpell(data: SpellInput): Promise<SpellTemplate> {
+    const response = await this.client.post('/api/spells', data);
+    return response.data;
+  }
+
+  async updateInstanceSpell(spellId: string, data: Partial<SpellInput>): Promise<SpellTemplate> {
+    const response = await this.client.put(`/api/spells/${spellId}`, data);
+    return response.data;
+  }
+
+  async deleteInstanceSpell(spellId: string): Promise<void> {
+    await this.client.delete(`/api/spells/${spellId}`);
+  }
+
+  async getSpellSeedStatus(): Promise<SpellSeedStatus> {
+    const response = await this.client.get('/api/spells/seed/status');
+    return response.data;
+  }
+
+  async seedSrdSpells(): Promise<{ message: string; fetched: number; created: number; updated: number; rejected: number }> {
+    const response = await this.client.post('/api/spells/seed');
     return response.data;
   }
 
