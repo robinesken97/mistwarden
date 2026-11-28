@@ -1008,6 +1008,14 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
     return tokens.find((t) => controlsToken(t, user.id, userRole)) ?? null;
   }, [tokens, user, isGM, userRole]);
 
+  // Where a filling fit centres for a player: the own token selected, else
+  // their first; none, or the GM, and the map's middle.
+  const fitFocus = () => {
+    if (!myToken || !currentMap) return undefined;
+    const selected = selectedTokenId !== null ? tokens?.find((t) => t.id === selectedTokenId && isOwnToken(t)) : undefined;
+    return tokenCentre(selected ?? myToken, gridFrame(currentMap));
+  };
+
   // Effective ruler origin: players use their token position, GM uses clicked point
   const effectiveRulerOrigin = isGM ? rulerOrigin : (myToken ? myToken.position : null);
 
@@ -1259,8 +1267,9 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
     if (lastFittedMapIdRef.current === currentMap.id) return;
 
     lastFittedMapIdRef.current = currentMap.id;
-    // On the compact layout the map fills the screen (fitToScreen's fill).
-    mapControls.fitToScreen(canvasSize.width, canvasSize.height, compact);
+    // On the compact layout the map fills the screen (fitToScreen's fill),
+    // round a player's own token.
+    mapControls.fitToScreen(canvasSize.width, canvasSize.height, compact, fitFocus());
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mapControls is a new object each render; lastFittedMapIdRef keeps the fit to once per map
   }, [mapShown, currentMap?.id, canvasSize.width, canvasSize.height]);
 
@@ -4270,7 +4279,7 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   // What the toolbar's buttons do, and on the compact layout the rows of
   // Map controls, which hold the buttons its one row leaves out.
   const mapControlActions: MapControlsActions = {
-    fit: () => mapControls.fitToScreen(canvasSize.width, canvasSize.height, compact),
+    fit: () => mapControls.fitToScreen(canvasSize.width, canvasSize.height, compact, fitFocus()),
     toggleGrid: () => setShowGrid((prev) => !prev),
     nextGridColor: () => setGridColor((prev) => (prev === 'black' ? 'white' : 'black')),
     toggleRuler: () => { setDrawKind(null); handleToggleRuler(); },

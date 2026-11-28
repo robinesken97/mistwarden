@@ -138,10 +138,14 @@ export function useMapControls(config: MapControlsConfig) {
    * instead, centred, its middle on screen and the rest a pan away: a
    * landscape map fitted to a phone's width was a fifth of its size, its
    * tokens 14 px. At most FILL_LIMIT times the whole-map fit, so a long thin
-   * map still shows a third of its length.
+   * map still shows a third of its length. A filling fit centres on `focus`
+   * (map pixels, y from the top; a player's own token) instead of the map's
+   * middle, as far as the map's edges allow: a side the map overfills keeps
+   * its edges at or past the canvas's, so no more empty space shows than the
+   * centred fit has.
    */
   const fitToScreen = useCallback(
-    (canvasWidth: number, canvasHeight: number, fill = false) => {
+    (canvasWidth: number, canvasHeight: number, fill = false, focus?: { x: number; y: number }) => {
       if (!canvasWidth || !canvasHeight) return;
 
       const mapWidthPx = mapWidth * gridSize;
@@ -154,9 +158,14 @@ export function useMapControls(config: MapControlsConfig) {
       const whole = Math.min(fitWidth, fitHeight);
       const fitZoom = clampZoom(fill ? Math.min(Math.max(fitWidth, fitHeight), whole * FILL_LIMIT) : whole);
 
-      // Center the scaled map in the canvas
-      const panX = (canvasWidth - mapWidthPx * fitZoom) / 2;
-      const panY = (canvasHeight - mapHeightPx * fitZoom) / 2;
+      // Center the scaled map in the canvas, or the focus where the map overfills it
+      const along = (canvas: number, size: number, at: number | undefined) => {
+        const centred = (canvas - size * fitZoom) / 2;
+        if (!fill || at === undefined || centred >= 0) return centred;
+        return Math.min(0, Math.max(canvas - size * fitZoom, canvas / 2 - at * fitZoom));
+      };
+      const panX = along(canvasWidth, mapWidthPx, focus?.x);
+      const panY = along(canvasHeight, mapHeightPx, focus?.y);
 
       setView(fitZoom, { x: panX, y: panY });
     },
