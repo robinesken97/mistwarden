@@ -24,6 +24,7 @@ import { UnsupportedSystemSheet } from '../character-sheets/UnsupportedSystemShe
 import { CharacterSheetErrorBoundary } from '../character-sheets/ErrorBoundary';
 import { RollModeControl } from '../character-sheets/RollModeControl';
 import { systemSupportsAdvantage, type RollMode } from '@/utils/rollModes';
+import { PLACE_SPELL_AREA_EVENT } from '@/utils/spells';
 
 // Import editor modal
 import CharacterSheetEditorModal from './CharacterSheetEditorModal';
@@ -92,6 +93,12 @@ export default function CharacterSheetViewerModal({
   const ownerName = character.userId === user?.id
     ? 'You'
     : character.user?.displayName ?? 'Unknown Player';
+
+  // A spell's Place area opens the map's AoE tool, which the sheet would cover.
+  useEffect(() => {
+    window.addEventListener(PLACE_SPELL_AREA_EVENT, onClose);
+    return () => window.removeEventListener(PLACE_SPELL_AREA_EVENT, onClose);
+  }, [onClose]);
 
   // Listen for character updates via WebSocket
   useEffect(() => {
