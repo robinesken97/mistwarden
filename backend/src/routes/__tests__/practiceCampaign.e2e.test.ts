@@ -100,6 +100,8 @@ describe('POST /api/campaigns/practice', () => {
     expect(by('friendly').every((t) => t.controlledBy === null)).toBe(true);
     expect(by('hostile').map((t) => t.icon).sort()).toEqual(['beast', 'undead']);
     expect(by('neutral')).toHaveLength(1);
+    // In the cellar, row 13 from the top: a stored position counts rows from the bottom.
+    expect(tokens.find((t) => t.name === 'Skeleton')?.position).toEqual({ x: 20, y: 4 });
 
     const walls = WallSegmentsArraySchema.parse(map.wallSegments);
     expect(walls.filter((w) => w.type.startsWith('door')).map((w) => w.type).sort()).toEqual(['door-closed', 'door-open']);

@@ -120,13 +120,16 @@ const token = (fields: { name: string } & Record<string, unknown>) => ({
   ...fields,
 });
 
+/** A token's square, given by column and row from the top; a stored token position counts rows from the map's bottom (frontend utils/tokenCentre.ts). */
+const at = (col: number, row: number) => ({ x: col, y: ROWS - 1 - row });
+
 /** Two friendly tokens with no controller for the GM to hand out, two hostile and one neutral. */
 const TOKENS = [
-  token({ name: 'Scout', type: 'player', disposition: 'friendly', icon: 'ranger', position: { x: 2, y: 8 }, hp: { current: 10, max: 10, temp: 0 }, showHpBar: true }),
-  token({ name: 'Warden', type: 'player', disposition: 'friendly', icon: 'fighter', position: { x: 2, y: 9 }, hp: { current: 12, max: 12, temp: 0 }, showHpBar: true }),
-  token({ name: 'Wolf', type: 'npc', disposition: 'hostile', icon: 'beast', position: { x: 12, y: 13 }, hp: { current: 11, max: 11, temp: 0 } }),
-  token({ name: 'Skeleton', type: 'npc', disposition: 'hostile', icon: 'undead', position: { x: 20, y: 13 }, hp: { current: 13, max: 13, temp: 0 } }),
-  token({ name: 'Merchant', type: 'npc', disposition: 'neutral', icon: 'humanoid', position: { x: 6, y: 4 }, notes: 'Sells rope and lamp oil.' }),
+  token({ name: 'Scout', type: 'player', disposition: 'friendly', icon: 'ranger', position: at(2, 8), hp: { current: 10, max: 10, temp: 0 }, showHpBar: true }),
+  token({ name: 'Warden', type: 'player', disposition: 'friendly', icon: 'fighter', position: at(2, 9), hp: { current: 12, max: 12, temp: 0 }, showHpBar: true }),
+  token({ name: 'Wolf', type: 'npc', disposition: 'hostile', icon: 'beast', position: at(12, 13), hp: { current: 11, max: 11, temp: 0 } }),
+  token({ name: 'Skeleton', type: 'npc', disposition: 'hostile', icon: 'undead', position: at(20, 13), hp: { current: 13, max: 13, temp: 0 } }),
+  token({ name: 'Merchant', type: 'npc', disposition: 'neutral', icon: 'humanoid', position: at(6, 4), notes: 'Sells rope and lamp oil.' }),
 ];
 
 /** The sample character's sheet: made-up numbers, a level 1 fighter with darkvision 60 ft. */
