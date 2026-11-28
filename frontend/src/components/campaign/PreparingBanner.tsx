@@ -209,7 +209,7 @@ export default function PreparingBanner() {
             onClick={() => { void tableSwitch.requestSwitch(viewedMap); }}
             loading={tableSwitch.switching && !tableSwitch.pending}
             aria-label="Bring everyone here"
-            title="Make this the active map, moving every player onto it"
+            title="Make this the active scene, moving every player onto it"
           >
             {short ? 'Bring everyone' : 'Bring everyone here'}
           </Button>

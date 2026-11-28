@@ -216,7 +216,7 @@ export default function CampaignImportDialog({
           <div className="space-y-5">
             {/* Archive summary */}
             <div className="grid grid-cols-2 gap-3">
-              <StatCard icon={<MapIcon className="w-4 h-4" />} label="Maps" value={preview.mapCount} />
+              <StatCard icon={<MapIcon className="w-4 h-4" />} label="Scenes" value={preview.mapCount} />
               <StatCard icon={<Skull className="w-4 h-4" />} label="Creatures" value={preview.creatureCount} />
               <StatCard icon={<Stamp className="w-4 h-4" />} label="Token Templates" value={preview.tokenTemplateCount} />
               <StatCard icon={<Music className="w-4 h-4" />} label="Audio" value={preview.includesAudio ? 'Yes' : 'No'} />

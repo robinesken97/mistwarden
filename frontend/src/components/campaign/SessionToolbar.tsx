@@ -38,7 +38,7 @@ export interface ToolDef {
 // Grouped by intent: campaign content, scene ambience, configuration.
 export const TOOL_GROUPS: ToolDef[][] = [
   [
-    { key: 'maps', label: 'Map Library', icon: MapIcon },
+    { key: 'maps', label: 'Scenes', icon: MapIcon },
     { key: 'tokens', label: 'Token Manager', icon: Swords },
     { key: 'creatures', label: 'Creature Library', icon: Skull },
     { key: 'templates', label: 'Token Templates', icon: Stamp },

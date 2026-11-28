@@ -270,6 +270,43 @@ describe('Players may draw', () => {
   });
 });
 
+// Whether a creature placed from the library takes its stat block's size:
+// Off unless the GM turns it on, a two-segment choice saved at once.
+describe('Creature size from stat block', () => {
+  const group = () => screen.getByRole('radiogroup', { name: 'Creature size from stat block' });
+  const choice = (name: 'Off' | 'On') => within(group()).getByRole('radio', { name });
+
+  it('is Off for a campaign that never set it, and shows On when set', () => {
+    current = campaign();
+    const { unmount } = render(<CampaignSettingsModal isOpen onDeleted={() => undefined} onClose={() => undefined} />);
+    expect(choice('Off')).toBeChecked();
+    expect(choice('On')).not.toBeChecked();
+    unmount();
+
+    current = { ...campaign(), useCreatureSize: true } as Campaign;
+    render(<CampaignSettingsModal isOpen onDeleted={() => undefined} onClose={() => undefined} />);
+    expect(choice('On')).toBeChecked();
+  });
+
+  it('is saved as soon as it is chosen, alone', async () => {
+    current = campaign();
+    render(<CampaignSettingsModal isOpen onDeleted={() => undefined} onClose={() => undefined} />);
+    fireEvent.click(choice('On'));
+    expect(choice('On')).toBeChecked();
+    await waitFor(() => expect(updateCampaign).toHaveBeenCalledWith('c1', { useCreatureSize: true }));
+    await waitFor(() => expect(showToast).toHaveBeenCalledWith('Creatures are placed at their stat block size now', 'success'));
+  });
+
+  it('goes back as it was, saying why, when the save fails', async () => {
+    current = campaign();
+    updateCampaign.mockRejectedValueOnce(Object.assign(new Error('nope'), { response: { data: { message: 'The server is busy' } } }));
+    render(<CampaignSettingsModal isOpen onDeleted={() => undefined} onClose={() => undefined} />);
+    fireEvent.click(choice('On'));
+    await waitFor(() => expect(choice('Off')).toBeChecked());
+    expect(showToast).toHaveBeenCalledWith(expect.any(String), 'error');
+  });
+});
+
 // A GM the game was handed to was offered Remove beside the owner, who sits
 // at the table as a player, and the server then refused it.
 describe('Remove under Members', () => {

@@ -63,7 +63,7 @@ it.each([
     fireEvent.click(screen.getByRole('button', { name: /Create scene/ }));
     fireEvent.click(screen.getByRole('menuitem', { name: 'From a map picture' }));
   }],
-  ['Edit Map', () => {
+  ['Edit scene', () => {
     fireEvent.click(screen.getByRole('button', { name: 'More for Cave' }));
     fireEvent.click(screen.getByRole('menuitem', { name: 'Edit…' }));
   }],

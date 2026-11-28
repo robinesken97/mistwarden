@@ -2,6 +2,22 @@
 
 All notable changes to Mistwarden are documented in this file. Mistwarden is based on [CozyVTT](https://github.com/CheekyChinchilla/CozyVTT) 1.7.0 by CheekyChinchilla (AGPL-3.0); CozyVTT's own history follows below the Mistwarden releases.
 
+## [Unreleased]
+
+### Added
+
+- Duplicate scene: **Duplicate…** in a scene card's **⋯** menu copies the scene, with **Tokens**, **Fog** and **Drawings** each set to **Leave out**/**Reset** or **Copy**, and opens the copy to prepare on your screen only.
+- Scene templates: **Save as template…** keeps a scene as a template of the campaign, listed under **Templates (n)** in the Scenes panel; **Use template** (or **Create scene › From template ›**) makes a fresh scene from it. Templates are never active and never reach players.
+- **Create scene** asks where to start: **Blank scene**, **From a map picture** or **From template ›**.
+- **Creature size from stat block** in Campaign Settings (**Off** or **On**, off at first): on, a token placed from a creature takes its stat block's size.
+
+### Changed
+
+- Campaign maps are called scenes. The Map Library is now **Library › Scenes** and opens in the left panel slot beside the tab column on wide screens, as a sheet on tablets and phones. **Open to prepare** keeps the panel open on wide screens.
+- **Library › Tokens**, **Creatures**, **Token Templates** and **Spells** open in the panel slot the same way, and their forms open as a step in the panel.
+- A scene card's pencil, download and bin buttons moved into its **⋯** menu (**Duplicate…**, **Save as template…**, **Edit…**, **Export as .uvtt file**, **Delete…**).
+- The checkboxes in the delete-scene question and the Universal VTT import became two-segment choices: **Keep**/**Delete** for the picture, **Sight passes**/**Blocks sight** for furniture.
+
 ## [1.0.0] - 2026-11-24
 
 The first Mistwarden release: CozyVTT 1.7.0 with its own look and name. No feature changes.

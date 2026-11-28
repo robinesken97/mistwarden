@@ -55,6 +55,11 @@ function useSlideOver(part: string): SlideOverContextValue {
   return value;
 }
 
+/** A slide-over's classes less its width, surface and shadow, which the panel it is shown in gives (cn does not merge). */
+function inPanelClasses(className: string | undefined): string {
+  return (className ?? '').split(/\s+/).filter((c) => !/^(max-w-|w-|shadow|bg-|backdrop-)/.test(c)).join(' ');
+}
+
 export default function SlideOver({
   open,
   onClose,
@@ -70,7 +75,7 @@ export default function SlideOver({
   if (inPanel) {
     return open ? (
       <SlideOverContext.Provider value={{ titleId, close: onClose }}>
-        <section aria-labelledby={titleId} className={cn(className, 'relative h-full w-full max-w-none bg-transparent shadow-none')}>
+        <section aria-labelledby={titleId} className={cn(inPanelClasses(className), 'relative h-full w-full')}>
           {children}
         </section>
       </SlideOverContext.Provider>

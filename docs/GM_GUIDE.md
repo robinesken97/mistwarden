@@ -48,14 +48,14 @@ Click **Create Campaign** and you're taken directly to the campaign page.
 
 Once inside the campaign, choose **Campaign Settings** in the **⋯** menu of the top bar to open the Campaign Settings panel. It has four tabs:
 
-- **General** — the **Campaign Name** and **Description**, saved with **Save Changes**; **Players may draw**, on in every campaign until you turn it off and saved as soon as you switch it (see [Drawing on the map](#drawing-on-the-map)); and **Export Campaign** (see [Exporting a Campaign](#exporting-a-campaign))
+- **General** — the **Campaign Name** and **Description**, saved with **Save Changes**; **Players may draw**, on in every campaign until you turn it off and saved as soon as you switch it (see [Drawing on the map](#drawing-on-the-map)); **Creature size from stat block**, **Off** or **On**, off at first and saved as soon as you switch it (see [Creature size](#creature-size)); and **Export Campaign** (see [Exporting a Campaign](#exporting-a-campaign))
 - **Chat** — **Enable message cooldown**, off by default, makes everyone in the chat, you included, wait between messages, for the **Cooldown duration** you set (1 to 300 seconds). While someone waits, a line under their chat box counts down, such as "Wait 5s before sending another message"
 - **Members** — everyone in the campaign, the players you have invited who have not answered yet (under **Invited**, each with the date it runs out and an **×** to withdraw it), with **Invite Player**, the role picker that makes a member a **Player** or a **Spectator** (see [Changing a member's role](#changing-a-members-role)), the crown that hands the GM seat on (see [Handing the game to someone else](#handing-the-game-to-someone-else)) and the remove button (see [Removing a Player](#removing-a-player))
 - **Danger Zone** — **Delete Campaign**, shown only to the campaign's owner (whether or not they are still its GM) and to administrators, once the campaign's name is typed to confirm. It deletes the maps, tokens, chat history and session records; characters stay with their owners, and each uploaded file moves to the personal library of whoever uploaded it
 
 *Screenshot pending — Campaign settings panel.*
 
-Campaign Settings and the other side panels, the Map Library, Token Manager, Spirit Layer, Atmosphere, the Creature Library, Token Templates and the token editor, close the same way: press **Escape**, click **Close** (the **×** at the top of the panel, at least 44 pixels square on a phone or a tablet) or click outside the panel. While one is open, Tab moves only among its controls. A window a panel opens, such as **Invite Player**, closes alone on Escape and leaves the panel open.
+Campaign Settings and the other side panels, Library › Scenes, Token Manager, Spirit Layer, Atmosphere, the Creature Library, Token Templates and the token editor, close the same way: press **Escape**, click **Close** (the **×** at the top of the panel, at least 44 pixels square on a phone or a tablet) or click outside the panel. While one is open, Tab moves only among its controls. A window a panel opens, such as **Invite Player**, closes alone on Escape and leaves the panel open.
 
 ### The guided tour
 
@@ -175,20 +175,20 @@ Before you can use a map in your campaign, it needs to live in the **Asset Libra
 Once your map is in the asset library:
 
 1. Inside your campaign, choose **Library ▾ › Scenes** in the top bar
-2. The Map Library panel opens
-3. Click **Create Map**, pick your uploaded image (or click **Upload New** to add one, choosing where it goes as below) and check the grid settings. Or click **Draw a map** at the top of that window to draw one in CozyVTT (see [Drawing a map](#drawing-a-map))
-4. The map is now available to switch to at any time
+2. The **Scenes** panel opens. On a wide screen it sits in the left panel slot beside the tab column and no tab is lit; **×** returns you to the tab that was open. On a tablet or phone it opens as a sheet
+3. Click **Create scene**, then **From a map picture**, pick your uploaded image (or click **Upload New** to add one, choosing where it goes as below) and check the grid settings. Or choose **Blank scene** to draw one in CozyVTT (see [Drawing a map](#drawing-a-map)), or **From template ›** to start from a [scene template](#scene-templates)
+4. The scene is now available to switch to at any time
 
 **Where an Upload New picture goes.** The upload window offers two places for the map picture, and for the spirit layer picture, with a line under each saying what it means. **Personal** is selected at first.
 
 | Choice | Who can see the picture | When you leave the campaign or delete your account |
 |---|---|---|
-| **Personal** | You, in your own library. Players see it only once you switch to the map, and whoever is the campaign's GM sees it on every map. | It stays yours, so the table loses it. Once you leave the campaign, nobody in it can load it, the new GM included: maps using it show "Failed to load map image" until the GM picks another picture in **Edit Map**. If you delete your account after handing the GM seat over, the file is kept, owned by no one: when this campaign is the only one using it, it becomes the campaign's own and the table goes on seeing it (if you are still in the campaign); otherwise nobody in the campaign can load it, and only an administrator can open it. |
+| **Personal** | You, in your own library. Players see it only once you switch to the map, and whoever is the campaign's GM sees it on every map. | It stays yours, so the table loses it. Once you leave the campaign, nobody in it can load it, the new GM included: maps using it show "Failed to load map image" until the GM picks another picture in **Edit scene**. If you delete your account after handing the GM seat over, the file is kept, owned by no one: when this campaign is the only one using it, it becomes the campaign's own and the table goes on seeing it (if you are still in the campaign); otherwise nobody in the campaign can load it, and only an administrator can open it. |
 | **Campaign** | You and whoever is the campaign's GM, in the campaign's library. Players and spectators see it there only once you switch to a map using it, and no longer once the table moves on. | It stays with the campaign, for the table and whoever runs it next. |
 
 Handing the GM seat over and staying in the campaign as a player changes nothing: the new GM and the players still see your **Personal** pictures. A **Campaign** picture you uploaded becomes the new GM's to delete or move out of the campaign once anything there uses it, such as a map, a creature or a handout; you keep that only for pictures nothing but your own characters, the tokens you control and your own documents use. If you mean to leave, move the pictures your maps use to **Campaign** in the Asset Library first, while you are still the GM.
 
-You can change a map's **Width**, **Height** and **Grid Size** later with the **pencil** (Edit map) in the Map Library. Walls, doors and lights move with the picture, so they stay on it. Changing the **Width** or **Height** resets that map's fog of war to fully covered and forgets what every player has explored of it; changing only the **Grid Size** keeps both. Whatever you change on the map on screen, its picture and name included, reaches your players at once.
+You can change a map's **Width**, **Height** and **Grid Size** later with **Edit…** (in the **⋯** menu of the scene's card) in the Scenes panel. The dialog is titled **Edit scene**. Walls, doors and lights move with the picture, so they stay on it. Changing the **Width** or **Height** resets that map's fog of war to fully covered and forgets what every player has explored of it; changing only the **Grid Size** keeps both. Whatever you change on the map on screen, its picture and name included, reaches your players at once.
 
 **Map size limits.** A map can be:
 
@@ -199,17 +199,17 @@ You can change a map's **Width**, **Height** and **Grid Size** later with the **
 | Grid Offset X and Y (pixels) | -500 | 500 |
 | Feet per square (**Grid Scale**) | 1 | 100 |
 
-Create Map and Edit Map offer nothing outside these, and applying a **Grid detected** suggestion keeps it inside them. A Universal VTT file whose map is more than 500 squares on a side is refused when you import it. A map you draw in CozyVTT has a limit of its own besides (see [Drawing a map](#drawing-a-map)).
+From a map picture and Edit scene offer nothing outside these, and applying a **Grid detected** suggestion keeps it inside them. A Universal VTT file whose map is more than 500 squares on a side is refused when you import it. A map you draw in CozyVTT has a limit of its own besides (see [Drawing a map](#drawing-a-map)).
 
 A map holds up to **1,000 tokens**. Adding one more, or moving tokens onto a map that would take it past 1,000, is refused with a message; a map that already had more before version 1.5.1 keeps them, and you can still move, edit and remove them.
 
-A map made before version 1.5.1 may be larger than this. It still opens, and Edit Map still saves changes that leave its size alone, but fog of war and explored areas cannot be turned on for a map with more than 250,000 squares (500 by 500). Turning either on there says so, and a map that already had fog on shows none. To use fog on it, make it 500 squares or fewer on each side in Edit Map.
+A map made before version 1.5.1 may be larger than this. It still opens, and Edit scene still saves changes that leave its size alone, but fog of war and explored areas cannot be turned on for a map with more than 250,000 squares (500 by 500). Turning either on there says so, and a map that already had fog on shows none. To use fog on it, make it 500 squares or fewer on each side in Edit scene.
 
-*Screenshot pending — Map Library panel with multiple maps.*
+*Screenshot pending — Scenes panel with multiple scenes.*
 
 ### Hex grids and the grid offset
 
-Under **Grid Settings** in Create Map and Edit Map, **Grid Type** picks **Squares**, **Hexes, point up** (rows of hexes, every other row moved half a hex right) or **Hexes, flat top** (columns of hexes, every other column moved half a hex down). On a hex map:
+Under **Grid Settings** in From a map picture and Edit scene, **Grid Type** picks **Squares**, **Hexes, point up** (rows of hexes, every other row moved half a hex right) or **Hexes, flat top** (columns of hexes, every other column moved half a hex down). On a hex map:
 
 - **Grid Size** is the distance between the centres of two neighbouring hexes, in map pixels. The map's size in pixels stays **Width** × **Grid Size** by **Height** × **Grid Size**, so the picture, walls, doors, lights, drawings and fog stay where they are when you switch.
 - A token stands on one hex, whatever its size; a large creature is drawn around that hex's centre. A hex counts as on the map when its centre lies inside the picture. When you switch the grid type, or change the grid size or offset, every token moves to the cell nearest where it stood on the picture, and a rider stays on its mount. A token can land up to about half a cell away, and switching to hexes and back can leave it one square off where it started. A token whose hex is no longer on the map after a change of width or height moves to the nearest one.
@@ -227,7 +227,7 @@ The web app's controls for it, and drawing the grid in the map's look, come in a
 
 ### Tokens between squares
 
-**Tokens snap to grid**, under **Grid Settings** in Create Map and Edit Map, is on for every map unless you turn it off.
+**Tokens snap to grid**, under **Grid Settings** in From a map picture and Edit scene, is on for every map unless you turn it off.
 
 - **On** (the default): tokens stand on whole squares, as they always have. You, the GM, can still put one between squares: hold **Alt** (**Option** on a Mac) while you move it and when you put it down, or, on a touch screen, turn on **Place tokens freely** in the **Grid** panel on the map's rail (under **More** on a narrow screen). A player's token always lands on a whole square here.
 - **Off**: anyone moving a token, players included, can stop it between squares, to a hundredth of a square. The token is drawn, sees and is seen from exactly where it stands, and a click anywhere on it picks it up. The ruler and the carried-token readout still count whole squares, rounded, and a player still cannot end a move overlapping another creature.
@@ -242,10 +242,10 @@ No map ready for the scene? Draw one in CozyVTT: a room or a clearing sketched w
 
 **Making one**
 
-1. Open the **Map Library** and click **Create Map**.
-2. Click **Draw a map** at the top of the window.
+1. Open **Library ▾ › Scenes** and click **Create scene**.
+2. Choose **Blank scene**.
 3. Fill in the map's name, its **Width** and **Height** in grid squares, its **Detail (pixels per square)** (70 at first), the **Grid Settings**, and a **Background colour**: parchment at first, one of the colours offered, or any colour with **Another colour**.
-4. Click **Create Map**. CozyVTT puts a blank picture of that colour in the campaign's Asset Library, and opens the new map on your screen only, as **Open to prepare** does (see [Preparing a map while the table plays](#preparing-a-map-while-the-table-plays)), with **Mapmaker** on (below). Your players stay where they are. When it is ready, click **Bring everyone here** on the banner, or **Set Active** in the Map Library.
+4. Click **Create scene**. CozyVTT puts a blank picture of that colour in the campaign's Asset Library, and opens the new map on your screen only, as **Open to prepare** does (see [Preparing a map while the table plays](#preparing-a-map-while-the-table-plays)), with **Mapmaker** on (below). Your players stay where they are. When it is ready, click **Bring everyone here** on the banner, or **Set active** in the Scenes panel.
 
 If the picture cannot be made, the window says so and nothing is created: "This browser could not make the map's picture" means the device ran short, so choose fewer squares and try again.
 
@@ -304,8 +304,8 @@ Undo keeps up to 50 changes. It keeps only the part of the picture each change t
 **To keep the picture as it was**, or to give another map a copy of its own before you paint, make the copy first:
 
 1. Download the picture: in the Asset Library, click **Download** on the map's **Drawn map** picture, or in Mapmaker, click **Download picture** before you paint anything. Your browser saves it as a PNG file.
-2. Upload it as a new picture: in the Asset Library, click **Upload Asset**, choose **Map** and **Campaign**, and pick the file. Or, to start a new map on it, use **Upload New** in **Create Map**. It shows in the Asset Library as an ordinary map picture.
-3. If it is for another map, pick the uploaded picture for that map in **Edit Map**.
+2. Upload it as a new picture: in the Asset Library, click **Upload Asset**, choose **Map** and **Campaign**, and pick the file. Or, to start a new map on it, use **Upload New** under **Create scene › From a map picture**. It shows in the Asset Library as an ordinary map picture.
+3. If it is for another map, pick the uploaded picture for that map in **Edit scene**.
 
 An uploaded picture is never painted over, so the copy stays as it is. (Mapmaker is not offered on it; mark it up with **Draw**.)
 
@@ -317,11 +317,11 @@ An uploaded picture is never painted over, so the copy stays as it is. (Mapmaker
 | **Discard it** | The draft is dropped and Mapmaker opens on the picture as it was saved |
 | **Not now** (or `Esc`) | Nothing changes: the draft stays and Mapmaker stays off, until you click **Mapmaker** again |
 
-If the map's picture was saved or changed since the draft was written, or **Edit Map** changed the map's squares or grid size, the question says the painting "was painted on an older picture of this map". **Restore it over this picture** puts back what you painted, and only that, over the picture the map has now: what the newer picture holds around your strokes stays as it is. If the map's size changed, your painting is stretched with the picture, so it lands where you painted it on the map. **Undo** takes the restore back. **Save**, **Discard my painting** and deleting the map in the Map Library clear the draft, and a draft of a map deleted from another device is dropped the next time you open the campaign.
+If the map's picture was saved or changed since the draft was written, or **Edit scene** changed the map's squares or grid size, the question says the painting "was painted on an older picture of this map". **Restore it over this picture** puts back what you painted, and only that, over the picture the map has now: what the newer picture holds around your strokes stays as it is. If the map's size changed, your painting is stretched with the picture, so it lands where you painted it on the map. **Undo** takes the restore back. **Save**, **Discard my painting** and deleting the scene in the Scenes panel clear the draft, and a draft of a map deleted from another device is dropped the next time you open the campaign.
 
 A draft is kept in that browser only, for you and that map, and for each tab: two tabs painting one map keep a draft each, and neither touches the other's. **Mapmaker** offers the newest draft of the map from that tab, or from a tab you have closed since; a tab still open keeps its own. If **Mapmaker** opened before your browser had looked a draft up (it waits at most 3 seconds), that draft is kept, and offered once what you paint now is saved or discarded. (Over plain `http://`, unless the server is on the same computer, a browser cannot tell which tabs are open, so it offers the newest draft of any tab.) Another browser or device has its own drafts. Signing out deletes your drafts in that browser, so the next person to use it cannot find your unsaved painting there: save what you want to keep first (leaving the campaign page with paint not saved asks you first, as below). A tab still open with paint on screen keeps that paint, and keeps its draft too, except over plain `http://` with the server on another computer, where its draft is deleted with the rest and written again only after your next stroke in that tab. Clearing the browser's site data clears them too, and Safari (on a Mac, an iPhone or an iPad) may clear what a site keeps after seven days in which you have not used it, so do not leave a painting unsaved for a week. If the browser cannot keep drafts (some private windows), Mapmaker says "This browser cannot keep a draft of your painting, so save it often: what is not saved is lost if the page closes." once, and you paint on as before; if it is out of room it says "This browser has no room left to keep a draft of your painting" instead.
 
-**Asked before paint not saved goes.** With paint not saved on the map, Mapmaker asks "Save your painting?" before anything takes it off your screen: **Open to prepare** on another map, **Back to the table** (and your phone's **Back** while you prepare a map), **Set Active** on another map, the top bar's **Dashboard** button, and your browser's **Back**, on a computer or a phone. On a phone, **Back** closes any sheet or window that is open first, as it always does, and asks only after that.
+**Asked before paint not saved goes.** With paint not saved on the map, Mapmaker asks "Save your painting?" before anything takes it off your screen: **Open to prepare** on another scene, **Back to the table** (and your phone's **Back** while you prepare a map), **Set active** on another scene, the top bar's **Dashboard** button, and your browser's **Back**, on a computer or a phone. On a phone, **Back** closes any sheet or window that is open first, as it always does, and asks only after that.
 
 | Answer | What happens |
 |---|---|
@@ -329,7 +329,7 @@ A draft is kept in that browser only, for you and that map, and for each tab: tw
 | **Discard my painting** | Your paint and its draft are dropped, then what you asked for happens |
 | **Not now** (or `Esc`) | Nothing happens, and your paint stays |
 
-Deleting the map in the Map Library asks "Discard your painting?" with **Discard my painting** and **Not now** only: a picture saved then would go with the map. **Bring everyone here**, and **Set Active** on the map you are on, ask nothing: the map stays on your screen and your paint with it, not yet saved, so your players see the picture as it was last saved until you click **Save** (if a save is under way, they are brought once it has landed).
+Deleting the scene in the Scenes panel asks "Discard your painting?" with **Discard my painting** and **Not now** only: a picture saved then would go with the map. **Bring everyone here**, and **Set active** on the scene you are on, ask nothing: the map stays on your screen and your paint with it, not yet saved, so your players see the picture as it was last saved until you click **Save** (if a save is under way, they are brought once it has landed).
 
 Reloading the page, closing the tab or typing another address gets your browser's own question instead, in the browser's words; if the browser does not ask, the draft keeps your painting. While you have paint not saved, CozyVTT keeps you signed in, and if you are signed out anyway the page stays where it is and the Mapmaker panel says so: sign in again in a new tab, then click **Save**.
 
@@ -343,17 +343,17 @@ A save can be refused: the picture must be within your server's size limit for a
 
 A save never deletes a picture: the drawn picture is written over, and an uploaded picture is never written over. If the map's picture was changed to an uploaded one elsewhere (below) and you save your painting over it, the painting becomes a new **Drawn map** picture and the uploaded one stays as it was in the Asset Library.
 
-**If the picture changes elsewhere.** If the map's picture is changed somewhere else while you have paint here not saved (in **Edit Map**, or by a save from another tab or device), your screen shows the new picture and asks what to do with your painting: **Save my painting over it**, **Discard my painting**, or **Not now**, which keeps it; **Mapmaker** then asks again when you press it. **Save** checks the map first, so a picture saved meanwhile from another tab is never replaced without asking. With nothing unsaved, Mapmaker simply gives way to the new picture. While a new picture is still loading on your screen, after a save from another device for instance, the picture before it stays on the map and **Mapmaker** is not offered until the new one has loaded; if it fails to load, the map says "Failed to load map image" and **Mapmaker** stays away until you reload the page. If that picture has been deleted from the Asset Library, **Mapmaker** is offered and starts a blank picture, as on a map with no picture. Mapmaker only ever opens on the map's picture as it is now, or blank.
+**If the picture changes elsewhere.** If the map's picture is changed somewhere else while you have paint here not saved (in **Edit scene**, or by a save from another tab or device), your screen shows the new picture and asks what to do with your painting: **Save my painting over it**, **Discard my painting**, or **Not now**, which keeps it; **Mapmaker** then asks again when you press it. **Save** checks the map first, so a picture saved meanwhile from another tab is never replaced without asking. With nothing unsaved, Mapmaker simply gives way to the new picture. While a new picture is still loading on your screen, after a save from another device for instance, the picture before it stays on the map and **Mapmaker** is not offered until the new one has loaded; if it fails to load, the map says "Failed to load map image" and **Mapmaker** stays away until you reload the page. If that picture has been deleted from the Asset Library, **Mapmaker** is offered and starts a blank picture, as on a map with no picture. Mapmaker only ever opens on the map's picture as it is now, or blank.
 
-**Deleting a drawn map.** The **Delete Map** question in the Map Library offers **Also delete its picture from the Asset Library**, unticked, for a map you drew (never for one whose picture you uploaded). Tick it and the picture goes with the map, unless something else still uses it: then it stays, and the Map Library says so. Left unticked, the picture stays in the Asset Library for you to delete there.
+**Deleting a drawn map.** The **Delete scene** question in the Scenes panel asks, for a scene you drew (never for one whose picture you uploaded), "Its picture in the Asset Library:" with **Keep** or **Delete**. **Keep** is chosen at first. **Delete** takes the picture with the scene, unless something else still uses it: then it stays, and the panel says so. With **Keep**, the picture stays in the Asset Library for you to delete there.
 
 ### Switching Maps
 
-Open the **Map Library** and click **Set Active** on the map you want. This immediately updates the view for all connected players — no need to coordinate. When there are tokens on the map the table is on, you are first asked which to bring along. If they cannot be read (a dropped connection, say), the switch stops and the Map Library says why; click **Set Active** again. **Set Active** always takes your own screen with the table, so if you were preparing another map (below), you stop preparing it.
+Open the **Scenes** panel and click **Set active** on the scene you want. This immediately updates the view for all connected players — no need to coordinate. When there are tokens on the map the table is on, you are first asked which to bring along. If they cannot be read (a dropped connection, say), the switch stops and the panel says why; click **Set active** again. **Set active** always takes your own screen with the table, so if you were preparing another map (below), you stop preparing it.
 
 *GIF pending — Switching maps, showing player view update.*
 
-When you choose a new picture for the map on screen in **Edit Map**, everyone keeps the old picture until the new one has loaded, then changes at once. If it cannot be loaded, the old one stays with "Failed to load map image" over it, and the map can still be used.
+When you choose a new picture for the map on screen in **Edit scene**, everyone keeps the old picture until the new one has loaded, then changes at once. If it cannot be loaded, the old one stays with "Failed to load map image" over it, and the map can still be used.
 
 Plan your map order loosely in advance (forest → cave entrance → dungeon interior), but don't worry about locking anything in. You can switch maps freely during a session.
 
@@ -361,12 +361,12 @@ Plan your map order loosely in advance (forest → cave entrance → dungeon int
 
 You can work on any map of the campaign on your own screen while your players stay on theirs: draw its walls, place lights and creatures, hide tokens, paint fog and draw on it, then bring the table there when it is ready.
 
-1. Open the **Map Library** and click **Open to prepare** on the map you want. Every card but the active map's has it.
-2. The Map Library closes and the map opens on your screen. A banner over it reads, for example, "Preparing **Crypt**. The table is on **Village**." The map's card in the Map Library says **Preparing**.
+1. Open the **Scenes** panel and click **Open to prepare** on the scene you want. Every card but the active scene's has it.
+2. The map opens on your screen. On a wide screen the panel stays open beside it; on a tablet or phone the sheet closes to show the map. A banner over it reads, for example, "Preparing **Crypt**. The table is on **Village**." The scene's card says **Preparing**, and its buttons become **Set active** and **Back to the table**.
 3. Work on it as on any map. Your players are sent nothing of it: not its picture, its tokens, its walls, lights and fog, its drawings or its name, and nothing tells them you are preparing a map. One thing of yours does show: a token picture you upload into the campaign's library for a creature there is in their Asset Library at once (see **Prepare ahead** below).
 4. When you are done, either:
    - click **Back to the table** to see the table's map again. The map you prepared stays as you left it; or
-   - click **Bring everyone here** to make it the active map, as **Set Active** does. You are asked which of the tokens on the table's map to bring along, and everyone, you included, is then on the new map.
+   - click **Bring everyone here** to make it the active map, as **Set active** does. You are asked which of the tokens on the table's map to bring along, and everyone, you included, is then on the new map.
 
 While you prepare a map:
 
@@ -378,7 +378,7 @@ While you prepare a map:
 | The initiative tracker | Shows the table's fight. **Add Combatant** lists the tokens of the map you are preparing; your players are not sent a combatant you add there until the table comes to that map |
 | The campaign's own controls | Still change every player's screen, as **What reaches the table?** on the banner says: the **Spirit Layer** (opening it, its style, who is in the realm), **Atmosphere**, the vibe and the session controls. Anything you do to the map itself (its walls, lights, fog, tokens, drawings and settings) is for the map you are preparing |
 | Reloading the page | Brings you back to the map you were preparing, in that tab only. Another tab of yours stays on the table's map, unless you made it by duplicating this one, which copies what it was showing |
-| Two of your tabs on one prepared map | Each shows the other's walls, lights, fog and drawings as you make them, but not an **Edit Map** save, a token's switches or a placement; open the map again in the other tab to see those |
+| Two of your tabs on one prepared map | Each shows the other's walls, lights, fog and drawings as you make them, but not an **Edit scene** save, a token's switches or a placement; open the map again in the other tab to see those |
 | Your phone's **Back** | Takes you back to the table, as **Back to the table** does, asking first about paint not saved (see [Drawing a map](#drawing-a-map)) |
 | Another tab, or a handover of the GM seat | Making the map you are preparing active from anywhere ends preparing and shows it with the table. If someone else becomes the GM, or the map is deleted, your screen goes back to the table's map and a message says why; paint not saved on it is offered to you as a picture to download |
 
@@ -388,15 +388,15 @@ A map picture you upload while preparing stays out of your players' Asset Librar
 
 A copy of a map starts a new scene from one already built: the same picture, grid and grid look, settings, walls and doors (open, closed or locked as they are), lights, spell areas, and unless you leave them out its tokens, its fog and its drawings. Tokens get new ids and keep everything else, hidden ones still hidden, a rider still on its mount, a torch still lit. What your players explored on the original is not copied, nor the initiative order or a token's initiative. The copy is named "Crypt (copy)", "Crypt (copy 2)" and so on unless you name it, and it is a prepared map: it is not made active, and your players are sent nothing of it until you switch to it.
 
-For now you make one with `POST /api/campaigns/:id/maps/:mapId/duplicate` (see the [API reference](API_REFERENCE.md)) or the MCP server's `duplicate_scene`; the Map Library's button for it comes with the scenes release.
+To make one, open the **⋯** menu on the scene's card in the Scenes panel and choose **Duplicate…**. The **Duplicate scene** dialog asks for a **Name** ("Crypt (copy)" at first) and, as two-segment choices, **Tokens**: **Leave out** or **Copy**, **Fog**: **Reset** or **Copy**, and **Drawings**: **Leave out** or **Copy**. All three are on **Copy** at first. The picture, grid, walls and lights are always copied. **Duplicate and open to prepare** opens the copy on your screen only; the table stays where it is. Or use `POST /api/campaigns/:id/maps/:mapId/duplicate` (see the [API reference](API_REFERENCE.md)) or the MCP server's `duplicate_scene`.
 
 ### Scene templates
 
-A scene template is a map you keep to make scenes from: an inn, a crossroads, a cave you use again and again. Save any map as a template (`POST /api/campaigns/:id/maps/:mapId/save-as-template`, or the MCP server's `save_scene_as_template`) and make a scene from it whenever you need one (`.../create-from-template`, or `create_scene_from_template`); both copy as duplicating does, and keep the name, adding "(copy)" only when it is taken. A template is never shown to your players: it cannot be made the active map (making it active is refused), and nothing of it reaches them. Your campaign export keeps your templates as templates.
+A scene template is a map you keep to make scenes from: an inn, a crossroads, a cave you use again and again. In the Scenes panel, choose **Save as template…** in a scene's **⋯** menu (the dialog has the same shape as **Duplicate scene**, and the name starts as the scene's name) and a copy is kept as a template of this campaign. Templates are listed under **Templates (n)**, pinned below the scenes; the chevron folds it, folded at first and remembered per device. A template's card has a **Template** badge and one button, **Use template**, which makes a fresh scene copy and opens it to prepare. You can also pick one under **Create scene › From template ›** (it reads **No templates yet** when there are none). A template's **⋯** menu has **Edit…**, **Duplicate…** (the copy stays a template) and **Delete…**. Through the API: save any map as a template (`POST /api/campaigns/:id/maps/:mapId/save-as-template`, or the MCP server's `save_scene_as_template`) and make a scene from it whenever you need one (`.../create-from-template`, or `create_scene_from_template`); both copy as duplicating does, and keep the name, adding "(copy)" only when it is taken. A template is never shown to your players: it cannot be made the active map (making it active is refused), and nothing of it reaches them. Your campaign export keeps your templates as templates.
 
 ### Creature size
 
-**Use creature size from stat block** (`useCreatureSize` in the campaign settings, off by default) decides how big a token placed from a creature starts: on, as its stat block says (2×2 for a large creature); off, 1×1. It applies to the Creature Library and to the MCP server's `place_creature`; you can resize any token afterwards. For now you set it with `PUT /api/campaigns/:id` or the MCP server's `update_campaign`.
+**Creature size from stat block** (**Off** or **On**, `useCreatureSize` in the API, off by default) decides how big a token placed from a creature starts: on, as its stat block says (2×2 for a large creature); off, 1×1. It applies to the Creature Library and to the MCP server's `place_creature`; you can resize any token afterwards. Set it on the **General** tab of **Campaign Settings** (**⋯ › Campaign Settings**); it is saved at once. Or use `PUT /api/campaigns/:id` or the MCP server's `update_campaign`.
 
 ### Map Best Practices
 
@@ -405,7 +405,7 @@ A scene template is a map you keep to make scenes from: an inn, a crossroads, a 
 - **Prepare ahead** — Load all maps you might need before the session starts so there's no fumbling during play, or prepare the next one during play with **Open to prepare** (see [Preparing a map while the table plays](#preparing-a-map-while-the-table-plays)). Players cannot see a map until you switch to it: its picture, walls, lights and tokens stay yours alone while you prepare it. A map picture stays out of your players' Asset Library until the table is on a map using it, whether it is in your **Personal** library or the campaign's, and leaves it again when the table moves on. **Upload New** in the Create Map window puts the map image, and the spirit layer image, in your **Personal** library unless you choose **Campaign** (see [Adding Maps to Your Campaign](#adding-maps-to-your-campaign) for what each choice means when you leave). Token images are not hidden: one uploaded into the campaign's library, for a creature you mean to bring in later, can be seen there at once, and neither is a picture in the **Global** library, which is everyone's. Your instance's administrators can open every picture on it, a prepared map's included
 - **Keep backups** — Export important maps so you can recover them if needed
 - **Your campaign's library** — In the Asset Library you can delete or move any asset in your campaign's library, the ones your players uploaded included. Only the player who uploaded one can move it to **Personal**, since that is their own library and would take it out of the campaign
-- **Deleting art a map uses** — Nothing deletes art without asking. Saving a drawn map writes over its picture, after asking (see [Drawing a map](#drawing-a-map)). Delete in the Asset Library asks first. If a map, a token, a character, a template, a creature, the campaign's ambient sound or the sound of one of its times of day still uses the file, or a document that someone in the campaign who can see the picture wrote shows it by its address, a second window lists them (you see names for the campaigns you run, your own characters, your own documents, global documents, the documents of the campaigns you run and shared character templates; anything else is only counted) and removes it only if you choose **Delete anyway**. A map whose picture you delete this way shows "Failed to load map image" until you choose another in **Edit Map**, and a deleted file cannot be brought back
+- **Deleting art a map uses** — Nothing deletes art without asking. Saving a drawn map writes over its picture, after asking (see [Drawing a map](#drawing-a-map)). Delete in the Asset Library asks first. If a map, a token, a character, a template, a creature, the campaign's ambient sound or the sound of one of its times of day still uses the file, or a document that someone in the campaign who can see the picture wrote shows it by its address, a second window lists them (you see names for the campaigns you run, your own characters, your own documents, global documents, the documents of the campaigns you run and shared character templates; anything else is only counted) and removes it only if you choose **Delete anyway**. A map whose picture you delete this way shows "Failed to load map image" until you choose another in **Edit scene**, and a deleted file cannot be brought back
 
 ---
 
@@ -884,7 +884,7 @@ A large campaign takes as long to export as your connection needs; nothing gives
 - All tokens placed on maps
 - Custom creatures and their stat blocks
 - Token templates
-- All associated asset files (map images, token images) that you can open yourself. Those in the campaign's own library and in your own **Personal** library go with their name, description and tags, so the Asset Library shows them in the imported campaign as it does here, and its search and tag chips find them as they did. A picture from another member's own library that the campaign uses, such as a player's token art, goes as its file alone, named after it in the imported campaign: what its owner called it stays theirs. A picture's or sound file's name over 255 characters, which versions of CozyVTT before 1.5.2 kept from an upload, goes shortened to 255 with its extension kept, as an upload shortens it today. A picture that has been deleted, or that someone uploaded to their own library and who has since left the campaign, is left out: the map or token that used it arrives without a picture, with everything else intact. Such a map shows "This map has no picture" until you choose one in **Edit Map**; a token without one is drawn as a plain marker until you choose one in **Edit Token**
+- All associated asset files (map images, token images) that you can open yourself. Those in the campaign's own library and in your own **Personal** library go with their name, description and tags, so the Asset Library shows them in the imported campaign as it does here, and its search and tag chips find them as they did. A picture from another member's own library that the campaign uses, such as a player's token art, goes as its file alone, named after it in the imported campaign: what its owner called it stays theirs. A picture's or sound file's name over 255 characters, which versions of CozyVTT before 1.5.2 kept from an upload, goes shortened to 255 with its extension kept, as an upload shortens it today. A picture that has been deleted, or that someone uploaded to their own library and who has since left the campaign, is left out: the map or token that used it arrives without a picture, with everything else intact. Such a map shows "This map has no picture" until you choose one in **Edit scene**; a token without one is drawn as a plain marker until you choose one in **Edit Token**
 - Campaign settings (name, description, game system, vibe settings, spirit layer, **Players may draw**)
 - With **Include audio assets** ticked, the sound files the atmosphere uses, so each period and the ambient track play again in the imported campaign. Without it, the imported campaign's periods and ambient sound have no track, the import window says which, and you can choose new ones in the Atmosphere panel
 
@@ -1077,7 +1077,7 @@ Otherwise templates snap to your map's grid, so a shape covers whole squares rat
 - **Cone** — its point sits on the edge of the square you pinned, so the cone leaves that square evenly. Its shape follows your campaign's system: in 5E it is as wide at its far end as it is long, and in Fantasy d20 it is a quarter circle. The spreading edges are at an angle, so they'll still cut across squares — that's the shape, not a bug. Judge affected squares by how much of each is covered, as you would at the table
 - **Circle** — centred on the square under the cursor
 
-> Sizes use the map's **feet per square** setting (**Grid Scale** in Edit Map), which defaults to 5 ft. If your templates look twice or half the size you expect, check that value first.
+> Sizes use the map's **feet per square** setting (**Grid Scale** in Edit scene), which defaults to 5 ft. If your templates look twice or half the size you expect, check that value first.
 
 ### Drawing on the map
 
@@ -1105,7 +1105,7 @@ Drawings are the topmost layer of the map: they show over the tokens, and over a
 
 Players can draw too, while **Players may draw** is on in Campaign Settings' **General** tab, except while the session is paused or has ended; a spectator cannot. The switch is on in every campaign until you turn it off. While a player may not draw, their **Draw** offers only the eraser and **Clear mine**, for drawings of their own on the map, and is gone when they have none. When you turn the switch off, a stroke a player is drawing fades from the other screens within about 4 seconds, and the drawings players made stay until erased. A player can erase only their own drawings, with the eraser or **Clear mine**, and you can erase anyone's. **Clear drawings** erases every drawing on the map, yours and the players', after asking. Under it, your **Draw** panel lists each other member with drawings on the map, with how many, as **Clear Mara's drawings (3)**: it erases that member's drawings alone, for everyone, after asking, and leaves everyone else's. Someone who has left the campaign is listed as **Clear the drawings of someone who has left**.
 
-A map's drawing is shared out: your drawings, and every drawing for you alone, have room of their own, and the players' drawings share the rest, so one player cannot fill the map and stop you drawing. Each share holds 1,000 drawings, and 100,000 points between them, so that a map always fits in a campaign export. Past either, a new drawing is refused, "Your share of this map's drawing is full. Erase some first." for you and "The players' share of this map's drawing is full. Erase some first." for a player, and the stroke goes from the map. The drawings for everyone of someone who has left the GM's seat, or the campaign, count to the players' share; their drawings for the GM alone stay in yours, so the players' share holds only drawings the players can see. A pen stroke keeps only the points it needs to follow its line to within 2 pixels on screen. A campaign export carries every drawing, yours alone among them, and an import brings them back; a Universal VTT export does not carry drawings. When **Edit Map** changes a map's size, its drawings are stretched with it, as its walls are.
+A map's drawing is shared out: your drawings, and every drawing for you alone, have room of their own, and the players' drawings share the rest, so one player cannot fill the map and stop you drawing. Each share holds 1,000 drawings, and 100,000 points between them, so that a map always fits in a campaign export. Past either, a new drawing is refused, "Your share of this map's drawing is full. Erase some first." for you and "The players' share of this map's drawing is full. Erase some first." for a player, and the stroke goes from the map. The drawings for everyone of someone who has left the GM's seat, or the campaign, count to the players' share; their drawings for the GM alone stay in yours, so the players' share holds only drawings the players can see. A pen stroke keeps only the points it needs to follow its line to within 2 pixels on screen. A campaign export carries every drawing, yours alone among them, and an import brings them back; a Universal VTT export does not carry drawings. When **Edit scene** changes a map's size, its drawings are stretched with it, as its walls are.
 
 ### Starting a Session
 
@@ -1371,7 +1371,7 @@ Fog of war covers your map and lets you reveal it a piece at a time, so players 
 
 ### Turning Fog On or Off
 
-Fog is a per-map setting, and **a new map starts with it off**. Tick **Fog of war on this map** at the top of the **Fog of War** panel, or the **Fog of War** box in **Edit Map**, to turn it on; the map is fully covered until you reveal something. Untick it to switch fog off for that map: players see the whole map at once (dynamic lighting, if on, still applies). What you had revealed is kept, so turning fog back on shows the same areas as before.
+Fog is a per-map setting, and **a new map starts with it off**. Tick **Fog of war on this map** at the top of the **Fog of War** panel, or the **Fog of War** box in **Edit scene**, to turn it on; the map is fully covered until you reveal something. Untick it to switch fog off for that map: players see the whole map at once (dynamic lighting, if on, still applies). What you had revealed is kept, so turning fog back on shows the same areas as before.
 
 Maps made before this setting existed have fog on, exactly as they always did.
 
@@ -1570,7 +1570,7 @@ edit, and players see the change straight away without reloading.
 
 ### Importing a Universal VTT file
 
-**Import UVTT** at the top of the Map Library takes a `.uvtt`, `.dd2vtt` or
+**Import UVTT** at the top of the Scenes panel takes a `.uvtt`, `.dd2vtt` or
 `.df2vtt` file and makes a map from it: the picture, the walls, the doors and
 any lights, all placed for you. If the file brings lights, the map starts with
 dynamic lighting on; otherwise it starts off, like any new map.
@@ -1587,7 +1587,7 @@ leave the campaign (see [Adding Maps to Your Campaign](#adding-maps-to-your-camp
 
 **One import at a time.** Start the next import once the last one has finished. A second file sent while one is still being read is refused with "Another import is still running", and nothing is lost: send it again. Importing a folder of maps one after another is never slowed down. If another GM on the same server is importing a map at the same moment, yours waits until theirs has been read and then goes ahead; with very large files that can add a few seconds. While yours uploads, waits and runs, the **Import UVTT** button shows a spinning circle. Two limits keep one import from holding up everyone else's, and either way the answer comes within a minute of your file finishing its upload, in red at the top of the Map Library:
 
-| What happens | What the Map Library shows | What to do |
+| What happens | What the Scenes panel shows | What to do |
 |---|---|---|
 | Your import would have to wait more than 20 seconds for other GMs' imports | "Another map import is running on the server. Try again in a minute." | Import the file again a minute later. Nothing was saved. |
 | Your import takes longer than 30 seconds once it has started | "This map import took longer than 30 seconds and was stopped, so nothing was saved. Try again in a minute." | Import the file again a minute later. If it happens every time, the server may be too busy or too slow for a picture that large: export it smaller from your mapping tool. |
@@ -1601,7 +1601,7 @@ map in CozyVTT. That is how the format works everywhere, not a CozyVTT limit.
 **Furniture walls.** Some tools keep the walls for furniture, pillars and
 crates apart from the room walls. They block sight the same way a wall does, so
 whether a table should hide what is behind it is your call: when a file has
-them, the import asks, and leaving the box unticked means only the architecture
+them, the import asks "Furniture:" with **Sight passes** or **Blocks sight**; **Sight passes** means only the architecture
 blocks sight.
 
 **If CozyVTT asks "Some walls sit outside this map's picture".** The file
@@ -1617,9 +1617,9 @@ from can export that section on its own, or export the map as a PNG instead and
 
 ### Exporting a Universal VTT file
 
-Open the **Map Library** and click the **download** button (**Export as .uvtt file**) on the map's card, between the pencil and the bin. Your browser saves the map as a `.uvtt` file named after it once the whole file has arrived, which for a large map picture can take a few seconds. A script or a tool built on the unsupported HTTP surface can fetch the same file (`GET /api/campaigns/{campaignId}/maps/{id}/export-uvtt`, GM only). Importing that file back gives a map that sees and lights the same way, with the limits of the format: a window is written as an open doorway, because the format has no windows and a wall in its place would block sight, so it comes back as an open door; a locked door comes back as an ordinary closed door; and a switched-off light is kept and comes back switched off, though other tools may show it lit. Tokens, fog and the spirit layer are not included.
+Open the **Scenes** panel and choose **Export as .uvtt file** in the **⋯** menu on the scene's card. Your browser saves the map as a `.uvtt` file named after it once the whole file has arrived, which for a large map picture can take a few seconds. A script or a tool built on the unsupported HTTP surface can fetch the same file (`GET /api/campaigns/{campaignId}/maps/{id}/export-uvtt`, GM only). Importing that file back gives a map that sees and lights the same way, with the limits of the format: a window is written as an open doorway, because the format has no windows and a wall in its place would block sight, so it comes back as an open door; a locked door comes back as an ordinary closed door; and a switched-off light is kept and comes back switched off, though other tools may show it lit. Tokens, fog and the spirit layer are not included.
 
-A map whose picture is not a PNG, JPEG, WebP or GIF image, such as a map picture an older version of CozyVTT stored as a PDF, cannot be exported: the Map Library says so, and nothing is saved. Choose a map picture for it in **Edit Map**, then export it again.
+A map whose picture is not a PNG, JPEG, WebP or GIF image, such as a map picture an older version of CozyVTT stored as a PDF, cannot be exported: the Scenes panel says so, and nothing is saved. Choose a map picture for it in **Edit scene**, then export it again.
 
 ### Undo / Redo
 
@@ -1636,8 +1636,8 @@ The history belongs to the map it was made on. Switching to another map starts w
 
 Dynamic lighting is off on a new map, unless the map was imported from a Universal VTT file that brought lights. To enable it:
 
-1. Open the **Map Library** and click the **pencil** (Edit map) on your map
-2. In **Edit Map**, tick **Enable Dynamic Lighting**
+1. Open the **Scenes** panel and choose **Edit…** in the **⋯** menu on your scene's card
+2. In **Edit scene**, tick **Enable Dynamic Lighting**
 3. Click **Save Changes**
 
 Once enabled, players only see the areas their characters have line of sight to, and within that, only what is lit or within their darkvision. The rest of the map is black.
@@ -1652,7 +1652,7 @@ Sight is worked out from the middle of each token. A Large or Huge token sees fr
 
 ### Global Illumination
 
-**Global Illumination** is a per-map switch, in **Edit Map** and at the top of the **Lights** panel. With it on, everything in a token's line of sight counts as lit, so walls are all that limit what a player sees; lights only add glow. With it off, lights and darkvision decide: a player sees what their tokens' darkvision reaches, plus whatever a light source lights, and the square they stand on.
+**Global Illumination** is a per-map switch, in **Edit scene** and at the top of the **Lights** panel. With it on, everything in a token's line of sight counts as lit, so walls are all that limit what a player sees; lights only add glow. With it off, lights and darkvision decide: a player sees what their tokens' darkvision reaches, plus whatever a light source lights, and the square they stand on.
 
 New maps start with it off. Maps made before it existed have it on, which is exactly how lighting always worked for them, so nothing changes at your table until you untick it. When you do, the Lights panel warns you if there are no lights on the map yet: until you place one, or give the party darkvision, players see almost nothing.
 
@@ -1660,7 +1660,7 @@ New maps start with it off. Maps made before it existed have it on, which is exa
 
 On a map with dynamic lighting, the places a player's tokens have seen stay on that player's map, greyed and darkened, until they can see them again. Each player has their own memory of a map, kept on the server, so it survives a reload and a change of device, and it is never used to decide what the server sends them: it only greys in map artwork they already had. The GM view never shows it; use **As player ▾** to see a player's, either by picking the player or by picking a token they control. The preview keeps up with that memory as it grows, and it adds to it: move a player's token while previewing them and the ground it sees is remembered for that player, whether or not they are connected. Only where a token is put down counts: picking a player's token up and carrying it about shows the player the token moving, but reveals nothing to them and adds nothing to their memory until you put it down, and nothing at all if you put it back.
 
-- **Remember Explored Areas** in **Edit Map** switches it per map. New maps start with it off; maps from before it existed have it on.
+- **Remember Explored Areas** in **Edit scene** switches it per map. New maps start with it off; maps from before it existed have it on.
 - **Reset explored areas** at the bottom of the **Fog of War** panel forgets what every player has seen of the map (it asks for a second click). Their view right now is unchanged; only the grey memory goes.
 
 ### Darkvision
@@ -1707,7 +1707,7 @@ Two practical consequences when you are building a map:
 
 > Maps made before 1.5.0 have **Global Illumination** on, so a lit room is
 > visible to everyone with line of sight into it, as it always was. Untick it
-> in **Edit Map** to make lights and darkvision decide what a player sees.
+> in **Edit scene** to make lights and darkvision decide what a player sees.
 
 #### Placing Lights
 

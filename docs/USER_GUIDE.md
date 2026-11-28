@@ -261,21 +261,21 @@ Other browsers have the same option in their own menu, often named **Add to Home
 
 Maps are the battlegrounds, taverns, and dungeons your players will explore. Before a session, upload your map images to the **Asset Library** (see [The Asset Library](#the-asset-library)), then add them to your campaign, or draw a map in CozyVTT.
 
-As the GM, click **Map Library** (the map icon) in the campaign header.
+As the GM, choose **Library ▾ › Scenes** in the top bar (on a phone, **⋯ › Library › Scenes**). The panel opens beside the tab column on a wide screen, and as a sheet on a tablet or phone.
 
-*Screenshot pending — Map Library panel.*
+*Screenshot pending — Scenes panel.*
 
 From here you can:
-- **Create Map** from an uploaded image in your asset library, or one you upload there with **Upload New**, which goes to your **Personal** library unless you choose **Campaign** (see [Adding Maps to Your Campaign](GM_GUIDE.md#adding-maps-to-your-campaign)); **Draw a map** in the same window, which starts a blank map of the size and colour you choose (see [Drawing a map](GM_GUIDE.md#drawing-a-map)); or **Import UVTT** from a mapping tool
-- **Set Active** to switch to a different map — this updates the view for all connected players immediately
-- **Open to prepare** to open a map on your own screen only, while the table stays where it is (see [Preparing a map while the table plays](GM_GUIDE.md#preparing-a-map-while-the-table-plays))
-- **Edit** a map's settings, export it, or delete it
+- **Create scene › From a map picture** from an uploaded image in your asset library, or one you upload there with **Upload New**, which goes to your **Personal** library unless you choose **Campaign** (see [Adding Maps to Your Campaign](GM_GUIDE.md#adding-maps-to-your-campaign)); **Create scene › Blank scene**, which starts a blank map of the size and colour you choose (see [Drawing a map](GM_GUIDE.md#drawing-a-map)); **Create scene › From template ›** to start from a scene template you saved (see [Scene templates](GM_GUIDE.md#scene-templates)); or **Import UVTT** from a mapping tool
+- **Set active** to switch to a different scene — this updates the view for all connected players immediately
+- **Open to prepare** to open a scene on your own screen only, while the table stays where it is (see [Preparing a map while the table plays](GM_GUIDE.md#preparing-a-map-while-the-table-plays))
+- The **⋯** menu on a scene's card: **Duplicate…**, **Save as template…**, **Edit…**, **Export as .uvtt file** or **Delete…**
 
 *GIF pending — Switching the active map mid-session.*
 
 ### Managing Campaign Settings
 
-Click **Campaign Settings** (the gear icon) in the campaign header. Here you can update the campaign name, description, and other properties, among them **Players may draw** on the **General** tab, which lets players draw on the map and is on until you turn it off (see [Drawing on the map](GM_GUIDE.md#drawing-on-the-map)).
+Click **Campaign Settings** (the gear icon) in the campaign header. Here you can update the campaign name, description, and other properties, among them **Players may draw** on the **General** tab, which lets players draw on the map and is on until you turn it off (see [Drawing on the map](GM_GUIDE.md#drawing-on-the-map)), and **Creature size from stat block** (see [Creature size](GM_GUIDE.md#creature-size)).
 
 ### Managing Your Roster
 

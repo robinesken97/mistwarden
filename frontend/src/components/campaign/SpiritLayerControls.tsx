@@ -497,7 +497,7 @@ export default function SpiritLayerControls({ isOpen, onClose }: SpiritLayerCont
         {/* Info note */}
         <div className="glass-panel px-4 py-3 bg-spirit-purple/5 border-spirit-purple/20 rounded-cozy">
           <p className="text-xs text-stone-gray leading-relaxed">
-            The spirit realm image overlay is set per map in the Map Library.
+            The spirit realm image overlay is set per scene, in Library › Scenes › Edit….
             Move tokens between the spirit realm and material plane by right-clicking
             them on the canvas. Tokens in the spirit realm are invisible to players
             who cannot see the spirit realm.

@@ -272,7 +272,7 @@ export default function EditMapModal({
   );
 
   return (
-    <Modal open={isOpen} onClose={handleClose} title="Edit Map" icon={MapPin} size="xl" closeDisabled={isSubmitting} fitViewport footer={footer}>
+    <Modal open={isOpen} onClose={handleClose} title="Edit scene" icon={MapPin} size="xl" closeDisabled={isSubmitting} fitViewport footer={footer}>
             {/* Body: it scrolls, between the header and the Modal's footer */}
             <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain space-y-6">
               <p className="text-xs text-ink-muted -mt-4 truncate">{map.name}</p>

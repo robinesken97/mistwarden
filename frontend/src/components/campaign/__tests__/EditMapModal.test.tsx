@@ -188,7 +188,7 @@ describe('Edit Map\'s buttons', () => {
     const form = screen.getByText('Map Dimensions').closest('.overflow-y-auto');
     expect(form).not.toBeNull();
     const cancel = screen.getByRole('button', { name: 'Cancel' });
-    expect(screen.getByRole('dialog', { name: 'Edit Map' })).toContainElement(cancel);
+    expect(screen.getByRole('dialog', { name: 'Edit scene' })).toContainElement(cancel);
     expect(form).not.toContainElement(cancel);
   });
 });
