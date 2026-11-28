@@ -147,6 +147,7 @@ model User {
   tokenTemplates      TokenTemplate[]
   characterTemplates  CharacterTemplate[]    @relation("CharacterTemplateAuthor")
   creatureTemplates   CreatureTemplate[]     @relation("CreatureTemplateAuthor")
+  spellTemplates      SpellTemplate[]        @relation("SpellTemplateAuthor")
   personalNotes       PersonalNote[]
   diceMacros          DiceMacro[]
   mapExplorations     MapExploration[]
@@ -256,6 +257,7 @@ model Campaign {
   sessions           Session[]
   creatureTemplates  CreatureTemplate[]
   creatureFavorites  CreatureFavorite[]
+  spellTemplates     SpellTemplate[]
   tokenTemplates     TokenTemplate[]
   personalNotes      PersonalNote[]
   diceMacros         DiceMacro[]
@@ -659,7 +661,7 @@ model MapArea {
   element   String          @default("none")
   animated  Boolean         @default(true)
   label     String?
-  /// The spell it was cast from, a reference only: no library yet
+  /// The SpellTemplate it was cast from, a reference only: the area keeps its own copy of what it needs
   spellId   String?
   createdAt DateTime        @default(now())
 
@@ -871,6 +873,50 @@ model CreatureTemplate {
   @@index([gameSystem])
   @@index([source])
   @@index([campaignId])
+  @@index([name])
+  @@index([createdById])
+}
+
+// ============================================
+// SPELL LIBRARY
+// ============================================
+
+/// A spell the library lists: the seeded SRD 5.1 spells and the instance's
+/// own (campaignId null), and a campaign's own. Where two share a name the
+/// campaign's wins, then the instance's, then the SRD's (services/spellSeed.ts
+/// and the frontend's resolveSpellByName). Placing one on a map copies its
+/// area into a MapArea, which keeps only the id as a reference.
+model SpellTemplate {
+  id            String      @id @default(uuid())
+  name          String
+  /// "srd" for the seeded spells, "custom" for every other
+  source        String      @default("custom")
+  gameSystem    GameSystem?
+  /// Null for an SRD or instance spell, set for a campaign's own
+  campaignId    String?
+  campaign      Campaign?   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  /// Null for the SRD spells, and once the author's account is deleted
+  createdById   String?
+  createdBy     User?       @relation("SpellTemplateAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  /// 0 for a cantrip
+  level         Int         @default(0)
+  school        String?
+  castingTime   String?
+  range         String?
+  components    String?
+  duration      String?
+  concentration Boolean     @default(false)
+  ritual        Boolean     @default(false)
+  description   String      @default("")
+  /// { shape, sizeFt, widthFt? } as a MapArea takes it, or null for none
+  area          Json?
+  /// How a placed area looks (validators/areaLimits.ts AREA_ELEMENTS)
+  element       String      @default("none")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([campaignId])
+  @@index([source])
   @@index([name])
   @@index([createdById])
 }
