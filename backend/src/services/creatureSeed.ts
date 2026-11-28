@@ -164,7 +164,7 @@ export function transformMonster(m: Open5eMonster) {
 // ─── Fetch all SRD monsters from Open5e (paginated) ─────────────
 
 /** The only host the seed fetches from, and the page it starts at. */
-const OPEN5E_ORIGIN = 'https://api.open5e.com';
+export const OPEN5E_ORIGIN = 'https://api.open5e.com';
 const FIRST_PAGE = `${OPEN5E_ORIGIN}/v1/monsters/?format=json&limit=50&document__slug=wotc-srd`;
 
 /**
@@ -195,8 +195,8 @@ function isTimeout(error: unknown): boolean {
   return error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError');
 }
 
-/** One page of the monster list, read with a time limit, its shape checked. */
-async function fetchPage(url: string): Promise<{ results: Open5eMonster[]; next: string | null }> {
+/** One page of an Open5e list, read with a time limit, its shape checked. */
+async function fetchPage<T>(url: string, noun: string): Promise<{ results: T[]; next: string | null }> {
   let data: unknown;
   try {
     const response = await fetch(url, { signal: AbortSignal.timeout(SEED_PAGE_TIMEOUT_MS) });
@@ -216,29 +216,36 @@ async function fetchPage(url: string): Promise<{ results: Open5eMonster[]; next:
   }
   const page = data as { results?: unknown; next?: unknown } | null;
   if (typeof page !== 'object' || page === null || !Array.isArray(page.results)) {
-    throw new SeedSourceError('api.open5e.com answered with something that is not a list of creatures. Nothing was imported.');
+    throw new SeedSourceError(`api.open5e.com answered with something that is not a list of ${noun}. Nothing was imported.`);
   }
   const next = typeof page.next === 'string' && page.next !== '' ? page.next : null;
-  return { results: page.results as Open5eMonster[], next };
+  return { results: page.results as T[], next };
+}
+
+/** Every SRD monster Open5e lists (fetchOpen5eList). */
+export async function fetchAllSrdMonsters(options: SeedOptions = {}): Promise<Open5eMonster[]> {
+  return fetchOpen5eList<Open5eMonster>(FIRST_PAGE, 'creatures', options);
 }
 
 /**
- * Every SRD monster Open5e lists, page by page. Only pages on Open5e's own
- * host are followed: the next page's address comes from the answer, and the
- * seed must not fetch whatever another host or a proxy put there.
+ * Every item of an Open5e list, page by page, from `firstPage` on Open5e's
+ * own host; `noun` names them in the messages ("creatures", "spells"). Only
+ * pages on that host are followed: the next page's address comes from the
+ * answer, and the seed must not fetch whatever another host or a proxy put
+ * there.
  */
-export async function fetchAllSrdMonsters(options: SeedOptions = {}): Promise<Open5eMonster[]> {
+export async function fetchOpen5eList<T>(firstPage: string, noun: string, options: SeedOptions = {}): Promise<T[]> {
   const delay = options.pageDelayMs ?? PAGE_DELAY_MS;
-  const all: Open5eMonster[] = [];
-  let url: string | null = FIRST_PAGE;
+  const all: T[] = [];
+  let url: string | null = firstPage;
 
   for (let pages = 0; url; pages++) {
     if (pages >= MAX_SEED_PAGES) {
       throw new SeedSourceError(
-        `api.open5e.com listed more than ${MAX_SEED_PAGES} pages of SRD creatures, far more than the SRD holds, so nothing was imported.`
+        `api.open5e.com listed more than ${MAX_SEED_PAGES} pages of SRD ${noun}, far more than the SRD holds, so nothing was imported.`
       );
     }
-    const { results, next } = await fetchPage(url);
+    const { results, next } = await fetchPage<T>(url, noun);
     all.push(...results);
     url = null;
     if (next) {

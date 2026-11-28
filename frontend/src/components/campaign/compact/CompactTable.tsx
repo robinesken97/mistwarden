@@ -87,10 +87,11 @@ export interface CompactTableProps {
   /** Open one of the GM's slide-overs; `settings` is also an owner's way to the settings. */
   onOpenTool: (key: SessionToolKey) => void;
   onOpenDocuments: () => void;
+  onOpenSpells?: () => void;
   onOpenShortcuts: () => void;
 }
 
-export default function CompactTable({ campaign, isOwner, onOpenTool, onOpenDocuments, onOpenShortcuts }: CompactTableProps) {
+export default function CompactTable({ campaign, isOwner, onOpenTool, onOpenDocuments, onOpenSpells, onOpenShortcuts }: CompactTableProps) {
   const { userRole } = useCampaign();
   const sideways = useMediaQuery(SIDEWAYS_QUERY);
   const sessionTab = useGameStore((s) => s.sessionTab);
@@ -211,6 +212,7 @@ export default function CompactTable({ campaign, isOwner, onOpenTool, onOpenDocu
         isOwner={isOwner}
         onOpenTool={onOpenTool}
         onOpenDocuments={onOpenDocuments}
+        onOpenSpells={onOpenSpells}
         onOpenShortcuts={onOpenShortcuts}
         onOpenPanel={openFromMore}
         edges={edges}

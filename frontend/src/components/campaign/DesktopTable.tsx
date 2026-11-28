@@ -23,7 +23,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   PanelRightClose,
-  PanelRightOpen, Settings, BookOpen, Keyboard } from 'lucide-react';
+  PanelRightOpen, Settings, BookOpen, Keyboard, Sparkles } from 'lucide-react';
 import {
   Group,
   Panel,
@@ -52,6 +52,8 @@ interface DesktopTableProps {
   /** Open one of the GM's slide-overs; `settings` is also an owner's way to the settings. */
   onOpenTool: (key: SessionToolKey) => void;
   onOpenDocuments: () => void;
+  /** The Spell Library, every member's. */
+  onOpenSpells?: () => void;
   onOpenShortcuts: () => void;
 }
 
@@ -61,6 +63,7 @@ export default function DesktopTable({
   openTools,
   onOpenTool,
   onOpenDocuments,
+  onOpenSpells,
   onOpenShortcuts,
 }: DesktopTableProps) {
   const leavePage = useLeavePage();
@@ -196,6 +199,11 @@ export default function DesktopTable({
               onClick={onOpenDocuments}
             />
           </Tooltip>
+          {onOpenSpells && (
+            <Tooltip content="Spell Library" side="bottom">
+              <Button variant="ghost" iconOnly icon={Sparkles} aria-label="Spell Library" onClick={onOpenSpells} />
+            </Tooltip>
+          )}
           <Tooltip content="Keyboard shortcuts" side="bottom">
             <Button
               variant="ghost"

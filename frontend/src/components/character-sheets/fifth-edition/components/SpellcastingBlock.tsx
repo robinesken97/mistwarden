@@ -8,6 +8,7 @@ import React from 'react';
 import { Sparkles, Circle, CircleDot, BookOpen, Zap } from 'lucide-react';
 import { fifthEditionSpellSaveDC, fifthEditionSpellAttackBonus } from '@/utils/rules/fifthEdition';
 import { SPELL_SLOTS_MAX } from '@/constants/sheetLimits';
+import { PlaceSpellArea } from './PlaceSpellArea';
 
 import { SHEET_BOX, SHEET_BOX_HEADING } from '../sheetStyle';
 import type {
@@ -90,6 +91,7 @@ const SpellRow: React.FC<{ spell: Spell }> = ({ spell }) => {
           </span>
         )}
       </div>
+      <PlaceSpellArea name={spell.name} />
     </div>
   );
 };

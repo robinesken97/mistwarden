@@ -29,6 +29,7 @@ export const queryKeys = {
   characterTemplates: (params: CharacterTemplateListParams) =>
     ['character-templates', params] as const,
   serverConfig: ['server-config'] as const,
+  campaignSpells: (campaignId: string) => ['campaign-spells', campaignId] as const,
   leftCampaigns: ['left-campaigns'] as const,
   leftCampaignNote: (campaignId: string, noteId: string, updatedAt: string) =>
     ['left-campaign-note', campaignId, noteId, updatedAt] as const,
@@ -171,5 +172,19 @@ export function useCharacterTemplatesQuery(params: CharacterTemplateListParams =
   return useQuery({
     queryKey: queryKeys.characterTemplates(params),
     queryFn: () => api.listCharacterTemplates({ ...params, limit: 100 }),
+  });
+}
+
+/**
+ * Every spell a campaign may use (the Spell Library's list, the AoE tool's
+ * From spell and a sheet's Place area). Read again whenever the library
+ * opens, so a spell the GM added reaches a player then.
+ */
+export function useCampaignSpellsQuery(campaignId: string | null) {
+  return useQuery({
+    queryKey: queryKeys.campaignSpells(campaignId ?? ''),
+    queryFn: () => api.listCampaignSpells(campaignId!),
+    enabled: campaignId !== null,
+    staleTime: 5 * 60_000,
   });
 }

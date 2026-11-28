@@ -1569,6 +1569,100 @@
     },
     {
       "method": "GET",
+      "path": "/api/spells/seed/status",
+      "handlers": [
+        "requireAuth",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/spells/seed",
+      "handlers": [
+        "requireAuth",
+        "requireAdmin",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/spells",
+      "handlers": [
+        "requireAuth",
+        "requireAdmin",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/api/spells/:spellId",
+      "handlers": [
+        "requireAuth",
+        "requireAdmin",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/spells/:spellId",
+      "handlers": [
+        "requireAuth",
+        "requireAdmin",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/campaigns/:campaignId/spells",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireCampaignMember",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/campaigns/:campaignId/spells/:spellId",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireCampaignMember",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/campaigns/:campaignId/spells",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireGM",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/api/campaigns/:campaignId/spells/:spellId",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireGM",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/campaigns/:campaignId/spells/:spellId",
+      "handlers": [
+        "requireAuth",
+        "loadCampaignMembership",
+        "requireGM",
+        "<anonymous>"
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/api/campaigns/:campaignId/token-templates",
       "handlers": [
         "requireAuth",
@@ -1786,6 +1880,16 @@
     {
       "name": "router",
       "path": "/api/campaigns/:campaignId/creatures",
+      "route": false
+    },
+    {
+      "name": "router",
+      "path": "/api/spells",
+      "route": false
+    },
+    {
+      "name": "router",
+      "path": "/api/campaigns/:campaignId/spells",
       "route": false
     },
     {

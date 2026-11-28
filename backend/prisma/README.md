@@ -7,7 +7,7 @@ through the `pg` driver (`src/config/prismaClient.ts`).
 
 ## Models
 
-The schema is in [`schema.prisma`](./schema.prisma) — 26 models grouped by domain:
+The schema is in [`schema.prisma`](./schema.prisma) — 27 models grouped by domain:
 
 **User & auth**
 - `User` — accounts with optional MFA, which an administrator must turn on within 7 days
@@ -28,6 +28,7 @@ The schema is in [`schema.prisma`](./schema.prisma) — 26 models grouped by dom
 - `MapArea` — one spell area on one map (a sphere, cylinder, cone, line or cube): its anchor in map pixels, its aim in radians, its size in feet so it is drawn by the map's feet per square, its element's look, label, who placed it (`authorId`, null once their account is deleted) and who is sent it (`audience`). It goes with its map
 - `CreatureTemplate` — SRD bestiary + custom creatures (campaign-scoped or global). `source` says which; `createdById` is the author, null for SRD creatures and once the author's account is deleted
 - `CreatureFavorite` — GM's per-campaign starred creatures
+- `SpellTemplate` — the Spell Library: SRD 5.1 spells an administrator imports (`source` `srd`), the server's own (`custom`, no campaign) and a campaign's own. `area` is `{ shape, sizeFt, widthFt? }` as a `MapArea` takes it, or null; `element` its look. A placed area copies what it needs and keeps only the id, in `MapArea.spellId`. No unique index on the name, which Postgres would not apply where `campaignId` is null: the SRD import finds a spell by name under a lock, and a custom spell's name is checked within its scope
 - `TokenTemplate` — reusable token configurations copyable across campaigns
 - `CharacterTemplate` — shareable starter sheets any signed-in user can copy
 - `PersonalNote` — a player's own Markdown notes for one campaign. **Private to
@@ -127,6 +128,7 @@ Several models use Prisma's `Json` type for flexibility:
 | `TokenTemplate.size`, `CreatureTemplate.size` | Footprint in squares (`{ width, height }`) |
 | `TokenTemplate.hp` | `{ current, max, temp }`, or null |
 | `CreatureTemplate.statBlock` | The creature's stat block |
+| `SpellTemplate.area` | `{ shape, sizeFt, widthFt? }` as a map area takes it, or null for a spell with none |
 | `CharacterTemplate.data` | A published template's sheet, validated as a character's is |
 | `SystemSettings.customThemeColors` | The instance's custom theme colours |
 

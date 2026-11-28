@@ -5,6 +5,7 @@
  */
 
 import { z } from 'zod';
+import { CreateSpellSchema } from './spells';
 import { GameSystemSchema } from './gameSystem';
 import { normaliseGameSystem } from '../legacy/gameSystemAliases';
 import { ImportVibeSettingsSchema } from './campaigns';
@@ -36,6 +37,8 @@ export const IMPORT_LIMITS = {
   MAX_FILE_COUNT: 1000,
   MAX_CREATURES: 2000,
   MAX_TOKEN_TEMPLATES: 2000,
+  // A campaign holds as many spells of its own (services/spellLibrary.ts).
+  MAX_SPELLS: 2000,
   // How deeply a data file may nest objects and lists. An export reaches
   // six, at a map token's stat block's proficiencies; this is five times that.
   MAX_JSON_DEPTH: 32,
@@ -347,5 +350,10 @@ export type ImportMapData = z.infer<typeof ImportMapSchema>;
 export type ImportToken = z.infer<typeof ImportTokenSchema>;
 export type AssetEntryData = z.infer<typeof AssetEntrySchema>;
 export type CreatureTemplateData = z.infer<typeof CreatureTemplateSchema>;
+
+// ── Spell ───────────────────────────────────────────────────────────────────
+
+/** A campaign's own spell, as the Spell Library takes one; its game system is read as a creature's is. */
+export const SpellTemplateImportSchema = CreateSpellSchema.extend({ gameSystem: z.unknown().optional() }).strip();
 export type TokenTemplateImportData = z.infer<typeof TokenTemplateImportSchema>;
 export type AssetManifestData = z.infer<typeof AssetManifestSchema>;

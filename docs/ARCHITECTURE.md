@@ -141,6 +141,8 @@ src/
 │   ├── characterTemplates.ts Character templates every user can read and copy
 │   ├── maps.ts        Map and token management
 │   ├── creatures.ts   Creature template CRUD, SRD seeding, favorites
+│   ├── spells.ts      Spell Library: SRD spell import and the server's own spells (admins)
+│   ├── campaignSpells.ts A campaign's spells: members read, the GM writes its own
 │   ├── tokenTemplates.ts A campaign's token templates (GM only), copied between campaigns
 │   ├── assets.ts      File upload and retrieval
 │   ├── invitations.ts Campaign invitation lifecycle
@@ -691,6 +693,19 @@ erDiagram
         string campaignId FK
     }
 
+    SpellTemplate {
+        string id PK
+        string name
+        string source
+        GameSystem gameSystem
+        int level
+        string school
+        json area
+        string element
+        string createdById FK
+        string campaignId FK
+    }
+
     CreatureFavorite {
         string id PK
         string campaignId FK
@@ -782,6 +797,8 @@ erDiagram
     Campaign ||--o{ Asset : "scoped to"
     Campaign ||--o{ CreatureTemplate : "scoped to"
     User ||--o{ CreatureTemplate : "made"
+    Campaign ||--o{ SpellTemplate : "scoped to"
+    User ||--o{ SpellTemplate : "made"
     CreatureTemplate ||--o{ CreatureFavorite : "favorited as"
     User ||--o{ CreatureFavorite : "has favorites"
     Campaign ||--o{ CreatureFavorite : "scoped to"
@@ -804,6 +821,7 @@ erDiagram
 - **A Horror d100 sheet's GM's Notes are its campaign GM's alone.** They are the sheet's top-level `notes`, kept inside `Character.data`, so the schema, exports and imports are unchanged. `utils/gmNotes.ts` holds the rule: every route and event that sends a sheet passes it through `characterForReader`, which leaves the field out for anyone but the GM of the character's campaign; a save by anyone else keeps the stored notes (`sheetKeepingGmNotes`); and a character that enters another campaign has them cleared, since they were the last campaign's GM's.
 - **`vibeSettings` and `Session.savedState` are JSON columns** — used to persist complex nested state that changes frequently.
 - **`CreatureTemplate` uses two scopes** — SRD creatures have `campaignId = null` (global, read-only) while custom creatures have a campaign FK. The `source` field distinguishes them (`'srd'` vs `'custom'`).
+- **`SpellTemplate` uses three scopes** — SRD spells and the server's own have `campaignId = null` (`source` `'srd'` or `'custom'`), a campaign's own has its FK. Every member of a campaign reads the three, never another campaign's; where several share a name the frontend's `resolveSpellByName` picks the campaign's, then the server's, then the SRD's. Each SRD spell's area is read from its own text (`services/spellAreaText.ts`), since Open5e has no reliable area fields.
 - **`DiceMacro` is private to whoever saved it**, on the same terms as `PersonalNote` and enforced the same way. Its `expression` is validated when written by rolling it and discarding the result, so a stored macro is always one the roller accepts — ordered by `createdAt` rather than `updatedAt` because these are buttons, and editing one must not move it.
 - **`PersonalNote` is private to its author** — every query is scoped by both `campaignId` and the signed-in `userId`, and a note belonging to someone else answers 404 rather than 403 so the response cannot confirm that it exists. Nobody reads these but the person who wrote them, the GM included. Removing a member, or their leaving, keeps both kinds of row; `GET /api/campaigns/left`, `/left/:campaignId`, `/left/:campaignId/notes` and `/left/:campaignId/notes/:noteId` let the author read their own afterwards, only while they are not a member, and deleting the campaign deletes them. The lists carry titles only. A note's text comes from `/notes/:noteId` one note at a time, or from `/left/:campaignId/notes` for all of a campaign's notes in one answer, which the Download button uses: it is written out ten notes at a time, since a campaign can hold 200 notes of 100,000 characters, and limited to 60 requests an hour per user.
 - **`CreatureFavorite` is a per-campaign, per-user join table** — with a unique constraint on `(campaignId, userId, creatureId)` to prevent duplicate favorites. Cascade deletes ensure cleanup when creatures, users, or campaigns are removed.

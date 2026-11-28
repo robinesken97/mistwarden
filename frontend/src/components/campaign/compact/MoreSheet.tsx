@@ -19,7 +19,7 @@
 // ============================================
 
 import { useId } from 'react';
-import { BookOpen, Keyboard, Settings } from 'lucide-react';
+import { BookOpen, Keyboard, Settings, Sparkles } from 'lucide-react';
 import { useCampaign } from '@/contexts/CampaignContext';
 import type { MenuAction } from '@/components/ui/menu';
 import { TOOL_GROUPS, type SessionToolKey } from '@/components/campaign/SessionToolbar';
@@ -43,6 +43,8 @@ export interface MoreSheetProps {
   /** Open one of the GM's slide-overs; `settings` is also an owner's way to the settings. */
   onOpenTool: (key: SessionToolKey) => void;
   onOpenDocuments: () => void;
+  /** The Spell Library, every member's. */
+  onOpenSpells?: () => void;
   onOpenShortcuts: () => void;
   /** Open the session sheet on one of More's panels, Notes or Session. */
   onOpenPanel: (panel: MorePanel) => void;
@@ -88,6 +90,7 @@ export default function MoreSheet({
   isOwner,
   onOpenTool,
   onOpenDocuments,
+  onOpenSpells,
   onOpenShortcuts,
   onOpenPanel,
   edges,
@@ -98,6 +101,7 @@ export default function MoreSheet({
   const atTheTable = [
     ...MORE_PANELS.map((panel) => action(panel, SESSION_TAB_LOOKS[panel].label, SESSION_TAB_LOOKS[panel].icon, () => onOpenPanel(panel))),
     action('documents', 'Documents', BookOpen, onOpenDocuments),
+    ...(onOpenSpells ? [action('spells', 'Spell Library', Sparkles, onOpenSpells)] : []),
     action('shortcuts', 'Shortcuts', Keyboard, onOpenShortcuts),
   ];
   const gmTools = TOOL_GROUPS.flat().map(({ key, label, icon }) =>

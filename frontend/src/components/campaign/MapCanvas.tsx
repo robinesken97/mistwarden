@@ -105,6 +105,8 @@ import { useMapAreas } from './map/useMapAreas';
 import { AREA_ELEMENT_STYLES, areasAnimate, areaStyle, drawAreas } from './map/layers/drawAreas';
 import { aimAngle, areaBounds, areaPath, pointInArea, tokensInArea, type AreaFrame } from './map/aoeGeometry';
 import { animateAreas, ANIMATE_AREAS_EVENT } from './map/areaAnimation';
+import SpellAreaPicker from './map/SpellAreaPicker';
+import { PLACE_SPELL_AREA_EVENT, type SpellAoE } from '@/utils/spells';
 import { AREA_ELEMENTS, AREA_LIMITS, type AreaElement } from '@/constants/areaLimits';
 import type { AoEAnchor } from './map/layers';
 import { labelFontSize } from './map/drawingGeometry';
@@ -508,6 +510,8 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
   const [areaElement, setAreaElement] = useState<AreaElement>('fire');
   const [areaLabel, setAreaLabel] = useState('');
   const [areaGmOnly, setAreaGmOnly] = useState(false);
+  // The Spell Library spell the template was filled from, which a placed area keeps a reference to.
+  const [areaSpellId, setAreaSpellId] = useState<string | null>(null);
   const placeAreaRef = useRef<(anchor: AoEAnchor, aim: { x: number; y: number } | null) => void>(() => {});
   // The placed area tapped, whose popover lists what it covers.
   const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
@@ -2626,8 +2630,19 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
       exact,
       element: areaElement,
       label: areaLabel.trim() || null,
+      spellId: areaSpellId,
       audience: isGM && areaGmOnly ? 'GM' : 'ALL',
     });
+  };
+
+  /** A spell's area in the AoE panel: its template, look and name, for everyone where the viewer may place one. */
+  const applySpellAoE = (aoe: SpellAoE) => {
+    setAoEConfig(aoe.config);
+    setAreaElement(aoe.element);
+    setAreaLabel(aoe.label.slice(0, AREA_LIMITS.maxLabelLength));
+    setAreaSpellId(aoe.spellId);
+    setAoEAnchor(null);
+    if (mayDraw) setAoEPersist(true);
   };
 
   /**
@@ -4265,6 +4280,18 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
     togglePaint: () => togglePaint(),
     togglePlaceFreely: () => setPlaceFreely((on) => !on),
   };
+
+  // A sheet's Place area (utils/spells.ts): the AoE tool opens, filled from the spell.
+  const spellAreaRef = useRef<(aoe: SpellAoE) => void>(() => {});
+  spellAreaRef.current = (aoe) => {
+    if (!showAoE) mapControlActions.toggleAoE();
+    applySpellAoE(aoe);
+  };
+  useEffect(() => {
+    const place = (e: Event) => spellAreaRef.current((e as CustomEvent<SpellAoE>).detail);
+    window.addEventListener(PLACE_SPELL_AREA_EVENT, place);
+    return () => window.removeEventListener(PLACE_SPELL_AREA_EVENT, place);
+  }, []);
   // Place freely is offered to the GM on a square map whose tokens snap; elsewhere the map decides alone.
   const placeFreelyOffered = isGM && !!currentMap && currentMap.snapTokens !== false && !isHexGrid(gridFrame(currentMap));
   const placeFreelyLabel = placeFreely ? 'Place freely: on — tokens you move stop between squares' : 'Place freely: off — hold Alt, or press to stop tokens between squares';
@@ -5276,13 +5303,14 @@ export default function MapCanvas({ onEditToken, onShowShortcuts }: MapCanvasPro
             : undefined}
         >
           <p className="text-xs font-semibold text-brand-ink">AoE Shape</p>
+          {campaign && <SpellAreaPicker campaignId={campaign.id} onPick={applySpellAoE} />}
 
           {/* Shape selector */}
           <div className="flex flex-wrap gap-1.5">
             {(['sphere', 'cylinder', 'cone', 'line', 'cube'] as AoEShape[]).map((shape) => (
               <button
                 key={shape}
-                onClick={() => setAoEConfig((prev) => ({ ...prev, shape }))}
+                onClick={() => { setAoEConfig((prev) => ({ ...prev, shape })); setAreaSpellId(null); }}
                 className={`touch-target text-xs px-2 py-1 rounded border transition-colors capitalize ${
                   aoeConfig.shape === shape
                     ? 'bg-moss-green/15 border-moss-green/60 text-brand-ink font-medium'
