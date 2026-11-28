@@ -10296,7 +10296,7 @@ paths:
     put:
       tags: [Spells]
       summary: Change a spell of the server's own
-      description: Any fields of `SpellInput`; `area` null takes the area away. Platform admins only. An SRD spell or a campaign's answers 404.
+      description: Any fields of `SpellInput`, none required, `name` included; `area` null takes the area away. Platform admins only. An SRD spell or a campaign's answers 404.
       operationId: updateInstanceSpell
       security:
         - cookieAuth: []
@@ -10426,7 +10426,7 @@ paths:
     put:
       tags: [Spells]
       summary: Change a campaign spell
-      description: GM only. An SRD spell, the server's own and another campaign's answer 404.
+      description: Any fields of `SpellInput`, none required, `name` included. GM only. An SRD spell, the server's own and another campaign's answer 404.
       operationId: updateCampaignSpell
       security:
         - cookieAuth: []
@@ -11275,7 +11275,7 @@ paths:
                       properties:
                         kind:
                           type: string
-                          enum: [map, token, creature, tokenTemplate, asset]
+                          enum: [map, token, creature, tokenTemplate, spell, asset]
                         name:
                           type: string
                           description: >-

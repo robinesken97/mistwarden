@@ -159,11 +159,18 @@ function SpellLibraryContent() {
 
   async function edit(s: SpellSummary) {
     if (!campaignId) return;
-    const full = await api.getCampaignSpell(campaignId, s.id).catch(() => null);
+    // Without its description the form would save over it with nothing.
+    let full;
+    try {
+      full = await api.getCampaignSpell(campaignId, s.id);
+    } catch (err) {
+      setMessage({ ok: false, text: apiErrorMessage(err) ?? 'Could not open the spell. Try again.' });
+      return;
+    }
     setDraft({
       id: s.id, scope: spellScope(s) === 'instance' ? 'instance' : 'campaign', name: s.name, level: String(s.level),
       school: s.school ?? '', castingTime: s.castingTime ?? '', range: s.range ?? '', components: s.components ?? '',
-      duration: s.duration ?? '', concentration: s.concentration, ritual: s.ritual, description: full?.description ?? '',
+      duration: s.duration ?? '', concentration: s.concentration, ritual: s.ritual, description: full.description,
       shape: s.area?.shape ?? '', sizeFt: String(s.area?.sizeFt ?? 20), widthFt: String(s.area?.widthFt ?? 5), element: s.element,
     });
   }
