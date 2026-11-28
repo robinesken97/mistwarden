@@ -4,308 +4,170 @@
 
 # Mistwarden
 
-**Mistwarden is based on [CozyVTT](https://github.com/CheekyChinchilla/CozyVTT) by CheekyChinchilla (AGPL-3.0).** It is a modified version of CozyVTT 1.7.0 with its own look: a dark theme, a lantern as its mark and a night scene behind the pages outside a campaign. CozyVTT's copyright notices and licences stay in place; the changes are listed under [Changes from CozyVTT](#changes-from-cozyvtt). Mistwarden is not affiliated with or endorsed by the CozyVTT project.
+Mistwarden is a self-hosted, browser-based virtual tabletop for tabletop role-playing campaigns: maps with tokens, fog of war and dynamic lighting, dice, chat, character sheets and a GM toolbox, running on your own server with your own data. It is a modified version of [CozyVTT](https://github.com/CheekyChinchilla/CozyVTT) 1.7.0 by CheekyChinchilla (AGPL-3.0), with its own look and extra features, and is not affiliated with or endorsed by the CozyVTT project. CozyVTT's copyright notices and licences stay in place; see [Changes from CozyVTT](#changes-from-cozyvtt).
 
-A self-hosted, browser-based Virtual Tabletop (VTT) platform. Designed for ease of use and narrative-driven tabletop RPG campaigns where atmosphere matters more than mechanics.
+> **You run it, you secure it.** Mistwarden is community software, provided as-is under the [AGPL-3.0](LICENSE), with no warranty and no central support. Do not expose it to the internet without reading the [hardening checklist](docs/DEPLOYMENT.md). If those words mean nothing to you, keep it on your local network (LAN, Tailscale, ZeroTier). Report security issues privately per [SECURITY.md](SECURITY.md).
 
-> **Self-hosted** — you own your data. One instance can host multiple concurrent campaigns run by different game masters (GMs) for different player groups.
+## Screenshots
 
----
+All pictures are taken in the built-in practice campaign, whose map and pictures are drawn for Mistwarden.
 
-## ⚠️ Self-Hosted Reality Check
+![The map table: a map with tokens, the initiative tracker beside it](docs/screenshots/map-table.png)
 
-Mistwarden is a self-hosted, community-maintained project run **by you** on **your hardware**. It is provided as-is, with no warranty, no SLA, and no central support — see the [AGPL-3.0 License](LICENSE) for the legal version of this.
+*The map table with the initiative tracker.*
 
-**You are responsible for the security and uptime of your instance.** We do our best (Argon2id passwords, MFA, magic-byte file validation, per-endpoint rate limiting, security headers on the app page, a backend that runs as an unprivileged user — the full list is under [Features → Security](#security)), but the operating environment is yours.
+![Dynamic lighting and fog: the GM's view on the left, the player's view on the right](docs/screenshots/fog-lighting.png)
 
-**Recommended deployment posture** for a public-facing instance:
+*Dynamic lighting and fog of war: the GM's view (left) and what a player sees (right).*
 
-- Run on a small VPS rather than your home network
-- Front it with a **[Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/)** (free, hides your origin IP, no open ports needed, automatic DDoS protection) or a similar reverse proxy / WAF
-- Keep the instance updated as security patches land — watch this repo
-- Set a strong `SESSION_SECRET` (32+ char random) and your own `DATABASE_PASSWORD` — the production build refuses to start while either is still the placeholder, or while `SESSION_SECRET` is shorter than 32 characters
-- Use the built-in MFA: every administrator account must turn it on within 7 days, and it is worth having on every account
-- Configure regular backups of database and uploads (`backend/scripts/backup.sh` + cron — see [DEPLOYMENT.md](docs/DEPLOYMENT.md))
-- Review the **Hardening Checklist** in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) before flipping public
+![A cone spell area drawn on the map](docs/screenshots/spell-area.png)
 
-If those words mean nothing to you, run Mistwarden **only on your local network** (e.g. via a Tailscale node, ZeroTier, or just LAN-accessible) until you've leveled up your sysadmin chops. That's a perfectly valid way to play — your campaigns aren't worse for being LAN-only, and you skip the whole attack-surface conversation.
+*A spell area (a 30 ft cone, fire look) placed on the map.*
 
-If you find a security issue, please report it privately per [SECURITY.md](SECURITY.md) rather than filing a public issue.
+![The 5E character sheet, Overview tab](docs/screenshots/character-sheet-5e.png)
 
----
+*The 5E character sheet, Overview tab.*
+
+![A 3D d20 rolling across the map beside the Dice panel](docs/screenshots/dice-3d.png)
+
+*A 3D d20 mid-roll, with the roll history in the Dice panel.*
+
+![A handout opened from the campaign gallery](docs/screenshots/gallery.png)
+
+*A picture from the campaign gallery, shown as a handout.*
+
+![The compact layout on a tablet held upright, with the bottom bar](docs/screenshots/tablet-layout.png)
+
+*The compact layout on a tablet held upright: map across the screen, bottom bar.*
 
 ## Features
 
-### Platform
-- **Multi-campaign** — one server, unlimited campaigns, isolated from each other
-- **Role-based access control** — Platform Admin, Campaign GM, Player, and Spectator roles; the GM seat can be handed to another member without losing ownership of the campaign; players and spectators can leave a campaign on their own
-- **Setup wizard** — guided first-run initialization; no manual database seeding required. It asks for a one-time setup token printed in the backend log, so only the person running the server can create the first administrator
-- **Admin Panel** — user management, system settings, activity logs, uploaded files, instance backups (database and uploaded files)
-- **Works on phones and tablets** — below 1,024 pixels wide the campaign page has a layout of its own: the map across the screen, a bar of Map, Chat, Dice, Initiative, Party and More along the bottom, and each panel in a sheet over the map; menus open as lists from the bottom of the screen, and Back closes what is open. On a phone on its side the bar moves into the header. A tablet turned across 1,024 pixels switches layout without losing anything; Mistwarden can also go on the home screen from the browser's own menu
-- **Keyboard and screen reader support** — dialogs and side panels are named, keep focus and close on Escape; the dice and chat logs announce new entries; initiative runs from the keyboard; a token can be selected, moved, turned and stepped through from the keyboard, a screen reader hears which one is selected, and **?** lists the map's shortcuts; reduced-motion settings are honoured
+### Table and map
+- Multiple campaigns on one server, isolated from each other; roles Platform Admin, GM, Player and Spectator.
+- Map canvas with tokens (player, NPC, object), HP bars, conditions, stat blocks, facing and three display modes. Click a token to pick it up, click a square to put it down; arrow keys also move a selected token.
+- Upload maps, import Universal VTT files (`.uvtt`, `.dd2vtt`, `.df2vtt`) with walls, doors and lights, export maps back out, or draw a map in the built-in Mapmaker.
+- Square or hex grids (point-up or flat-top), a grid offset, and grid auto-detection that suggests a size and offset for an uploaded map picture. Tokens snap to the grid by default; a map can let them rest between squares.
+- Tokens can ride a mount and move with it. A token without a picture is drawn as a symbol for its creature type (from game-icons.net, CC BY 3.0) with a name plate, and the GM can keep a token's name from the table.
+- Spell areas on the map (circle, cone, line, cube, with a fire, cold or similar look), placed by hand or from a spell in the Spell Library, with the tokens they touch listed.
+- GM can prepare another map on their own screen while the table plays, then bring everyone over.
+- Initiative tracker, map pings, drawing tools and a laser pointer, vibe tracker (time-of-day tints), ambient effects and audio, session start/pause/end with recaps.
+- Asset library: upload pictures and sound, or import a ZIP of pictures.
+- Campaign gallery: pictures filed in folders and shown to chosen players.
+- Documents (PDF, text, Markdown), personal notes, whispers and chat.
+- Campaign export/import as `.cozyvtt` archives (the gallery is not part of the export).
 
-### Campaign Tools
-- **Interactive map canvas** — upload map images or draw a map in Mistwarden, place tokens, click a token to pick it up and click a square to put it down, or select it and move it with the arrow keys, with every move shown to the table in real time; on a tablet, slide a token with your finger or tap it and tap a square, tap a token for its details, press and hold a token, a door, a character or a combatant for its menu, and pinch to zoom
-- **Draw a map in Mistwarden** — the GM makes a blank map of the size and colour they choose and paints it with a brush, an eraser, lines, curves, rectangles, ellipses, polygons, rooms that add their own walls, stamps, textures, a fill bucket, text and an eyedropper, by mouse, finger or stylus, on a phone or a tablet too, with undo and redo and a draft kept in the browser until it is saved, then saves it as the map's picture, during play too; tokens, walls, lights and fog work on it as on any map
-- **Prepare a map while the table plays** — the GM opens any map on their own screen to set up its walls, lights, fog, tokens and drawings while the players stay on theirs and are sent nothing of it, then brings everyone over with one button
-- **Token system** — player, NPC, and object token types with disposition (friendly/neutral/hostile), HP bars, conditions, stat blocks, and notes; three display modes (pog, top-down, full-art); tokens turn to face any direction; colored-letter placeholders for tokens without images; the GM can hide a token from players or obscure what it is, and players are sent only what they may see of each token
-- **Creature library** — browse, search, and place creatures from the SRD bestiary (imported from Open5e by an administrator, with one button) or custom campaign-specific templates; per-campaign favorites with star toggle; duplicate SRD creatures to customize; edit custom creatures in-place; save token images back to templates
-- **Spell library** — the SRD 5.1 spells (imported from Open5e by an administrator, each with the area its text names), the server's own and each campaign's own; every member reads it; fill the AoE tool from a spell, or place a spell's area from a 5E sheet
-- **Token templates** — save reusable token configurations (image, stats, HP, size, disposition, full NPC stat block); place from library or save from map context menu; copy templates between campaigns the GM owns
-- **NPC right-click rolls** — GMs right-click any NPC token to roll abilities, saves, skills, attacks, and damage parsed from its stat block; advantage/disadvantage selector for d20 systems; free-form custom roll fallback for systems whose stat blocks have nothing to parse
-- **Campaign export/import** — export campaigns as portable `.cozyvtt` archives; import on any Mistwarden instance; includes maps, tokens, drawings, creatures, templates, the campaign's own spells, and assets; multi-step preview flow; optional audio toggle; secured against path traversal, zip bombs, and malicious files
-- **Walls & dynamic lighting** — GM-drawn wall segments (walls, doors, windows) with raycasting visibility; draw, polygon, and brush drawing modes; snap-to-grid and snap-to-endpoint; split, select, erase, and merge point tools; multi-select with Shift, a drag-box or Ctrl+A, then move or delete the lot together; snap-to-wall door/window placement (auto-splits existing walls); players only see what their character can: bright light clearly, dim light and the token's darkvision at half, nothing beyond, and light never reveals through a wall — a lit room is visible only to someone with line of sight into it; per-map Global Illumination lights everything in line of sight for tables that prefer it; explored areas are remembered per player and shown in grey until seen again; door interactions for both GM and players; bright/dim light radii matching 5E and Fantasy d20 rules; named light presets (Candle, Torch, Lamp, Lantern, Campfire); overlapping dim zones combine to bright
-- **Universal VTT import/export** — bring in a `.uvtt`, `.dd2vtt` or `.df2vtt` map from Dungeondraft, Dungeon Alchemist, Czepeku and others, with its walls, doors and lights already placed, and export any map back out. One file is one map, as the format intends; if a file's walls reach outside its own picture, Mistwarden says so before importing rather than leaving you to wonder
-- **Fog of war** — drag a box to reveal or hide chunks of the map; the selection snaps to whole grid squares, with animated fade transitions
-- **Spirit layer** — a second canvas layer for ethereal / astral / out-of-body scenes, hidden from players by default
-- **Initiative tracker** — real-time combat turn order that follows each token; the GM runs it and players roll their own initiative. Players see every combatant the GM has not hidden, on the map the table is looking at and on their own plane, even one they cannot yet find in the dark or under fog, and a creature's hit points only when the GM turns its HP bar on. The acting token is ringed on the map for everyone, hovering a name highlights its token (and vice versa), and clicking or tapping a combatant's name, or right-clicking its row, opens their sheet and rolls
-- **Map pings** — press Tab, use the map's **Ping** button, or on a touch screen double tap or press and hold the map, to mark a spot for the whole table; a dot with radiating rings in your own colour, labelled with your name
-- **Drawing on the map** — the GM and the players sketch on the map with a pen, lines, arrows, rectangles, ellipses, polygons and text labels in any colour and width, seen by the table live as they are drawn; a laser pointer whose trail fades for everyone; the GM can turn players' drawing off with **Players may draw**, keep a drawing to themselves, erase anyone's or clear the map, and a player erases their own; by mouse, finger or stylus
-- **Vibe tracker** — time-of-day periods (dawn, day, dusk and night by default, all editable) that tint the map with a colour filter
-- **Ambient atmosphere** — six visual effects (rain, mist, leaves, sparkles, snow, wind) and ambient audio independently per campaign
-- **Session management** — start, pause, resume, and end sessions with full state capture (token positions, map, vibe)
-- **Resizable session workspace** — on a computer or a tablet held sideways, drag to resize or collapse the roster, map, and side panels; a tabbed sidebar keeps Chat, Dice, Initiative, Notes and Session full-height, with an unread-message badge; layout persists per browser
+### Vision and fog
+- Fog of war by box, brush or lasso, with rounded edges and drifting mist (the mist can be set still or flat per device).
+- Dynamic lighting: walls, doors and windows with raycast line of sight, lights with presets and colours, global-illumination switch per map.
+- Darkvision per token, with carried lights (a torch or lantern that follows its token); lights update live while you drag them.
+- Explored areas are remembered per player and can be reset.
+- Hidden tokens and fog are filtered on the server; players are not sent what they cannot see.
 
-### Character Sheets
-- **5E (SRD 5.1)** — full sheet with stats, skills, saving throws, attacks, spells, inventory
-- **Fantasy d20 (ORC)** — attributes, saves, perception, skills, lore skills, strikes
-- **Horror d100** — characteristics and their rolls, skills with specialties, weapons and armor, Sanity, story notes
-- **Flexible / Custom** — JSON-based freeform character sheets for any system
+### Characters
+- Character sheets for 5th-edition SRD 5.1 rules, with an Overview tab, portrait, accent colours and a darkvision field that updates linked tokens.
+- Sheets for a fantasy d20 system (ORC), a horror d100 system, and free-form JSON sheets.
+- SRD creature library (imported by an admin), custom creatures and token templates. Admins can also import stat blocks written as Markdown (5e style), with a dry run first.
+- Spell Library: the SRD 5.1 spells (an admin imports them from Open5e, with the area read from the spell text), spells you add to a campaign, and spells an admin imports from Markdown. Campaign spells travel with the campaign export.
+- Dice notation (`1d20+5`, `4d6kh3`, advantage/disadvantage), secret rolls, saved rolls, roll history, NPC rolls from stat blocks, and 3D dice animation (a CSS fallback is used where it is not available).
 
-### Dice System
-- **Full dice notation** — `1d20+5`, `2d6`, `4d6kh3` (keep highest), advantage/disadvantage
-- **Real-time results** — rolls appear in the Dice panel for the whole table
-- **Secret rolls** — hidden from the other players; your GM can still see them, and they stay in your own list marked as secret
-- **Dice history** — a running log of the session's rolls that survives a refresh, filtered per person by the server
-- **Saved rolls** — name a dice expression and it becomes a one-click button in the dice panel, with a character and a purpose of its own if you like; private to you and scoped to one campaign, with the expression checked when you save it so a saved roll always works
+### Players and devices
+- Compact layout below 1,024 px width: map across the screen, a bottom bar, panels as sheets; touch gestures for tokens, pings and drawing; 44 px touch targets.
+- "Display on this device" settings (fog look, dice animation) are stored per browser.
+- Keyboard and screen reader support for dialogs, chat, dice and token movement.
+- Installable to the home screen (web app manifest).
+- Per-user themes and fonts (served by your own instance, no third-party fetches).
+- Two-factor authentication (TOTP) with backup codes, required for administrators.
 
-### Communication
-- **Campaign chat** — in-session messaging between all members
-- **Whispers** — a chat message to one member, seen by the two of you alone, from the **To** list or with `/w` (or `/whisper`) and a name
-- **System messages** — automatic notices when a session starts, pauses, resumes or ends, when the GM changes the time of day, and when the spirit layer is revealed or hidden
-- **Personal notes** — private per-campaign notes in Markdown, with a rendered preview and autosave; readable only by their author, enforced server-side
-- **Documents** — upload a PDF, plain text or Markdown rulebook or handout, or write one in the app, and read it without leaving Mistwarden; a GM shares documents with a campaign, and every member reads them from inside the session; text and Markdown documents can be edited by their uploader
-- **Session history** — every finished session with its date, length and the recap the GM wrote; the GM can edit or clear any past recap
+### GM tools
+- Optional writing help for GMs (an NPC, read-aloud text, notes) through an AI provider you configure. Off unless `AI_PROVIDER` is set; the key stays on the server.
+- Admin Panel: users, invitations, settings, activity log, uploaded files, instance backups.
+- Practice campaign: every user can open one small campaign of their own (map, walls, a door, a light, fog, a character, a note) to try the tools on, and reset it to how it was made.
+- Setup wizard guarded by a one-time setup token printed in the backend log.
 
-### Theming & Customization
-- **16 built-in color themes** — warm, cool, dark, neutral, and vibrant palettes
-- **Per-user themes** — each account picks its own theme and font from the profile page; preferences persist across logout/login
-- **Custom theme** — pick primary, accent, background, and text colors to create a unique look
-- **Character sheets follow the theme** — every sheet takes the theme's paper, text, and colors, so a sheet reads as well in a dark theme as the rest of the app
-- **8 font families** — open-source typefaces including medieval, elegant, modern, handwritten, and scholarly options, served by your own instance: visitors' browsers never fetch them from another site, and they work on a network with no internet access
-- **Live preview** — theme and font changes preview instantly before saving
-- **Default theme** — admin selects the theme shown on the login page and applied to brand-new users
-- **Custom branding** — the instance logo, mascot, and favicon can be replaced (swap the images in `frontend/public/` before building; an admin upload UI is [planned](docs/FUTURE_FEATURES.md))
+### Automation and MCP
+- [MCP server](mcp/README.md) that lets a coding assistant build scenes from your own campaign notes and map pictures on your computer, as the GM, with a manifest of what it created.
+- REST routes for the GM's table actions (chat, dice, vibe, atmosphere, spell areas, resetting explored memory) and for the initiative tracker, which the MCP server uses; see the [API reference](docs/API_REFERENCE.md).
 
-### Security
-- **Argon2id password hashing** (64 MB memory cost, timeCost 3)
-- **TOTP multi-factor authentication** with hashed backup codes, required on administrator accounts
-- **Session-based authentication** with rolling expiry, "remember me", and a 30-day limit on any sign-in
-- **Password reset** via email (SMTP configurable)
-- **Admin-approval registration** (optional)
-- **File upload validation** — magic-byte content checks (not just MIME header), size limits by type; text uploads must genuinely be text, and documents are served as plain text or PDF, never as a web page
-- **Per-endpoint rate limiting** — global API limit, strict auth limit, 5 changes of one's own email address an hour per account, asset upload limit (configurable via `ASSET_UPLOAD_RATE_LIMIT`), a limit on campaign invitation emails per GM, and per-account limits on everything sent to the live table, set far above what a game sends
-- **Security headers on the app page** — a Content-Security-Policy that allows script only from your own instance, plus `X-Frame-Options`, `nosniff`, `Referrer-Policy` and `Permissions-Policy`. Injected script cannot run, the app cannot be framed by another site, and the browser will not send data to an address Mistwarden does not use. The Docker setup sends them; an install without Docker gets them from the Nginx example in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#5-serve-with-nginx)
-- **WebSocket campaign isolation** — server-authenticated campaign membership; no client-spoofing
-- **The backend runs as an unprivileged user** — the container starts as root only long enough to fix ownership on your mounted folders, then drops to `appuser` before the app itself runs. In the two nginx containers the master process runs as root, as nginx's own image does, and the worker processes that handle requests run as the unprivileged `nginx` user. The database container runs PostgreSQL as the unprivileged `postgres` user, as its official image does. Every container runs with `no-new-privileges` and drops every Linux capability except the few its start-up needs, such as changing a folder's owner and switching user, and the frontend, the proxy and the backend have read-only filesystems, apart from the folders each writes to
-- **Production refuses to start** with a placeholder `SESSION_SECRET` or `DATABASE_PASSWORD`, or a `SESSION_SECRET` shorter than 32 characters
-- See [SECURITY.md](SECURITY.md) for the vulnerability disclosure policy
+## Quick start
 
----
+Requirements:
 
-## Game Systems
-
-| System | Character Sheet | Status |
-|--------|----------------|--------|
-| 5E (SRD 5.1) | Full | Available |
-| Fantasy d20 (ORC) | Full | Available |
-| Horror d100 | Full | Available |
-| Flexible / Custom | JSON freeform | Available |
-
----
-
-## Tech Stack
-
-**Backend**
-- Node.js + Express + TypeScript (strict mode)
-- PostgreSQL 15 + Prisma ORM
-- Socket.io for real-time WebSocket events
-- Argon2id password hashing
-- Multer + Sharp for file uploads and thumbnail generation
-- Nodemailer for transactional email
-- Zod for runtime request validation
-- Jest for testing
-
-**Frontend**
-- React 19 + TypeScript (strict mode)
-- Vite build tooling
-- Tailwind CSS 4 with custom design tokens
-- Zustand for live session state; TanStack Query (React Query) for REST data
-- Socket.io client
-- Axios for REST API calls
-- react-resizable-panels for the session workspace
-- Framer Motion for animations (reduced-motion aware)
-- Vitest + Testing Library
-
----
-
-## Quick Start
-
-### Requirements
-
-- Docker 24+ with Docker Compose v2, for the recommended install below
+- Docker 24+ with Docker Compose v2 (recommended install)
 - Node.js 26+ and PostgreSQL 14+, only to install without Docker (see [Manual Deployment](docs/DEPLOYMENT.md#manual-deployment))
-- Chrome or Edge 111, Firefox 128 or Safari 16.4 (iPadOS 16.4 on an iPad), or newer: Chrome, Edge and Safari from 2023, Firefox from 2024. An older browser may not load the app, or may draw parts of it wrongly
-- SMTP server (optional — required for password reset and invitation emails)
-
-### Docker (Recommended)
+- Chrome or Edge 111, Firefox 128 or Safari 16.4 (iPadOS 16.4) or newer
+- SMTP server (optional; needed for password reset and invitation emails)
 
 ```bash
 git clone https://github.com/robinesken97/mistwarden.git
 cd mistwarden
-
-# Copy it, then set at least DATABASE_PASSWORD and SESSION_SECRET (see docs/DEPLOYMENT.md)
 cp .env.example .env
-
-# Production stack (hardened, what end-users run)
+# Edit .env: set DATABASE_PASSWORD and SESSION_SECRET (openssl rand -hex 32)
 docker compose up -d --build
 ```
 
-Navigate to `http://localhost` and complete the setup wizard. It asks for the setup token the backend printed when it started: `docker compose logs backend | grep "setup token"` shows it.
+- There are no default passwords. The production build refuses to start while `DATABASE_PASSWORD` or `SESSION_SECRET` is still the placeholder, or while `SESSION_SECRET` is shorter than 32 characters.
+- Open `http://localhost` and complete the setup wizard. It asks for a one-time setup token: `docker compose logs backend | grep "setup token"` shows it. The first account becomes the administrator, who must enable two-factor authentication within 7 days.
+- Set `CORS_ORIGIN` to your public address. Use HTTPS for anything beyond localhost (the home-screen app needs a secure origin): Let's Encrypt with the bundled nginx, or a reverse proxy such as Caddy, Traefik or a Cloudflare Tunnel. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+- Security posture: the backend container drops to an unprivileged user; in the nginx containers the master process runs as root, as nginx's own image does, and every container drops every Linux capability except the few its start-up needs.
 
-### Local Development
+## Updating and backups
 
-If you've cloned the repo to hack on Mistwarden itself, use the dev compose file instead — it enables hot reload, publishes the frontend, backend and database ports on this computer only, and runs `NODE_ENV=development`:
+Update:
 
 ```bash
-docker compose -f docker-compose.dev.yml up
+git pull
+docker compose up -d --build
 ```
 
-See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for the full dev setup (including running outside Docker).
+If `git pull` stops because you edited `docker-compose.yml`, see [Updating after you've edited docker-compose.yml](docs/DEPLOYMENT.md#updating-after-youve-edited-docker-composeyml); a `docker-compose.override.yml` avoids the conflict.
 
-See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for production deployment with Nginx and SSL.
+Backups:
 
----
+- Admin Panel, Backups, Create Backup: a ZIP with a database dump and all uploaded files, written to `backend/backups/`. Backups are never deleted automatically.
+- `./backend/scripts/backup.sh` writes a gzip database dump and, beside it, an archive of the uploaded files to `./backups/` (`BACKUP_UPLOADS=no` skips the files); `./backend/scripts/restore.sh <dump>` restores both when the archive sits beside the dump.
+- Daily cron example: [Automated Daily Backups](docs/DEPLOYMENT.md#automated-daily-backups-cron).
 
 ## Configuration
 
-Most runtime configuration is managed through the Admin Panel after setup. Email (SMTP) and upload limits are set in `.env`; the Admin Panel shows them and can send a test email:
+Settings live in `.env` (copy `.env.example`, which documents every key) and in the Admin Panel. Common ones:
 
-| Tab | Setting | Description |
-|-----|---------|-------------|
-| Users | Invite User | Email someone a link to join and choose their own password (needs SMTP; link valid 7 days) |
-| Users | Create User | Generate a temporary password to hand over yourself — for instances without email |
-| Settings | Instance Name | Displayed in the browser title and emails |
-| Settings | Allow Public Registration | Whether new users can self-register |
-| Settings | Require Admin Approval | New registrations must be approved before login |
-| Settings | SMTP | Shows the email settings from `.env`, with **Send Test Email** |
-| Settings | Upload Size Limits | Shows the per-type file size limits from `.env` (maps, tokens, audio, avatars, documents) |
-| Appearance | Default Theme | Theme shown on the login page and used for new users (each user can override from their profile) |
-| Appearance | Default Font | Default font family applied alongside the default theme |
-| Appearance | Custom Theme | Build a palette from primary, accent, background, and text colors, with a live readability check |
+| Variable | Purpose |
+|----------|---------|
+| `DATABASE_PASSWORD`, `SESSION_SECRET` | Required; placeholders are refused in production |
+| `CORS_ORIGIN`, `APP_URL` | Public address of the instance; base for email links |
+| `HTTP_PORT`, `HTTPS_PORT` | Published ports of the bundled nginx |
+| `NGINX_TRUSTED_PROXIES` | Proxies in front of nginx whose client addresses are trusted |
+| `SETUP_TOKEN` | Choose the one-time setup token yourself (optional) |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `SMTP_SECURE` | Email for password reset and invitations (optional) |
+| `MAX_MAP_SIZE_MB`, `MAX_TOKEN_SIZE_MB`, `MAX_AUDIO_SIZE_MB`, `MAX_AVATAR_SIZE_MB`, `MAX_DOCUMENT_SIZE_MB`, `NGINX_MAX_BODY_SIZE` | Upload limits; raise the proxy limit with them |
+| `AI_PROVIDER`, `AI_API_KEY`, `AI_MODEL`, `AI_BASE_URL`, `AI_RATE_LIMIT` | Optional writing help; off unless `AI_PROVIDER` is set |
+| `SESSION_MAX_AGE`, `REMEMBER_ME_MAX_AGE`, `RATE_LIMIT_MAX_REQUESTS` | Session lifetimes and API rate limit |
 
-However an account is added, its first sign-in ends with the person choosing their own password — an
-admin-issued temporary password cannot be used for anything else.
+Full reference: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#environment-configuration) and [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
-Instance branding (logo, mascot, favicon) is **not** set from the Admin Panel yet — see
-[Appearance & Theming](docs/USER_GUIDE.md#appearance--theming) for how to change it today.
+## MCP server
 
-### Default Upload Limits
+`mcp/` holds a stdio MCP server that runs on your computer and signs in with your own GM session (it never sees your password). It reads notes and pictures only from one folder you name, acts only on GM campaigns, and by default changes only objects it created itself. By default it only creates and changes its own objects, and what it does stays hidden from players; three opt-in switches widen that: `MISTWARDEN_MCP_COGM=1` (co-GM: game state, initiative, chat, dice, sessions), `MISTWARDEN_MCP_PLAYER_VISIBLE=1` (tools that show things to players and changes on the map they see) and `MISTWARDEN_MCP_ALLOW_ANY_EDIT=1` (edit or delete objects it did not create). Deletes need a recent `create_backup`. Tool groups: read, maps, tokens, creatures and spells, spell areas, walls and lights, fog, notes and gallery, characters, dice, local files, instance library import (platform admins), backup, and table tools. Setup, tools and the safety model: [mcp/README.md](mcp/README.md).
 
-| Type | Default | Environment variable |
-|------|---------|----------------------|
-| Map images | 50 MB | `MAX_MAP_SIZE_MB` |
-| Token images | 5 MB | `MAX_TOKEN_SIZE_MB` |
-| Audio files | 20 MB | `MAX_AUDIO_SIZE_MB` |
-| Avatar images | 2 MB | `MAX_AVATAR_SIZE_MB` |
-| Documents (PDF, text, Markdown) | 50 MB | `MAX_DOCUMENT_SIZE_MB` |
+Mistwarden's HTTP and WebSocket surfaces are not a public API: they are what the web client calls, are not versioned and can change in any release. Tools built on them, such as the independent [cozyvtt-mcp](https://github.com/yanjingzhaisun/cozyvtt-mcp) bridge, must check compatibility themselves.
 
-Set these in `.env` and apply them with `docker compose up -d`; no rebuild is needed, but `docker compose restart` keeps the old values. If you raise one, raise your reverse proxy's body limit to match (`NGINX_MAX_BODY_SIZE` for the bundled Nginx). See [Upload Size Limits](docs/DEPLOYMENT.md#upload-size-limits).
+## Development
 
-Pictures also have fixed limits: at most 16,384 pixels on each side, and for an animated GIF or WebP at most 1,000 frames and 200 million pixels across them for a map, 50 million for a token or an avatar.
+Dev stack with hot reload: `docker compose -f docker-compose.dev.yml up`. Details, running outside Docker and tests: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md). Also see [Architecture](docs/ARCHITECTURE.md), [Contributing](docs/CONTRIBUTING.md), [API reference](docs/API_REFERENCE.md), [GM guide](docs/GM_GUIDE.md), [Player guide](docs/PLAYER_GUIDE.md) and the [Changelog](CHANGELOG.md).
 
----
+Stack: React 19 + Vite + Tailwind (frontend), Node.js + Express + Prisma + PostgreSQL + Socket.io (backend).
 
-## User Roles
+## Roadmap
 
-### Platform Roles
-| Role | Description |
-|------|-------------|
-| `ADMIN` | Full platform access — manage users, campaigns, system settings |
-| `USER` | Can create and join campaigns |
+Backlog and known issues: [docs/FUTURE_FEATURES.md](docs/FUTURE_FEATURES.md).
 
-### Campaign Roles
-| Role | Description |
-|------|-------------|
-| `GM` | The game master: full campaign control — manage maps, tokens, sessions, members |
-| `PLAYER` | Can view maps, move their own tokens, roll dice, chat and whisper, draw on the map while the GM allows it, and leave the campaign |
-| `SPECTATOR` | Watches the map, chats, whispers and pings; keeps private notes and dice macros; can leave the campaign; cannot roll dice or initiative, move or edit tokens, draw on the map, or edit a character |
+## Licence and credits
 
----
+GNU Affero General Public License v3.0, see [LICENSE](LICENSE). Any modified version you run as a network service must make its source available under the same licence.
 
-## Documentation
-
-| Document | Description |
-|----------|-------------|
-| [User Guide](docs/USER_GUIDE.md) | End-user guide for all platform features |
-| [GM Guide](docs/GM_GUIDE.md) | GM-specific features and workflows |
-| [Player Guide](docs/PLAYER_GUIDE.md) | Quick-start guide for players |
-| [Development Setup](docs/DEVELOPMENT.md) | Local development guide |
-| [Architecture](docs/ARCHITECTURE.md) | System architecture and design decisions |
-| [Deployment](docs/DEPLOYMENT.md) | Production deployment guide |
-| [Contributing](docs/CONTRIBUTING.md) | How to contribute to Mistwarden |
-| [Game Systems](docs/GAME_SYSTEMS.md) | How to add new game system support |
-| [API Reference](docs/API_REFERENCE.md) | REST API and WebSocket event reference |
-| [API changes](docs/api-changes/README.md) | What changed for programs driving Mistwarden, release by release |
-| [WebSocket Events](backend/docs/WEBSOCKET_DOCUMENTATION.md) | Detailed Socket.io event schema |
-| [Future Features](docs/FUTURE_FEATURES.md) | Backlog of planned work |
-| [Security Policy](SECURITY.md) | How to report vulnerabilities |
-| [Changelog](CHANGELOG.md) | Release history |
-| [Third-Party Credits](THIRD_PARTY_CREDITS.md) | Licences of the fonts, icons, pictures, libraries and game content Mistwarden uses |
-| [Game Content Notices](GAME_CONTENT_NOTICES.md) | The licences of the game rules Mistwarden uses, and the credits they ask for |
-
----
-
-## Community Projects
-
-Built by other people, on their own terms. They are not part of Mistwarden, are not maintained by this project, and are listed because they are useful — check their own documentation and licence before running them.
-
-| Project | What it does |
-|---------|--------------|
-| [cozyvtt-mcp](https://github.com/yanjingzhaisun/cozyvtt-mcp) | An MCP bridge that lets an AI assistant act in a campaign — post to chat, roll dice, move tokens, change maps and run initiative. MIT licensed, independent of this codebase. |
-
-A note on building things like this. Mistwarden's HTTP and WebSocket surfaces are **not a public API**: they are what the web client calls, they are not versioned, and they carry no compatibility promise, so they can change in any release. They *can* be driven by a program — signing in with your own email and password returns a session cookie that authenticates both, and a script can do exactly what the web client does, as that user with that user's permissions. Unsupported is the honest word for it, not impossible.
-
-That is why `cozyvtt-mcp` pins to a CozyVTT version and keeps a compatibility table. Check that table before pairing the two: the surface it builds on is unversioned and can change in any release.
-
----
-
-## Asset Storage
-
-Uploaded files are stored in `backend/uploads/` organized by type:
-
-```
-uploads/
-  maps/        Map images and thumbnails
-  tokens/      Token images and thumbnails
-  audio/       Ambient audio files
-  avatars/     User profile avatars
-  documents/   PDF, text and Markdown documents
-```
-
-Backups made from the Admin Panel are not kept here: they go in `backend/backups/`.
-
----
-
-## License
-
-GNU Affero General Public License v3.0 — see [LICENSE](LICENSE) for details.
-
-Mistwarden is free to use, self-host, and fork. The AGPLv3 requires that any modified version you run as a network service must also make its source code available under the same license.
-
-For third-party font and content licenses, see [THIRD_PARTY_CREDITS.md](THIRD_PARTY_CREDITS.md).
-
-The open game rules Mistwarden draws on are not under the AGPLv3: the SRD 5.1 material stays under Creative Commons Attribution 4.0, and the material taken from rules released under the ORC License stays under that licence. [GAME_CONTENT_NOTICES.md](GAME_CONTENT_NOTICES.md) has their notices and says what each game system takes from them, and the app shows their credits in **About Mistwarden**. If you host Mistwarden for others, leave that window reachable: the rules' licences ask for these credits.
+- Based on [CozyVTT](https://github.com/CheekyChinchilla/CozyVTT) by CheekyChinchilla.
+- Fonts, icons, pictures and libraries: [THIRD_PARTY_CREDITS.md](THIRD_PARTY_CREDITS.md) and [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt).
+- The open game rules (SRD 5.1 under CC BY 4.0, rules released under the ORC License) keep their own licences: [GAME_CONTENT_NOTICES.md](GAME_CONTENT_NOTICES.md). The app shows their credits in About Mistwarden.
 
 ---
 
